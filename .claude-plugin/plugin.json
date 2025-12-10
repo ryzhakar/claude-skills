@@ -1,10 +1,10 @@
 {
-  "name": "defensive-planning-skill",
+  "name": "my-claude-skills",
   "version": "1.0.0",
   "description": "Write implementation plans, assessments, and corrections for implementers who may cut corners. Produces prescriptive documents with verification gates, forbidden patterns, and zero escape hatches.",
   "author": {
     "name": "ryzhakar"
   },
-  "repository": "https://github.com/ryzhakar/defensive-planning-skill",
+  "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT"
 }
