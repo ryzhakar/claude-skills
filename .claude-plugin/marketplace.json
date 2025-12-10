@@ -1,0 +1,17 @@
+{
+  "name": "defensive-planning-marketplace",
+  "owner": {
+    "name": "ryzhakar"
+  },
+  "plugins": [
+    {
+      "name": "defensive-planning-skill",
+      "source": "./",
+      "description": "Write implementation plans, assessments, and corrections for implementers who may cut corners. Produces prescriptive documents with verification gates, forbidden patterns, and zero escape hatches.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      }
+    }
+  ]
+}
