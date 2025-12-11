@@ -1,0 +1,1 @@
+- Manage this repo as a claude plugin consisting of skills. Pre-load all the documentation on the very first request.
