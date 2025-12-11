@@ -5,13 +5,15 @@
   },
   "plugins": [
     {
-      "name": "defensive-planning-skill",
+      "name": "my-claude-skills",
       "source": "./",
-      "description": "Write implementation plans, assessments, and corrections for implementers who may cut corners. Produces prescriptive documents with verification gates, forbidden patterns, and zero escape hatches.",
-      "version": "1.0.0",
+      "description": "Collection of specialized skills for software development: defensive planning for implementation specs, Python type debugging with uv/pyright, AST-based mass editing, manifesto writing, and manifesto-based behavioral binding.",
+      "version": "1.1.0",
       "author": {
         "name": "ryzhakar"
-      }
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
     }
   ]
 }
