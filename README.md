@@ -44,6 +44,24 @@ Transform talks, essays, or documentation into manifestos: concentrated declarat
 - Requesting manifesto tone or command-style guidance
 - Need for enemy-and-stakes framing
 
+### 6. Spec Chef
+Extract implicit product decisions from stakeholders into durable artifacts through systematic gap detection and constrained questioning.
+
+**Use when:**
+- Analyzing incomplete specs or finding documentation gaps
+- Stakeholder interviews and extracting product requirements
+- Defining MVP scope
+- Existing documentation has implicit assumptions or undefined behaviors
+
+### 7. User Story Chef
+Write user stories as value negotiation units, not template-filling exercises. Teaches function (value decomposition, falsifiable AC, feedback optimization) over form (templates).
+
+**Use when:**
+- Writing user stories or acceptance criteria
+- Story splitting and backlog refinement
+- Evaluating story quality with INVEST criteria
+- Creating Agile artifacts that capture work units
+
 ## Installation
 
 Install this plugin using Claude Code:
@@ -66,7 +84,9 @@ claude-skills/
 │   ├── uv-pyright-debug/
 │   ├── python-ast-mass-edit/
 │   ├── manifesto-oath/
-│   └── manifesto-writing/
+│   ├── manifesto-writing/
+│   ├── spec-chef/
+│   └── user-story-chef/
 └── README.md
 ```
 

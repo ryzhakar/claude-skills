@@ -1,11 +1,11 @@
 {
   "name": "my-claude-skills",
-  "version": "1.1.0",
-  "description": "Collection of specialized skills for software development: defensive planning for implementation specs, Python type debugging with uv/pyright, AST-based mass editing, manifesto writing, and manifesto-based behavioral binding.",
+  "version": "1.2.0",
+  "description": "Collection of specialized skills for software development: defensive planning for implementation specs, Python type debugging with uv/pyright, AST-based mass editing, manifesto writing, manifesto-based behavioral binding, spec extraction from stakeholders, and user story writing.",
   "author": {
     "name": "ryzhakar"
   },
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": ["planning", "python", "type-checking", "ast", "refactoring", "manifesto", "defensive-programming"]
+  "keywords": ["planning", "python", "type-checking", "ast", "refactoring", "manifesto", "defensive-programming", "spec", "user-stories", "agile", "product"]
 }
