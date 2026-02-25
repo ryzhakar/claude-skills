@@ -62,6 +62,26 @@ Write user stories as value negotiation units, not template-filling exercises. T
 - Evaluating story quality with INVEST criteria
 - Creating Agile artifacts that capture work units
 
+### 8. Prompt Eval
+Systematic evaluation of Claude system prompts against criteria derived from Anthropic's official documentation. Produces structured assessment with scores and specific findings.
+
+**Use when:**
+- Evaluating a prompt or reviewing a system prompt
+- Assessing prompt quality or auditing prompts
+- Checking if a prompt is good or grading prompts
+- Identifying structural issues, anti-patterns, or clarity problems
+- Reviewing prompts for safety guardrails and tool specifications
+
+### 9. Prompt Optimize
+Apply Anthropic-grounded improvement patterns to fix issues in Claude system prompts. Works best after prompt-eval identifies problems, but can also be used standalone.
+
+**Use when:**
+- Improving or optimizing a prompt
+- Fixing system prompt issues
+- Making a prompt better or refactoring prompts
+- Enhancing prompt quality or rewriting prompts
+- Applying improvement patterns from Anthropic guidance
+
 ## Installation
 
 Install this plugin using Claude Code:
@@ -86,7 +106,9 @@ claude-skills/
 │   ├── manifesto-oath/
 │   ├── manifesto-writing/
 │   ├── spec-chef/
-│   └── user-story-chef/
+│   ├── user-story-chef/
+│   ├── prompt-eval/
+│   └── prompt-optimize/
 └── README.md
 ```
 
