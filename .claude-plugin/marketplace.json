@@ -8,7 +8,7 @@
       "name": "my-claude-skills",
       "source": "./",
       "description": "Collection of specialized skills for software development: defensive planning for implementation specs, Python type debugging with uv/pyright, AST-based mass editing, manifesto writing, manifesto-based behavioral binding, spec extraction from stakeholders, and user story writing.",
-      "version": "1.2.0",
+      "version": "1.4.0",
       "author": {
         "name": "ryzhakar"
       },

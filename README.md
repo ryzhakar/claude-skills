@@ -82,6 +82,26 @@ Apply Anthropic-grounded improvement patterns to fix issues in Claude system pro
 - Enhancing prompt quality or rewriting prompts
 - Applying improvement patterns from Anthropic guidance
 
+### 10. Agentic Delegation
+Universal framework for decomposing work into agent-delegated units across model tiers. Core thesis: cheap agents are essentially free — decompose aggressively, delegate everything, assemble the results. A swarm of micro-agents almost always beats a single capable agent.
+
+**Use when:**
+- Any multi-step task with independent subtasks
+- Any exploration, audit, research, or review work
+- Parallelizing work across model tiers (haiku/sonnet/opus)
+- You'd "need to check something first" before proceeding
+- Fan-out, delegation, or orchestration of agent swarms
+
+### 11. Research Tree
+Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory environments, or any domain requiring breadth-first exploration followed by depth-first verification. The orchestrator decides scope, depth, and course corrections — agents do the research and write durable reports to disk.
+
+**Use when:**
+- Researching an ecosystem or surveying a landscape
+- Evaluating and comparing options or alternatives
+- Deep-diving into a domain with many candidates
+- Auditing a market or mapping what exists
+- Multi-agent orchestration for research tasks
+
 ## Installation
 
 Install this plugin using Claude Code:
@@ -107,8 +127,10 @@ claude-skills/
 │   ├── manifesto-writing/
 │   ├── spec-chef/
 │   ├── user-story-chef/
+│   ├── agentic-delegation/
 │   ├── prompt-eval/
-│   └── prompt-optimize/
+│   ├── prompt-optimize/
+│   └── research-tree/
 └── README.md
 ```
 
