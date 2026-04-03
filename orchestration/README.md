@@ -1,8 +1,8 @@
 # orchestration
 
-Domain-agnostic agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
+Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
 
-`orchestration` `delegation` `agents` `research` `parallel` `swarm` 
+`orchestration` `delegation` `agents` `research` `parallel` `swarm` `development` `lifecycle` 
 ## Skills
 
 ### [agentic-delegation](skills/agentic-delegation/SKILL.md) `1.0.0`
@@ -18,7 +18,23 @@ any task with independent subtasks, any exploration, any audit, any research,
 "delegate", "parallelize", "fan out", "use agents for".
 
 
-**References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md) · [`software-engineering-examples.md`](skills/agentic-delegation/references/software-engineering-examples.md)
+**References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md)
+---
+
+### [dev-orchestration](skills/dev-orchestration/SKILL.md) `1.0.0`
+This skill should be used when the user asks to "implement a feature end-to-end",
+"execute an implementation plan", "build this with agents", "orchestrate development",
+"run the dev loop", "implement using subagents", "dispatch implementers",
+"coordinate implementation and review", or when a multi-step development task
+requires planning, implementation, review, and iteration as a coordinated workflow.
+
+Governs the full plan-implement-review-fix development lifecycle by orchestrating
+dev-discipline agents (implementer, spec-reviewer, code-quality-reviewer) and skills
+(defensive-planning, tdd, systematic-debugging, receiving-code-review) into a
+coherent execution workflow with quality gates and status-driven branching.
+
+
+**References:** [`agent-dispatch.md`](skills/dev-orchestration/references/agent-dispatch.md) · [`lifecycle-loops.md`](skills/dev-orchestration/references/lifecycle-loops.md) · [`software-engineering-examples.md`](skills/dev-orchestration/references/software-engineering-examples.md)
 ---
 
 ### [research-tree](skills/research-tree/SKILL.md) `2.0.0`

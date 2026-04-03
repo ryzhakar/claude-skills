@@ -1,8 +1,8 @@
 # dev-discipline
 
-Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, and development workflow agents.
+Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.
 
-`tdd` `debugging` `planning` `code-review` `testing` `development` 
+`tdd` `debugging` `planning` `code-review` `testing` 
 ## Skills
 
 ### [defensive-planning](skills/defensive-planning/SKILL.md)
@@ -15,22 +15,6 @@ with verification gates, forbidden patterns, and zero escape hatches.
 
 
 **References:** [`execution.md`](skills/defensive-planning/references/execution.md) · [`module-design.md`](skills/defensive-planning/references/module-design.md) · [`tdd-mode.md`](skills/defensive-planning/references/tdd-mode.md)
----
-
-### [dev-orchestration](skills/dev-orchestration/SKILL.md)
-This skill should be used when the user asks to "implement a feature end-to-end",
-"execute an implementation plan", "build this with agents", "orchestrate development",
-"run the dev loop", "implement using subagents", "dispatch implementers",
-"coordinate implementation and review", or when a multi-step development task
-requires planning, implementation, review, and iteration as a coordinated workflow.
-
-Governs the full plan-implement-review-fix development lifecycle by orchestrating
-dev-discipline agents (implementer, spec-reviewer, code-quality-reviewer) and skills
-(defensive-planning, tdd, systematic-debugging, receiving-code-review) into a
-coherent execution workflow with quality gates and status-driven branching.
-
-
-**References:** [`agent-dispatch.md`](skills/dev-orchestration/references/agent-dispatch.md) · [`lifecycle-loops.md`](skills/dev-orchestration/references/lifecycle-loops.md)
 ---
 
 ### [receiving-code-review](skills/receiving-code-review/SKILL.md)

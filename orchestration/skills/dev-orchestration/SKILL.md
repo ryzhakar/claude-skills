@@ -1,5 +1,6 @@
 ---
 name: dev-orchestration
+version: 1.0.0
 description: |
   This skill should be used when the user asks to "implement a feature end-to-end",
   "execute an implementation plan", "build this with agents", "orchestrate development",
@@ -178,3 +179,4 @@ Dispatch an integration verification agent for step 2-3. If issues arise, determ
 
 - @references/lifecycle-loops.md -- Full state machine for the development loop, review loop, debugging escalation, multi-unit coordination, entry/exit criteria, and loop limits
 - @references/agent-dispatch.md -- Prompt templates for dispatching implementer, spec-reviewer, and code-quality-reviewer agents, context requirements, status interpretation, and fallback patterns
+- @references/software-engineering-examples.md -- Concrete delegation archetypes for code implementation, code review/audit, debugging, testing, and documentation workflows

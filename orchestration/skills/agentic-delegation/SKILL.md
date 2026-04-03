@@ -458,10 +458,6 @@ This is where the swarm principle shines hardest. 15 speculative haiku agents ex
 
 ---
 
-For software engineering delegation patterns (code implementation, code review, debugging) with concrete examples, see @references/software-engineering-examples.md
-
----
-
 ## Governing Principles (Summary)
 
 1. **Your context is expensive. Agent calls are cheap.** This asymmetry drives every decision.
