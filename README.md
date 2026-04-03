@@ -6,9 +6,9 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 5S 3A |
+| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 4S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `1.0.0` | 2S |
-| [orchestration](orchestration/) | Domain-agnostic agent delegation framework and multi-agent research... | `2.0.0` | 2S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.0.0` | 3S |
 | [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
@@ -18,14 +18,12 @@
 
 ## [dev-discipline](dev-discipline/) `1.0.0`
 
-Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, and development workflow agents.
+Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.
 
 ### Skills
 
 - **[defensive-planning](dev-discipline/skills/defensive-planning/SKILL.md)** — Write implementation plans, assessments, and corrections for implementers who may cut corners. Use when: (1) creating implementation...
   References: [`execution.md`](dev-discipline/skills/defensive-planning/references/execution.md), [`module-design.md`](dev-discipline/skills/defensive-planning/references/module-design.md), [`tdd-mode.md`](dev-discipline/skills/defensive-planning/references/tdd-mode.md)
-- **[dev-orchestration](dev-discipline/skills/dev-orchestration/SKILL.md)** — This skill should be used when the user asks to "implement a feature end-to-end", "execute an implementation plan", "build this with...
-  References: [`agent-dispatch.md`](dev-discipline/skills/dev-orchestration/references/agent-dispatch.md), [`lifecycle-loops.md`](dev-discipline/skills/dev-orchestration/references/lifecycle-loops.md)
 - **[receiving-code-review](dev-discipline/skills/receiving-code-review/SKILL.md)** — This skill should be used to apply anti-performative code review protocol: verify-before-implement discipline, YAGNI enforcement, and...
 - **[systematic-debugging](dev-discipline/skills/systematic-debugging/SKILL.md)** — This skill should be used when the user reports a "bug", "test failure", "unexpected behavior", "error", "crash", "flaky test", asks to...
   References: [`condition-based-waiting.md`](dev-discipline/skills/systematic-debugging/references/condition-based-waiting.md), [`defense-in-depth.md`](dev-discipline/skills/systematic-debugging/references/defense-in-depth.md), [`root-cause-tracing.md`](dev-discipline/skills/systematic-debugging/references/root-cause-tracing.md)
@@ -45,16 +43,18 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 ### Skills
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, principles, or codes through identity-assumption protocols rather than...
-  References: [`theory.md`](manifesto/skills/manifesto-oath/references/theory.md)
+  References: [`configuration.md`](manifesto/skills/manifesto-oath/references/configuration.md), [`theory.md`](manifesto/skills/manifesto-oath/references/theory.md)
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users ask to turn talks, essays, or docs into a manifesto—or request manifesto tone, command-style guidance, or...
 ## [orchestration](orchestration/) `2.0.0`
 
-Domain-agnostic agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
+Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
 
 ### Skills
 
 - **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** `1.0.0` — The universal framework for decomposing work into agent-delegated units across model tiers. Use this skill whenever work can be broken...
-  References: [`prompt-anatomy.md`](orchestration/skills/agentic-delegation/references/prompt-anatomy.md), [`quality-governance.md`](orchestration/skills/agentic-delegation/references/quality-governance.md), [`software-engineering-examples.md`](orchestration/skills/agentic-delegation/references/software-engineering-examples.md)
+  References: [`prompt-anatomy.md`](orchestration/skills/agentic-delegation/references/prompt-anatomy.md), [`quality-governance.md`](orchestration/skills/agentic-delegation/references/quality-governance.md)
+- **[dev-orchestration](orchestration/skills/dev-orchestration/SKILL.md)** `1.0.0` — This skill should be used when the user asks to "implement a feature end-to-end", "execute an implementation plan", "build this with...
+  References: [`agent-dispatch.md`](orchestration/skills/dev-orchestration/references/agent-dispatch.md), [`lifecycle-loops.md`](orchestration/skills/dev-orchestration/references/lifecycle-loops.md), [`software-engineering-examples.md`](orchestration/skills/dev-orchestration/references/software-engineering-examples.md)
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** `2.0.0` — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   References: [`agent-templates.md`](orchestration/skills/research-tree/references/agent-templates.md), [`anti-patterns.md`](orchestration/skills/research-tree/references/anti-patterns.md), [`report-formats.md`](orchestration/skills/research-tree/references/report-formats.md), [`tier-playbook.md`](orchestration/skills/research-tree/references/tier-playbook.md)
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
