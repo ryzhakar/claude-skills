@@ -7,7 +7,7 @@
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 4S 3A |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `1.0.0` | 2S |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `1.1.0` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.0.0` | 3S |
 | [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
@@ -36,7 +36,7 @@ Software engineering discipline: defensive planning, test-driven development, sy
 - **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a...
 - **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Use this agent when verifying that an implementation matches its specification, after an implementer reports task...
 
-## [manifesto](manifesto/) `1.0.0`
+## [manifesto](manifesto/) `1.1.0`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 
