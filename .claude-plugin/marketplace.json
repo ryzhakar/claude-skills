@@ -5,10 +5,76 @@
   },
   "plugins": [
     {
-      "name": "my-claude-skills",
-      "source": "./",
-      "description": "Collection of specialized skills for software development: defensive planning for implementation specs, Python type debugging with uv/pyright, AST-based mass editing, manifesto writing, manifesto-based behavioral binding, spec extraction from stakeholders, and user story writing.",
-      "version": "1.4.0",
+      "name": "orchestration",
+      "source": "./orchestration/",
+      "description": "Domain-agnostic agent delegation framework and multi-agent research orchestration.",
+      "version": "2.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "product-craft",
+      "source": "./product-craft/",
+      "description": "Product definition and architecture: extract specs, write user stories, triage bugs, improve architecture.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "dev-discipline",
+      "source": "./dev-discipline/",
+      "description": "Software engineering discipline: defensive planning, TDD, systematic debugging, code review, and development workflow agents.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "prompt-engineering",
+      "source": "./prompt-engineering/",
+      "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "manifesto",
+      "source": "./manifesto/",
+      "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "python-tools",
+      "source": "./python-tools/",
+      "description": "Python development tooling: type error debugging with uv/pyright and AST-based mass structural edits.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "userland-utilities",
+      "source": "./userland-utilities/",
+      "description": "Practical utilities for common desktop and system tasks.",
+      "version": "1.0.0",
       "author": {
         "name": "ryzhakar"
       },

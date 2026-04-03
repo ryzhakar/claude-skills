@@ -1,0 +1,11 @@
+{
+  "name": "prompt-engineering",
+  "version": "1.0.0",
+  "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
+  "author": {
+    "name": "ryzhakar"
+  },
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": ["prompts", "prompt-engineering", "evaluation", "optimization"]
+}

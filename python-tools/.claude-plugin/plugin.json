@@ -1,0 +1,18 @@
+{
+  "name": "python-tools",
+  "version": "1.0.0",
+  "description": "Python development tooling: debug type errors in uv-managed projects with pyright, and perform AST-based mass structural edits across codebases.",
+  "author": {
+    "name": "ryzhakar"
+  },
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "python",
+    "type-checking",
+    "pyright",
+    "ast",
+    "refactoring",
+    "uv"
+  ]
+}

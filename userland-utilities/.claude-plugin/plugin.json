@@ -1,0 +1,11 @@
+{
+  "name": "userland-utilities",
+  "version": "1.0.0",
+  "description": "Practical utilities for common desktop and system tasks. Includes macOS app bundle repair (Gatekeeper, code signing, quarantine flags).",
+  "author": {
+    "name": "ryzhakar"
+  },
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": ["macos", "utilities", "gatekeeper", "code-signing", "system"]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "product-craft",
+  "version": "1.0.0",
+  "description": "Product definition and architecture skills: extract specs from stakeholders, write user stories, triage bugs, improve codebase architecture, and establish ubiquitous language.",
+  "author": {"name": "ryzhakar"},
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": ["product", "spec", "user-stories", "agile", "triage", "architecture", "refactoring"]
+}

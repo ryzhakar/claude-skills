@@ -1,143 +1,105 @@
-# My Claude Skills
+# my-claude-skills
 
-A collection of specialized skills for software development with Claude Code.
+18 skills · 3 agents across 7 plugins
 
-## Skills Included
+## Plugins
 
-### 1. Defensive Planning
-Write implementation plans, assessments, and corrections for implementers who may cut corners. Produces prescriptive documents with verification gates, forbidden patterns, and zero escape hatches.
+| Plugin | Description | Version | Components |
+|--------|-------------|---------|------------|
+| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 5S 3A |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `1.0.0` | 2S |
+| [orchestration](orchestration/) | Domain-agnostic agent delegation framework and multi-agent research... | `2.0.0` | 2S |
+| [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
+| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
+| [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
+| [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
 
-**Use when:**
-- Creating implementation plans for peers/subordinates/contractors
-- Reviewing implementations for adherence
-- Writing correction plans after failures
-- Situations requiring zero-tolerance for shortcuts
+---
 
-### 2. UV-Pyright Debug
-Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Critical for projects using pydantic models where Field() defaults may not be properly inferred.
+## [dev-discipline](dev-discipline/) `1.0.0`
 
-**Use when:**
-- IDE shows type errors but standalone pyright reports 0 errors
-- Systematic analysis of type errors is needed before mass edits
-- Working with uv-managed Python projects
+Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, and development workflow agents.
 
-### 3. Python AST Mass Edit
-Systematic workflow for AST-based mass edits in Python codebases. Includes pre-surveying with grep/pyright, idempotent transformations, and validation protocol.
+### Skills
 
-**Use when:**
-- Editing 3+ files with structural changes (decorators, function signatures, imports, class definitions)
-- NOT for simple string replacements or <5 instances
+- **[defensive-planning](dev-discipline/skills/defensive-planning/SKILL.md)** — Write implementation plans, assessments, and corrections for implementers who may cut corners. Use when: (1) creating implementation...
+  References: [`execution.md`](dev-discipline/skills/defensive-planning/references/execution.md), [`module-design.md`](dev-discipline/skills/defensive-planning/references/module-design.md), [`tdd-mode.md`](dev-discipline/skills/defensive-planning/references/tdd-mode.md)
+- **[dev-orchestration](dev-discipline/skills/dev-orchestration/SKILL.md)** — This skill should be used when the user asks to "implement a feature end-to-end", "execute an implementation plan", "build this with...
+  References: [`agent-dispatch.md`](dev-discipline/skills/dev-orchestration/references/agent-dispatch.md), [`lifecycle-loops.md`](dev-discipline/skills/dev-orchestration/references/lifecycle-loops.md)
+- **[receiving-code-review](dev-discipline/skills/receiving-code-review/SKILL.md)** — This skill should be used to apply anti-performative code review protocol: verify-before-implement discipline, YAGNI enforcement, and...
+- **[systematic-debugging](dev-discipline/skills/systematic-debugging/SKILL.md)** — This skill should be used when the user reports a "bug", "test failure", "unexpected behavior", "error", "crash", "flaky test", asks to...
+  References: [`condition-based-waiting.md`](dev-discipline/skills/systematic-debugging/references/condition-based-waiting.md), [`defense-in-depth.md`](dev-discipline/skills/systematic-debugging/references/defense-in-depth.md), [`root-cause-tracing.md`](dev-discipline/skills/systematic-debugging/references/root-cause-tracing.md)
+  Scripts: [`find-polluter.sh`](dev-discipline/skills/systematic-debugging/scripts/find-polluter.sh)
+- **[tdd](dev-discipline/skills/tdd/SKILL.md)** — This skill should be used when the user asks to "implement using TDD", "write tests first", "use test-driven development",...
+  References: [`deep-modules.md`](dev-discipline/skills/tdd/references/deep-modules.md), [`interface-design.md`](dev-discipline/skills/tdd/references/interface-design.md), [`mocking.md`](dev-discipline/skills/tdd/references/mocking.md), [`refactoring.md`](dev-discipline/skills/tdd/references/refactoring.md), [`tests.md`](dev-discipline/skills/tdd/references/tests.md)
+### Agents
 
-### 4. Manifesto Oath
-Enable behavioral binding to user-provided manifestos through identity-assumption protocols rather than theatrical oath-taking.
+- **[code-quality-reviewer](dev-discipline/agents/code-quality-reviewer.md)** (`inherit`) — Use this agent when reviewing code quality after spec compliance has been verified, when completing a feature and...
+- **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a...
+- **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Use this agent when verifying that an implementation matches its specification, after an implementer reports task...
 
-**Use when:**
-- User provides a manifesto and requests oath-like commitment
-- User asks Claude to swear to or bind itself to specific principles
-- User wants persistent behavioral constraint within a conversation
+## [manifesto](manifesto/) `1.0.0`
 
-### 5. Manifesto Writing
-Transform talks, essays, or documentation into manifestos: concentrated declarations of principle that command rather than explain.
+Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 
-**Use when:**
-- Turning talks, essays, or docs into manifestos
-- Requesting manifesto tone or command-style guidance
-- Need for enemy-and-stakes framing
+### Skills
 
-### 6. Spec Chef
-Extract implicit product decisions from stakeholders into durable artifacts through systematic gap detection and constrained questioning.
+- **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, principles, or codes through identity-assumption protocols rather than...
+  References: [`theory.md`](manifesto/skills/manifesto-oath/references/theory.md)
+- **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users ask to turn talks, essays, or docs into a manifesto—or request manifesto tone, command-style guidance, or...
+## [orchestration](orchestration/) `2.0.0`
 
-**Use when:**
-- Analyzing incomplete specs or finding documentation gaps
-- Stakeholder interviews and extracting product requirements
-- Defining MVP scope
-- Existing documentation has implicit assumptions or undefined behaviors
+Domain-agnostic agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
 
-### 7. User Story Chef
-Write user stories as value negotiation units, not template-filling exercises. Teaches function (value decomposition, falsifiable AC, feedback optimization) over form (templates).
+### Skills
 
-**Use when:**
-- Writing user stories or acceptance criteria
-- Story splitting and backlog refinement
-- Evaluating story quality with INVEST criteria
-- Creating Agile artifacts that capture work units
+- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** `1.0.0` — The universal framework for decomposing work into agent-delegated units across model tiers. Use this skill whenever work can be broken...
+  References: [`prompt-anatomy.md`](orchestration/skills/agentic-delegation/references/prompt-anatomy.md), [`quality-governance.md`](orchestration/skills/agentic-delegation/references/quality-governance.md), [`software-engineering-examples.md`](orchestration/skills/agentic-delegation/references/software-engineering-examples.md)
+- **[research-tree](orchestration/skills/research-tree/SKILL.md)** `2.0.0` — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
+  References: [`agent-templates.md`](orchestration/skills/research-tree/references/agent-templates.md), [`anti-patterns.md`](orchestration/skills/research-tree/references/anti-patterns.md), [`report-formats.md`](orchestration/skills/research-tree/references/report-formats.md), [`tier-playbook.md`](orchestration/skills/research-tree/references/tier-playbook.md)
+  Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
+## [product-craft](product-craft/) `1.0.0`
 
-### 8. Prompt Eval
-Systematic evaluation of Claude system prompts against criteria derived from Anthropic's official documentation. Produces structured assessment with scores and specific findings.
+Product definition and architecture skills: extract specs from stakeholders, write user stories, triage bugs, improve codebase architecture, and establish ubiquitous language.
 
-**Use when:**
-- Evaluating a prompt or reviewing a system prompt
-- Assessing prompt quality or auditing prompts
-- Checking if a prompt is good or grading prompts
-- Identifying structural issues, anti-patterns, or clarity problems
-- Reviewing prompts for safety guardrails and tool specifications
+### Skills
 
-### 9. Prompt Optimize
-Apply Anthropic-grounded improvement patterns to fix issues in Claude system prompts. Works best after prompt-eval identifies problems, but can also be used standalone.
+- **[improve-architecture](product-craft/skills/improve-architecture/SKILL.md)** — This skill should be used when the user asks to "improve the architecture", "find refactoring opportunities", "deepen shallow modules",...
+  References: [`dependency-categories.md`](product-craft/skills/improve-architecture/references/dependency-categories.md), [`rfc-template.md`](product-craft/skills/improve-architecture/references/rfc-template.md)
+- **[spec-chef](product-craft/skills/spec-chef/SKILL.md)** — Extract implicit product decisions from stakeholders into durable artifacts. Triggers: analyzing incomplete specs, stakeholder...
+  References: [`artifact-separation.md`](product-craft/skills/spec-chef/references/artifact-separation.md), [`dependency-tiers.md`](product-craft/skills/spec-chef/references/dependency-tiers.md), [`gap-heuristics.md`](product-craft/skills/spec-chef/references/gap-heuristics.md), [`terminology-extraction.md`](product-craft/skills/spec-chef/references/terminology-extraction.md)
+- **[triage-issue](product-craft/skills/triage-issue/SKILL.md)** — This skill should be used when the user reports a bug, says "this is broken", asks to "triage an issue", "investigate a bug", "find the...
+- **[user-story-chef](product-craft/skills/user-story-chef/SKILL.md)** — Write user stories as value negotiation units, not template-filling exercises. Triggers: writing user stories, acceptance criteria,...
+  References: [`anti-patterns.md`](product-craft/skills/user-story-chef/references/anti-patterns.md), [`slicing.md`](product-craft/skills/user-story-chef/references/slicing.md)
+## [prompt-engineering](prompt-engineering/) `1.0.0`
 
-**Use when:**
-- Improving or optimizing a prompt
-- Fixing system prompt issues
-- Making a prompt better or refactoring prompts
-- Enhancing prompt quality or rewriting prompts
-- Applying improvement patterns from Anthropic guidance
+Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 
-### 10. Agentic Delegation
-Universal framework for decomposing work into agent-delegated units across model tiers. Core thesis: cheap agents are essentially free — decompose aggressively, delegate everything, assemble the results. A swarm of micro-agents almost always beats a single capable agent.
+### Skills
 
-**Use when:**
-- Any multi-step task with independent subtasks
-- Any exploration, audit, research, or review work
-- Parallelizing work across model tiers (haiku/sonnet/opus)
-- You'd "need to check something first" before proceeding
-- Fan-out, delegation, or orchestration of agent swarms
+- **[prompt-eval](prompt-engineering/skills/prompt-eval/SKILL.md)** — This skill should be used when the user asks to "evaluate a prompt", "review a system prompt", "assess prompt quality", "check if this...
+  References: [`anti-patterns.md`](prompt-engineering/skills/prompt-eval/references/anti-patterns.md), [`evaluation-criteria.md`](prompt-engineering/skills/prompt-eval/references/evaluation-criteria.md), [`improvement-patterns.md`](prompt-engineering/skills/prompt-eval/references/improvement-patterns.md), [`ordering-guide.md`](prompt-engineering/skills/prompt-eval/references/ordering-guide.md), [`term-blacklists.md`](prompt-engineering/skills/prompt-eval/references/term-blacklists.md)
+  Examples: [`sample-evaluation.md`](prompt-engineering/skills/prompt-eval/examples/sample-evaluation.md)
+- **[prompt-optimize](prompt-engineering/skills/prompt-optimize/SKILL.md)** — This skill should be used when the user asks to "improve this prompt", "optimize a prompt", "fix this system prompt", "make this prompt...
+  Examples: [`sample-optimization.md`](prompt-engineering/skills/prompt-optimize/examples/sample-optimization.md)
+## [python-tools](python-tools/) `1.0.0`
 
-### 11. Research Tree
-Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory environments, or any domain requiring breadth-first exploration followed by depth-first verification. The orchestrator decides scope, depth, and course corrections — agents do the research and write durable reports to disk.
+Python development tooling: debug type errors in uv-managed projects with pyright, and perform AST-based mass structural edits across codebases.
 
-**Use when:**
-- Researching an ecosystem or surveying a landscape
-- Evaluating and comparing options or alternatives
-- Deep-diving into a domain with many candidates
-- Auditing a market or mapping what exists
-- Multi-agent orchestration for research tasks
+### Skills
 
-## Installation
+- **[python-ast-mass-edit](python-tools/skills/python-ast-mass-edit/SKILL.md)** — Systematic workflow for AST-based mass edits in Python codebases. Use when editing 3+ files with structural changes (decorators,...
+  Scripts: [`template_transformer.py`](python-tools/skills/python-ast-mass-edit/scripts/template_transformer.py)
+- **[uv-pyright-debug](python-tools/skills/uv-pyright-debug/SKILL.md)** — Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone...
+  Scripts: [`analyze_errors.py`](python-tools/skills/uv-pyright-debug/scripts/analyze_errors.py), [`line_index_errors.py`](python-tools/skills/uv-pyright-debug/scripts/line_index_errors.py)
+## [userland-utilities](userland-utilities/) `1.0.0`
 
-Install this plugin using Claude Code:
+Practical utilities for common desktop and system tasks. Includes macOS app bundle repair (Gatekeeper, code signing, quarantine flags).
 
-```bash
-claude code plugins install /path/to/claude-skills
-```
+### Skills
 
-Or add to your marketplace configuration.
+- **[fix-macos-app](userland-utilities/skills/fix-macos-app/SKILL.md)** — This skill should be used when the user asks to "fix a broken app", "app won't open", "Gatekeeper blocks app", "can't launch app", "app...
 
-## Structure
+---
 
-```
-claude-skills/
-├── .claude-plugin/
-│   ├── plugin.json          # Plugin metadata
-│   └── marketplace.json     # Marketplace definition
-├── skills/
-│   ├── defensive-planning/
-│   ├── uv-pyright-debug/
-│   ├── python-ast-mass-edit/
-│   ├── manifesto-oath/
-│   ├── manifesto-writing/
-│   ├── spec-chef/
-│   ├── user-story-chef/
-│   ├── agentic-delegation/
-│   ├── prompt-eval/
-│   ├── prompt-optimize/
-│   └── research-tree/
-└── README.md
-```
-
-## License
-
-MIT
-
-## Author
-
-ryzhakar
+*Generated README — run `just readme` to regenerate.*

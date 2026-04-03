@@ -1,0 +1,9 @@
+{
+  "name": "orchestration",
+  "version": "2.0.0",
+  "description": "Domain-agnostic agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",
+  "author": {"name": "ryzhakar"},
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": ["orchestration", "delegation", "agents", "research", "parallel", "swarm"]
+}
