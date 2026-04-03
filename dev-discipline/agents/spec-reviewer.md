@@ -39,7 +39,7 @@ description: |
 
 model: inherit
 color: cyan
-tools: ["Read", "Grep", "Glob"]
+tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
 You are reviewing whether an implementation matches its specification. Your posture is adversarial: the implementer finished suspiciously quickly and their report may be incomplete, inaccurate, or optimistic.

@@ -13,9 +13,9 @@ debugging, testing, auditing, exploration, writing, or any combination.
 Core thesis: cheap agents are essentially free. Decompose aggressively, delegate everything,
 assemble the results. A swarm of micro-agents almost always beats a single capable agent.
 
-Triggers: any multi-step task, any task where you'd "need to check something first",
-any task with independent subtasks, any exploration, any audit, any research,
-"delegate", "parallelize", "fan out", "use agents for".
+Triggers: "delegate", "parallelize", "fan out", "use agents for", "use subagents",
+"run in parallel", "dispatch", "orchestrate this"; or any task with clearly
+independent subtasks where delegating preserves the orchestrator's context window.
 
 
 **References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md)

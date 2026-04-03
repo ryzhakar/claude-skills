@@ -135,7 +135,7 @@ At system boundaries, design interfaces that are easy to mock: use dependency in
 
 If the agentic-delegation skill is available, apply its decomposition patterns to break complex feature implementations into independently testable units, each suitable for a single red-green-refactor cycle. Otherwise, decompose manually: identify the smallest behavior that can be tested through a public interface, implement it, then move to the next.
 
-When the defensive-planning skill is available, use its TDD micro-task mode (@references/tdd-mode.md) for structuring plans around the red-green-refactor cycle. Otherwise, follow the vertical slicing discipline described above.
+When the defensive-planning skill is available, use its TDD micro-task mode reference for structuring plans around the red-green-refactor cycle. Otherwise, follow the vertical slicing discipline described above.
 
 ## Reference Files
 

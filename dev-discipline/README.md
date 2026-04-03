@@ -77,7 +77,7 @@ assistant: "I'll use the code-quality-reviewer agent for the final audit."
 </example>
 
 
-**Model:** `inherit` · **Tools:** Read, Grep, Glob, Bash
+**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob, Bash
 
 ---
 
@@ -164,7 +164,7 @@ assistant: "I'll use the spec-reviewer agent to compare code to requirements."
 </example>
 
 
-**Model:** `inherit` · **Tools:** Read, Grep, Glob
+**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob
 
 ---
 

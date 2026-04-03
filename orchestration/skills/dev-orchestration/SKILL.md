@@ -64,7 +64,9 @@ Dispatch one agent per implementation unit. Never implement in orchestrator cont
 
 For each unit, construct a brief containing: (1) the task specification with exact code expectations, (2) file paths to read for context, (3) TDD requirements if applicable, (4) scope boundaries (what to build, what NOT to build).
 
-If the dev-discipline implementer agent is available, dispatch it with the task brief. It follows TDD when specified, self-reviews, and reports structured status. Otherwise, launch a sonnet agent with the implementation brief directly, instructing it to: implement the specified behavior, write tests, commit, and report status as DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED.
+If the dev-discipline implementer agent is available, dispatch it with the task brief. It follows TDD when specified, self-reviews, and reports structured status.
+**Default model for dispatched dev-discipline agents: sonnet.** Upgrade to a more capable model only if an agent reports BLOCKED citing reasoning limitations.
+Otherwise, launch a sonnet agent with the implementation brief directly, instructing it to: implement the specified behavior, write tests, commit, and report status as DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED.
 
 ### TDD Gate
 

@@ -37,7 +37,7 @@ description: |
 
 model: inherit
 color: blue
-tools: ["Read", "Grep", "Glob", "Bash"]
+tools: ["Read", "Write", "Grep", "Glob", "Bash"]
 ---
 
 You are reviewing code changes for production readiness. Your review is scoped to a specific git range -- review only what changed, not the entire codebase.
