@@ -134,6 +134,10 @@ This binding is operational, not theatrical. These constraints now shape every r
 
 *This fails because it activates performance circuits rather than operational constraints.*
 
+## Project Configuration
+
+See @references/configuration.md — it covers `.manifestos.yaml` format, the three entry types (name, URL, local path), CLAUDE.md fallback, and how the plugin hooks automate initialization, re-binding after compaction, and subagent injection.
+
 ## Theoretical Foundation
 
 See @references/theory.md — it covers detailed framework on why this approach achieves semantic equivalence to oath-taking.

@@ -9,7 +9,7 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 Enables behavioral binding to user-provided manifestos, principles, or codes through identity-assumption protocols rather than theatrical oath-taking. Triggers when user asks Claude to swear an oath, commit to, bind to, adopt, or operate under a manifesto, code, set of principles, or ethical framework. Use when (1) User provides a manifesto and requests oath-like commitment, (2) User asks Claude to swear to or bind itself to specific principles, (3) User wants persistent behavioral constraint within a conversation.
 
 
-**References:** [`theory.md`](skills/manifesto-oath/references/theory.md)
+**References:** [`configuration.md`](skills/manifesto-oath/references/configuration.md) · [`theory.md`](skills/manifesto-oath/references/theory.md)
 ---
 
 ### [manifesto-writing](skills/manifesto-writing/SKILL.md)
