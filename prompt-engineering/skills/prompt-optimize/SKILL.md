@@ -42,7 +42,7 @@ Determine prompt type:
 
 ### Step 3: Map Issues to Patterns
 
-Reference @../prompt-eval/references/improvement-patterns.md — it covers detailed fix patterns for all issue types:
+Reference @../../references/improvement-patterns.md — it covers detailed fix patterns for all issue types:
 
 | Issue Type | Pattern |
 |------------|---------|
@@ -91,7 +91,7 @@ Reference @../prompt-eval/references/improvement-patterns.md — it covers detai
 
 ### Step 5: Reorder Elements
 
-After fixing individual issues, restructure using canonical ordering from @../prompt-eval/references/ordering-guide.md — it covers element ordering:
+After fixing individual issues, restructure using canonical ordering from @../../references/ordering-guide.md — it covers element ordering:
 
 ```
 1. Role/Identity
@@ -108,7 +108,7 @@ After fixing individual issues, restructure using canonical ordering from @../pr
 
 ### Step 6: Eliminate Vague Language
 
-Scan optimized prompt against @../prompt-eval/references/term-blacklists.md — it covers language to replace:
+Scan optimized prompt against @../../references/term-blacklists.md — it covers language to replace:
 
 - Replace vague qualifiers with specifics
 - Remove filler phrases
@@ -217,11 +217,11 @@ For rapid improvement without full optimization:
 
 Shared with prompt-eval skill:
 
-- @../prompt-eval/references/evaluation-criteria.md — it covers criteria to meet
-- @../prompt-eval/references/anti-patterns.md — it covers patterns to eliminate
-- @../prompt-eval/references/improvement-patterns.md — it covers detailed fix patterns
-- @../prompt-eval/references/ordering-guide.md — it covers element ordering
-- @../prompt-eval/references/term-blacklists.md — it covers language to replace
+- @../../references/evaluation-criteria.md — it covers criteria to meet
+- @../../references/anti-patterns.md — it covers patterns to eliminate
+- @../../references/improvement-patterns.md — it covers detailed fix patterns
+- @../../references/ordering-guide.md — it covers element ordering
+- @../../references/term-blacklists.md — it covers language to replace
 
 ## Example Optimization
 

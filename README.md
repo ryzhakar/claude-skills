@@ -78,7 +78,6 @@ Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 ### Skills
 
 - **[prompt-eval](prompt-engineering/skills/prompt-eval/SKILL.md)** — This skill should be used when the user asks to "evaluate a prompt", "review a system prompt", "assess prompt quality", "check if this...
-  References: [`anti-patterns.md`](prompt-engineering/skills/prompt-eval/references/anti-patterns.md), [`evaluation-criteria.md`](prompt-engineering/skills/prompt-eval/references/evaluation-criteria.md), [`improvement-patterns.md`](prompt-engineering/skills/prompt-eval/references/improvement-patterns.md), [`ordering-guide.md`](prompt-engineering/skills/prompt-eval/references/ordering-guide.md), [`term-blacklists.md`](prompt-engineering/skills/prompt-eval/references/term-blacklists.md)
   Examples: [`sample-evaluation.md`](prompt-engineering/skills/prompt-eval/examples/sample-evaluation.md)
 - **[prompt-optimize](prompt-engineering/skills/prompt-optimize/SKILL.md)** — This skill should be used when the user asks to "improve this prompt", "optimize a prompt", "fix this system prompt", "make this prompt...
   Examples: [`sample-optimization.md`](prompt-engineering/skills/prompt-optimize/examples/sample-optimization.md)

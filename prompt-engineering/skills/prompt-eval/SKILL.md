@@ -35,7 +35,7 @@ Produce a structured evaluation report with severity-ranked findings and actiona
 
 ### Step 2: Determine Applicable Categories
 
-Reference @references/evaluation-criteria.md — it covers applicability rules for all evaluation categories.
+Reference @../../references/evaluation-criteria.md — it covers applicability rules for all evaluation categories.
 
 **Always apply**: STRUCTURE, CLARITY, CONSTRAINTS, SAFETY, OUTPUT
 
@@ -50,7 +50,7 @@ Reference @references/evaluation-criteria.md — it covers applicability rules f
 
 For each applicable category:
 
-1. Review criteria in @references/evaluation-criteria.md — it covers complete criteria tables with check methods
+1. Review criteria in @../../references/evaluation-criteria.md — it covers complete criteria tables with check methods
 2. Check each criterion (MUST / SHOULD / MUST_NOT)
 3. For violations, record:
    - Criterion ID (e.g., CLR-2)
@@ -58,9 +58,9 @@ For each applicable category:
    - Specific location in prompt
    - Brief description of issue
 
-4. Scan for anti-patterns using @references/anti-patterns.md — it covers catalog of anti-patterns with detection methods
-5. Check ordering against @references/ordering-guide.md — it covers canonical prompt element ordering
-6. Scan for vague terms using @references/term-blacklists.md — it covers vague terms and filler phrases to flag
+4. Scan for anti-patterns using @../../references/anti-patterns.md — it covers catalog of anti-patterns with detection methods
+5. Check ordering against @../../references/ordering-guide.md — it covers canonical prompt element ordering
+6. Scan for vague terms using @../../references/term-blacklists.md — it covers vague terms and filler phrases to flag
 
 ### Step 4: Calculate Score
 
@@ -158,10 +158,10 @@ If any critical item fails, flag for full evaluation.
 
 Consult these for detailed criteria and patterns:
 
-- @references/evaluation-criteria.md — it covers complete criteria tables with check methods
-- @references/anti-patterns.md — it covers catalog of anti-patterns with detection methods
-- @references/ordering-guide.md — it covers canonical prompt element ordering
-- @references/term-blacklists.md — it covers vague terms and filler phrases to flag
+- @../../references/evaluation-criteria.md — it covers complete criteria tables with check methods
+- @../../references/anti-patterns.md — it covers catalog of anti-patterns with detection methods
+- @../../references/ordering-guide.md — it covers canonical prompt element ordering
+- @../../references/term-blacklists.md — it covers vague terms and filler phrases to flag
 
 ## Example Evaluation
 
