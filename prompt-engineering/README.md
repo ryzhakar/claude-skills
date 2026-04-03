@@ -9,7 +9,6 @@ Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 This skill should be used when the user asks to "evaluate a prompt", "review a system prompt", "assess prompt quality", "check if this prompt is good", "audit this prompt", "grade this prompt", or "what's wrong with this prompt". Provides systematic evaluation of Claude system prompts against Anthropic's official guidance. Returns structured assessment with scores and specific findings.
 
 
-**References:** [`anti-patterns.md`](skills/prompt-eval/references/anti-patterns.md) · [`evaluation-criteria.md`](skills/prompt-eval/references/evaluation-criteria.md) · [`improvement-patterns.md`](skills/prompt-eval/references/improvement-patterns.md) · [`ordering-guide.md`](skills/prompt-eval/references/ordering-guide.md) · [`term-blacklists.md`](skills/prompt-eval/references/term-blacklists.md)
 **Examples:** [`sample-evaluation.md`](skills/prompt-eval/examples/sample-evaluation.md)
 ---
 
