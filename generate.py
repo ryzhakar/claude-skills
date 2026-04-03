@@ -143,17 +143,35 @@ def main():
     plugin_tpl = env.get_template("plugin.md")
     marketplace_tpl = env.get_template("marketplace.md")
 
+    marketplace_json = ROOT / ".claude-plugin" / "marketplace.json"
+
     # Phase 1: generate plugin READMEs (leaves)
     for plugin in plugins:
         content = plugin_tpl.render(plugin=plugin)
         (ROOT / plugin["dir_name"] / "README.md").write_text(content)
+
+    # Phase 1.5: sync marketplace.json descriptions from plugin.json
+    if marketplace_json.exists():
+        marketplace_data = json.loads(marketplace_json.read_text())
+        plugin_desc_by_name = {
+            p["meta"].get("name", p["dir_name"]): p["meta"].get("description", "")
+            for p in plugins
+        }
+        changed = False
+        for entry in marketplace_data.get("plugins", []):
+            name = entry.get("name", "")
+            if name in plugin_desc_by_name and entry.get("description") != plugin_desc_by_name[name]:
+                entry["description"] = plugin_desc_by_name[name]
+                changed = True
+        if changed:
+            marketplace_json.write_text(json.dumps(marketplace_data, indent=2) + "\n")
+            console.print("[green]✓ Synced marketplace.json descriptions from plugin.json[/green]")
 
     # Phase 2: generate marketplace README (root)
     total_skills = sum(len(p["skills"]) for p in plugins)
     total_agents = sum(len(p["agents"]) for p in plugins)
     total_hooks = sum(len(p["hooks"]) for p in plugins)
 
-    marketplace_json = ROOT / ".claude-plugin" / "marketplace.json"
     marketplace_meta = (
         json.loads(marketplace_json.read_text()) if marketplace_json.exists() else {}
     )

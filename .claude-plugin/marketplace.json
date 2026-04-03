@@ -7,7 +7,7 @@
     {
       "name": "orchestration",
       "source": "./orchestration/",
-      "description": "Domain-agnostic agent delegation framework and multi-agent research orchestration.",
+      "description": "Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.",
       "version": "2.0.0",
       "author": {
         "name": "ryzhakar"
@@ -18,7 +18,7 @@
     {
       "name": "product-craft",
       "source": "./product-craft/",
-      "description": "Product definition and architecture: extract specs, write user stories, triage bugs, improve architecture.",
+      "description": "Product definition and architecture skills: extract specs from stakeholders, write user stories, triage bugs, improve codebase architecture, and establish ubiquitous language.",
       "version": "1.0.0",
       "author": {
         "name": "ryzhakar"
@@ -29,7 +29,7 @@
     {
       "name": "dev-discipline",
       "source": "./dev-discipline/",
-      "description": "Software engineering discipline: defensive planning, TDD, systematic debugging, code review, and development workflow agents.",
+      "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.",
       "version": "1.0.0",
       "author": {
         "name": "ryzhakar"
@@ -51,7 +51,7 @@
     {
       "name": "manifesto",
       "source": "./manifesto/",
-      "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos.",
+      "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.",
       "version": "1.0.0",
       "author": {
         "name": "ryzhakar"
@@ -62,7 +62,7 @@
     {
       "name": "python-tools",
       "source": "./python-tools/",
-      "description": "Python development tooling: type error debugging with uv/pyright and AST-based mass structural edits.",
+      "description": "Python development tooling: debug type errors in uv-managed projects with pyright, and perform AST-based mass structural edits across codebases.",
       "version": "1.0.0",
       "author": {
         "name": "ryzhakar"
@@ -73,7 +73,7 @@
     {
       "name": "userland-utilities",
       "source": "./userland-utilities/",
-      "description": "Practical utilities for common desktop and system tasks.",
+      "description": "Practical utilities for common desktop and system tasks. Includes macOS app bundle repair (Gatekeeper, code signing, quarantine flags).",
       "version": "1.0.0",
       "author": {
         "name": "ryzhakar"
