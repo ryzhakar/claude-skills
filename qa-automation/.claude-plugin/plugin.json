@@ -1,0 +1,21 @@
+{
+  "name": "qa-automation",
+  "version": "1.0.0",
+  "description": "Full QA lifecycle automation with Playwright and TypeScript. Four skills cover the complete loop: plan tests from live browser exploration, generate accessible .spec.ts files with cross-browser-safe locators, execute suites with failure classification, and self-heal broken locators using deterministic ten-tier recovery with confidence-based PR routing.",
+  "author": {
+    "name": "ryzhakar"
+  },
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "playwright",
+    "testing",
+    "e2e",
+    "qa",
+    "automation",
+    "self-healing",
+    "accessibility",
+    "cross-browser",
+    "ci-cd"
+  ]
+}

@@ -1,6 +1,6 @@
 # my-claude-skills
 
-18 skills · 3 agents across 7 plugins
+22 skills · 3 agents across 8 plugins
 
 ## Plugins
 
@@ -12,6 +12,7 @@
 | [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
+| [qa-automation](qa-automation/) | Full QA lifecycle automation with Playwright and TypeScript. Four skills... | `1.0.0` | 4S |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
 
 ---
@@ -91,6 +92,19 @@ Python development tooling: debug type errors in uv-managed projects with pyrigh
   Scripts: [`template_transformer.py`](python-tools/skills/python-ast-mass-edit/scripts/template_transformer.py)
 - **[uv-pyright-debug](python-tools/skills/uv-pyright-debug/SKILL.md)** — Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone...
   Scripts: [`analyze_errors.py`](python-tools/skills/uv-pyright-debug/scripts/analyze_errors.py), [`line_index_errors.py`](python-tools/skills/uv-pyright-debug/scripts/line_index_errors.py)
+## [qa-automation](qa-automation/) `1.0.0`
+
+Full QA lifecycle automation with Playwright and TypeScript. Four skills cover the complete loop: plan tests from live browser exploration, generate accessible .spec.ts files with cross-browser-safe locators, execute suites with failure classification, and self-heal broken locators using deterministic ten-tier recovery with confidence-based PR routing.
+
+### Skills
+
+- **[test-executor](qa-automation/skills/test-executor/SKILL.md)** — Execute Playwright test suites, classify failures by type, and produce structured reports. Use when "run tests", "execute Playwright...
+  References: [`failure-classification.md`](qa-automation/skills/test-executor/references/failure-classification.md), [`playwright-config.md`](qa-automation/skills/test-executor/references/playwright-config.md)
+- **[test-generator](qa-automation/skills/test-generator/SKILL.md)** — Transform structured test plans into executable Playwright .spec.ts files with accessibility-first locators. Use when user asks to...
+- **[test-healer](qa-automation/skills/test-healer/SKILL.md)** — Diagnose test failures, distinguish real bugs from test brittleness, and auto-fix broken locators. Use when "heal tests", "fix broken...
+  References: [`cicd-workflow.md`](qa-automation/skills/test-healer/references/cicd-workflow.md), [`confidence-scoring.md`](qa-automation/skills/test-healer/references/confidence-scoring.md), [`failure-heuristics.md`](qa-automation/skills/test-healer/references/failure-heuristics.md), [`ten-tier-algorithm.md`](qa-automation/skills/test-healer/references/ten-tier-algorithm.md)
+- **[test-planner](qa-automation/skills/test-planner/SKILL.md)** — This skill should be used when the user asks to "create test plan", "what tests should I write", "plan E2E tests", "explore this app for...
+  References: [`artifact-templates.md`](qa-automation/skills/test-planner/references/artifact-templates.md)
 ## [userland-utilities](userland-utilities/) `1.0.0`
 
 Practical utilities for common desktop and system tasks. Includes macOS app bundle repair (Gatekeeper, code signing, quarantine flags).
