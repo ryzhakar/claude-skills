@@ -38,7 +38,33 @@ NO PLAN WITHOUT LIVE EXPLORATION FIRST.
 
 If you have not visited a page, that page cannot appear in the plan. Every scenario must trace to a browser observation. If the plan contains "Expected..." or "Should..." without a corresponding entry in VERIFICATION.md, the plan is invalid.
 
-## Security Requirement: MCP Version Check
+## Browser Exploration (Default: @playwright/cli)
+
+Use `@playwright/cli` for live exploration. It writes snapshots to disk (not context), giving unlimited session length at ~50 tokens/command vs MCP's ~4,000 tokens/interaction.
+
+### Exploration workflow:
+
+1. `playwright-cli open <base-url>` — launch browser
+2. `playwright-cli snapshot --filename=.playwright/snap-home.yaml` — capture page state
+3. Read the snapshot file to find element refs
+4. `playwright-cli click <ref>` — interact with elements
+5. `playwright-cli snapshot --filename=.playwright/snap-after-click.yaml` — capture new state
+6. Repeat for all pages/flows
+7. `playwright-cli close-all` — cleanup when done
+
+For each page explored, record:
+- Interactive elements (buttons, links, inputs, selects)
+- ARIA roles and labels from accessibility snapshot
+- Dynamic content, loading states, client-side routing
+- Element responsiveness to interaction
+
+**Shadow DOM detection:** If getByRole returns 0 but element is visible, use parent-component-first chaining.
+
+## Browser Exploration (Fallback: MCP)
+
+Use MCP ONLY when the agent cannot access the Bash tool or in sandboxed environments. Cap at 10 interactions. Requires @playwright/mcp >= v0.0.40.
+
+### Security Requirement: MCP Version Check
 
 Before using ANY MCP tools, verify @playwright/mcp version:
 
@@ -58,7 +84,11 @@ Write detected stack to `.playwright/project-config.md`.
 
 ### 2. Explore Application (MANDATORY)
 
-**MCP exploration (default, cap at 10 interactions):**
+**Use @playwright/cli (default):**
+
+Launch browser, capture snapshots to disk, read and analyze them. Unlimited interactions, ~50 tokens per command. See workflow above.
+
+**MCP fallback (sandboxed environments only):**
 
 Always call `browser_snapshot` first to get element refs, then use those refs:
 
@@ -75,19 +105,13 @@ browser_fill_form({
 })
 ```
 
-**CLI alternative (user-driven):**
+Cap at 10 interactions.
+
+**User-driven recording (optional):**
 
 ```bash
 npx playwright codegen http://localhost:3000
 ```
-
-For each page explored, record:
-- Interactive elements (buttons, links, inputs, selects)
-- ARIA roles and labels from accessibility snapshot
-- Dynamic content, loading states, client-side routing
-- Element responsiveness to interaction
-
-**Shadow DOM detection:** If getByRole returns 0 but element is visible, use parent-component-first chaining.
 
 Record ALL evidence in `.playwright/VERIFICATION.md`.
 
@@ -108,7 +132,7 @@ Score =
   - 15  generic divs for interactive elements
 ```
 
-Write scores to `.playwright/pages.md`. Pages scoring below 80: flag specific elements needing `data-testid` attributes.
+Analyze from CLI snapshots (`.playwright/snap-*.yaml`) or MCP snapshots. Write scores to `.playwright/pages.md`. Pages scoring below 80: flag specific elements needing `data-testid` attributes.
 
 ### 4. Define Selector Strategy
 
@@ -116,7 +140,7 @@ Apply the ten-tier locator hierarchy from @references/locator-strategy.md. Write
 
 ### 5. Write Test Plan
 
-Create `.playwright/test-plan.md`. Each scenario MUST trace to Phase 2 observations. Include edge cases:
+Create `.playwright/test-plan.md`. Each scenario MUST trace to exploration observations (CLI snapshots or MCP VERIFICATION.md). Include edge cases:
 
 - Empty states
 - Validation failures  
