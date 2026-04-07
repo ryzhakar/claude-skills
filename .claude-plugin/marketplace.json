@@ -71,6 +71,17 @@
       "license": "MIT"
     },
     {
+      "name": "qa-automation",
+      "source": "./qa-automation/",
+      "description": "Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.",
+      "version": "2.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
       "name": "userland-utilities",
       "source": "./userland-utilities/",
       "description": "Practical utilities for common desktop and system tasks. Includes macOS app bundle repair (Gatekeeper, code signing, quarantine flags).",
