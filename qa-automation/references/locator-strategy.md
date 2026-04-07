@@ -104,9 +104,36 @@ These `getByRole()` variants are safe **when used without the `name` option**:
 - `getByRole('heading')` -- Consistent for h1-h6 elements
 - `getByRole('img')` -- Reliable for image elements
 
+## Shadow DOM Handling
+
+Shadow DOM elements are invisible to Playwright's standard `getByRole`/`getByLabel` queries when the element lives inside a shadow root. The MCP `browser_snapshot` tool also cannot see elements inside shadow roots.
+
+**Detection:** If `getByRole` returns 0 elements but the element is visually present on the page, suspect a shadow root boundary.
+
+**Resolution — Parent-Component-First Chaining:**
+```typescript
+// Correct: chain into shadow root via the host component tag
+await page.locator('my-dialog').getByRole('button', { name: 'Confirm' }).click();
+
+// Wrong: getByRole cannot traverse slot projections from page root
+await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+```
+
+**Pattern:** `page.locator('component-tag-name').getByRole(...)` — use the custom element tag as the entry point, then query within it.
+
+**When to use `.or()` fallback with shadow DOM:**
+```typescript
+const btn = page.locator('my-dialog').getByRole('button', { name: 'Confirm' })
+  .or(page.getByTestId('confirm-btn'));
+```
+
+**Frameworks with heavy shadow DOM usage:** Lit, Shoelace, Material Web Components, Ionic, Vaadin. For these frameworks, default to parent-component-first chaining for all interactive elements.
+
 ## Cross-Browser Safety Matrix
 
 Risky locators that WILL break in cross-browser testing. Avoid them or use fallbacks.
+
+**Note:** MCP `browser_snapshot` does not report elements inside shadow roots — verify with `page.locator('component-tag').evaluate()` if snapshot returns empty for expected elements.
 
 | Locator | Risk | Browser Affected | Problem | Workaround |
 |---------|------|------------------|---------|------------|

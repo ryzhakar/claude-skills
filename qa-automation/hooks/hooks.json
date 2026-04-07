@@ -1,0 +1,29 @@
+{
+  "description": "QA orchestration lifecycle hooks: compaction recovery, workspace setup, and ad-hoc failure detection",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p .playwright .claude 2>/dev/null; PHASE=$(cat .claude/qa-phase.txt 2>/dev/null || echo 'NONE'); if [ \"$PHASE\" != 'NONE' ]; then echo \"QA ORCHESTRATION CHECKPOINT: The QA pipeline was in the $PHASE phase when this session started. Resume from the $PHASE phase. Read .playwright/orchestrator-status.json for the last known state and .ai-failures.json if in or past the EXECUTE phase.\"; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if the Bash tool result contains a Playwright test failure (look for 'playwright test' in the command and failing test output). If it does, determine: is this a locator/selector failure that the healer-agent could fix? If yes, suggest: 'Locator failures detected. Consider invoking /qa-run to heal these automatically.' If the failure is a real bug (assertion on wrong value), infrastructure failure, or visual diff, do not suggest healing. If the command was not a Playwright test command, take no action.",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

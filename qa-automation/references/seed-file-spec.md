@@ -133,9 +133,32 @@ At minimum, the seed collection should cover these scenario types:
 - **Navigation** -- multi-step flows, back button, deep links
 - **Edge cases** -- empty states, unauthorized access, error pages
 
-## How Skills Use the Seed File
+## Few-Shot Reference Tests (Distinct from Seed)
 
-| Skill | Usage |
+The seed file and few-shot reference tests serve DIFFERENT purposes. Do not conflate them.
+
+| Concern | Seed File | Few-Shot Reference Tests |
+|---------|-----------|-------------------------|
+| Purpose | Environment health check | Style teaching |
+| Count | Exactly 1 (tests/seed.spec.ts) | 2-3 existing tests |
+| When used | Before any generation — if seed fails, environment is broken | Before writing each test — to learn project conventions |
+| What it teaches | Nothing about style | Assertion patterns, locator choices, naming conventions |
+| Required? | Yes — generation refuses without it | No — if none exist, seed is the sole style reference |
+
+### How to select few-shot reference tests:
+
+1. Look for existing tests in `tests/*.spec.ts` (excluding seed)
+2. Pick 2-3 that cover different patterns: one happy-path, one edge-case, one complex multi-step interaction
+3. Read them before writing any generated test
+4. Match their assertion style, naming conventions, and structural patterns
+
+### If no reference tests exist:
+
+Treat the seed file as the sole style reference. The first generated test becomes the reference for subsequent tests.
+
+## How Agents Use the Seed File
+
+| Agent | Usage |
 |-------|-------|
 | **test-planner** | Reads seed to understand existing fixtures, imports, and patterns before writing the test plan. |
 | **test-generator** | Reads seed BEFORE generating any test. Compares generated output against seed quality attributes. Refuses to proceed without a seed file. |

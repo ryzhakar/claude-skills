@@ -1,7 +1,7 @@
 {
   "name": "qa-automation",
-  "version": "1.0.0",
-  "description": "Full QA lifecycle automation with Playwright and TypeScript. Four skills cover the complete loop: plan tests from live browser exploration, generate accessible .spec.ts files with cross-browser-safe locators, execute suites with failure classification, and self-heal broken locators using deterministic ten-tier recovery with confidence-based PR routing.",
+  "version": "2.0.0",
+  "description": "Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.",
   "author": {
     "name": "ryzhakar"
   },

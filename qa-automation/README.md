@@ -1,34 +1,124 @@
 # qa-automation
 
-Full QA lifecycle automation with Playwright and TypeScript. Four skills cover the complete loop: plan tests from live browser exploration, generate accessible .spec.ts files with cross-browser-safe locators, execute suites with failure classification, and self-heal broken locators using deterministic ten-tier recovery with confidence-based PR routing.
+Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.
 
 `playwright` `testing` `e2e` `qa` `automation` `self-healing` `accessibility` `cross-browser` `ci-cd` 
 ## Skills
 
-### [test-executor](skills/test-executor/SKILL.md)
-Execute Playwright test suites, classify failures by type, and produce structured reports. Use when "run tests", "execute Playwright tests", "run E2E tests", "check test results", "run cross-browser tests", "why did tests fail", "classify test failures", "detect flaky tests", or after test-generator produces .spec.ts files. CLI-exclusive (not MCP). Outputs JSON reports with failure classification (locator, timing, data, visual, interaction, other) for test-healer.
-
-
-**References:** [`failure-classification.md`](skills/test-executor/references/failure-classification.md) · [`playwright-config.md`](skills/test-executor/references/playwright-config.md)
----
-
-### [test-generator](skills/test-generator/SKILL.md)
-Transform structured test plans into executable Playwright .spec.ts files with accessibility-first locators. Use when user asks to "generate tests from plan", "create Playwright tests", "write  .spec.ts files", "implement test scenarios", "convert plan to tests", or after test-planner  produces a plan. REQUIRES a seed file -- refuses without one. Generates one test at a time:  write, run, verify, then next. Output is pure Playwright + TypeScript with zero AI runtime  dependency.
+### [qa-run](skills/qa-run/SKILL.md) `2.0.0`
+This skill should be used when the user asks to "run QA", "automate testing", "create and run Playwright tests", "set up E2E testing", "generate and execute tests", "run the full test pipeline", "heal broken tests", or mentions running the full Playwright test lifecycle. Requires a base URL and a seed file (tests/seed.spec.ts). Sequences plan, generate, execute, and heal autonomously. Surfaces to the user only when blocked on missing input.
 
 
 ---
 
-### [test-healer](skills/test-healer/SKILL.md)
-Diagnose test failures, distinguish real bugs from test brittleness, and auto-fix broken locators. Use when "heal tests", "fix broken tests", "auto-fix test failures", "repair locators", "self-heal tests", "why are my tests failing", "fix flaky tests", "update broken selectors", or after test-executor classifies failures in .ai-failures.json. Applies deterministic ten-tier self-healing first (zero LLM cost, 2-5% false positive rate), falls back to LLM reasoning only when deterministic healing fails, computes confidence scores, and creates fix PRs with confidence-based routing. NEVER heals assertion failures or runtime errors.
+## Agents
+
+### [executor-agent](agents/executor-agent.md)
+
+Use this agent to execute Playwright test suites via CLI, classify every failure into six categories, detect flaky tests, and produce .ai-failures.json. CLI-exclusive — never uses MCP for test execution. Use after test generation is complete.
+
+<example>
+Context: Tests have been generated, need to run the suite
+user: "Run the Playwright tests and classify any failures"
+assistant: "I'll dispatch the executor-agent to run the suite via CLI and classify failures."
+<commentary>
+Test execution and failure classification is the executor-agent's sole function.
+</commentary>
+</example>
+
+<example>
+Context: QA orchestrator running Phase 3
+user: "Run QA on my app"
+assistant: "Phase 2 complete. Dispatching executor-agent for Phase 3: test execution."
+<commentary>
+Orchestrator dispatches executor-agent after generator-agent completes.
+</commentary>
+</example>
 
 
-**References:** [`cicd-workflow.md`](skills/test-healer/references/cicd-workflow.md) · [`confidence-scoring.md`](skills/test-healer/references/confidence-scoring.md) · [`failure-heuristics.md`](skills/test-healer/references/failure-heuristics.md) · [`ten-tier-algorithm.md`](skills/test-healer/references/ten-tier-algorithm.md)
+**Model:** `haiku` · **Tools:** Read, Write, Bash, Glob
+
 ---
 
-### [test-planner](skills/test-planner/SKILL.md)
-This skill should be used when the user asks to "create test plan", "what tests should I write", "plan E2E tests", "explore this app for testing", "audit testability", "map user flows", "check page accessibility for testing", or when implementing features requiring Playwright test coverage. Explores the live application via MCP or CLI before writing any plan. Outputs structured markdown consumed by test-generator. NEVER plans from description alone.
+### [generator-agent](agents/generator-agent.md)
+
+Use this agent when test planning is complete and executable Playwright .spec.ts files need to be generated from .playwright/test-plan.md. Generates one test at a time: writes, runs, fixes until green, then proceeds. Requires tests/seed.spec.ts.
+
+<example>
+Context: Test plan exists, user wants tests generated
+user: "Generate the Playwright tests from the test plan"
+assistant: "I'll dispatch the generator-agent to transform the test plan into passing .spec.ts files."
+<commentary>
+Test plan exists at .playwright/test-plan.md — generator-agent transforms it into code.
+</commentary>
+</example>
+
+<example>
+Context: QA orchestrator running Phase 2
+user: "Run QA on my app"
+assistant: "Phase 1 complete. Dispatching generator-agent for Phase 2: test generation."
+<commentary>
+Orchestrator dispatches generator-agent after planner-agent completes.
+</commentary>
+</example>
 
 
-**References:** [`artifact-templates.md`](skills/test-planner/references/artifact-templates.md)
+**Model:** `sonnet` · **Tools:** Read, Write, Edit, Bash, Glob
+
+---
+
+### [healer-agent](agents/healer-agent.md)
+
+Use this agent to repair broken Playwright locators using the deterministic ten-tier algorithm. Computes Similo-based confidence scores. NEVER heals assertion failures — element found + wrong value = application bug. Can process a single failure or a batch from .ai-failures.json.
+
+<example>
+Context: Test execution found locator failures
+user: "Heal the broken locators in the test suite"
+assistant: "I'll dispatch the healer-agent to apply ten-tier deterministic repair to the locator failures."
+<commentary>
+Locator failures detected — healer-agent applies deterministic repair, not assertion fixes.
+</commentary>
+</example>
+
+<example>
+Context: QA orchestrator running Phase 4 with a single failure
+user: "Run QA on my app"
+assistant: "Phase 3 found 2 locator failures. Dispatching healer-agent to repair them."
+<commentary>
+Orchestrator dispatches healer-agent for locator repair. Below N=5 threshold, single agent handles all.
+</commentary>
+</example>
+
+
+**Model:** `sonnet` · **Tools:** Read, Write, Edit, Bash, Grep, Glob
+
+---
+
+### [planner-agent](agents/planner-agent.md)
+
+Use this agent when the user needs to explore a live web application to plan Playwright tests. 
+Produces structured test planning artifacts from browser exploration.
+
+<example>
+Context: User wants to create test plans for their web application
+user: "Explore my app at localhost:3000 and plan what tests we need"
+assistant: "I'll dispatch the planner-agent to explore the live application and produce a test plan."
+<commentary>
+User wants test planning from live exploration — this is the planner-agent's core function.
+</commentary>
+</example>
+
+<example>
+Context: QA orchestrator is running Phase 1
+user: "Run QA on my app"
+assistant: "Starting Phase 1: dispatching planner-agent to explore the application."
+<commentary>
+The orchestrator dispatches planner-agent as the first phase of the QA pipeline.
+</commentary>
+</example>
+
+
+**Model:** `sonnet` · **Tools:** Read, Write, Bash, Glob
+
 ---
 

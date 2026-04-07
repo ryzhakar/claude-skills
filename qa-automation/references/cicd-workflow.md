@@ -221,7 +221,7 @@ jobs:
           core.setOutput('visual_failures', classifications.visual.length);
           core.setOutput('interaction_failures', classifications.interaction.length);
           core.setOutput('other_failures', classifications.other.length);
-          core.setOutput('healable_count', classifications.locator.length + classifications.timing.length);
+          core.setOutput('healable_count', classifications.locator.length);
           CLASSIFY_EOF
 
       - name: Upload failure classification
@@ -276,7 +276,7 @@ jobs:
           # applies DOMExtractor against the live application,
           # writes updated locators to test files.
           # Output: .healing-results.json with fixes and confidence scores.
-          echo "Deterministic healing step - implement per ten-tier-algorithm.md"
+          claude -p "Read .ai-failures.json. For each entry in the locator array, apply the ten-tier algorithm from references/ten-tier-algorithm.md. Write results to .healing-results.json. Do not create PRs — the CI workflow handles PR creation."
 
       - name: Upload healing results
         uses: actions/upload-artifact@v4

@@ -1,5 +1,23 @@
 # Playwright MCP Tool Reference
 
+## Version Requirement
+
+### Hard Pin: @playwright/mcp >= v0.0.40
+
+**CVE-2025-9611** (DNS rebinding vulnerability) affects all versions below v0.0.40. This allows attackers to hijack the MCP server's browser session via DNS rebinding attacks.
+
+**Before using any MCP tools, verify the installed version:**
+```bash
+npx @playwright/mcp --version
+```
+
+If the version is below 0.0.40:
+1. STOP. Do not use MCP tools.
+2. Report: "Installed @playwright/mcp version is vulnerable to CVE-2025-9611 (DNS rebinding). Upgrade to >=0.0.40 before proceeding."
+3. Suggest: `npm install @playwright/mcp@latest`
+
+This is a non-negotiable security requirement. No exceptions.
+
 CLI-first architecture. Use CLI commands by default. MCP is reserved for sandboxed exploratory work requiring fewer than 10 interactions.
 
 Evidence: T3-10 verified CLI consumes 27K tokens vs MCP 114K tokens on comparable workflows (4x reduction). T2-E02 verified MCP cannot execute Playwright test files; only CLI can.
