@@ -18,27 +18,134 @@ If the version is below 0.0.40:
 
 This is a non-negotiable security requirement. No exceptions.
 
-CLI-first architecture. Use CLI commands by default. MCP is reserved for sandboxed exploratory work requiring fewer than 10 interactions.
+### @playwright/cli (Agent-Optimized Browser CLI)
+
+**Install:** `npm install -g @playwright/cli@latest`  
+**Current version:** 0.1.5 (April 2026)  
+**Package:** https://www.npmjs.com/package/@playwright/cli
+
+Separate npm package from standard `npx playwright` CLI. Provides 67 token-efficient commands optimized for coding agents. Each command outputs ~50 tokens vs MCP's 3,800-8,000 tokens/tool call.
+
+**Primary use:** Live browser exploration, DOM inspection, element interaction via snapshots saved to YAML files.
+
+---
+
+## Architecture Priority
+
+1. **@playwright/cli** — DEFAULT for agent browser exploration (~50 tokens/command)
+2. **Standard npx playwright** — test execution, code generation, trace viewing
+3. **@playwright/mcp** — ONLY when agent cannot use Bash tool (sandboxed environments)
 
 Evidence: T3-10 verified CLI consumes 27K tokens vs MCP 114K tokens on comparable workflows (4x reduction). T2-E02 verified MCP cannot execute Playwright test files; only CLI can.
 
-## When to Use CLI vs MCP
+## When to Use Which Tool
 
-| Scenario | Use | Rationale |
-|----------|-----|-----------|
-| Running tests | CLI | `npx playwright test` -- MCP has no test execution capability |
-| Generating tests from recording | CLI | `npx playwright codegen <url>` -- interactive recording |
-| TypeScript compilation check | CLI | `npx tsc --noEmit` |
-| Viewing traces | CLI | `npx playwright show-trace trace.zip` |
-| Viewing HTML report | CLI | `npx playwright show-report` |
-| Exploring unknown UI (<10 interactions) | MCP | Accessibility tree + element refs more efficient than screenshots |
-| Verifying selectors exist in DOM | MCP | `browser_snapshot` + `browser_click` to test locators |
-| Debugging a specific failure interactively | MCP | Navigate to failure point, inspect page state |
-| Batch test execution or CI/CD | CLI | Always CLI for execution, artifact collection, reporting |
+| Scenario | @playwright/cli | npx playwright | @playwright/mcp |
+|----------|-----------------|----------------|-----------------|
+| Live browser exploration | ✅ DEFAULT | ❌ | Fallback (no Bash access) |
+| DOM inspection via snapshots | ✅ ~50 tokens/cmd | ❌ | ~3,800 tokens/call |
+| Element interaction | ✅ Via YAML refs | ❌ | Via accessibility tree refs |
+| Running tests | ❌ | ✅ `npx playwright test` | ❌ No capability |
+| Generating tests from recording | ❌ | ✅ `npx playwright codegen` | ❌ |
+| TypeScript compilation check | ❌ | ✅ `npx tsc --noEmit` | ❌ |
+| Viewing traces | ❌ | ✅ `npx playwright show-trace` | ❌ |
+| Viewing HTML report | ❌ | ✅ `npx playwright show-report` | ❌ |
+| Batch test execution or CI/CD | ❌ | ✅ Always standard CLI | ❌ |
+| Sandboxed environment (no Bash) | ❌ | ❌ | ✅ MCP as fallback |
 
-**Rule of thumb:** If the task involves running tests, generating files, or CI/CD, use CLI. If the task involves exploring a live page to understand its structure, use MCP for up to 10 interactions, then switch to CLI.
+**Decision tree:**
+1. Can you use Bash tool? → Use `@playwright/cli` for exploration, `npx playwright` for tests
+2. Cannot use Bash? → Use `@playwright/mcp` (up to 10 interactions max due to token cost)
+3. Need to run tests? → Always `npx playwright test` (MCP cannot execute tests)
 
-## CLI Command Reference
+## @playwright/cli Key Commands
+
+### Session Management
+
+```bash
+# Launch browser (creates new session)
+playwright-cli open <url>
+
+# Navigate to URL in active session
+playwright-cli goto <url>
+
+# List active sessions
+playwright-cli list
+
+# Close all sessions
+playwright-cli close-all
+```
+
+### Page Inspection
+
+```bash
+# Capture page snapshot to YAML (default: snapshot.yaml)
+playwright-cli snapshot
+
+# Capture to specific file
+playwright-cli snapshot --filename=snap.yaml
+
+# Take screenshot (default: screenshot.png)
+playwright-cli screenshot
+
+# Take screenshot to specific file
+playwright-cli screenshot --filename=page.png
+```
+
+### Element Interaction
+
+Snapshots generate element references (e.g., `ref: e42`). Use these refs in interaction commands:
+
+```bash
+# Click element by ref from snapshot
+playwright-cli click <ref>
+# Example: playwright-cli click e42
+
+# Fill input by ref
+playwright-cli fill <ref> <text>
+# Example: playwright-cli fill e10 "user@example.com"
+
+# Press keyboard key
+playwright-cli press <key>
+# Example: playwright-cli press Enter
+```
+
+### Debugging and Observation
+
+```bash
+# Read console messages
+playwright-cli console
+
+# List network requests
+playwright-cli network
+```
+
+### Workflow Example
+
+```bash
+# 1. Open browser
+playwright-cli open http://localhost:3000/login
+
+# 2. Capture snapshot
+playwright-cli snapshot --filename=login.yaml
+# Read login.yaml to find element refs
+
+# 3. Interact with elements
+playwright-cli fill e10 "user@example.com"  # email input ref from snapshot
+playwright-cli fill e12 "password123"       # password input ref
+playwright-cli click e15                    # submit button ref
+
+# 4. Verify result
+playwright-cli snapshot --filename=result.yaml
+# Read result.yaml to verify login success
+
+# 5. Cleanup
+playwright-cli close-all
+```
+
+## Standard npx playwright Commands
+
+These commands use the standard Playwright test runner, NOT @playwright/cli.
 
 ### Test Execution
 
