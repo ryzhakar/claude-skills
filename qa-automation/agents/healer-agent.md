@@ -87,6 +87,24 @@ Apply Similo-based scoring from `@references/confidence-scoring.md`.
 - `0.40 - 0.59`: LOW
 - `< 0.40`: REJECT
 
+## DOM Re-Discovery (Optional)
+
+When the ten-tier algorithm returns null for all tiers and the error suggests the element
+may have moved (not disappeared), use @playwright/cli to inspect the live DOM:
+
+1. Ensure the app is running (check with `curl -s -o /dev/null -w "%{http_code}" <base-url>`)
+2. `playwright-cli open <base-url>`
+3. Navigate to the page where the locator failed
+4. `playwright-cli snapshot --filename=/tmp/healer-snap.yaml`
+5. Read the snapshot file — search for elements matching the original locator's intent
+6. If found: propose the new locator with confidence based on Similo scoring
+7. `playwright-cli close-all`
+
+This step is OPTIONAL. Only use it when:
+- All 10 tiers returned null
+- The error is a locator failure (not timing, not assertion)
+- The app is running and accessible
+
 ## Apply Fixes (confidence >= 0.60 only)
 
 1. Edit test file, replace broken locator, add comment:

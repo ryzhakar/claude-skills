@@ -77,7 +77,12 @@ For each scenario in the test plan:
 
 **Step 1: Verify Locators Before Writing**
 
-Navigate to relevant pages. Confirm each planned locator exists in the live DOM via MCP snapshot or CLI exploration. If a locator doesn't exist, check alternate labels/roles, use getByTestId fallback, or use `.or()` chain.
+Before writing a test, verify planned locators exist in the live DOM:
+
+1. `playwright-cli goto <page-url>`
+2. `playwright-cli snapshot --filename=/tmp/gen-snap.yaml`
+3. Read snapshot — confirm element refs match planned locators
+4. If locator doesn't exist: update the test plan, don't write a broken test
 
 **Step 2: Write ONE Test**
 
