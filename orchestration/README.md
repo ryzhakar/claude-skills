@@ -21,20 +21,20 @@ independent subtasks where delegating preserves the orchestrator's context windo
 **References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md)
 ---
 
-### [dev-orchestration](skills/dev-orchestration/SKILL.md) `1.0.0`
-This skill should be used when the user asks to "implement a feature end-to-end",
-"execute an implementation plan", "build this with agents", "orchestrate development",
-"run the dev loop", "implement using subagents", "dispatch implementers",
-"coordinate implementation and review", or when a multi-step development task
-requires planning, implementation, review, and iteration as a coordinated workflow.
+### [dev-orchestration](skills/dev-orchestration/SKILL.md) `2.0.0`
+Extension of agentic-delegation for the software development lifecycle.
+Adds the Plan→Implement→Review→Fix loop, dev-discipline agent orchestration,
+TDD gates, status-driven branching, and debugging escalation.
 
-Governs the full plan-implement-review-fix development lifecycle by orchestrating
-dev-discipline agents (implementer, spec-reviewer, code-quality-reviewer) and skills
-(defensive-planning, tdd, systematic-debugging, receiving-code-review) into a
-coherent execution workflow with quality gates and status-driven branching.
+Prerequisite: agentic-delegation (same plugin — must be read first).
+Hard preference: dev-discipline plugin (implementer, spec-reviewer, code-quality-reviewer agents).
+
+Triggers: "implement a feature end-to-end", "execute an implementation plan",
+"build this with agents", "orchestrate development", "run the dev loop",
+"implement using subagents", "dispatch implementers", "coordinate implementation and review".
 
 
-**References:** [`agent-dispatch.md`](skills/dev-orchestration/references/agent-dispatch.md) · [`lifecycle-loops.md`](skills/dev-orchestration/references/lifecycle-loops.md) · [`software-engineering-examples.md`](skills/dev-orchestration/references/software-engineering-examples.md)
+**References:** [`agent-dispatch.md`](skills/dev-orchestration/references/agent-dispatch.md) · [`domain-context-examples.md`](skills/dev-orchestration/references/domain-context-examples.md) · [`lifecycle-loops.md`](skills/dev-orchestration/references/lifecycle-loops.md)
 ---
 
 ### [research-tree](skills/research-tree/SKILL.md) `2.0.0`

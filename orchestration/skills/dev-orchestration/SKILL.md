@@ -1,184 +1,203 @@
 ---
 name: dev-orchestration
-version: 1.0.0
+version: 2.0.0
 description: |
-  This skill should be used when the user asks to "implement a feature end-to-end",
-  "execute an implementation plan", "build this with agents", "orchestrate development",
-  "run the dev loop", "implement using subagents", "dispatch implementers",
-  "coordinate implementation and review", or when a multi-step development task
-  requires planning, implementation, review, and iteration as a coordinated workflow.
+  Extension of agentic-delegation for the software development lifecycle.
+  Adds the Plan→Implement→Review→Fix loop, dev-discipline agent orchestration,
+  TDD gates, status-driven branching, and debugging escalation.
 
-  Governs the full plan-implement-review-fix development lifecycle by orchestrating
-  dev-discipline agents (implementer, spec-reviewer, code-quality-reviewer) and skills
-  (defensive-planning, tdd, systematic-debugging, receiving-code-review) into a
-  coherent execution workflow with quality gates and status-driven branching.
+  Prerequisite: agentic-delegation (same plugin — must be read first).
+  Hard preference: dev-discipline plugin (implementer, spec-reviewer, code-quality-reviewer agents).
+
+  Triggers: "implement a feature end-to-end", "execute an implementation plan",
+  "build this with agents", "orchestrate development", "run the dev loop",
+  "implement using subagents", "dispatch implementers", "coordinate implementation and review".
 ---
 
 # Dev Orchestration
 
-Govern the full development lifecycle as a coordinated agent workflow. The orchestrator decomposes work, dispatches implementers, triggers reviewers, interprets status, and decides when to loop back versus declare done. Implementation happens in agents. The orchestrator's context is for decisions, dispatch, and detection -- not for writing code.
+Extends agentic-delegation with the development lifecycle. The parent skill establishes the economics, model ladder, decomposition patterns, prompt anatomy, execution patterns, and quality governance. This skill adds the Plan→Implement→Review→Fix loop that governs how those patterns apply to writing software.
 
-## Core Loop
+**Read agentic-delegation's SKILL.md before proceeding.** This is a hard gate, not a suggestion. The instructions below assume the parent's framework is fully internalized.
 
-Every development task follows one loop:
+## Dependencies
+
+### agentic-delegation (same plugin — always present)
+
+The parent skill. Provides: model ladder (haiku-first with upgrade-on-failure), decomposition patterns (by entity, by aspect, by concern), prompt anatomy (9-section template), execution patterns (parallel fan-out, sequential pipeline, map-reduce), and quality governance (re-launch principle, contradiction resolution).
+
+This skill uses all of the above. None are restated here.
+
+### dev-discipline (separate plugin — hard preference)
+
+Provides three agents purpose-built for this workflow:
+- **implementer** — executes tasks from plans, follows TDD, self-reviews, reports structured status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED)
+- **spec-reviewer** — adversarially verifies implementation matches spec, reports PASS / FAIL with file:line references
+- **code-quality-reviewer** — audits code quality after spec compliance passes, gives merge verdict (Yes / With fixes / No)
+
+If dev-discipline is not installed, recommend installing it. If that isn't happening immediately, construct equivalent agent prompts — @references/agent-dispatch.md describes the context each agent type needs.
+
+dev-discipline also provides skills referenced below: **defensive-planning**, **tdd**, **systematic-debugging**, **receiving-code-review**. Same preference pattern applies.
+
+## The Development Loop
 
 ```
-Plan --> Implement --> Review --> Fix (if needed) --> Done
+Plan → Implement → Review → Fix (if needed) → Done
 ```
 
-The orchestrator drives this loop. Each phase has specific entry/exit criteria, agent dispatch patterns, and escalation protocols. Skipping phases produces spec drift, quality regression, or wasted effort.
+The orchestrator drives this loop. Each phase has entry/exit criteria and agent dispatch patterns. Skipping phases produces spec drift, quality regression, or wasted effort.
 
-### When the Loop Applies
+Apply the full loop for any task touching behavior-carrying code: new features, bug fixes, refactors, migrations. Scale to task size — a one-function change uses a lightweight pass; a multi-file feature uses full decomposition and parallel dispatch.
 
-Apply the full loop for any task touching behavior-carrying code: new features, bug fixes, refactors, migrations. Scale the loop to task size -- a one-function change uses a lightweight pass through each phase; a multi-file feature uses the full machinery with decomposition and parallel dispatch.
+For tasks under ~10 lines of trivially obvious changes, execute directly without agent dispatch.
 
-For tasks under ~10 lines of trivially obvious changes, execute directly without agent dispatch. Everything else goes through the loop.
+For the complete state machine with entry/exit criteria and loop limits, see @references/lifecycle-loops.md.
 
 ## Phase 1: Plan
 
 Decompose the work into implementation units before touching code.
 
-If the defensive-planning skill is available, use it to produce the implementation plan with verification gates, forbidden patterns, and exhaustive field lists. Otherwise, create a plan that specifies: (1) exact files to create or modify, (2) exact behavior each unit must produce, (3) verification commands with expected output, (4) explicit ordering and dependencies between units.
+Use defensive-planning to produce the implementation plan with verification gates, forbidden patterns, and exhaustive field lists.
 
-### Decomposition Heuristic
+### Dev-Specific Decomposition
 
-Break features into units where each unit:
+The parent's decomposition patterns (by entity, by aspect, by concern) apply. For dev tasks, the natural unit is measured in files and testable behaviors:
+
 - Touches 1-3 files
 - Produces independently testable behavior
 - Can be described in a self-contained brief (no "see previous task" references)
 - Takes an implementer agent 2-10 minutes
 
-Units that touch 5+ files or require cross-cutting coordination signal insufficient decomposition. Split further.
+Units touching 5+ files signal insufficient decomposition. Split further.
 
 ### Ordering
 
-Identify dependencies between units. Build foundational units first (data models, interfaces), then dependent units (logic, integration), then verification units (integration tests, end-to-end checks).
-
-If the agentic-delegation skill is available, apply its decomposition patterns (by entity, by aspect, by concern) and its sequential pipeline pattern for dependent units. Otherwise, map dependencies manually: list each unit's inputs and outputs, topologically sort, and group independent units for parallel dispatch.
+Build foundational units first (data models, interfaces), then dependent units (logic, integration), then verification units (integration tests, end-to-end checks). Use the parent's sequential pipeline pattern for dependent units.
 
 ## Phase 2: Implement
 
-Dispatch one agent per implementation unit. Never implement in orchestrator context -- agents get fresh context and produce focused work.
+Dispatch one agent per implementation unit. Never implement in orchestrator context.
 
 ### Dispatch
 
-For each unit, construct a brief containing: (1) the task specification with exact code expectations, (2) file paths to read for context, (3) TDD requirements if applicable, (4) scope boundaries (what to build, what NOT to build).
+For each unit, construct a brief containing:
+1. The task specification with exact code expectations
+2. File paths to read for context
+3. TDD requirements (if applicable)
+4. Scope boundaries (what to build, what NOT to build)
 
-If the dev-discipline implementer agent is available, dispatch it with the task brief. It follows TDD when specified, self-reviews, and reports structured status.
-**Default model for dispatched dev-discipline agents: sonnet.** Upgrade to a more capable model only if an agent reports BLOCKED citing reasoning limitations.
-Otherwise, launch a sonnet agent with the implementation brief directly, instructing it to: implement the specified behavior, write tests, commit, and report status as DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED.
+Dispatch the **implementer** agent with this brief. Default model: sonnet — the parent's Implementation archetype already derives this ("requires reasoning about system constraints"). Upgrade only if an agent reports BLOCKED citing reasoning limitations.
+
+For dispatch details, context requirements, and re-dispatch patterns, see @references/agent-dispatch.md.
 
 ### TDD Gate
 
-If the tdd skill is available, require TDD mode for all behavior-carrying code: each unit follows the red-green-refactor cycle with vertical slicing (one test at a time, not all tests first). Otherwise, require that tests exist for every unit and that tests verify behavior through public interfaces, not implementation details.
+Require TDD for all behavior-carrying code. Each unit follows the red-green-refactor cycle with vertical slicing (one test at a time, not all tests first). Use tdd for discipline.
 
-TDD checkpoints map to the orchestration loop:
-- RED: test written and failing (unit is in-progress)
+TDD checkpoints map to the loop:
+- RED: test written and failing (unit in-progress)
 - GREEN: minimal implementation passes (unit ready for review)
 - REFACTOR: cleanup after review passes (unit complete)
 
 ### Sequencing
 
-Dispatch independent units in parallel when possible. Sequential dispatch only when a unit requires another's output (interface definitions, shared types, generated code).
-
-For multi-unit features, the pattern is:
+Dispatch independent units in parallel — the default per the parent. Sequential only when a unit requires another's output.
 
 ```
 Dispatch units A, B, C in parallel (independent)
-   --> all report DONE
+  → all report DONE
 Dispatch unit D (depends on A and B)
-   --> reports DONE
+  → reports DONE
 Dispatch integration verification agent
-   --> reports PASS or issues
+  → reports PASS or issues
 ```
-
-For detailed dispatch mechanics including prompt templates and context requirements, see @references/agent-dispatch.md -- it covers implementer, spec-reviewer, and code-quality-reviewer dispatch patterns with fallbacks.
 
 ## Phase 3: Review
 
-Apply two-stage review after each unit implementation. The order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements.
+Two-stage review after each unit. Order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements.
+
+The two-stage review with loop limits is the quality governance for dev work. It subsumes the parent's general quality patterns (re-launch, spot-checking) in this context.
 
 ### Stage 1: Spec Compliance
 
-If the dev-discipline spec-reviewer agent is available, dispatch it with the task specification and the list of changed files. It reads actual code and compares to requirements line by line, with adversarial posture. Otherwise, launch a sonnet agent instructed to: read the spec, read every changed file, verify each requirement has corresponding implementation, identify missing/extra/misinterpreted requirements, and report PASS or FAIL with file:line references.
+Dispatch the **spec-reviewer** with the task specification and changed file list. It reads actual code and compares to requirements line by line, with adversarial posture.
 
 ### Stage 2: Code Quality
 
-Only after spec compliance passes. If the dev-discipline code-quality-reviewer agent is available, dispatch it with the git diff range. Otherwise, launch a sonnet agent instructed to: read changed files, evaluate code quality / testing adequacy / architecture soundness, categorize findings as Critical / Important / Minor, and give a merge verdict.
+Only after spec compliance passes. Dispatch the **code-quality-reviewer** with the git diff range. It evaluates quality, testing adequacy, and architecture, categorizes findings by severity, and gives a merge verdict.
 
 ### Review Failure
 
 When either reviewer reports issues:
-1. Dispatch the implementer agent (or a fix agent) with the specific findings.
+1. Dispatch the implementer (or a fix agent) with the specific findings.
 2. After fixes, re-dispatch the same reviewer.
-3. Repeat until approved.
-4. Never skip re-review. Never accept "close enough."
+3. Repeat until approved. Never skip re-review.
 
-If the receiving-code-review skill is available, apply its verify-before-implement discipline and YAGNI enforcement when processing review findings. Otherwise, process findings individually: blocking issues first, then simple fixes, then complex fixes, testing each fix independently.
+Apply receiving-code-review's verify-before-implement discipline and YAGNI enforcement when processing findings.
+
+After 3 review-fix cycles without PASS, stop. The problem is structural — see @references/lifecycle-loops.md for escalation protocol.
 
 ## Phase 4: Status-Driven Branching
 
-Interpret implementer status reports and branch accordingly:
+Interpret implementer status and route:
 
-| Status | Action |
+| Status | Route |
 |---|---|
-| DONE | Proceed to spec review |
-| DONE_WITH_CONCERNS | Read concerns. Correctness/scope concerns: address before review. Observational concerns: note and proceed. |
+| DONE | Dispatch spec-reviewer |
+| DONE_WITH_CONCERNS | Delegate concern classification to an agent. Correctness/scope → address before review. Observational → note and proceed. |
 | NEEDS_CONTEXT | Identify missing information. Provide it. Re-dispatch. |
-| BLOCKED | Assess root cause (see below). |
+| BLOCKED | Delegate root cause diagnosis. See escalation below. |
+
+The orchestrator reads status codes from completion summaries. Any analysis beyond the code itself — classifying concerns, diagnosing blockers — is delegated.
 
 ### BLOCKED Escalation
 
-When an implementer reports BLOCKED, determine the cause:
+Dispatch a diagnosis agent to determine the cause:
 
-1. **Missing context** -- provide the missing information, re-dispatch same agent.
-2. **Insufficient reasoning** -- re-dispatch with a more capable model.
-3. **Task too large** -- decompose the unit further, dispatch sub-units.
-4. **Plan defect** -- the plan's assumptions are wrong. Stop. Escalate to the user.
+1. **Missing context** — provide the missing information, re-dispatch implementer.
+2. **Insufficient reasoning** — re-dispatch with a more capable model.
+3. **Task too large** — decompose further, dispatch sub-units.
+4. **Plan defect** — the plan's assumptions are wrong. Escalate to the user.
 
-Never force retry without changing inputs. If the agent is stuck, something about the brief, context, or decomposition must change.
-
-For the full lifecycle state machine with entry/exit criteria and loop limits, see @references/lifecycle-loops.md -- it covers the outer development loop, inner review loop, debugging escalation, and multi-unit coordination.
+Never force retry without changing inputs.
 
 ## Debugging Escalation
 
 When implementation produces unexpected failures (tests fail for unclear reasons, behavior deviates from spec without obvious cause):
 
-If the systematic-debugging skill is available, apply its 4-phase root cause protocol: investigate before fixing, trace data flow, form hypotheses, test minimally. Otherwise, follow this sequence: (1) read error messages completely, (2) check recent changes, (3) form one specific hypothesis, (4) test with the smallest possible change.
+Apply systematic-debugging's 4-phase root cause protocol: investigate before fixing, trace data flow, form hypotheses, test minimally.
 
-For multi-hypothesis investigation, dispatch parallel agents each investigating one hypothesis independently. Compare their evidence. This is faster than sequential investigation and catches the root cause more reliably.
+For multi-hypothesis investigation, apply the parent's speculative-parallel pattern: dispatch parallel agents each investigating one hypothesis independently. Compare their evidence. This is faster than sequential investigation and catches the root cause more reliably.
 
-### When to Escalate to Debugging
+### When to Enter
 
-- Implementer reports BLOCKED due to test failures unrelated to its changes
-- Review reveals behavior that contradicts the spec but the implementation looks correct
-- A fix creates new failures elsewhere (symptom of architectural coupling)
-- 3+ fix attempts on the same issue without resolution (triggers the systematic-debugging architectural questioning threshold)
+- Implementer reports BLOCKED due to unrelated test failures
+- Review reveals behavior contradicting spec but implementation looks correct
+- A fix creates new failures elsewhere (architectural coupling signal)
+- 3+ fix attempts on the same issue without resolution
 
 ## Multi-Unit Integration
 
-After all units pass individual review, verify they work together:
+After all units pass individual review:
 
 1. Run the full test suite (not just unit-level tests).
-2. Check interface compatibility between units (types, method signatures, data contracts).
-3. Verify end-to-end behavior matches the original feature specification.
-
-Dispatch an integration verification agent for step 2-3. If issues arise, determine which unit's implementation is at fault and re-enter the implement-review loop for that unit only.
+2. Dispatch an integration verification agent to check interface compatibility between units (types, signatures, data contracts) and end-to-end behavior against the original spec.
+3. If issues arise, determine which unit is at fault and re-enter the implement-review loop for that unit only.
 
 ## Anti-Patterns
 
-**Code in orchestrator context.** The orchestrator dispatches and decides. It does not write code, read implementation files, or debug test failures. All of that happens in agents.
+**Code in orchestrator context.** The orchestrator dispatches and decides. It does not write code, read implementation files, or debug test failures.
 
-**Skipping spec review.** "The implementer self-reviewed" is not spec compliance. Self-review catches obvious errors; adversarial spec review catches spec drift, missing requirements, and scope creep.
+**Skipping spec review.** Implementer self-review is not spec compliance. Adversarial spec review catches drift, missing requirements, and scope creep.
 
-**Reviewing quality before spec compliance.** Polishing code that does not meet requirements is wasted work. Always spec first, quality second.
+**Reviewing quality before spec compliance.** Polishing code that doesn't meet requirements is wasted work.
 
-**Batch-fixing review findings.** Applying all fixes at once without individual testing creates compound failures. Fix one issue, test, commit, repeat.
+**Batch-fixing review findings.** Fix one issue, test, commit, repeat. All-at-once creates compound failures.
 
-**Ignoring DONE_WITH_CONCERNS.** Concerns about correctness or scope must be addressed before review. Ignoring them and hoping the reviewer catches problems wastes a review cycle.
+**Ignoring DONE_WITH_CONCERNS.** Correctness or scope concerns must be addressed before review.
 
 ## References
 
-- @references/lifecycle-loops.md -- Full state machine for the development loop, review loop, debugging escalation, multi-unit coordination, entry/exit criteria, and loop limits
-- @references/agent-dispatch.md -- Prompt templates for dispatching implementer, spec-reviewer, and code-quality-reviewer agents, context requirements, status interpretation, and fallback patterns
-- @references/software-engineering-examples.md -- Concrete delegation archetypes for code implementation, code review/audit, debugging, testing, and documentation workflows
+- @references/lifecycle-loops.md — State machine, entry/exit criteria, loop limits, multi-unit coordination
+- @references/agent-dispatch.md — Context requirements, status interpretation, re-dispatch patterns, parallel coordination
+- @references/domain-context-examples.md — Domain-specific examples for constructing agent context briefs
