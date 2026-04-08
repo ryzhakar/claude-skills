@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Check if the Bash tool result contains a Playwright test failure (look for 'playwright test' in the command and failing test output). If it does, determine: is this a locator/selector failure that the healer-agent could fix? If yes, suggest: 'Locator failures detected. Consider invoking /qa-run to heal these automatically.' If the failure is a real bug (assertion on wrong value), infrastructure failure, or visual diff, do not suggest healing. If the command was not a Playwright test command, take no action.",
+            "prompt": "Check if the Bash tool result contains a Playwright test failure (look for 'playwright test' in the command and failing test output). If it does, determine: is this a locator/selector failure that the healer-agent could fix? If yes, suggest: 'Locator failures detected. Consider invoking /qa-orchestration to heal these automatically.' If the failure is a real bug (assertion on wrong value), infrastructure failure, or visual diff, do not suggest healing. If the command was not a Playwright test command, take no action.",
             "timeout": 10
           }
         ]
