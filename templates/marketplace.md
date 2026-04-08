@@ -21,7 +21,7 @@
 ### Skills
 
 {% for s in p.skills %}
-- **[{{ s.name }}]({{ s.root_path }})**{% if s.version %} `{{ s.version }}`{% endif %} — {{ s.description | oneline | truncate(140) }}
+- **[{{ s.name }}]({{ s.root_path }})** — {{ s.description | oneline | truncate(140) }}
 {% if s.root_references %}  References: {% for ref in s.root_references %}[`{{ ref.name }}`]({{ ref.path }}){% if not loop.last %}, {% endif %}{% endfor %}
 
 {% endif %}

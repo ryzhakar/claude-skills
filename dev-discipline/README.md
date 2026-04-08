@@ -6,6 +6,7 @@ Software engineering discipline: defensive planning, test-driven development, sy
 ## Skills
 
 ### [defensive-planning](skills/defensive-planning/SKILL.md)
+
 Write implementation plans, assessments, and corrections for implementers who may cut corners.
 Use when: (1) creating implementation plans for peers/subordinates/contractors, (2) reviewing
 implementations for adherence, (3) writing correction plans after failures, (4) any situation
@@ -18,12 +19,14 @@ with verification gates, forbidden patterns, and zero escape hatches.
 ---
 
 ### [receiving-code-review](skills/receiving-code-review/SKILL.md)
+
 This skill should be used to apply anti-performative code review protocol: verify-before-implement discipline, YAGNI enforcement, and technical pushback patterns when receiving PR feedback. Triggers: "receives code review feedback", "gets review comments", "has PR feedback to address", "should I implement this suggestion", "how to respond to code review", "handle review feedback", or when performative agreements appear in responses.
 
 
 ---
 
 ### [systematic-debugging](skills/systematic-debugging/SKILL.md)
+
 This skill should be used when the user reports a "bug", "test failure", "unexpected behavior", "error", "crash", "flaky test", asks to "debug this", "find root cause", "why is this failing", "fix this error", or when multiple fix attempts have failed. Provides a mandatory 4-phase root cause protocol that prevents random fixes and symptom patching. Apply BEFORE proposing any fix, especially under time pressure.
 
 
@@ -32,6 +35,7 @@ This skill should be used when the user reports a "bug", "test failure", "unexpe
 ---
 
 ### [tdd](skills/tdd/SKILL.md)
+
 This skill should be used when the user asks to "implement using TDD", "write tests first", "use test-driven development", "red-green-refactor", "write a failing test", "add test coverage with TDD", "what makes a good test", or when code review reveals implementation-coupled tests. Provides the philosophy, workflow, and technique of test-driven development including good/bad test patterns, mocking strategy, interface design for testability, and refactoring discipline.
 
 

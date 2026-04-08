@@ -17,7 +17,6 @@ ROOT = Path(__file__).parent
 class SkillMetadata(BaseModel):
     name: str
     description: str
-    version: str = ""
 
 
 class AgentMetadata(BaseModel):
@@ -150,22 +149,26 @@ def main():
         content = plugin_tpl.render(plugin=plugin)
         (ROOT / plugin["dir_name"] / "README.md").write_text(content)
 
-    # Phase 1.5: sync marketplace.json descriptions from plugin.json
+    # Phase 1.5: sync marketplace.json version + description from plugin.json
     if marketplace_json.exists():
         marketplace_data = json.loads(marketplace_json.read_text())
-        plugin_desc_by_name = {
-            p["meta"].get("name", p["dir_name"]): p["meta"].get("description", "")
+        plugin_meta_by_name = {
+            p["meta"].get("name", p["dir_name"]): p["meta"]
             for p in plugins
         }
         changed = False
         for entry in marketplace_data.get("plugins", []):
             name = entry.get("name", "")
-            if name in plugin_desc_by_name and entry.get("description") != plugin_desc_by_name[name]:
-                entry["description"] = plugin_desc_by_name[name]
-                changed = True
+            if name not in plugin_meta_by_name:
+                continue
+            meta = plugin_meta_by_name[name]
+            for field in ("description", "version"):
+                if meta.get(field) and entry.get(field) != meta[field]:
+                    entry[field] = meta[field]
+                    changed = True
         if changed:
             marketplace_json.write_text(json.dumps(marketplace_data, indent=2) + "\n")
-            console.print("[green]✓ Synced marketplace.json descriptions from plugin.json[/green]")
+            console.print("[green]✓ Synced marketplace.json version + description from plugin.json[/green]")
 
     # Phase 2: generate marketplace README (root)
     total_skills = sum(len(p["skills"]) for p in plugins)

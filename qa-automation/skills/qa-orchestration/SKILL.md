@@ -11,7 +11,6 @@ description: >
   Triggers: "run QA", "automate testing", "create and run Playwright tests",
   "set up E2E testing", "generate and execute tests", "run the full test pipeline",
   "heal broken tests", or mentions running the full Playwright test lifecycle.
-version: 2.1.0
 ---
 
 # QA Orchestration

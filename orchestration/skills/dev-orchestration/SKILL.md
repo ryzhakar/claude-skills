@@ -1,6 +1,5 @@
 ---
 name: dev-orchestration
-version: 2.0.0
 description: |
   Extension of agentic-delegation for the software development lifecycle.
   Adds the Plan→Implement→Review→Fix loop, dev-discipline agent orchestration,

@@ -10,7 +10,7 @@
 ## Skills
 
 {% for skill in plugin.skills %}
-### [{{ skill.name }}]({{ skill.plugin_path }}){% if skill.version %} `{{ skill.version }}`{% endif %}
+### [{{ skill.name }}]({{ skill.plugin_path }})
 
 {{ skill.description }}
 

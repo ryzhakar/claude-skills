@@ -5,7 +5,8 @@ Agent delegation framework, multi-agent research orchestration, and development 
 `orchestration` `delegation` `agents` `research` `parallel` `swarm` `development` `lifecycle` 
 ## Skills
 
-### [agentic-delegation](skills/agentic-delegation/SKILL.md) `1.0.0`
+### [agentic-delegation](skills/agentic-delegation/SKILL.md)
+
 The universal framework for decomposing work into agent-delegated units across model tiers.
 Use this skill whenever work can be broken into parts — research, implementation, review,
 debugging, testing, auditing, exploration, writing, or any combination.
@@ -21,7 +22,8 @@ independent subtasks where delegating preserves the orchestrator's context windo
 **References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md)
 ---
 
-### [dev-orchestration](skills/dev-orchestration/SKILL.md) `2.0.0`
+### [dev-orchestration](skills/dev-orchestration/SKILL.md)
+
 Extension of agentic-delegation for the software development lifecycle.
 Adds the Plan→Implement→Review→Fix loop, dev-discipline agent orchestration,
 TDD gates, status-driven branching, and debugging escalation.
@@ -37,7 +39,8 @@ Triggers: "implement a feature end-to-end", "execute an implementation plan",
 **References:** [`agent-dispatch.md`](skills/dev-orchestration/references/agent-dispatch.md) · [`domain-context-examples.md`](skills/dev-orchestration/references/domain-context-examples.md) · [`lifecycle-loops.md`](skills/dev-orchestration/references/lifecycle-loops.md)
 ---
 
-### [research-tree](skills/research-tree/SKILL.md) `2.0.0`
+### [research-tree](skills/research-tree/SKILL.md)
+
 Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes,
 academic fields, regulatory environments, curated indices, or any domain requiring breadth-first
 exploration followed by depth-first verification.

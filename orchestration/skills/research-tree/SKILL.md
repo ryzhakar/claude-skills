@@ -1,6 +1,5 @@
 ---
 name: research-tree
-version: 2.0.0
 description: |
   Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes,
   academic fields, regulatory environments, curated indices, or any domain requiring breadth-first

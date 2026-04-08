@@ -5,7 +5,8 @@ Playwright test lifecycle orchestrator. One skill drives the full loop: plan fro
 `playwright` `testing` `e2e` `qa` `automation` `self-healing` `accessibility` `cross-browser` `ci-cd` 
 ## Skills
 
-### [qa-orchestration](skills/qa-orchestration/SKILL.md) `2.1.0`
+### [qa-orchestration](skills/qa-orchestration/SKILL.md)
+
 Extension of agentic-delegation for the Playwright test lifecycle. Adds the Plan→Generate→Execute→Heal→Report loop, four-agent orchestration, confidence-based PR routing, circuit breaker safety, and session persistence.
 Hard preference: orchestration plugin (agentic-delegation skill). Same-plugin agents: planner-agent, generator-agent, executor-agent, healer-agent.
 Triggers: "run QA", "automate testing", "create and run Playwright tests", "set up E2E testing", "generate and execute tests", "run the full test pipeline", "heal broken tests", or mentions running the full Playwright test lifecycle.
