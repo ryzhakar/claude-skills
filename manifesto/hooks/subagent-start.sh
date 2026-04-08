@@ -13,7 +13,11 @@ fi
 
 escaped=$(escape_json "$manifestos")
 cat <<EOF
-{
-  "systemMessage": "MANIFESTO CONTEXT: This project operates under these manifesto bindings:\\n${escaped}\\n\\nRepo manifestos: ${MANIFESTO_DIR}/manifestos/\\nLocal paths resolve from: ${PROJECT_DIR}\\n\\nYou are not required to perform the full oath ceremony. But be aware of these principles and let them inform your work. If you need the full text, read from the paths above or fetch URLs."
-}
+MANIFESTO CONTEXT: This project operates under these manifesto bindings:
+${escaped}
+
+Repo manifestos: ${MANIFESTO_DIR}/manifestos/
+Local paths resolve from: ${PROJECT_DIR}
+
+You are not required to perform the full oath ceremony. But be aware of these principles and let them inform your work. If you need the full text, read from the paths above or fetch URLs.
 EOF
