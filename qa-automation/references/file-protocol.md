@@ -28,7 +28,7 @@ WRONG:
 | Project Config | planner-agent | generator-agent | Markdown | `.playwright/project-config.md` |
 | Verification Evidence | planner-agent | human | Markdown | `.playwright/VERIFICATION.md` |
 | Orchestrator Status | all agents | orchestrator | JSON | `.playwright/orchestrator-status.json` |
-| QA Phase Marker | orchestrator | SessionStart hook | Text | `.claude/qa-phase.txt` |
+| QA Phase Marker | orchestrator | orchestrator | Text | `.claude/qa-phase.txt` |
 | Healed Test Output | healer-agent | orchestrator | JSON | `.playwright/healed/{test-name}.json` |
 | Session Report | orchestrator | human | Markdown | `.playwright/session-report.md` |
 | Lessons | orchestrator, all agents | all agents | Markdown | `.playwright/lessons.md` |
@@ -269,7 +269,7 @@ PLAN
 
 Phase sequence: `PLAN` -> `GENERATE` -> `EXECUTE` -> `HEAL`
 
-Written by orchestrator after each phase completes. Read by SessionStart hook to resume from correct phase after context compaction.
+Written by orchestrator after each phase completes. Read by orchestrator to resume from correct phase after context compaction.
 
 ### Healed Test Output (Parallel Mode)
 

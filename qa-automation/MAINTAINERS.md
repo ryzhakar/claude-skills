@@ -18,7 +18,6 @@ qa-automation/
   .claude-plugin/plugin.json   <-- per-plugin manifest (version here)
   skills/qa-orchestration/     <-- sole skill (the orchestrator)
   agents/                      <-- planner, generator, executor, healer
-  hooks/hooks.json             <-- session recovery + failure detection
   references/                  <-- operational docs loaded by the orchestrator
 ```
 
@@ -43,9 +42,8 @@ Renaming a skill (e.g., `qa-run` to `qa-orchestration`) requires more than updat
 
 1. Rename the skill directory under `skills/`.
 2. Update the `name:` field in the skill's `SKILL.md` frontmatter.
-3. Update any references in `hooks/hooks.json` (slash-command mentions in prompts).
-4. Bump the version in `plugin.json` and run `generate.py` (see checklist above).
-5. **After pushing:** consumers must delete old version cache directories manually. Claude Code caches each version independently under `~/.claude-shared/plugins/cache/<marketplace>/<plugin>/<version>/` and `~/.claude-competera/plugins/cache/<marketplace>/<plugin>/<version>/`. The old version's cache retains the old skill name and will shadow the new one until removed.
+3. Bump the version in `plugin.json` and run `generate.py` (see checklist above).
+4. **After pushing:** consumers must delete old version cache directories manually. Claude Code caches each version independently under `~/.claude-shared/plugins/cache/<marketplace>/<plugin>/<version>/` and `~/.claude-competera/plugins/cache/<marketplace>/<plugin>/<version>/`. The old version's cache retains the old skill name and will shadow the new one until removed.
 
 **Known behavior (2026-04-08):** after renaming `qa-run` to `qa-orchestration` in v2.1.0, the skill continued to appear as `qa-run` in Claude Code sessions. Root cause: stale v2.0.0 cache directories containing `skills/qa-run/` were still present alongside the correct v2.1.0 cache. Deleting the old cache directories resolved the issue. Claude Code does not automatically purge old version caches when a new version is installed.
 
@@ -60,7 +58,3 @@ All four agents are same-plugin. Reference them directly, never with "if availab
 | `executor-agent` | Runs suite via CLI, classifies failures, produces `.ai-failures.json` |
 | `healer-agent` | Repairs broken locators via ten-tier algorithm, computes confidence scores |
 
-## Hooks
-
-- **SessionStart:** checks `.claude/qa-phase.txt` for pipeline resumption after session restart or context compaction.
-- **PostToolUse (Bash):** detects Playwright test failures in Bash output and suggests invoking `/qa-orchestration` for locator healing. Does not trigger on assertion failures (real bugs).

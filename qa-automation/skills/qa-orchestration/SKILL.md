@@ -41,7 +41,7 @@ Model assignments follow the parent's ladder: haiku for mechanical execution, so
 
 **Read ALL of these before Phase 1.** They contain the operational details summarized below.
 
-- @references/file-protocol.md — artifact map (46 artifacts), directory structure, agent read/write matrix
+- @references/file-protocol.md — artifact map (22 artifacts), directory structure, agent read/write matrix
 - @references/confidence-scoring.md — scoring algorithm, decision thresholds, hard rejection rules
 - @references/failure-heuristics.md — six-category failure taxonomy, healability decision tree
 - @references/cicd-workflow.md — PR routing implementation, circuit breaker schema, cost model
