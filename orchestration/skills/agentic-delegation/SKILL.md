@@ -1,5 +1,6 @@
 ---
 name: agentic-delegation
+version: 1.1.0
 description: |
   The universal framework for decomposing work into agent-delegated units across model tiers.
   Use this skill whenever work can be broken into parts — research, implementation, review,
@@ -458,6 +459,16 @@ This is where the swarm principle shines hardest. 15 speculative haiku agents ex
 
 ---
 
+## Session Persistence
+
+Multi-session orchestration work accumulates knowledge: which model tiers work, which patterns fail, what the codebase looks like, what debt exists. Without persistence, every session starts from zero and repeats prior mistakes.
+
+The ARRIVE/WORK/LEAVE lifecycle protocol maintains living reference documents (what's true now), frozen session history (what happened then), and disposable recon data (raw scouting). The orchestrator reads reference docs on arrival and updates them before leaving. Every rule in the conventions traces to a documented failure.
+
+For the full protocol including directory structure, mutability rules, session record format, and reference document templates, see @references/session-persistence.md
+
+---
+
 ## Governing Principles (Summary)
 
 1. **Your context is expensive. Agent calls are cheap.** This asymmetry drives every decision.
@@ -479,3 +490,7 @@ This is where the swarm principle shines hardest. 15 speculative haiku agents ex
 9. **Tools are force multipliers.** An agent without WebSearch can't search. An agent without Grep can't find code. Assign tools explicitly.
 
 10. **Format is infrastructure.** Standardized report formats enable multi-agent synthesis. Ad-hoc formats make synthesis impossible.
+
+11. **One agent per file cluster.** Never dispatch two parallel agents that write to the same file. The later agent's version wins silently. If files overlap, dispatch sequentially.
+
+12. **Verify independently.** Agent self-reports ("DONE, all tests pass") are unreliable. Run the validation command yourself after each agent completes. Trust artifacts, not claims.

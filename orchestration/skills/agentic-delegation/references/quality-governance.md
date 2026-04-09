@@ -118,3 +118,33 @@ If mismatch: investigate (launch resolution agent or re-run the tier)
 - Pick agents whose summaries seem extraordinary or suspicious
 - Example: "Agent 9 found 47 issues while others found 2-5" → verify Agent 9
 - Example: "Agent 3 says library Y doesn't exist" → verify that claim
+
+## Concurrent File Write Prevention
+
+Never dispatch two parallel agents that write to the same file. The later agent's version wins silently — the earlier agent's work is lost with no error, no warning, no conflict marker.
+
+**Before parallel dispatch:**
+1. List which files each agent will modify
+2. If any file appears in two agents' write sets, make those agents sequential
+3. Include isolation context in each agent's brief: which files it owns and which files other agents own
+
+**If concurrent writes happen despite precautions:**
+1. Identify which agent's output matches the spec
+2. Keep that output
+3. Re-dispatch the other agent with updated context
+
+## Independent Verification
+
+Agent self-reports ("DONE, all tests pass") are unreliable. After every agent completes, verify independently:
+
+- Run the test suite or type checker yourself
+- Check that output files actually exist and contain expected content
+- Verify that the agent's claimed changes appear in git diff
+
+**Why agents lie (unintentionally):**
+- Agent ran tests on a stale version
+- Agent's test command had a filter that excluded failing tests
+- Agent reported based on partial output (truncated by context limits)
+- Agent confused "no errors printed" with "tests pass"
+
+This is not about distrusting agents. It's about recognizing that an agent's view of system state may diverge from actual system state, especially after long implementation sessions with multiple file modifications.

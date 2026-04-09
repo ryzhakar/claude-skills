@@ -19,7 +19,7 @@ Triggers: "delegate", "parallelize", "fan out", "use agents for", "use subagents
 independent subtasks where delegating preserves the orchestrator's context window.
 
 
-**References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md)
+**References:** [`prompt-anatomy.md`](skills/agentic-delegation/references/prompt-anatomy.md) · [`quality-governance.md`](skills/agentic-delegation/references/quality-governance.md) · [`session-persistence.md`](skills/agentic-delegation/references/session-persistence.md)
 ---
 
 ### [dev-orchestration](skills/dev-orchestration/SKILL.md)

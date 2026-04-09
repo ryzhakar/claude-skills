@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 4S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `1.2.0` | 2S |
-| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.1.1` | 3S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.2.0` | 3S |
 | [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
@@ -46,14 +46,14 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, principles, or codes through identity-assumption protocols rather than...
   References: [`configuration.md`](manifesto/skills/manifesto-oath/references/configuration.md), [`theory.md`](manifesto/skills/manifesto-oath/references/theory.md)
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users ask to turn talks, essays, or docs into a manifesto—or request manifesto tone, command-style guidance, or...
-## [orchestration](orchestration/) `2.1.1`
+## [orchestration](orchestration/) `2.2.0`
 
 Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
 
 ### Skills
 
 - **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — The universal framework for decomposing work into agent-delegated units across model tiers. Use this skill whenever work can be broken...
-  References: [`prompt-anatomy.md`](orchestration/skills/agentic-delegation/references/prompt-anatomy.md), [`quality-governance.md`](orchestration/skills/agentic-delegation/references/quality-governance.md)
+  References: [`prompt-anatomy.md`](orchestration/skills/agentic-delegation/references/prompt-anatomy.md), [`quality-governance.md`](orchestration/skills/agentic-delegation/references/quality-governance.md), [`session-persistence.md`](orchestration/skills/agentic-delegation/references/session-persistence.md)
 - **[dev-orchestration](orchestration/skills/dev-orchestration/SKILL.md)** — Extension of agentic-delegation for the software development lifecycle. Adds the Plan→Implement→Review→Fix loop, dev-discipline agent...
   References: [`agent-dispatch.md`](orchestration/skills/dev-orchestration/references/agent-dispatch.md), [`domain-context-examples.md`](orchestration/skills/dev-orchestration/references/domain-context-examples.md), [`lifecycle-loops.md`](orchestration/skills/dev-orchestration/references/lifecycle-loops.md)
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
