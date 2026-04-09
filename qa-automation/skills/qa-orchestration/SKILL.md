@@ -31,7 +31,7 @@ For multi-session QA work, the parent's session persistence protocol applies —
 
 Four agents purpose-built for this workflow:
 - **planner-agent** (sonnet) — explores live app via browser, produces test plan, page inventory, selector strategy
-- **generator-agent** (sonnet) — writes tests one-at-a-time with TDD-style verify loop, accessibility-first locators
+- **generator-agent** (sonnet) — writes tests one-at-a-time with TDD-style verify loop, accessibility-first locators. Also owns structural test fixes (fix mode) for timing, fixture, and architecture issues.
 - **executor-agent** (haiku) — runs tests via CLI, classifies failures into 6 categories, identifies healable locator failures
 - **healer-agent** (sonnet) — applies ten-tier locator algorithm, scores confidence, fixes locator-only failures
 
@@ -46,6 +46,7 @@ Model assignments follow the parent's ladder: haiku for mechanical execution, so
 - @references/failure-heuristics.md — six-category failure taxonomy, healability decision tree
 - @references/cicd-workflow.md — PR routing implementation, circuit breaker schema, cost model
 - @references/mcp-tools.md — CLI vs MCP decision tree, pass to agents as dispatch context
+- @references/multi-app-patterns.md — dual-context fixtures, comparison-as-findings, finding taxonomy (load when multiple base URLs detected)
 
 ## Quality Gates
 
@@ -126,7 +127,7 @@ Before routing failures, check that passing tests are substantive. A test that n
 
 - `DONE` with zero failures → check exit conditions, proceed to Report or re-enter inner loop
 - `DONE` with locator failures → proceed to Phase 4 (Heal)
-- `DONE` with timing failures where locators are correct but test structure is wrong (serial execution of independent tests, missing waits, fixture teardown races) → re-dispatch **generator-agent** with specific fix instructions. The generator owns test architecture; the healer only owns locators.
+- `DONE` with timing failures where locators are correct but test structure is wrong (serial execution of independent tests, missing waits, fixture teardown races) → re-dispatch **generator-agent** in fix mode with the failing test paths and error descriptions. The generator owns test architecture; the healer only owns locators.
 - `NEEDS_CONTEXT` → surface blocker, re-dispatch once
 - `BLOCKED` → surface blocker, stop
 

@@ -117,11 +117,12 @@ Reads:
 - `package.json` -- framework detection
 
 Writes:
-- `tests/*.spec.ts` -- generated test files
+- `tests/*.spec.ts` -- generated test files (create mode) or patched test files (fix mode)
 - `tests/pages/*.page.ts` -- page objects (if complex flows)
 - `tests/fixtures.ts` -- worker-scoped fixtures
 - `tests/helpers/test-data.ts` -- TestDataFactory
 - Updates `.playwright/test-plan.md` checkboxes (mark scenarios complete)
+- Appends to `.playwright/lessons.md` -- structural issues found and fixed (fix mode)
 - `.playwright/orchestrator-status.json` -- completion status
 
 ### executor-agent

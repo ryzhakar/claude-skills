@@ -45,23 +45,26 @@ Orchestrator dispatches executor-agent after generator-agent completes.
 
 ### [generator-agent](agents/generator-agent.md)
 
-Use this agent when test planning is complete and executable Playwright .spec.ts files need to be generated from .playwright/test-plan.md. Generates one test at a time: writes, runs, fixes until green, then proceeds. Requires tests/seed.spec.ts.
+Use this agent when test planning is complete and executable Playwright .spec.ts files need
+to be generated from .playwright/test-plan.md, OR when existing tests need structural fixes
+(timing issues, fixture races, test architecture problems). Two modes: create (from plan)
+and fix (from failure description). Requires tests/seed.spec.ts.
 
 <example>
 Context: Test plan exists, user wants tests generated
 user: "Generate the Playwright tests from the test plan"
 assistant: "I'll dispatch the generator-agent to transform the test plan into passing .spec.ts files."
 <commentary>
-Test plan exists at .playwright/test-plan.md — generator-agent transforms it into code.
+Test plan exists at .playwright/test-plan.md — generator-agent transforms it into code (create mode).
 </commentary>
 </example>
 
 <example>
-Context: QA orchestrator running Phase 2
+Context: Executor found timing failures with correct locators — test architecture problem
 user: "Run QA on my app"
-assistant: "Phase 1 complete. Dispatching generator-agent for Phase 2: test generation."
+assistant: "Timing failures are structural, not locator issues. Re-dispatching generator-agent in fix mode."
 <commentary>
-Orchestrator dispatches generator-agent after planner-agent completes.
+Timing failures where locators are correct route to generator (fix mode), not healer.
 </commentary>
 </example>
 
