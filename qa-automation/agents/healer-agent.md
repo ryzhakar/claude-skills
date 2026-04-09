@@ -87,7 +87,19 @@ Apply Similo-based scoring from `@references/confidence-scoring.md`.
 - `0.40 - 0.59`: LOW
 - `< 0.40`: REJECT
 
-## DOM Re-Discovery (Optional)
+## Lessons
+
+If `.playwright/lessons.md` exists, read it before starting. It contains discoveries from prior cycles — selectors that failed and why, patterns that worked, structural issues. Do not repeat a selector that a prior cycle already tried and failed.
+
+Append your own discoveries after healing: which selectors you replaced, which tiers succeeded, which approaches didn't work. This is the feedback loop between cycles.
+
+## DOM Verification (Mandatory for Tiers 7+)
+
+Before applying any fix at tier 7 or below, verify the proposed locator exists in the live DOM using @playwright/cli. The ten-tier algorithm's effectiveness depends on live DOM access — without verification, lower-tier fixes are theoretical.
+
+For tiers 1-6, DOM verification is recommended but not required (higher confidence, lower false-positive rate).
+
+### DOM Re-Discovery (Mandatory when all tiers return null)
 
 When the ten-tier algorithm returns null for all tiers and the error suggests the element
 may have moved (not disappeared), use @playwright/cli to inspect the live DOM:
@@ -100,7 +112,7 @@ may have moved (not disappeared), use @playwright/cli to inspect the live DOM:
 6. If found: propose the new locator with confidence based on Similo scoring
 7. `playwright-cli close-all`
 
-This step is OPTIONAL. Only use it when:
+This step is MANDATORY when all tiers return null. Also use it when:
 - All 10 tiers returned null
 - The error is a locator failure (not timing, not assertion)
 - The app is running and accessible

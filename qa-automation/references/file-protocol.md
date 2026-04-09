@@ -31,6 +31,7 @@ WRONG:
 | QA Phase Marker | orchestrator | SessionStart hook | Text | `.claude/qa-phase.txt` |
 | Healed Test Output | healer-agent | orchestrator | JSON | `.playwright/healed/{test-name}.json` |
 | Session Report | orchestrator | human | Markdown | `.playwright/session-report.md` |
+| Lessons | orchestrator, all agents | all agents | Markdown | `.playwright/lessons.md` |
 | Test Files | generator-agent | executor-agent, healer-agent | TypeScript | `tests/*.spec.ts` |
 | Page Objects | generator-agent | executor-agent | TypeScript | `tests/pages/*.page.ts` |
 | Fixtures | generator-agent | all agents | TypeScript | `tests/fixtures.ts` |
@@ -56,6 +57,7 @@ project-root/
     VERIFICATION.md
     orchestrator-status.json      # Per-agent completion status
     session-report.md             # Final orchestrator report
+    lessons.md                    # Cross-cycle feedback (selectors that failed, patterns that worked)
     healed/                       # Healer agent outputs (parallel mode)
       {test-name}.json
   .claude/

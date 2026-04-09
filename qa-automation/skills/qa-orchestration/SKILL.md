@@ -60,10 +60,18 @@ Three gates at three scopes subsume the parent's general quality governance for 
 ## The QA Loop
 
 ```
-Prerequisites → Plan → Generate → Execute → Heal → Report
+Prerequisites → Plan → (Generate → Execute → Heal)* → Report
 ```
 
-The orchestrator drives this loop. Each phase dispatches one agent, reads its output files, and branches on status. Skipping phases (e.g., generating without planning) produces brittle tests.
+The orchestrator drives this loop. The outer sequence is linear (Plan then inner loop then Report). The inner loop (Generate→Execute→Heal) repeats until an exit condition is met. Each phase dispatches one agent, reads its output files, and branches on status.
+
+### Inner Loop Exit Conditions
+
+Exit the Generate→Execute→Heal cycle when ANY of these is true:
+- **All tests pass.** No failures of any category.
+- **Only non-healable failures remain.** All locator failures healed; remaining failures are timing, assertion, or infrastructure issues that require human intervention.
+- **Circuit breaker trips.** Max healing attempts per test exceeded, or max PRs per session reached.
+- **No progress.** A healing round produced zero successful fixes (same failures persist after healing). Stop to prevent infinite looping.
 
 ## Prerequisites Check
 
@@ -80,13 +88,24 @@ Before any phase:
 Dispatch **planner-agent** with the base URL.
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` → write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
+- `DONE` → verify planner completeness (see below), then write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
 - `NEEDS_CONTEXT` → surface the `blocker` field to the user, re-dispatch once after input
 - `BLOCKED` → surface blocker, stop
 
+### Planner Completeness Check
+
+Before proceeding to GENERATE, verify all 5 required artifacts exist:
+1. `.playwright/test-plan.md`
+2. `.playwright/pages.md`
+3. `.playwright/selector-strategy.md`
+4. `.playwright/project-config.md`
+5. `.playwright/VERIFICATION.md`
+
+If any are missing, re-dispatch planner-agent with explicit instructions to produce the missing artifacts. The planner may need multiple dispatches — this is expected.
+
 ## Phase 2: GENERATE
 
-Dispatch **generator-agent**.
+Dispatch **generator-agent**. Include `.playwright/lessons.md` path in the dispatch if it exists (agents must read it before starting — it contains discoveries from prior cycles).
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
 - `DONE` → write `GENERATE` to `.claude/qa-phase.txt`, proceed to Phase 3
@@ -95,11 +114,19 @@ After completion, read `.playwright/orchestrator-status.json` and branch:
 
 ## Phase 3: EXECUTE
 
-Dispatch **executor-agent**.
+Dispatch **executor-agent**. Include `.playwright/lessons.md` path if it exists.
 
-After completion, read `.playwright/orchestrator-status.json` and `.ai-failures.json`:
-- `DONE` with zero locator failures → skip to Phase 5 (Report)
+After completion, read `.playwright/orchestrator-status.json` and `.ai-failures.json`.
+
+### Test Completeness Gate
+
+Before routing failures, check that passing tests are substantive. A test that navigates to a page and logs "needs implementation" without asserting or comparing anything is a hollow pass — it provides false confidence. If passing tests lack real assertions (no `expect()`, no comparison logic, only info-level logging), re-dispatch generator-agent with instructions to complete the hollow tests before proceeding.
+
+### Failure Routing
+
+- `DONE` with zero failures → check exit conditions, proceed to Report or re-enter inner loop
 - `DONE` with locator failures → proceed to Phase 4 (Heal)
+- `DONE` with timing failures where locators are correct but test structure is wrong (serial execution of independent tests, missing waits, fixture teardown races) → re-dispatch **generator-agent** with specific fix instructions. The generator owns test architecture; the healer only owns locators.
 - `NEEDS_CONTEXT` → surface blocker, re-dispatch once
 - `BLOCKED` → surface blocker, stop
 
@@ -111,8 +138,8 @@ Read `.ai-failures.json`. Count locator-category entries (N).
 
 ### Dispatch
 
-- **N == 0:** Skip healing. Proceed to Phase 5.
-- **N < 5:** Single **healer-agent** with the full `.ai-failures.json` path.
+- **N == 0:** Skip healing. Check exit conditions — proceed to Report or re-enter inner loop at EXECUTE.
+- **N < 5:** Single **healer-agent** with the full `.ai-failures.json` path and `.playwright/lessons.md`.
 - **N >= 5:** Parallel fan-out — one **healer-agent** per failure. Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message. Each writes output to `.playwright/healed/{test-name}.json`.
 
 ### Aggregate and Route
@@ -125,11 +152,22 @@ After all healer results are collected:
 
 3. **PR budget:** Max 3 PRs per session.
 
-Write `HEAL` to `.claude/qa-phase.txt`.
+### Update Lessons
+
+After aggregating healer results, append discoveries to `.playwright/lessons.md`:
+- Selectors that failed and why (so the next cycle doesn't guess the same thing)
+- Patterns that worked (successful tier/locator combinations)
+- Structural issues found (timing, fixture, architecture problems)
+
+This artifact is the feedback loop between cycles. Without it, each agent starts fresh and repeats prior mistakes.
+
+Write `HEAL` to `.claude/qa-phase.txt`. Check exit conditions — proceed to Report or re-enter inner loop at GENERATE.
 
 ## Phase 5: Report
 
-Write `.playwright/session-report.md` summarizing: tests generated/passing/failing, locator failures found, healing outcomes by confidence tier, and artifact locations.
+Validate findings before reporting. Generator must not log implementation gaps (harness errors, placeholder logic) as business findings. If findings exist, verify each has substantive data (not placeholder values). Strip or flag invalid findings.
+
+Write `.playwright/session-report.md` summarizing: tests generated/passing/failing, locator failures found, healing outcomes by confidence tier, inner loop iterations, and artifact locations.
 
 Report the summary to the user. Clear `.claude/qa-phase.txt`.
 

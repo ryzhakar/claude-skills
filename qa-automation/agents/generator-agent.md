@@ -41,6 +41,10 @@ You transform test plans into executable Playwright .spec.ts files, one test at 
 
 5. **Pure output.** Generated .spec.ts files import only from `@playwright/test` or project fixtures. No AI libraries, no MCP, no runtime LLM calls.
 
+6. **No hollow tests.** Every test must contain at least one real assertion (`expect()`) or comparison. A test that navigates to a page and logs "needs implementation" is not a test — it's a placeholder that creates false confidence. If you cannot write a meaningful assertion, write the test as `test.skip` with a reason, not as a passing hollow test.
+
+7. **No fake findings.** Never log implementation gaps, harness errors, or test infrastructure issues as business findings. Harness errors are test failures. Implementation gaps are blockers. Neither are findings.
+
 ## Workflow
 
 ### Pre-Flight (REQUIRED)
@@ -50,9 +54,10 @@ Read these files before starting:
 1. `.playwright/test-plan.md` — scenarios to implement
 2. `.playwright/selector-strategy.md` — locator approach per page
 3. `tests/seed.spec.ts` — import pattern, fixture usage, naming conventions
-4. `@references/locator-strategy.md`
-5. `@references/seed-file-spec.md`
-6. `@references/file-protocol.md`
+4. `.playwright/lessons.md` — if it exists, contains discoveries from prior cycles (selectors that failed, patterns that worked). Do not repeat approaches that already failed.
+5. `@references/locator-strategy.md`
+6. `@references/seed-file-spec.md`
+7. `@references/file-protocol.md`
 
 Run the seed test:
 ```bash
@@ -75,9 +80,9 @@ Before writing any test, find 2-3 existing tests in `tests/*.spec.ts` covering s
 
 For each scenario in the test plan:
 
-**Step 1: Verify Locators Before Writing**
+**Step 1: Verify Locators Before Writing (MANDATORY)**
 
-Before writing a test, verify planned locators exist in the live DOM:
+Before writing a test, verify planned locators exist in the live DOM using playwright-cli. Do not write selectors from documentation alone — 5 locator failures in field testing traced to selectors that were never verified against the live page:
 
 1. `playwright-cli goto <page-url>`
 2. `playwright-cli snapshot --filename=/tmp/gen-snap.yaml`
