@@ -66,9 +66,10 @@ This means:
 
 ### When NOT to Delegate
 
-There is exactly ONE reason to do something in orchestrator context: the task is literally 1 tool call with a known path or command, AND no agent is already running that could absorb it.
+There is exactly ZERO reasons to do something in orchestrator context: any work you see as miniscule on the planning phase can baloon-up unexpectedly.
+Never EVER do anything in orchestrator context.
 
-Every other impulse is rationalization:
+Every impulse to do otherwise is rationalization:
 
 | Rationalization | Reality |
 |----------------|---------|
@@ -134,17 +135,17 @@ Three tiers. The cheapest model that can reliably do the task is the correct cho
 
 ### Opus: The Architect
 
-**Cost:** High. Reserve for the orchestrator role and rare high-stakes synthesis.
+**Cost:** Higher. Reserve for anything with higher stakes.
 
 **Use as orchestrator:** You (the opus instance reading this) are the orchestrator. Your context is the most expensive resource. Protect it.
 
-**Use as agent only when:**
+**Use as agent when:**
 - Synthesizing 20+ reports across multiple domains
 - Making strategic decisions that require weighing complex trade-offs
-- The task requires the kind of meta-cognitive reasoning that sonnet can't do
-- The stakes of getting it wrong are very high (destructive operations, public-facing decisions)
+- The task requires the kind of meta-cognitive reasoning that other models cannot deliver consistently
+- The stakes of getting it wrong are high (destructive operations, public-facing decisions, foundational vector-defining microdecisions)
 
-**Almost never needed as an agent.** If you find yourself wanting to delegate to opus, ask: can I decompose this further so sonnet agents handle the parts and I (opus) do the assembly?
+**Rarely needed as an agent.** If you find yourself wanting to delegate to opus, ask: can I decompose this further so sonnet agents handle the parts and I (opus) do the assembly?
 
 ### The Upgrade Path
 

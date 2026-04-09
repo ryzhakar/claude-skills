@@ -8,7 +8,7 @@
       "name": "orchestration",
       "source": "./orchestration/",
       "description": "Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "author": {
         "name": "ryzhakar"
       },
