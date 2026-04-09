@@ -1,6 +1,5 @@
 ---
 name: agentic-delegation
-version: 1.1.0
 description: |
   The universal framework for decomposing work into agent-delegated units across model tiers.
   Use this skill whenever work can be broken into parts — research, implementation, review,

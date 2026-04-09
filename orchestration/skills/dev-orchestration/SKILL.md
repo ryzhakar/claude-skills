@@ -23,9 +23,9 @@ Extends agentic-delegation with the development lifecycle. The parent skill esta
 
 ### agentic-delegation (same plugin — always present)
 
-The parent skill. Provides: model ladder (haiku-first with upgrade-on-failure), decomposition patterns (by entity, by aspect, by concern), prompt anatomy (9-section template), execution patterns (parallel fan-out, sequential pipeline, map-reduce), and quality governance (re-launch principle, contradiction resolution).
+The parent skill. Provides: model ladder (haiku-first with upgrade-on-failure), decomposition patterns (by entity, by aspect, by concern), prompt anatomy (9-section template), execution patterns (parallel fan-out, sequential pipeline, map-reduce), quality governance (re-launch principle, contradiction resolution, concurrent file write prevention, independent verification), and session persistence (ARRIVE/WORK/LEAVE lifecycle for multi-session work).
 
-This skill uses all of the above. None are restated here.
+This skill uses all of the above. None are restated here. For multi-session dev projects, the parent's session persistence protocol applies directly — the `conventions.md` document holds dev-specific rules (forbidden patterns, test philosophy, review protocol), `codebase_state.md` holds the module inventory, and `deferred_items.md` tracks unresolved review findings.
 
 ### dev-discipline (separate plugin — hard preference)
 
@@ -111,6 +111,18 @@ Dispatch integration verification agent
   → reports PASS or issues
 ```
 
+### Commit Discipline
+
+Agents commit their own work with descriptive messages. If fixes are needed, dispatch a fix agent — the orchestrator does not edit code, does not commit code, does not debug code.
+
+One logical change per commit. Fix commits reference what they fix. No history rewriting (no rebase, no amend, no force push).
+
+### Verification After Each Agent
+
+Run the test suite and type checker after every implementer reports DONE. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it didn't touch.
+
+This is the dev-specific application of the parent's governing principle #12: verify independently, trust artifacts not claims.
+
 ## Phase 3: Review
 
 Two-stage review after each unit. Order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements.
@@ -183,6 +195,32 @@ After all units pass individual review:
 2. Dispatch an integration verification agent to check interface compatibility between units (types, signatures, data contracts) and end-to-end behavior against the original spec.
 3. If issues arise, determine which unit is at fault and re-enter the implement-review loop for that unit only.
 
+### Cross-Cutting Review
+
+For multi-unit features, dispatch a cross-cutting review after integration passes. Decompose by CONCERN, not by module. Module-scoped reviews repeat shallow checks. Concern-scoped reviews find cross-cutting bugs.
+
+| Concern | What it catches |
+|---------|-----------------|
+| Spec fidelity | Missing features, spec drift, scope creep |
+| Data flow integrity | Schema drift, silent data loss, interface mismatches |
+| Simplicity | Unnecessary complexity, tangled concerns |
+| DRY/YAGNI | Duplicated knowledge, unused features |
+
+Fan out one agent per concern — this is the parent's fan-out-by-concern pattern applied to dev review.
+
+### Test Quality Audit
+
+After the test suite stabilizes, classify every test:
+
+| Classification | Action |
+|----------------|--------|
+| VALUABLE | Tests a specific behavior that could regress. Asserts a property, not a value. Keep. |
+| SMOKE | Verifies code runs without crashing. Low value but cheap. Keep only if truly cheap. |
+| TAUTOLOGICAL | Asserts defaults equal hardcoded copies, or tests library guarantees. Delete. |
+| MISSING | A test that should exist. Prioritize by risk of the bug it would catch. Add. |
+
+Theatrical test coverage is worse than low coverage — it creates false confidence. Delete tautological tests and add missing critical ones.
+
 ## Anti-Patterns
 
 **Code in orchestrator context.** The orchestrator dispatches and decides. It does not write code, read implementation files, or debug test failures.
@@ -194,6 +232,10 @@ After all units pass individual review:
 **Batch-fixing review findings.** Fix one issue, test, commit, repeat. All-at-once creates compound failures.
 
 **Ignoring DONE_WITH_CONCERNS.** Correctness or scope concerns must be addressed before review.
+
+**Theatrical test coverage.** Tests that assert defaults equal hardcoded copies or test library guarantees provide zero protection. They create false confidence. Delete them and add tests for actual risk areas.
+
+**Module-scoped cross-cutting reviews.** Reviewing each module independently misses cross-module issues (data flow bugs, interface mismatches, duplicated knowledge). Decompose final reviews by concern, not by module.
 
 ## References
 

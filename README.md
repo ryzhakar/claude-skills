@@ -8,11 +8,11 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 4S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `1.2.0` | 2S |
-| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.2.0` | 3S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.3.0` | 3S |
 | [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
-| [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `2.1.0` | 1S 4A |
+| [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `2.2.0` | 1S 4A |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
 
 ---
@@ -46,7 +46,7 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, principles, or codes through identity-assumption protocols rather than...
   References: [`configuration.md`](manifesto/skills/manifesto-oath/references/configuration.md), [`theory.md`](manifesto/skills/manifesto-oath/references/theory.md)
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users ask to turn talks, essays, or docs into a manifesto—or request manifesto tone, command-style guidance, or...
-## [orchestration](orchestration/) `2.2.0`
+## [orchestration](orchestration/) `2.3.0`
 
 Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
 
@@ -92,7 +92,7 @@ Python development tooling: debug type errors in uv-managed projects with pyrigh
   Scripts: [`template_transformer.py`](python-tools/skills/python-ast-mass-edit/scripts/template_transformer.py)
 - **[uv-pyright-debug](python-tools/skills/uv-pyright-debug/SKILL.md)** — Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone...
   Scripts: [`analyze_errors.py`](python-tools/skills/uv-pyright-debug/scripts/analyze_errors.py), [`line_index_errors.py`](python-tools/skills/uv-pyright-debug/scripts/line_index_errors.py)
-## [qa-automation](qa-automation/) `2.1.0`
+## [qa-automation](qa-automation/) `2.2.0`
 
 Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.
 

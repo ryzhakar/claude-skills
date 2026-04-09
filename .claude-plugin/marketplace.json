@@ -8,7 +8,7 @@
       "name": "orchestration",
       "source": "./orchestration/",
       "description": "Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -74,7 +74,7 @@
       "name": "qa-automation",
       "source": "./qa-automation/",
       "description": "Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "author": {
         "name": "ryzhakar"
       },

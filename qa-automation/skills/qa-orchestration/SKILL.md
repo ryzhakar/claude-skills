@@ -23,7 +23,9 @@ If the orchestration plugin is installed, **read agentic-delegation's SKILL.md b
 
 ### agentic-delegation (orchestration plugin — hard preference)
 
-The parent framework. Provides: model ladder, decomposition patterns, prompt anatomy, execution patterns, quality governance. This skill uses the parent's parallel fan-out (healing dispatch), sequential pipeline (phase ordering), status-driven branching, and file-based communication.
+The parent framework. Provides: model ladder, decomposition patterns, prompt anatomy, execution patterns, quality governance (re-launch principle, contradiction resolution, concurrent file write prevention, independent verification), and session persistence (ARRIVE/WORK/LEAVE lifecycle for multi-session work). This skill uses the parent's parallel fan-out (healing dispatch), sequential pipeline (phase ordering), status-driven branching, and file-based communication.
+
+For multi-session QA work, the parent's session persistence protocol applies — the `conventions.md` document holds QA-specific rules (locator strategy decisions, confidence threshold tuning, browser-specific patterns), `codebase_state.md` holds the test inventory and healing history, and `deferred_items.md` tracks unresolved test failures deferred from healing.
 
 ### Same-plugin agents (always present)
 

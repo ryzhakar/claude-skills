@@ -58,6 +58,12 @@ Second-round rules:
 - **Need-driven organization** (not source-driven)
 - **Inherit ONLY facts** — project context, source URLs, raw metadata. Never ratings, opinions, or recommendations from the first round.
 
+### Session Persistence
+
+For multi-session research (ecosystem surveys spanning days, ongoing market monitoring), the parent's session persistence protocol applies. The `reference/` layer holds living research state: conventions for this research domain, current findings inventory, deferred investigation threads. The `history/` layer preserves each session's timeline, decisions, and agent reports. The `recon/` layer holds raw scouting data (gitignored, regenerated when stale).
+
+Read the parent's session-persistence reference for the full ARRIVE/WORK/LEAVE lifecycle.
+
 ## The Tier System
 
 ```
