@@ -1,6 +1,6 @@
 {
   "name": "orchestration",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",

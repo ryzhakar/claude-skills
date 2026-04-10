@@ -57,3 +57,11 @@ itself. Its context window is for decisions, detection, and dispatch — not con
 **Examples:** [`awesome-leptos-session.md`](skills/research-tree/examples/awesome-leptos-session.md)
 ---
 
+### [session-close](skills/session-close/SKILL.md)
+
+This skill should be used when the user asks to "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", or at the natural end of a development orchestration session. Governs the full session close-out workflow including agent-based metric extraction from raw session data on disk, session record authoring, reference document updates, cost capture, and VCS commit.
+
+**References:** [`data-schema.md`](skills/session-close/references/data-schema.md) · [`session-record-format.md`](skills/session-close/references/session-record-format.md)
+**Scripts:** [`extract_metrics.py`](skills/session-close/scripts/extract_metrics.py)
+---
+
