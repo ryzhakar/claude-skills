@@ -10,7 +10,7 @@
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.0.0` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.3.1` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
-| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
+| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
 | [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `2.5.0` | 1S 4A |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
@@ -68,16 +68,14 @@ Product definition skills: extract specs from stakeholders, write user stories, 
 
 - **[spec-chef](product-craft/skills/spec-chef/SKILL.md)** — Extracts implicit product decisions from stakeholders into durable artifacts through systematic gap detection and constrained...
 - **[user-story-chef](product-craft/skills/user-story-chef/SKILL.md)** — Writes user stories as value negotiation units, not template-filling exercises. Triggers: writing user stories, acceptance criteria,...
-## [prompt-engineering](prompt-engineering/) `1.0.0`
+## [prompt-engineering](prompt-engineering/) `1.1.0`
 
 Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 
 ### Skills
 
 - **[prompt-eval](prompt-engineering/skills/prompt-eval/SKILL.md)** — This skill should be used when the user asks to "evaluate a prompt", "review a system prompt", "assess prompt quality", "check if this...
-  Examples: [`sample-evaluation.md`](prompt-engineering/skills/prompt-eval/examples/sample-evaluation.md)
 - **[prompt-optimize](prompt-engineering/skills/prompt-optimize/SKILL.md)** — This skill should be used when the user asks to "improve this prompt", "optimize a prompt", "fix this system prompt", "make this prompt...
-  Examples: [`sample-optimization.md`](prompt-engineering/skills/prompt-optimize/examples/sample-optimization.md)
 ## [python-tools](python-tools/) `1.0.0`
 
 Python development tooling: debug type errors in uv-managed projects with pyright, and perform AST-based mass structural edits across codebases.

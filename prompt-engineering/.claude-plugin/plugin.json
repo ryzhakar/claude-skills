@@ -1,6 +1,6 @@
 {
   "name": "prompt-engineering",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
   "author": {
     "name": "ryzhakar"
