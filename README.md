@@ -12,7 +12,7 @@
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
-| [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `2.5.0` | 1S 4A |
+| [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `3.0.0` | 1S 4A |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
 
 ---
@@ -82,19 +82,19 @@ Python development tooling: debug type errors in uv-managed projects with pyrigh
   Scripts: [`template_transformer.py`](python-tools/skills/python-ast-mass-edit/scripts/template_transformer.py)
 - **[uv-pyright-debug](python-tools/skills/uv-pyright-debug/SKILL.md)** — Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone...
   Scripts: [`analyze_errors.py`](python-tools/skills/uv-pyright-debug/scripts/analyze_errors.py), [`line_index_errors.py`](python-tools/skills/uv-pyright-debug/scripts/line_index_errors.py)
-## [qa-automation](qa-automation/) `2.5.0`
+## [qa-automation](qa-automation/) `3.0.0`
 
 Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.
 
 ### Skills
 
-- **[qa-orchestration](qa-automation/skills/qa-orchestration/SKILL.md)** — Extension of agentic-delegation for the Playwright test lifecycle. Adds the Plan→Generate→Execute→Heal→Report loop, four-agent...
+- **[qa-orchestration](qa-automation/skills/qa-orchestration/SKILL.md)** — Extension of agentic-delegation for the Playwright test lifecycle. Adds the Plan->Generate->Execute->Heal->Report loop, four-agent...
 ### Agents
 
 - **[executor-agent](qa-automation/agents/executor-agent.md)** (`haiku`) — Use this agent to execute Playwright test suites via CLI, classify every failure into six categories, detect flaky...
 - **[generator-agent](qa-automation/agents/generator-agent.md)** (`sonnet`) — Use this agent when test planning is complete and executable Playwright .spec.ts files need to be generated from...
 - **[healer-agent](qa-automation/agents/healer-agent.md)** (`sonnet`) — Use this agent to repair broken Playwright locators using the deterministic ten-tier algorithm. Computes...
-- **[planner-agent](qa-automation/agents/planner-agent.md)** (`sonnet`) — Use this agent when the user needs to explore a live web application to plan Playwright tests. Produces structured...
+- **[planner-agent](qa-automation/agents/planner-agent.md)** (`sonnet`) — Use this agent when the user needs to explore a live web application to plan Playwright tests. Produces test plans,...
 
 ## [userland-utilities](userland-utilities/) `1.0.0`
 

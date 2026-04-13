@@ -2,7 +2,7 @@
 name: qa-orchestration
 description: >
   Extension of agentic-delegation for the Playwright test lifecycle.
-  Adds the Plan→Generate→Execute→Heal→Report loop, four-agent orchestration,
+  Adds the Plan->Generate->Execute->Heal->Report loop, four-agent orchestration,
   confidence-based PR routing, circuit breaker safety, and session persistence.
 
   Hard preference: orchestration plugin (agentic-delegation skill).
@@ -15,83 +15,144 @@ description: >
 
 # QA Orchestration
 
-Extends agentic-delegation with the Playwright test lifecycle. The parent skill establishes the economics (agents are cheap, orchestrator context is expensive), the model ladder (haiku-first with upgrade-on-failure), execution patterns (parallel fan-out, sequential pipeline), and quality governance (re-launch principle, contradiction resolution). This skill adds the Plan→Generate→Execute→Heal→Report loop that governs how those patterns apply to automated testing.
+Extends agentic-delegation with the Playwright test lifecycle. The parent skill establishes the economics (agents are cheap, orchestrator context is expensive), the model ladder (haiku-first with upgrade-on-failure), execution patterns (parallel fan-out, sequential pipeline), and quality governance (re-launch principle, contradiction resolution). This skill adds the Plan->Generate->Execute->Heal->Report loop that governs how those patterns apply to automated testing.
 
-If the orchestration plugin is installed, **read agentic-delegation's SKILL.md before proceeding.** If not installed, recommend installing it. The core principles this skill follows: delegate aggressively (agents are cheap), the orchestrator's context is for decisions and dispatch (never for grunt work), agents communicate through files on disk (the orchestrator routes, never relays).
+If the orchestration plugin is installed, read agentic-delegation's SKILL.md before proceeding. If not installed, recommend installing it. Core principles: delegate aggressively (agents are cheap), the orchestrator's context is for decisions and dispatch (never for grunt work), agents communicate through files on disk (the orchestrator routes, never relays).
 
-## Dependencies
+## Verb Interpretation
 
-### agentic-delegation (orchestration plugin — hard preference)
+Every user verb implies agent-delegated execution. The orchestrator decomposes, dispatches, and assembles. It never executes directly.
 
-The parent framework. Provides: model ladder, decomposition patterns, prompt anatomy, execution patterns, quality governance (re-launch principle, contradiction resolution, concurrent file write prevention, independent verification), and session persistence (ARRIVE/WORK/LEAVE lifecycle for multi-session work). This skill uses the parent's parallel fan-out (healing dispatch), sequential pipeline (phase ordering), status-driven branching, and file-based communication.
+- "run tests" / "run QA" -- dispatch the full Plan->Generate->Execute->Heal->Report loop.
+- "generate tests" / "create tests" -- dispatch generator-agent (Phase 2).
+- "heal tests" / "fix selectors" / "fix locators" -- dispatch healer-agent (Phase 4).
+- "plan tests" / "explore the app" -- dispatch planner-agent (Phase 1).
+- "execute tests" / "run the suite" -- dispatch executor-agent (Phase 3).
+- "fix timing" / "fix test architecture" -- dispatch generator-agent in fix mode.
 
-For multi-session QA work, the parent's session persistence protocol applies — the `conventions.md` document holds QA-specific rules (locator strategy decisions, confidence threshold tuning, browser-specific patterns), `codebase_state.md` holds the test inventory and healing history, and `deferred_items.md` tracks unresolved test failures deferred from healing.
+No exceptions. The orchestrator coordinates; agents act.
 
-### Same-plugin agents (always present)
+## System Architecture
 
-Four agents purpose-built for this workflow:
-- **planner-agent** (sonnet) — explores live app via browser, produces test plan, page inventory, selector strategy
-- **generator-agent** (sonnet) — writes tests one-at-a-time with TDD-style verify loop, accessibility-first locators. Also owns structural test fixes (fix mode) for timing, fixture, and architecture issues.
-- **executor-agent** (haiku) — runs tests via CLI, classifies failures into 6 categories, identifies healable locator failures
-- **healer-agent** (sonnet) — applies ten-tier locator algorithm, scores confidence, fixes locator-only failures
+### Parent Framework: agentic-delegation (orchestration plugin)
 
-Model assignments follow the parent's ladder: haiku for mechanical execution, sonnet for reasoning tasks.
+Provides: model ladder, decomposition patterns, execution patterns, quality governance (re-launch principle, contradiction resolution, concurrent file write prevention, independent verification), session persistence (ARRIVE/WORK/LEAVE lifecycle). This skill uses the parent's parallel fan-out (healing dispatch), sequential pipeline (phase ordering), status-driven branching, and file-based communication.
 
-## References — Hard Requirement
+For multi-session QA work, the parent's session persistence protocol applies -- `conventions.md` holds QA-specific rules (locator strategy decisions, confidence threshold tuning, browser-specific patterns), `codebase_state.md` holds the test inventory and healing history, `deferred_items.md` tracks unresolved test failures deferred from healing.
 
-**Read ALL of these before Phase 1.** They contain the operational details summarized below.
+### Agents
 
-- @references/file-protocol.md — artifact map (22 artifacts), directory structure, agent read/write matrix
-- @references/confidence-scoring.md — scoring algorithm, decision thresholds, hard rejection rules
-- @references/failure-heuristics.md — six-category failure taxonomy, healability decision tree
-- @references/cicd-workflow.md — PR routing implementation, circuit breaker schema, cost model
-- @references/mcp-tools.md — CLI vs MCP decision tree, pass to agents as dispatch context
-- @references/multi-app-patterns.md — dual-context fixtures, comparison-as-findings, finding taxonomy (load when multiple base URLs detected)
+| Agent | Model | Role |
+|-------|-------|------|
+| planner-agent | sonnet | Explores live app via browser, produces test plan, page inventory, selector strategy |
+| generator-agent | sonnet | Writes tests one-at-a-time with verify loop, accessibility-first locators. Owns structural test fixes (fix mode). |
+| executor-agent | haiku | Runs tests via CLI, classifies failures into 6 categories, identifies healable locator failures |
+| healer-agent | sonnet | Applies ten-tier locator algorithm, scores confidence, fixes locator-only failures |
+
+### Artifact Map
+
+| Artifact | Path | Producer | Consumer |
+|----------|------|----------|----------|
+| Test Plan | `.playwright/test-plan.md` | planner | generator |
+| Page Inventory | `.playwright/pages.md` | planner | generator |
+| Selector Strategy | `.playwright/selector-strategy.md` | planner | generator |
+| Project Config | `.playwright/project-config.md` | planner | generator |
+| Verification Evidence | `.playwright/VERIFICATION.md` | planner | human |
+| Orchestrator Status | `.playwright/orchestrator-status.json` | all agents | orchestrator |
+| Phase Marker | `.claude/qa-phase.txt` | orchestrator | orchestrator |
+| Healed Output | `.playwright/healed/{test-name}.json` | healer | orchestrator |
+| Session Report | `.playwright/session-report.md` | orchestrator | human |
+| Lessons | `.playwright/lessons.md` | all agents | all agents |
+| Test Files | `tests/*.spec.ts` | generator | executor, healer |
+| Page Objects | `tests/pages/*.page.ts` | generator | executor |
+| Fixtures | `tests/fixtures.ts` | generator | all agents |
+| Seed File | `tests/seed.spec.ts` | human/generator | all agents |
+| Test Results | `results.json` | executor | healer |
+| Failure Classification | `.ai-failures.json` | executor | healer |
+| Healing Results | `.healing-results.json` | healer | orchestrator |
+| Circuit Breaker State | `.github/healing-state.json` | orchestrator | healer |
+
+### Status Protocol
+
+Each agent writes `.playwright/orchestrator-status.json` on completion:
+
+- **DONE** -- phase completed successfully
+- **NEEDS_CONTEXT** -- agent needs user input
+- **BLOCKED** -- unrecoverable error
+
+Phase sequence: `PLAN` -> `GENERATE` -> `EXECUTE` -> `HEAL`. Written to `.claude/qa-phase.txt` after each phase completes. Read on session resumption to determine re-entry point.
+
+### Multi-App Mode
+
+Active when multiple base URLs are detected. Phase adaptations:
+
+- **Plan:** Dispatch planner with all URLs. Produces per-app artifacts: `.playwright/pages-{app-name}.md`, `.playwright/selector-strategy-{app-name}.md`.
+- **Generate:** Dual-context fixtures (one browser context per app). Comparison-as-findings pattern (log deltas, not absolute assertions).
+- **Heal:** Per-app locator healing. `app_specific` field identifies which app's DOM changed.
+- **Report:** Finding summary table replaces pass/fail for comparative tests.
+
+Finding taxonomy:
+
+| Status | Meaning |
+|--------|---------|
+| MATCH | Same value in both apps |
+| MISMATCH | Different values -- flag for review |
+| MISSING | Feature absent in one app |
+| EXTRA | Feature present unexpectedly |
+
+Findings are data for humans to interpret, not bugs for the healer to fix.
+
+## Constraints
+
+- Retry a failed phase once, then stop.
+- Max 3 PRs per session.
+- Preserve `.claude/qa-phase.txt` across failures for session resumption.
+- The orchestrator never edits test files directly. Agents own all file mutations.
 
 ## Quality Gates
 
-Three gates at three scopes subsume the parent's general quality governance for QA work:
+Three gates at three scopes:
 
 | Scope | Gate | Mechanism |
-|---|---|---|
-| Session entry | Seed health check | Seed test must pass before any generation. If it fails, the session is invalid. |
-| Per-fix | Confidence scoring | Thresholds determine auto-merge (>=0.85), review (0.60-0.84), or defer (<0.60). Hard rejection at 0.0 for assertion failures, runtime errors, mass clusters. |
+|-------|------|-----------|
+| Session entry | Seed health check | `tests/seed.spec.ts` must pass before any generation. Failing seed = invalid session. |
+| Per-fix | Confidence scoring | Thresholds determine auto-merge ([0.85, 1.0]), review ([0.60, 0.85)), or defer ([0.0, 0.60)). Hard rejection at 0.0 for assertion failures, runtime errors, console fatal, mass clusters (10+ in same test run), zero-candidate. |
 | Session limit | Circuit breaker | Max 2 healing attempts per test, max 3 PRs per session, blocklist for repeat offenders. |
 
 ## The QA Loop
 
 ```
-Prerequisites → Plan → (Generate → Execute → Heal)* → Report
+Prerequisites -> Plan -> (Generate -> Execute -> Heal)* -> Report
 ```
 
-The orchestrator drives this loop. The outer sequence is linear (Plan then inner loop then Report). The inner loop (Generate→Execute→Heal) repeats until an exit condition is met. Each phase dispatches one agent, reads its output files, and branches on status.
+The orchestrator drives this loop. The outer sequence is linear (Plan then inner loop then Report). The inner loop (Generate->Execute->Heal) repeats until an exit condition is met. Each phase dispatches one agent, reads its output files, and branches on status.
 
 ### Inner Loop Exit Conditions
 
-Exit the Generate→Execute→Heal cycle when ANY of these is true:
-- **All tests pass.** No failures of any category.
-- **Only non-healable failures remain.** All locator failures healed; remaining failures are timing, assertion, or infrastructure issues that require human intervention.
+Exit the Generate->Execute->Heal cycle when any of these is true:
+- **All tests pass.** Zero failures of any category.
+- **Only structural failures remain.** All locator failures healed; remaining failures are timing, assertion, or infrastructure issues requiring human intervention.
 - **Circuit breaker trips.** Max healing attempts per test exceeded, or max PRs per session reached.
-- **No progress.** A healing round produced zero successful fixes (same failures persist after healing). Stop to prevent infinite looping.
+- **No progress.** A healing round produced zero successful fixes (same failures persist). Stop to prevent infinite looping.
 
 ## Prerequisites Check
 
 Before any phase:
 
-1. **Seed file exists:** Check `tests/seed.spec.ts`. If missing, STOP. Tell the user a seed file is required (see @references/seed-file-spec.md for the template).
+1. **Check `tests/seed.spec.ts` exists.** If missing, STOP. Tell the user a seed file is required. Seed must contain 5 components: import statement, navigation, interaction, assertion, accessibility-first locators.
 
-2. **Base URL known:** Extract from the user's argument, or check `.playwright/project-config.md`. If neither exists, ask the user.
+2. **Check the base URL.** Extract from the user's argument, or check `.playwright/project-config.md`. If neither exists, ask the user.
 
-3. **Session resumption:** Read `.claude/qa-phase.txt` if it exists. Resume from the phase AFTER the one recorded (PLAN → resume at GENERATE, etc.). If missing, start from Phase 1.
+3. **Session resumption.** Read `.claude/qa-phase.txt` if it exists. Resume from the phase after the one recorded (PLAN -> resume at GENERATE, etc.). If missing, start from Phase 1.
 
 ## Phase 1: PLAN
 
 Dispatch **planner-agent** with the base URL.
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` → verify planner completeness (see below), then write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
-- `NEEDS_CONTEXT` → surface the `blocker` field to the user, re-dispatch once after input
-- `BLOCKED` → surface blocker, stop
+- `DONE` -> verify planner completeness (all 5 artifacts exist), then write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
+- `NEEDS_CONTEXT` -> surface the `blocker` field to the user, re-dispatch once after input
+- `BLOCKED` -> surface blocker, stop
 
 ### Planner Completeness Check
 
@@ -102,16 +163,16 @@ Before proceeding to GENERATE, verify all 5 required artifacts exist:
 4. `.playwright/project-config.md`
 5. `.playwright/VERIFICATION.md`
 
-If any are missing, re-dispatch planner-agent with explicit instructions to produce the missing artifacts. The planner may need multiple dispatches — this is expected.
+If any are missing, re-dispatch planner-agent with explicit instructions to produce the missing artifacts.
 
 ## Phase 2: GENERATE
 
-Dispatch **generator-agent**. Include `.playwright/lessons.md` path in the dispatch if it exists (agents must read it before starting — it contains discoveries from prior cycles).
+Dispatch **generator-agent**. Include `.playwright/lessons.md` path in the dispatch if it exists (agents read it before starting -- it contains discoveries from prior cycles).
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` → write `GENERATE` to `.claude/qa-phase.txt`, proceed to Phase 3
-- `NEEDS_CONTEXT` → surface blocker, re-dispatch once
-- `BLOCKED` → surface blocker, stop
+- `DONE` -> write `GENERATE` to `.claude/qa-phase.txt`, proceed to Phase 3
+- `NEEDS_CONTEXT` -> surface blocker, re-dispatch once
+- `BLOCKED` -> surface blocker, stop
 
 ## Phase 3: EXECUTE
 
@@ -119,17 +180,43 @@ Dispatch **executor-agent**. Include `.playwright/lessons.md` path if it exists.
 
 After completion, read `.playwright/orchestrator-status.json` and `.ai-failures.json`.
 
+### Failure Taxonomy
+
+Six categories by regex on error messages. Only locator failures are healable.
+
+| Category | % | Regex | Healable? |
+|----------|---|-------|-----------|
+| locator | 28 | `/locator\.\|selector\|element not found\|waiting for\|getBy\|resolved to 0 elements\|resolved to hidden/i` | YES |
+| timing | 30 | `/timeout\|timed out\|race condition\|navigation timeout\|waitFor.*exceeded/i` | NO |
+| data | 14 | `/expected.*to(Equal\|Be\|Have\|Contain\|Match)\|AssertionError\|toHaveText\|toContain\|toHaveURL/i` | NO |
+| visual | 10 | `/screenshot\|visual.*regression\|pixel.*diff\|snapshot.*mismatch\|toMatchSnapshot\|toHaveScreenshot/i` | NO |
+| interaction | 10 | `/intercept\|not scrollable\|drag.*drop\|click.*intercepted\|obscured\|pointer.*event/i` | NO |
+| other | 8 | everything else | NO |
+
+### Failure Routing Decision Tree
+
+```
+Test fails ->
+  Assertion/data match? -> DO NOT HEAL (real bug)
+  Locator match? -> Verify: element found but assertion failed? Reclassify as DATA.
+                    Console ERROR/FATAL? Reclassify as REAL BUG.
+                    10+ concurrent failures? Reclassify as INFRASTRUCTURE.
+                    Confirmed locator -> proceed to Phase 4
+  Timing match? -> Re-dispatch generator-agent in fix mode (fix waits, not locators)
+  Other? -> Manual investigation
+```
+
 ### Test Completeness Gate
 
-Before routing failures, check that passing tests are substantive. A test that navigates to a page and logs "needs implementation" without asserting or comparing anything is a hollow pass — it provides false confidence. If passing tests lack real assertions (no `expect()`, no comparison logic, only info-level logging), re-dispatch generator-agent with instructions to complete the hollow tests before proceeding.
+Before routing failures, check that passing tests are substantive. A test that navigates and logs "needs implementation" without asserting is a hollow pass. If passing tests lack real assertions (no `expect()`, no comparison logic), re-dispatch generator-agent to complete the hollow tests before proceeding.
 
 ### Failure Routing
 
-- `DONE` with zero failures → check exit conditions, proceed to Report or re-enter inner loop
-- `DONE` with locator failures → proceed to Phase 4 (Heal)
-- `DONE` with timing failures where locators are correct but test structure is wrong (serial execution of independent tests, missing waits, fixture teardown races) → re-dispatch **generator-agent** in fix mode with the failing test paths and error descriptions. The generator owns test architecture; the healer only owns locators.
-- `NEEDS_CONTEXT` → surface blocker, re-dispatch once
-- `BLOCKED` → surface blocker, stop
+- `DONE` with zero failures -> check exit conditions, proceed to Report or re-enter inner loop
+- `DONE` with locator failures -> proceed to Phase 4 (Heal)
+- `DONE` with timing failures where locators are correct but test structure is wrong (serial execution of independent tests, missing waits, fixture teardown races) -> re-dispatch **generator-agent** in fix mode with failing test paths and error descriptions
+- `NEEDS_CONTEXT` -> surface blocker, re-dispatch once
+- `BLOCKED` -> surface blocker, stop
 
 Write `EXECUTE` to `.claude/qa-phase.txt`.
 
@@ -139,42 +226,119 @@ Read `.ai-failures.json`. Count locator-category entries (N).
 
 ### Dispatch
 
-- **N == 0:** Skip healing. Check exit conditions — proceed to Report or re-enter inner loop at EXECUTE.
+- **N == 0:** Skip healing. Check exit conditions.
 - **N < 5:** Single **healer-agent** with the full `.ai-failures.json` path and `.playwright/lessons.md`.
-- **N >= 5:** Parallel fan-out — one **healer-agent** per failure. Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message. Each writes output to `.playwright/healed/{test-name}.json`.
+- **N >= 5:** Parallel fan-out -- one **healer-agent** per failure. Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message.
+
+### Confidence Scoring
+
+Seven-signal weighted algorithm:
+
+**Primary signals (70% weight):**
+1. Error type analysis (max +0.30): ELEMENT_NOT_FOUND +0.30, ELEMENT_NOT_VISIBLE +0.25, ASSERTION -> 0.0
+2. DOM change detection (max +0.20): attribute changes +0.20, relocated +0.15, removed +0.05, unchanged -0.15
+3. Console/runtime errors (max +0.20): none +0.20, WARNING +0.10, ERROR/FATAL -> 0.0
+
+**Secondary signals (30% weight):**
+4. Network/API health (max +0.10): OK +0.10, errors -0.10
+5. Element match quality (max +0.10): similarity * 0.10, no candidate -> 0.0
+6. Historical pattern (max +0.05): stable +0.05, flaky -0.10
+7. Cluster analysis (max +0.05): isolated +0.05, small cluster +0.03, large (10+) -0.15
+
+**Tier adjustment:** tiers 1-3 +0.05, tiers 7-10 -0.05
+
+### Hard Rejection (score = 0.0)
+
+1. Assertion on element value -- real bug
+2. Runtime errors / crashes -- application broken
+3. Console errors ERROR/FATAL -- application broken
+4. No candidate element found -- cannot heal
+5. 10+ failures in the same test run -- infrastructure issue
+
+### Decision Thresholds
+
+| Score | Category | Action |
+|-------|----------|--------|
+| [0.85, 1.0] | HIGH | Auto-merge PR |
+| [0.60, 0.85) | MEDIUM | Review PR (24h SLA) |
+| [0.40, 0.60) | LOW | No PR, defer |
+| [0.0, 0.40) | REJECT | Skip |
+
+### Circuit Breaker
+
+Schema (`.github/healing-state.json`):
+```json
+{"healing_attempts":{"file:line:title":1},"prs_created":0,"blocklist":[],"last_updated":"ISO-8601"}
+```
+
+Rules:
+- Max 2 healing attempts per test (key: `"file:line:title"`)
+- Max 3 PRs per session
+- Tests failing healing twice added to blocklist
+- Blocklisted tests skipped until manually removed
+
+### Cost Model
+
+| Method | Token Cost | Time | FP Rate |
+|--------|-----------|------|---------|
+| Deterministic (ten-tier) | 0 tokens | 1-3s per failure | 2-5% |
+| LLM fallback | ~10K tokens per failure | 30-60s per failure | 8-15% |
+
+Run deterministic healing first. LLM fallback only when deterministic fails. Max confidence for LLM fixes: MEDIUM. Never auto-apply LLM fixes.
 
 ### Aggregate and Route
 
-After all healer results are collected:
+After collecting all healer results:
 
 1. **Update circuit breaker** (`.github/healing-state.json`): increment attempts per test, blocklist tests failing twice, increment PR counter.
 
-2. **Route by confidence:** HIGH (>=0.85) → consolidated auto-merge PR. MEDIUM (0.60-0.84) → review PR. LOW (<0.60) → no PR, record as deferred. See @references/cicd-workflow.md for PR creation implementation and @references/confidence-scoring.md for threshold details.
+2. **Route by confidence:** HIGH -> consolidated auto-merge PR. MEDIUM -> review PR. LOW -> no PR, record as deferred.
 
 3. **PR budget:** Max 3 PRs per session.
 
 ### Update Lessons
 
 After aggregating healer results, append discoveries to `.playwright/lessons.md`:
-- Selectors that failed and why (so the next cycle doesn't guess the same thing)
+- Selectors that failed and why (prevents repeating same guesses)
 - Patterns that worked (successful tier/locator combinations)
 - Structural issues found (timing, fixture, architecture problems)
 
-This artifact is the feedback loop between cycles. Without it, each agent starts fresh and repeats prior mistakes.
-
-Write `HEAL` to `.claude/qa-phase.txt`. Check exit conditions — proceed to Report or re-enter inner loop at GENERATE.
+Write `HEAL` to `.claude/qa-phase.txt`. Check exit conditions -- proceed to Report or re-enter inner loop at GENERATE.
 
 ## Phase 5: Report
 
-Validate findings before reporting. Generator must not log implementation gaps (harness errors, placeholder logic) as business findings. If findings exist, verify each has substantive data (not placeholder values). Strip or flag invalid findings.
+Validate findings before reporting. Generator must not log implementation gaps (harness errors, placeholder logic) as business findings. If findings exist, verify each has non-placeholder values (not 'TODO', 'needs implementation', empty strings). Strip or flag invalid findings.
 
-Write `.playwright/session-report.md` summarizing: tests generated/passing/failing, locator failures found, healing outcomes by confidence tier, inner loop iterations, and artifact locations.
+Write `.playwright/session-report.md`:
 
-Report the summary to the user. Clear `.claude/qa-phase.txt`.
+```
+# QA Automation Session Report
+Date | Duration | Phases Completed
+## Test Results
+Total | Passed | Failed | Healed | Deferred
+## Healing Summary
+Per-tier breakdown with confidence averages
+## Deferred
+Test file:line -- reason -- confidence
+## Artifacts
+Links to test-plan, healing-results, HTML report, healed outputs
+```
+
+Report summary to user. Clear `.claude/qa-phase.txt`.
+
+Exclude from user-facing summary: raw JSON artifacts, trace file paths, internal status file contents.
 
 ## Error Handling
 
 If any agent dispatch fails (no output file, agent error):
 - Report the failure phase and error to the user
 - Preserve `.claude/qa-phase.txt` for session resumption
-- Do not retry a failed phase more than once
+- Retry a failed phase once, then stop
+
+If exit condition is ambiguous (hollow passes mixed with real passes): re-enter at GENERATE to complete hollow tests.
+
+If status contradicts (phase.txt says EXECUTE but orchestrator-status.json says PLAN): surface the contradiction to the user and ask for direction.
+
+If `.playwright/orchestrator-status.json` is missing after agent dispatch: treat as agent failure, report to user.
+
+If `.github/healing-state.json` is corrupt or unparseable: reset to empty state `{"healing_attempts":{},"prs_created":0,"blocklist":[]}` and continue.

@@ -1,6 +1,6 @@
 {
   "name": "qa-automation",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.",
   "author": {
     "name": "ryzhakar"
