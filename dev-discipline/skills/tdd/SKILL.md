@@ -20,7 +20,7 @@ Tests describe WHAT the system does, not HOW it does it. A good test reads like 
 
 ## Anti-Pattern: Horizontal Slicing
 
-DO NOT write all tests first, then all implementation. This produces tests that verify imagined behavior rather than actual behavior.
+DO NOT write all tests first, then all implementation. This produces tests that verify what you imagined, not what the code does.
 
 ```
 WRONG (horizontal):
@@ -33,7 +33,7 @@ RIGHT (vertical):
   RED->GREEN: test3->impl3
 ```
 
-Horizontal slicing causes tests to be insensitive to real changes -- they pass when behavior breaks and fail when behavior is fine. Each test should respond to what was learned from implementing the previous one.
+Horizontal slicing makes tests ignore real changes -- they fail when behavior is fine and pass when behavior breaks. Each test should respond to what was learned from implementing the previous one.
 
 ## Workflow
 
@@ -43,12 +43,12 @@ Before writing code:
 
 1. Confirm with the user what interface changes are needed.
 2. Confirm which behaviors to test and their priority.
-3. Identify opportunities for deep modules — see @references/deep-modules.md for the small-interface, deep-implementation pattern.
-4. Design interfaces for testability — see @references/interface-design.md for dependency injection, return-over-side-effect, and small surface area heuristics.
+3. Identify opportunities for deep modules: can I reduce methods? Simplify parameters? Hide more complexity inside?
+4. Design interfaces for testability: accept dependencies (not create them), return results (not side effects), small surface area (fewer methods = fewer tests).
 5. List behaviors to test (not implementation steps).
 6. Get user approval on the plan.
 
-Not everything can be tested. Focus testing effort on critical paths and complex logic, not every possible edge case.
+You cannot test everything. Test core business logic and code with conditional branches. Skip trivial getters and boilerplate.
 
 ### Phase 2: Tracer Bullet
 
@@ -78,7 +78,14 @@ Rules:
 
 ### Phase 4: Refactor
 
-After all tests pass, look for refactor candidates — see @references/refactoring.md for the post-TDD extraction patterns (duplication, shallow modules, feature envy, primitive obsession).
+After all tests pass, look for refactor candidates:
+
+- **Duplication** -- extract function/class
+- **Long methods** -- break into private helpers (keep tests on public interface)
+- **Shallow modules** -- combine or deepen
+- **Feature envy** -- move logic to where data lives
+- **Primitive obsession** -- introduce value objects
+- **Existing code** the new code reveals as problematic
 
 - Extract duplication.
 - Deepen modules (move complexity behind simple interfaces).
@@ -86,7 +93,7 @@ After all tests pass, look for refactor candidates — see @references/refactori
 - Consider what new code reveals about existing code.
 - Run tests after each refactor step.
 
-**Never refactor while RED.** Get to GREEN first.
+**Never refactor while RED.** Get to GREEN.
 
 ## Per-Cycle Checklist
 
@@ -94,9 +101,9 @@ Before committing each red-green cycle:
 
 - [ ] Test describes behavior, not implementation
 - [ ] Test uses public interface only
-- [ ] Test would survive internal refactor
+- [ ] Test survives internal refactoring
 - [ ] Code is minimal for this test
-- [ ] No speculative features added
+- [ ] Features are necessary, not speculative
 
 ## Good Tests vs Bad Tests
 
@@ -104,19 +111,53 @@ Before committing each red-green cycle:
 
 **Bad tests** are coupled to implementation: they mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface).
 
-For side-by-side examples of good and bad tests with explanations, see @references/tests.md — it covers behavior-testing vs implementation-coupling patterns.
+**Good test (behavior through interface):**
+```typescript
+test("user can checkout with valid cart", async () => {
+  const cart = createCart();
+  cart.add(product);
+  const result = await checkout(cart, paymentMethod);
+  expect(result.status).toBe("confirmed");
+});
+```
+
+**Bad test (implementation coupling):**
+```typescript
+// BAD: mocks internal collaborator
+test("checkout calls paymentService.process", async () => {
+  const mockPayment = jest.mock(paymentService);
+  await checkout(cart, payment);
+  expect(mockPayment.process).toHaveBeenCalledWith(cart.total);
+});
+```
+
+**Bad test (bypasses interface):**
+```typescript
+// BAD: queries database directly instead of using interface
+test("createUser saves to database", async () => {
+  await createUser({ name: "Alice" });
+  const row = await db.query("SELECT * FROM users WHERE name = ?", ["Alice"]);
+});
+
+// GOOD: verifies through interface
+test("createUser makes user retrievable", async () => {
+  const user = await createUser({ name: "Alice" });
+  const retrieved = await getUser(user.id);
+  expect(retrieved.name).toBe("Alice");
+});
+```
 
 Red flags indicating implementation coupling:
 - Mocking internal collaborators
 - Testing private methods
 - Asserting on call counts or call order
-- Test breaks when refactoring without behavior change
-- Test name describes HOW not WHAT
+- Breaking when refactoring without behavior change
+- Describing HOW in test name, not WHAT
 - Verifying through external means instead of interface
 
 ## Mocking Strategy
 
-Mock at system boundaries only — see @references/mocking.md for detailed patterns including dependency injection and SDK-style interface design.
+Mock at system boundaries only.
 
 **Mock:**
 - External APIs (payment, email, third-party services)
@@ -129,22 +170,30 @@ Mock at system boundaries only — see @references/mocking.md for detailed patte
 - Internal collaborators
 - Anything under direct control
 
-At system boundaries, design interfaces that are easy to mock: use dependency injection (pass dependencies in, do not create them internally), and prefer SDK-style interfaces (specific functions per operation) over generic fetchers.
+**Designing for mockability at system boundaries:**
+
+1. **Dependency injection** -- pass dependencies in, do not create them internally:
+   ```typescript
+   // Testable: mock paymentClient
+   function processPayment(order, paymentClient) { return paymentClient.charge(order.total); }
+   // Hard to test: internal construction
+   function processPayment(order) { const client = new StripeClient(process.env.STRIPE_KEY); ... }
+   ```
+
+2. **SDK-style interfaces** -- specific functions per operation, not one generic fetcher:
+   ```typescript
+   // GOOD: each mock returns one shape, no conditional logic in test setup
+   const api = { getUser: (id) => fetch(`/users/${id}`), createOrder: (data) => ... };
+   // BAD: mock requires conditional logic
+   const api = { fetch: (endpoint, options) => fetch(endpoint, options) };
+   ```
 
 ## Composability
 
-If the agentic-delegation skill is available, apply its decomposition patterns to break complex feature implementations into independently testable units, each suitable for a single red-green-refactor cycle. Otherwise, decompose manually: identify the smallest behavior that can be tested through a public interface, implement it, then move to the next.
+If the agentic-delegation skill is available, apply its decomposition patterns to break features into independently testable units. Otherwise, find the smallest testable behavior, implement it, move to the next.
 
-When the defensive-planning skill is available, use its TDD micro-task mode reference for structuring plans around the red-green-refactor cycle. Otherwise, follow the vertical slicing discipline described above.
-
-## Reference Files
-
-- @references/tests.md — Good and bad test examples with explanations
-- @references/mocking.md — When to mock, dependency injection, SDK-style interfaces
-- @references/deep-modules.md — Small interface + deep implementation philosophy
-- @references/interface-design.md — Testability heuristics: accept dependencies, return results, small surface area
-- @references/refactoring.md — Post-TDD refactor candidates: duplication, shallow modules, feature envy
+If the defensive-planning skill is available, use its TDD micro-task structure for plan granularity.
 
 ---
 
-*Originally based on tdd from https://github.com/mattpocock/skills, MIT licensed. Adapted and enhanced for this plugin.*
+*Originally based on tdd, adapted and enhanced for this plugin.*

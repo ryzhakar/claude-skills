@@ -1,11 +1,9 @@
 ---
 name: systematic-debugging
 description: >
-  This skill should be used when the user reports a "bug", "test failure", "unexpected behavior",
-  "error", "crash", "flaky test", asks to "debug this", "find root cause", "why is this failing",
-  "fix this error", or when multiple fix attempts have failed. Provides a mandatory 4-phase
-  root cause protocol that prevents random fixes and symptom patching. Apply BEFORE proposing
-  any fix, especially under time pressure.
+  Mandatory 4-phase root cause protocol for bugs, test failures, errors, or unexpected behavior.
+  Prevents random fixes and symptom patching. Apply BEFORE proposing any fix, especially when
+  multiple attempts have failed or time pressure tempts guessing.
 ---
 
 # Systematic Debugging
@@ -18,7 +16,7 @@ Mandatory root cause protocol for any bug, test failure, or unexpected behavior.
 NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
 ```
 
-If Phase 1 has not been completed, no fix may be proposed. Symptom fixes are debugging failures.
+Complete Phase 1 before proposing any fix. Symptom fixes are debugging failures.
 
 ## When to Apply
 
@@ -31,9 +29,9 @@ Apply for ANY technical issue: test failures, production bugs, unexpected behavi
 - The previous fix did not work
 - The issue is not fully understood
 
-**Do not skip when:**
+**Apply even when:**
 - The issue seems simple (simple bugs have root causes too)
-- Time is short (systematic debugging is faster than thrashing)
+- Time is short (systematic debugging is FASTER than thrashing)
 
 ## Phase 1: Root Cause Investigation
 
@@ -41,11 +39,11 @@ Apply for ANY technical issue: test failures, production bugs, unexpected behavi
 
 ### 1. Read Error Messages Carefully
 
-Do not skip past errors or warnings. Read stack traces completely. Note line numbers, file paths, error codes. Error messages often contain the exact solution.
+Do not skip past errors or warnings. Read stack traces completely. Note line numbers, file paths, error codes. Error messages often state the exact solution.
 
 ### 2. Reproduce Consistently
 
-Determine: can the issue be triggered reliably? What are the exact steps? Does it happen every time? If not reproducible, gather more data -- do not guess.
+Determine: can the issue be triggered reliably? What are the exact steps? Does it happen every time? If not reproducible, gather more evidence: logs, timestamps, environment state. Do not guess.
 
 ### 3. Check Recent Changes
 
@@ -69,11 +67,39 @@ THEN investigate that specific component
 
 This reveals which layer fails (e.g., secrets pass from workflow to build script but not from build script to signing script).
 
-### 5. Trace Data Flow
+### 5. Trace Backward to Source
 
-When the error is deep in a call stack, trace backward through the call chain until the original trigger is found. Fix at source, not at symptom.
+When the error is deep in the call stack, trace backward through the call chain to find the original trigger. Fix at source, not at symptom.
 
-For the complete backward tracing technique with examples, see @references/root-cause-tracing.md — it covers stack trace instrumentation, test pollution bisection, and the principle of fixing at the origination point.
+**The tracing process:**
+1. Observe the symptom (the error message, wrong output)
+2. Find immediate cause (which code directly triggers the error)
+3. Ask: what called this? Trace one level up
+4. What value was passed? Check for invalid data (empty strings, nulls, wrong types)
+5. Keep tracing up until you find where the invalid data originated
+6. Fix at the origination point
+
+**Adding stack traces when manual tracing fails:**
+
+```typescript
+// Before the problematic operation
+const stack = new Error().stack;
+console.error('DEBUG operation:', {
+  directory, cwd: process.cwd(), nodeEnv: process.env.NODE_ENV, stack,
+});
+```
+
+Use `console.error()` in tests (loggers may be suppressed). Log before the dangerous operation, not after it fails. Include: directory, cwd, environment variables, timestamps. Run and grep: `npm test 2>&1 | grep 'DEBUG operation'`.
+
+**Finding which test causes pollution:**
+
+Use bisection: run tests one-by-one, stop at first polluter.
+
+```bash
+./scripts/find-polluter.sh '.git' 'src/**/*.test.ts'
+```
+
+**Principle:** NEVER fix where the error appears. Trace back to the original trigger.
 
 ## Phase 2: Pattern Analysis
 
@@ -81,7 +107,7 @@ Find the pattern before fixing.
 
 ### 1. Find Working Examples
 
-Locate similar working code in the same codebase. What works that is similar to what is broken?
+Locate similar working code. What works that is similar to what is broken?
 
 ### 2. Compare Against References
 
@@ -89,11 +115,11 @@ If implementing a known pattern, read the reference implementation COMPLETELY. D
 
 ### 3. Identify Differences
 
-List every difference between working and broken, however small. Do not assume "that cannot matter."
+List every difference between working and broken, however small. Assume every difference might matter.
 
 ### 4. Understand Dependencies
 
-What other components, settings, config, or environment does the broken code need? What assumptions does it make?
+What does the broken code assume about inputs, state, environment, or dependencies?
 
 ## Phase 3: Hypothesis and Testing
 
@@ -105,17 +131,17 @@ State clearly: "I think X is the root cause because Y." Write it down. Be specif
 
 ### 2. Test Minimally
 
-Make the SMALLEST possible change to test the hypothesis. One variable at a time. Do not fix multiple things at once.
+Make the SMALLEST change to test the hypothesis. One variable at a time. Fix one thing at a time.
 
 ### 3. Verify Before Continuing
 
-Did it work? If yes, proceed to Phase 4. If no, form a NEW hypothesis. Do not add more fixes on top.
+Did the change fix the issue? If yes, proceed to Phase 4. If no, form a NEW hypothesis. Do not add more fixes on top.
 
 If the agentic-delegation skill is available, apply its Speculative Parallel pattern for multi-hypothesis testing: launch parallel agents each investigating one hypothesis independently, then compare their evidence. Otherwise, launch 3 background agents with the cheapest available model, each investigating a different hypothesis independently. Read their summaries to determine which hypothesis has evidence.
 
 ### 4. When Understanding Is Incomplete
 
-Say "I do not understand X." Do not pretend to know. Ask for help. Research more.
+Say "I do not understand why this callback fires twice." Do not propose fixes when understanding is incomplete. Ask for help. Research more.
 
 ## Phase 4: Implementation
 
@@ -123,11 +149,11 @@ Fix the root cause, not the symptom.
 
 ### 1. Create a Failing Test Case
 
-Write the simplest possible reproduction as an automated test. This MUST exist before fixing. If no test framework is available, a one-off script suffices.
+Write the simplest reproduction as an automated test. This MUST exist before fixing. If no test framework is available, a one-off script suffices.
 
 ### 2. Implement a Single Fix
 
-Address the root cause identified in Phase 3. ONE change at a time. No "while I'm here" improvements. No bundled refactoring.
+Address the root cause. ONE change at a time. Change only what addresses the root cause. No bundled refactoring.
 
 ### 3. Verify the Fix
 
@@ -158,7 +184,19 @@ Discuss with the user before attempting more fixes. This is not a failed hypothe
 
 After fixing the root cause, add validation at every layer the bad data passed through. Make the bug structurally impossible, not just fixed.
 
-For the 4-layer validation pattern (entry point, business logic, environment guards, debug instrumentation), see @references/defense-in-depth.md — it covers entry validation, business logic checks, environment guards, and debug instrumentation.
+**Four validation layers:**
+
+**Layer 1 -- Entry point:** Reject invalid input at API boundary. Validate: not empty, exists, correct type. Throw with descriptive message.
+
+**Layer 2 -- Business logic:** Ensure data makes sense for this operation. Check preconditions specific to the function's contract.
+
+**Layer 3 -- Environment guards:** Prevent dangerous operations in specific contexts. Example: refuse filesystem operations outside temp directories during tests.
+
+**Layer 4 -- Debug instrumentation:** Log context before dangerous operations for forensics. Include: arguments, cwd, environment, stack trace.
+
+**Why all four:** Different layers catch different failures. Different code paths bypass entry validation. Mocks bypass business logic. Edge cases on different platforms need environment guards. Debug logging identifies structural misuse. One validation point is insufficient.
+
+Apply: trace data flow, map all checkpoints, add validation at each layer, test each layer independently.
 
 ## Red Flags -- Return to Phase 1
 
@@ -171,18 +209,18 @@ If any of these thoughts occur, STOP and return to Phase 1:
 - "It's probably X, let me fix that"
 - "I don't fully understand but this might work"
 - "Pattern says X but I'll adapt it differently"
-- "Here are the main problems:" (listing fixes without investigation)
-- Proposing solutions before tracing data flow
+- "Here are the main problems to fix" (listing fixes without investigation)
+- "Let me propose solutions before understanding the flow"
 - "One more fix attempt" (when 2+ already tried)
-- Each fix reveals a new problem in a different place
+- "This fix revealed a new problem elsewhere"
 
 ## User Signals of Process Violation
 
 Watch for these redirections from the user:
-- "Is that not happening?" -- assumed without verifying
-- "Will it show us...?" -- should have added evidence gathering
-- "Stop guessing" -- proposing fixes without understanding
-- "Ultrathink this" -- need to question fundamentals, not just symptoms
+- "Is that not happening?" -- assumption without verification
+- "Will it show us...?" -- missing evidence gathering
+- "Stop guessing" -- fixes without understanding
+- "Ultrathink this" -- symptom focus instead of fundamental questioning
 
 When these signals appear: STOP. Return to Phase 1.
 
@@ -191,7 +229,7 @@ When these signals appear: STOP. Return to Phase 1.
 | Excuse | Reality |
 |---|---|
 | "Issue is simple, don't need process" | Simple issues have root causes too. Process is fast for simple bugs. |
-| "Emergency, no time for process" | Systematic debugging is FASTER than guess-and-check thrashing. |
+| "Emergency, no time for process" | Systematic debugging is FASTER than thrashing. |
 | "Just try this first, then investigate" | First fix sets the pattern. Do it right from the start. |
 | "I'll write test after confirming fix works" | Untested fixes do not stick. Test first proves it. |
 | "Multiple fixes at once saves time" | Cannot isolate what worked. Causes new bugs. |
@@ -201,15 +239,49 @@ When these signals appear: STOP. Return to Phase 1.
 
 ## Condition-Based Waiting
 
-When debugging flaky tests caused by timing issues, replace arbitrary timeouts with condition polling — see @references/condition-based-waiting.md for the implementation pattern and common mistakes.
+When debugging flaky tests caused by timing issues, replace arbitrary timeouts with condition polling.
 
-## Test Pollution Bisection
+**Core pattern:**
+```typescript
+// BAD: guessing at timing
+await new Promise(r => setTimeout(r, 50));
 
-When a test creates unwanted files or state but the polluting test is unknown, use the bisection script at scripts/find-polluter.sh. It runs tests one-by-one and stops at the first polluter.
-
-```bash
-./scripts/find-polluter.sh '.git' 'src/**/*.test.ts'
+// GOOD: waiting for condition
+await waitFor(() => getResult() !== undefined);
 ```
+
+**Quick patterns:**
+| Scenario | Pattern |
+|---|---|
+| Wait for event | `waitFor(() => events.find(e => e.type === 'DONE'))` |
+| Wait for state | `waitFor(() => machine.state === 'ready')` |
+| Wait for file | `waitFor(() => fs.existsSync(path))` |
+
+**Generic polling function:**
+```typescript
+async function waitFor<T>(
+  condition: () => T | undefined | null | false,
+  description: string, timeoutMs = 5000
+): Promise<T> {
+  const startTime = Date.now();
+  while (true) {
+    const result = condition();
+    if (result) return result;
+    if (Date.now() - startTime > timeoutMs)
+      throw new Error(`Timeout: ${description} after ${timeoutMs}ms`);
+    await new Promise(r => setTimeout(r, 10));
+  }
+}
+```
+
+**Mistakes:** Polling too fast (use 10ms). No timeout (always include with clear error). Stale data (call getter inside loop, not before).
+
+**When arbitrary timeout IS correct:** First wait for the triggering condition, then wait a known interval. Document WHY: "200ms = 2 ticks at 100ms intervals."
+
+## Reporting
+
+During debugging: state current phase, quote error messages, show evidence.
+After resolution: root cause (1-2 sentences), evidence trail, fix applied, test results.
 
 ## Quick Reference
 
@@ -220,12 +292,6 @@ When a test creates unwanted files or state but the polluting test is unknown, u
 | 3. Hypothesis | Form theory, test minimally | Confirmed or new hypothesis |
 | 4. Implementation | Create test, fix, verify | Bug resolved, tests pass |
 
-## Reference Files
-
-- @references/root-cause-tracing.md — Backward tracing through call stack, stack trace instrumentation, test pollution bisection
-- @references/defense-in-depth.md — 4-layer validation pattern: entry, business logic, environment guards, debug instrumentation
-- @references/condition-based-waiting.md — Replace arbitrary timeouts with condition polling for flaky tests
-
 ---
 
-*Originally based on systematic-debugging from https://github.com/obra/superpowers, MIT licensed. Adapted and enhanced for this plugin.*
+*Originally based on systematic-debugging, adapted and enhanced for this plugin.*

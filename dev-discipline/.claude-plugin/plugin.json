@@ -1,6 +1,6 @@
 {
   "name": "dev-discipline",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",

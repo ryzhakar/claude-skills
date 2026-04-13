@@ -30,7 +30,7 @@
       "name": "dev-discipline",
       "source": "./dev-discipline/",
       "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "ryzhakar"
       },

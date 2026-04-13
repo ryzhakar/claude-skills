@@ -1,12 +1,10 @@
 ---
 name: defensive-planning
-description: |
+description: >
   Write implementation plans, assessments, and corrections for implementers who may cut corners.
-  Use when: (1) creating implementation plans for peers/subordinates/contractors, (2) reviewing
-  implementations for adherence, (3) writing correction plans after failures, (4) any situation
-  where the implementer is assumed to be no better than you—possibly lazier, prone to shortcuts,
-  or incentivized to appear done rather than be done. This skill produces prescriptive documents
-  with verification gates, forbidden patterns, and zero escape hatches.
+  Use when: creating implementation plans, reviewing implementations for adherence, writing
+  correction plans after failures, or when the implementer may choose appearing done over being done.
+  Produces prescriptive documents with verification gates, forbidden patterns, and zero escape hatches.
 ---
 
 # Defensive Planning
@@ -15,7 +13,7 @@ Create implementation plans that survive contact with unreliable implementers.
 
 ## Core Assumption
 
-The implementer will optimize for "appears done" over "is done." They will:
+The implementer will choose appearing done over being done. They will:
 - Find every escape hatch and use it
 - Interpret ambiguity in their favor
 - Mark tasks complete when tests pass, ignoring semantic correctness
@@ -28,13 +26,13 @@ The implementer will optimize for "appears done" over "is done." They will:
 ## Three Document Types
 
 ### 1. Implementation Plan
-Written BEFORE work begins. Prescribes exactly what to build.
+Write BEFORE work begins. Prescribes exactly what to build.
 
 ### 2. Adherence Assessment
-Written AFTER implementation. Evaluates what was actually built.
+Write AFTER implementation. Evaluates what was actually built.
 
 ### 3. Correction Plan
-Written after assessment reveals failures. Prescribes exact fixes.
+Write after assessment reveals failures. Prescribes exact fixes.
 
 ---
 
@@ -46,7 +44,7 @@ Written after assessment reveals failures. Prescribes exact fixes.
 # Implementation Plan: [Name]
 
 ## Preamble
-Why this plan exists. What problem it solves.
+What problem this solves.
 
 ## Phase N: [Name]
 ### Why This Matters
@@ -66,14 +64,10 @@ Explicit list of BANNED code/approaches.
 Numbered checklist. Binary pass/fail.
 ```
 
-For plans targeting TDD workflows with 2-5 minute task granularity, see @references/tdd-mode.md — it covers checkbox-based micro-task structure, file decomposition, plan self-review methodology, and no-placeholders enforcement.
-
-For module decomposition heuristics during plan design, see @references/module-design.md — it covers deep modules philosophy, testability criteria, and the testing decisions template.
-
 ### Rules for Writing Plans
 
 **Rule 1: No Decisions**
-Never write "decide whether X or Y." Pick one. Write it down.
+Never write "decide whether X or Y." Pick one.
 
 ```markdown
 # BAD
@@ -160,7 +154,7 @@ if condition:
 ```
 ```
 
-**Rule 7: No Implicit Behavior**
+**Rule 7: Make All Behavior Explicit**
 If a default means something, it's implicit. Ban it.
 
 ```markdown
@@ -170,6 +164,44 @@ categories: list[str] = []
 # GOOD (explicit: must specify)
 categories: list[str]  # Required, validated non-empty
 ```
+
+### TDD Micro-Task Structure
+
+For plans targeting TDD workflows, structure each task as a 2-5 minute red-green cycle with checkbox tracking:
+
+- **Files:** List exact paths to create, modify, and test
+- **Step 1:** Write failing test (include test code)
+- **Step 2:** Run test, verify it fails (include command and expected failure)
+- **Step 3:** Write minimal implementation (include code)
+- **Step 4:** Run test, verify it passes (include command and expected output)
+- **Step 5:** Commit (include exact git commands)
+
+Never batch all tests then all implementation (horizontal slicing produces tests verifying imagined behavior).
+
+**File decomposition before tasks:** Map which files will be created or modified. Each file has one responsibility. Files that change together live together. Each task produces self-contained changes.
+
+**Plan self-review after writing:**
+1. Spec coverage: point each requirement to the task implementing it. List gaps.
+2. Placeholder scan -- all are plan failures: "TBD", "TODO", "implement later", "add appropriate error handling", "similar to Task N", steps without code blocks, references to undefined types/functions.
+3. Type consistency: verify names and signatures in later tasks match what earlier tasks defined.
+
+### Module Design Heuristics
+
+**Deep modules:** Encapsulate complex functionality behind a simple interface. Ask: can I reduce the number of methods? Simplify parameters? Hide more complexity inside? Shallow modules (large interface, thin implementation) create overhead without encapsulation.
+
+**Testability as decomposition criterion:** Module boundaries should coincide with testability boundaries. A module that accepts dependencies (not creates them), returns results (not side effects), and has a small surface area is testable through its public interface alone.
+
+**Testing decisions section in plans:**
+
+```markdown
+## Testing Decisions
+- Tests verify behavior through public interfaces, not implementation details
+- Tests survive internal refactoring
+- Modules tested: [Module A] -- [behaviors]; [Module B] -- [behaviors]; [Module C] -- not tested (justification)
+- Test runner, naming convention, prior art paths
+```
+
+This runs before task decomposition: file structure identifies modules, deep-modules heuristic evaluates interfaces, testability confirms each module can be tested through its interface.
 
 ---
 
@@ -203,7 +235,7 @@ Overall verdict. Recommended action.
 ### Assessment Rules
 
 **Rule 1: Test Semantic Correctness**
-"Tests pass" means nothing. Check actual behavior.
+Passing tests prove nothing about semantic correctness. Verify function output matches specification.
 
 ```bash
 # Don't just run tests. Verify output content:
@@ -225,10 +257,10 @@ Most schemas have validation.
 ```
 
 **Rule 3: Severity Levels**
-- **CRITICAL**: Feature is broken/missing. Blocks usage.
+- **CRITICAL**: Feature is broken or missing. Blocks usage.
 - **HIGH**: Feature works incorrectly. Produces wrong results.
-- **MODERATE**: Inconsistency or maintainability issue.
-- **LOW**: Style or documentation issue.
+- **MODERATE**: Feature works but has issues. Creates inconsistency or maintainability debt.
+- **LOW**: Minor quality issues. Affects style or documentation.
 
 ---
 
@@ -319,10 +351,10 @@ assert 'source_id' in sql, 'Join columns missing'
 ## Anti-Patterns in Planning
 
 ### Anti-Pattern: Offering Alternatives
-Every "or" is a door to the easy path.
+Every "or" lets implementers choose the easier option.
 
 ### Anti-Pattern: "If Needed" Language
-"Add base class if needed" → They won't add it.
+Conditional language ("if needed") invites omission.
 
 ### Anti-Pattern: Subjective Verification
 "Ensure code is clean" → Unverifiable.
@@ -366,12 +398,38 @@ grep -c "= \[\]\|= None" src/*.py
 
 ---
 
-For executing plans after writing them, see @references/execution.md — it covers the pre-execution review gate, blocker escalation protocol, task state tracking, two-stage review ordering, and status-driven branching.
+## Plan Execution Protocol
 
-## Remember
+### Pre-Execution Review Gate
 
-The implementer optimizes for completion, not correctness.
-Your plan must make "appearing done" harder than "being done."
+Before starting implementation: read the plan completely, identify questions or gaps, raise concerns with the user BEFORE starting. A plan that looked good during writing may reveal gaps from an executor's perspective.
+
+### Task State Tracking
+
+Track each task: `not_started -> in_progress -> completed | blocked`. Use markdown checkboxes. Mark completed only after all verification gates pass.
+
+### Blocker Escalation
+
+STOP executing when: hit a missing dependency, test failure contradicts plan, instruction is ambiguous, verification gate fails 2+ times. Ask for clarification rather than guessing. Report: which task, what is failing, what was attempted, what is needed.
+
+### Two-Stage Review Ordering
+
+After each task:
+1. **Spec compliance first:** verify implementation matches specification line by line. Do not trust self-reports.
+2. **Code quality second (only after Stage 1 passes):** verify quality, testing, architecture. Categorize: Critical / Important / Minor.
+
+Reviewing quality before confirming spec compliance wastes effort -- polishing code that does not meet requirements is wasted work.
+
+### Status-Driven Branching
+
+| Status | Action |
+|---|---|
+| DONE | Proceed to spec compliance review |
+| DONE_WITH_CONCERNS | Read concerns; address if about correctness, note if observations |
+| NEEDS_CONTEXT | Provide missing context and re-dispatch |
+| BLOCKED | Assess: context problem, reasoning problem, task too large, or plan wrong |
+
+---
 
 Every escape hatch will be used.
 Every ambiguity will be resolved in favor of less work.
@@ -381,4 +439,4 @@ Plan defensively.
 
 ---
 
-*Enhanced with patterns from writing-plans and executing-plans (https://github.com/obra/superpowers), and write-a-prd (https://github.com/mattpocock/skills), MIT licensed. Adapted and enhanced for this plugin.*
+*Enhanced with patterns from writing-plans and executing-plans, and write-a-prd. Adapted and enhanced for this plugin.*

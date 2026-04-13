@@ -6,7 +6,7 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.1.0` | 6S 3A |
+| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.2.0` | 6S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.0.0` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.3.1` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
@@ -17,21 +17,18 @@
 
 ---
 
-## [dev-discipline](dev-discipline/) `1.1.0`
+## [dev-discipline](dev-discipline/) `1.2.0`
 
 Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.
 
 ### Skills
 
-- **[defensive-planning](dev-discipline/skills/defensive-planning/SKILL.md)** — Write implementation plans, assessments, and corrections for implementers who may cut corners. Use when: (1) creating implementation...
-  References: [`execution.md`](dev-discipline/skills/defensive-planning/references/execution.md), [`module-design.md`](dev-discipline/skills/defensive-planning/references/module-design.md), [`tdd-mode.md`](dev-discipline/skills/defensive-planning/references/tdd-mode.md)
+- **[defensive-planning](dev-discipline/skills/defensive-planning/SKILL.md)** — Write implementation plans, assessments, and corrections for implementers who may cut corners. Use when: creating implementation plans,...
 - **[improve-architecture](dev-discipline/skills/improve-architecture/SKILL.md)** — Explores codebases for architectural friction, discovers module-deepening opportunities, and proposes refactors through multi-design...
 - **[receiving-code-review](dev-discipline/skills/receiving-code-review/SKILL.md)** — This skill should be used to apply anti-performative code review protocol: verify-before-implement discipline, YAGNI enforcement, and...
-- **[systematic-debugging](dev-discipline/skills/systematic-debugging/SKILL.md)** — This skill should be used when the user reports a "bug", "test failure", "unexpected behavior", "error", "crash", "flaky test", asks to...
-  References: [`condition-based-waiting.md`](dev-discipline/skills/systematic-debugging/references/condition-based-waiting.md), [`defense-in-depth.md`](dev-discipline/skills/systematic-debugging/references/defense-in-depth.md), [`root-cause-tracing.md`](dev-discipline/skills/systematic-debugging/references/root-cause-tracing.md)
+- **[systematic-debugging](dev-discipline/skills/systematic-debugging/SKILL.md)** — Mandatory 4-phase root cause protocol for bugs, test failures, errors, or unexpected behavior. Prevents random fixes and symptom...
   Scripts: [`find-polluter.sh`](dev-discipline/skills/systematic-debugging/scripts/find-polluter.sh)
 - **[tdd](dev-discipline/skills/tdd/SKILL.md)** — This skill should be used when the user asks to "implement using TDD", "write tests first", "use test-driven development",...
-  References: [`deep-modules.md`](dev-discipline/skills/tdd/references/deep-modules.md), [`interface-design.md`](dev-discipline/skills/tdd/references/interface-design.md), [`mocking.md`](dev-discipline/skills/tdd/references/mocking.md), [`refactoring.md`](dev-discipline/skills/tdd/references/refactoring.md), [`tests.md`](dev-discipline/skills/tdd/references/tests.md)
 - **[triage-issue](dev-discipline/skills/triage-issue/SKILL.md)** — Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writes issue documents. Triggers: bug reports, "this is...
 ### Agents
 

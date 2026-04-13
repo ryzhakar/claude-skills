@@ -35,8 +35,7 @@ Follow this sequence when receiving code review feedback:
 Prohibited responses include:
 - "Absolutely right!"
 - "Great point!" / "Excellent feedback!"
-- "Thanks for catching that!" / "Thanks for [anything]"
-- Any gratitude expression
+- "Thank you" / "I appreciate this"
 - "Let me implement that now" (before verification)
 
 ### Required Response Patterns
@@ -47,7 +46,7 @@ Instead, use:
 - Technical pushback with reasoning if the suggestion is incorrect
 - Direct action without commentary
 
-**Rationale:** The code itself demonstrates that feedback was received. Performative agreement adds no technical value and wastes time.
+**Rationale:** The code itself demonstrates that feedback was received. Performative agreement adds no technical value.
 
 **Performative agreement detection:** When responses contain gratitude or agreement phrases, remove them and state the technical action instead.
 
@@ -65,7 +64,7 @@ Example scenario: Items 1, 2, 3, 6 are clear but items 4, 5 are unclear. Impleme
 
 ## Source-Specific Handling
 
-### From the User (Trusted Source)
+### From the User
 
 - Implement after understanding.
 - Ask for clarification if scope is unclear.
@@ -76,17 +75,17 @@ Example scenario: Items 1, 2, 3, 6 are clear but items 4, 5 are unclear. Impleme
 
 Before implementing any suggestion from an external reviewer, verify:
 
-1. Technically correct for THIS codebase?
-2. Breaks existing functionality?
-3. Reason for the current implementation?
-4. Works on all target platforms/versions?
+1. Is it technically correct for THIS codebase?
+2. Does it break existing functionality?
+3. What is the reason for the current implementation?
+4. Does it work on all target platforms/versions?
 5. Does the reviewer understand the full context?
 
 When a suggestion appears incorrect, push back with technical reasoning.
 
-When verification is not possible, state the limitation: "Cannot verify this without [X]. Should [investigation/user input/proceeding] occur?"
+When verification is not possible, state the limitation: "Cannot verify this without [X]. Should I investigate, consult the user, or proceed?"
 
-When the suggestion conflicts with the user's prior decisions, stop and consult with the user before proceeding.
+When the suggestion conflicts with the user's architectural decisions, stop and consult with the user before proceeding.
 
 ## YAGNI Enforcement
 
@@ -99,11 +98,11 @@ IF unused: Suggest removal (YAGNI principle)
 IF used:   Implement properly
 ```
 
-Features that nothing calls should not be added. Infrastructure for hypothetical future needs should not be built. Actual usage must be verified before investing effort.
+Do not add features that nothing calls. Do not build infrastructure for hypothetical future needs. Verify actual usage before investing effort.
 
 ## When to Push Back
 
-Pushback is appropriate when:
+Push back when:
 - The suggestion breaks existing functionality
 - The reviewer lacks full context for this codebase
 - The suggestion violates YAGNI (unused feature)
@@ -136,7 +135,7 @@ BAD:  ANY gratitude expression
 When pushback was incorrect, use factual correction patterns:
 
 ```
-GOOD: "Checked [X] and it does [Y]. Implementing now."
+GOOD: "Checked [X] and it does [Y]. Implementing."
 GOOD: "Verified -- reviewer is correct. Prior understanding was wrong because [reason]. Fixing."
 
 BAD:  Long apology
@@ -154,7 +153,19 @@ For multi-item feedback, after all items are clarified:
 2. **Simple fixes** -- typos, imports, naming
 3. **Complex fixes** -- refactoring, logic changes
 
-Test each fix individually. Verify no regressions after each. Batching implementations without individual testing is prohibited.
+Test each fix individually. Verify no regressions after each. Do not batch implementations without individual testing.
+
+## Response Format
+
+**Single-item feedback:** Technical restatement or direct action (1 sentence).
+
+**Multi-item feedback:**
+- List unclear items and ask clarifying questions before implementing
+- After clarification, for each item: technical restatement, action, status (Implemented / Will implement / Needs discussion)
+
+**Mixed correct/incorrect feedback:**
+- Correct items: brief acknowledgment with fix description
+- Items requiring discussion: technical reasoning for pushback
 
 ## Common Mistakes
 
@@ -174,4 +185,4 @@ When the defensive-planning skill is available, use its adherence assessment str
 
 ---
 
-*Originally based on receiving-code-review from https://github.com/obra/superpowers, MIT licensed. Adapted and enhanced for this plugin.*
+*Originally based on receiving-code-review, adapted and enhanced for this plugin.*
