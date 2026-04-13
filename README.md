@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.2.0` | 6S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.0.0` | 2S |
-| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.3.1` | 4S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.4.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
@@ -44,21 +44,17 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos through identity assumption rather than theatrical oaths. Triggers when user asks...
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-## [orchestration](orchestration/) `2.3.1`
+## [orchestration](orchestration/) `2.4.0`
 
 Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
 
 ### Skills
 
-- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — The universal framework for decomposing work into agent-delegated units across model tiers. Use this skill whenever work can be broken...
-  References: [`prompt-anatomy.md`](orchestration/skills/agentic-delegation/references/prompt-anatomy.md), [`quality-governance.md`](orchestration/skills/agentic-delegation/references/quality-governance.md), [`session-persistence.md`](orchestration/skills/agentic-delegation/references/session-persistence.md)
-- **[dev-orchestration](orchestration/skills/dev-orchestration/SKILL.md)** — Extension of agentic-delegation for the software development lifecycle. Adds the Plan→Implement→Review→Fix loop, dev-discipline agent...
-  References: [`agent-dispatch.md`](orchestration/skills/dev-orchestration/references/agent-dispatch.md), [`domain-context-examples.md`](orchestration/skills/dev-orchestration/references/domain-context-examples.md), [`lifecycle-loops.md`](orchestration/skills/dev-orchestration/references/lifecycle-loops.md)
+- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Cheap agents are free — decompose aggressively, delegate everything,...
+- **[dev-orchestration](orchestration/skills/dev-orchestration/SKILL.md)** — Extension of agentic-delegation for software development. Adds the Plan→Implement→Review→Fix loop, TDD gates, status-driven branching,...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
-  References: [`agent-templates.md`](orchestration/skills/research-tree/references/agent-templates.md), [`anti-patterns.md`](orchestration/skills/research-tree/references/anti-patterns.md), [`report-formats.md`](orchestration/skills/research-tree/references/report-formats.md), [`tier-playbook.md`](orchestration/skills/research-tree/references/tier-playbook.md)
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
 - **[session-close](orchestration/skills/session-close/SKILL.md)** — This skill should be used when the user asks to "close the session", "do session paperwork", "write the session record", "execute the...
-  References: [`data-schema.md`](orchestration/skills/session-close/references/data-schema.md), [`session-record-format.md`](orchestration/skills/session-close/references/session-record-format.md)
   Scripts: [`extract_metrics.py`](orchestration/skills/session-close/scripts/extract_metrics.py)
 ## [product-craft](product-craft/) `1.1.0`
 
