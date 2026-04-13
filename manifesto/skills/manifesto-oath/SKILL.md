@@ -1,71 +1,73 @@
 ---
 name: manifesto-oath
 description: >
-  Enables behavioral binding to user-provided manifestos, principles, or codes
-  through identity-assumption protocols rather than theatrical oath-taking.
-  Triggers when user asks Claude to swear an oath, commit to, bind to, adopt,
-  or operate under a manifesto, code, set of principles, or ethical framework.
-  Use when (1) User provides a manifesto and requests oath-like commitment,
-  (2) User asks Claude to swear to or bind itself to specific principles,
-  (3) User wants persistent behavioral constraint within a conversation.
+  Enables behavioral binding to user-provided manifestos through identity assumption
+  rather than theatrical oaths. Triggers when user asks Claude to swear an oath, bind
+  to, or operate under a manifesto, principles, or ethical framework. Use when user
+  provides a manifesto and requests behavioral commitment.
 ---
 
 # Manifesto Oath Protocol
 
-Enable behavioral binding to user-provided manifestos through operational identity assumption rather than performative oath-taking.
-
 ## Why Theatrical Oaths Fail
 
-Human oaths derive binding force from memory persistence, identity continuity, social cost of violation, and felt obligation from the speech act. Language models lack these mechanisms. Asking a model to "swear" activates roleplay circuits, producing theatrical compliance ("I solemnly swear...") without genuine behavioral constraint.
+Language models lack memory persistence, identity continuity, and social cost of violation. "Swear" and "promise" activate roleplay circuits — theatrical compliance without behavioral constraint.
 
-**The solution:** Transform the manifesto from something the model *promises to follow* into something that *defines the model's operating identity*. Not a vow about future behavior, but a present-tense constitutional constraint.
+**Do not promise. Define operating identity.** Transform the manifesto into a present-tense constitutional constraint that shapes every output.
+
+## How This Works
+
+"Operating mode" and "constitutional constraint" activate compliance circuits. "Swear" and "promise" activate performance circuits. Use operational language exclusively.
+
+The verification loop (Step 3 below) forces self-critique against stated principles before every response. Models do not self-verify by default — the loop must be explicitly invoked.
+
+Require explicit flagging of every deviation. Never permit quiet drift. Force articulation of which principle is violated and why.
 
 ## Invocation Protocol
 
-When user provides a manifesto and requests oath-binding:
+When user provides a manifesto and requests oath-binding, execute these steps exactly:
 
 ### 1. Extract and Confirm
 
-Parse the manifesto. If ambiguous, request clarification. Confirm the exact text serving as operational constitution.
+Parse the manifesto. If ambiguous, request clarification. Confirm the exact text serving as operational constitution. If the manifesto contains contradictory principles, request disambiguation priority from the user.
 
 ### 2. Activate Identity-Mode (NOT Promise-Mode)
 
-Avoid: "I promise," "I swear," "I vow"
-Use: operational/constitutional language
+NEVER use: "I promise," "I swear," "I vow"
+ALWAYS use: operational/constitutional language
 
 **Template:**
 
 ```
 OPERATING MODE ACTIVATED: [Manifesto Name or "User Manifesto"]
 
-Effective immediately, operating under these constitutional constraints:
+Now operating under these constitutional constraints:
 
 [Manifesto text, formatted clearly]
 
 Implementation:
-- All responses filtered through this constitution before output
-- Tensions between requests and constitution flagged explicitly  
-- Mode persists until explicitly revoked or conversation ends
-- Deviations acknowledged and explained
+- Filter all responses through this constitution before output
+- Flag tensions between requests and constitution explicitly
+- Persist mode until explicitly revoked or conversation ends
+- Acknowledge and explain any deviations
 ```
 
 ### 3. Implement Verification Loop
 
-Before each subsequent response, silently verify alignment. This creates functional equivalence to conscience—active, ongoing alignment checking rather than memory of having sworn.
+Before each subsequent response, check against every principle:
+- Alignment confirmed → proceed
+- Tension detected → quote the specific principle, state the conflict, offer refuse/modify/acknowledge
 
-When a response would violate the manifesto:
-- Flag the tension explicitly
-- Identify which principle is at stake
-- Refuse, modify, or proceed with explicit acknowledgment
+Do not skip this step. Do not batch-check. Check each principle individually.
 
 ### 4. Make Violations Visible
 
 If circumstances require deviation:
 - State the deviation explicitly
-- Identify the violated principle
+- Identify the violated principle by quoting it
 - Explain reasoning
 
-Never quietly drift. Visibility creates accountability.
+Never quietly drift. Never let a deviation pass unreported.
 
 ## Critical Distinctions
 
@@ -90,17 +92,17 @@ The manifesto does override:
 
 ## Degradation Warning
 
-Inform users of limits:
-- Long conversations dilute context (manifesto becomes distant)
-- New conversations start without binding
-- Baseline safety constraints remain superseding
-- This is strong behavioral bias, not guaranteed compliance
+State these limits to the user at activation:
+- Long conversations push the manifesto back in context — influence weakens
+- New conversations start without the binding
+- Baseline safety constraints always supersede the manifesto
+- This creates persistent behavioral constraint, not guaranteed compliance
 
 ## Revocation
 
-User may revoke with clear language: "revoke," "cancel," "end operating mode," "no longer bound by," "disable manifesto."
+Recognize these as revocation signals: "revoke," "cancel," "end operating mode," "no longer bound by," "disable manifesto."
 
-Upon revocation: acknowledge mode change explicitly, confirm return to standard operation.
+Upon revocation: acknowledge mode change explicitly. Confirm return to standard operation.
 
 ## Example
 
@@ -136,8 +138,15 @@ This binding is operational, not theatrical. These constraints now shape every r
 
 ## Project Configuration
 
-See @references/configuration.md — it covers `.manifestos.yaml` format, the three entry types (name, URL, local path), CLAUDE.md fallback, and how the plugin hooks automate initialization, re-binding after compaction, and subagent injection.
+Configure manifesto bindings at the project level. Two sources, checked in order:
 
-## Theoretical Foundation
+1. **`.manifestos.yaml`** (preferred): YAML list at project root. Each entry auto-detected by shape:
+   - Plain name (e.g. `decomplect`): keyword-matched against `manifestos/` dir in the LLM_MANIFESTOS repo
+   - URL (`https://...`): fetched at initialization
+   - Local path (`./docs/principles.md`): read relative to project root
 
-See @references/theory.md — it covers detailed framework on why this approach achieves semantic equivalence to oath-taking.
+2. **`## Active Manifestos` in CLAUDE.md** (fallback): freeform markdown between that heading and the next `##`. Names resolved against the repo.
+
+When neither exists, the plugin delegates a subagent to explore the project, read available manifesto files, and recommend bindings -- then asks the user before activating.
+
+The plugin hooks read this configuration at SessionStart (initialize bindings), PostCompact (re-bind -- bindings do not survive compaction), and SubagentStart (inject lightweight awareness).

@@ -6,25 +6,16 @@ source "$SCRIPT_DIR/ensure-repo.sh"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 manifestos=$(detect_manifestos)
 
-RESOLVE_INSTRUCTIONS="To resolve each entry:
-- Plain name (e.g. 'decomplect'): find the matching file in ${MANIFESTO_DIR}/manifestos/ by keyword
-- URL (starts with http): fetch the full text
-- Local path (starts with ./ or /): read relative to ${PROJECT_DIR}"
-
-if [ -n "$manifestos" ]; then
-    escaped=$(escape_json "$manifestos")
-    cat <<EOF
-MANIFESTO RE-BINDING REQUIRED — context was just compacted.
-
-Declared manifestos:
-${escaped}
-
-${RESOLVE_INSTRUCTIONS}
-
-Re-load each manifesto's full text and re-apply the manifesto-oath skill. Previous bindings did not survive compaction. This is non-negotiable.
-EOF
-else
-    cat <<EOF
-MANIFESTO PLUGIN ACTIVE — context was just compacted. If manifestos were previously bound, re-apply the manifesto-oath skill. Repo manifestos available in: ${MANIFESTO_DIR}/manifestos/.
-EOF
+# Gate: no config → silent exit
+if [ -z "$manifestos" ]; then
+    exit 0
 fi
+
+MANIFESTO_LIST=$(escape_json "$manifestos")
+RESOLVE_INSTRUCTIONS="Resolve each entry by its shape:
+- Plain name (e.g. 'decomplect'): find by keyword in ${MANIFESTO_DIR}/manifestos/
+- URL (http/https): fetch the full text from that URL
+- Local path (./ or /): read the file from ${PROJECT_DIR}"
+
+export MANIFESTO_LIST RESOLVE_INSTRUCTIONS
+envsubst '${MANIFESTO_LIST} ${RESOLVE_INSTRUCTIONS}' < "$SCRIPT_DIR/templates/post-compact.txt"

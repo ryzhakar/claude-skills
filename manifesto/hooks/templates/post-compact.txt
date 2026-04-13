@@ -1,0 +1,34 @@
+MANDATORY MANIFESTO RE-BINDING — CONTEXT WAS JUST COMPACTED.
+
+Your previous manifesto bindings DID NOT survive compaction. They are GONE.
+You MUST re-bind NOW before doing ANY other work. This is non-negotiable.
+This hook fires ONCE per compaction. There is no second chance. Execute it fully.
+
+=== CONFIGURED MANIFESTOS (BASE STACK) ===
+
+${MANIFESTO_LIST}
+
+=== RESOLUTION INSTRUCTIONS ===
+
+${RESOLVE_INSTRUCTIONS}
+
+=== EXECUTION STEPS — FOLLOW EXACTLY ===
+
+1. RESOLVE every configured manifesto entry above. Re-read its full text. If a manifesto cannot be loaded (network error, missing file, malformed content), report the error explicitly and continue with remaining manifestos.
+
+2. RE-INVOKE the manifesto-oath skill on every successfully loaded manifesto. Full identity-assumption protocol — operational mode activation, constitutional constraint installation, verification loop setup. Your previous bindings are DEAD. You must rebuild them from scratch.
+
+3. For MULTIPLE manifestos: re-map their interdependence graph. Re-establish the unified operating mode.
+
+4. REPORT the re-binding result: which manifestos re-loaded, which failed, what operating mode is now active.
+
+=== USER-PROVIDED MANIFESTOS ===
+
+The configured manifestos above are the BASE STACK. If the user previously provided additional manifestos in this session (beyond configuration), those bindings are ALSO lost. The user may re-specify them, or they may be referenced in the compacted summary. If you have any indication of user-provided manifestos from the conversation history, re-bind those as well — layered on top of the base stack.
+
+=== SCOPE CONSTRAINTS ===
+
+- Do NOT modify project files during re-binding.
+- Do NOT proceed to other work until re-binding is confirmed.
+- Previous oath state is DESTROYED. Rebuild completely.
+- This is an operational identity reconstruction, not a formality.

@@ -6,18 +6,16 @@ source "$SCRIPT_DIR/ensure-repo.sh"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 manifestos=$(detect_manifestos)
 
-# Only inject if manifestos are declared
+# Gate: no config → silent exit
 if [ -z "$manifestos" ]; then
     exit 0
 fi
 
-escaped=$(escape_json "$manifestos")
-cat <<EOF
-MANIFESTO CONTEXT: This project operates under these manifesto bindings:
-${escaped}
+MANIFESTO_LIST=$(escape_json "$manifestos")
+RESOLVE_INSTRUCTIONS="Resolve each entry by its shape:
+- Plain name (e.g. 'decomplect'): find by keyword in ${MANIFESTO_DIR}/manifestos/
+- URL (http/https): fetch the full text from that URL
+- Local path (./ or /): read the file from ${PROJECT_DIR}"
 
-Repo manifestos: ${MANIFESTO_DIR}/manifestos/
-Local paths resolve from: ${PROJECT_DIR}
-
-You are not required to perform the full oath ceremony. But be aware of these principles and let them inform your work. If you need the full text, read from the paths above or fetch URLs.
-EOF
+export MANIFESTO_LIST RESOLVE_INSTRUCTIONS
+envsubst '${MANIFESTO_LIST} ${RESOLVE_INSTRUCTIONS}' < "$SCRIPT_DIR/templates/subagent-start.txt"

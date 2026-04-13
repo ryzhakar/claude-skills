@@ -1,11 +1,8 @@
 ---
 name: manifesto-writing
 description: >
-  Trigger when users ask to turn talks, essays, or docs into a
-  manifesto—or request manifesto tone, command-style guidance, or
-  enemy-and-stakes framing—and then write the imperative version: name the
-  enemy early, strip hedging, compress to core distinctions and sharp
-  aphorisms, and end with a stark choice.
+  Trigger when users request manifestos or manifesto tone. Name the enemy,
+  strip hedging, compress to sharp distinctions, end with stark choice.
 ---
 
 
@@ -14,28 +11,28 @@ description: >
 
 Transform source material into manifestos: concentrated declarations of principle that command rather than explain.
 
-## Core Transformation
+## Transformation
 
-A manifesto is not a lecture. It declares. It commands. It names enemies. It assumes the reader is ready to be changed.
+It declares. It commands. It names enemies. It assumes the reader is ready to be changed.
 
-**Source material** (talks, essays, documentation) explains, hedges, builds gradually, accommodates objections.
+**Source material** (talks, essays, documentation) explains, hedges, builds, accommodates objections.
 
 **Manifestos** state positions as facts, strip hedging, build urgency, demand action.
 
-The transformation is compression plus conviction.
+The transformation: cut words, state positions as facts.
 
 ## What to Preserve
 
 - **Core distinctions** — the conceptual hinges the argument turns on
 - **Sharp vocabulary** — terms the author coined or defined precisely
-- **Memorable aphorisms** — lines that crystallize ideas
+- **Memorable aphorisms** — lines under 15 words that capture a core distinction
 - **The moral core** — why this matters, what's at stake
 - **Actionable principles** — what the reader should do
 
 ## What to Cut
 
-- Audience interaction, jokes, asides
-- Extended examples and digressions
+- Audience asides
+- Extended examples
 - Hedging language ("I think," "perhaps," "it seems," "sort of")
 - Repetition for emphasis (works in speech, bloats on page)
 - Explanatory scaffolding (definitions already given, objections pre-answered)
@@ -60,7 +57,7 @@ Every manifesto opposes something. Name it in the first section. Make the stakes
 
 ### Declarations, Not Arguments
 
-State positions. Do not justify them at length. The manifesto assumes the reader is ready to hear. If they need convincing, this is the wrong document.
+State positions. Do not justify them at length. The manifesto assumes the reader is ready to hear. If they need convincing, choose another form.
 
 ### Commands, Not Suggestions
 
@@ -68,7 +65,7 @@ Use imperative mood. "Do X." Not "You should consider doing X." Not "It might be
 
 ### Short Sentences, Short Sections
 
-Punchy rhythm. White space between sections. Each section should hit once and move on.
+Short sentences (under 20 words). Short sections (under 150 words). Punchy rhythm. White space between sections. Each section should hit once and move on.
 
 ### Tables Over Prose for Mappings
 
@@ -77,6 +74,18 @@ When showing "bad → good" or "complex → simple" mappings, use tables. Faster
 ### End with a Choice
 
 Manifestos call readers to decide. The closing should make the choice stark.
+
+## Process
+
+1. **Read source** — understand the argument's architecture before cutting
+2. **Identify the core** — what are the 3-5 ideas that everything else supports?
+3. **Extract vocabulary** — what terms does the author define or use precisely?
+4. **Find the enemy** — what does this oppose?
+5. **Draft sections** — one per core idea, plus opening (enemy + stakes) and closing (the choice)
+6. **Strip hedging** — remove "I think," "perhaps," etc. in a separate pass
+7. **Convert to commands** — change suggestions to imperatives
+8. **Tighten** — cut words, cut sentences, cut sections until it hurts
+9. **Add attribution** — credit the source author
 
 ## Tone Markers
 
@@ -126,27 +135,12 @@ When transforming someone else's work, attribute clearly. Use "After [Author]" t
 
 (Some lines need no transformation — only extraction.)
 
-## Process
-
-1. **Read source completely** — understand the argument's architecture before cutting
-2. **Identify the core** — what are the 3-5 ideas that everything else supports?
-3. **Extract vocabulary** — what terms does the author define or use precisely?
-4. **Find the enemy** — what does this oppose?
-5. **Draft sections** — one per core idea, plus opening (enemy + stakes) and closing (the choice)
-6. **Strip hedging** — remove "I think," "perhaps," etc. on a pass dedicated to this
-7. **Convert to commands** — change suggestions to imperatives
-8. **Tighten** — cut words, cut sentences, cut sections until it hurts
-9. **Add attribution** — credit the source author
-
 ## Length
 
 A manifesto should be readable in one sitting. For transformation of a 45-minute talk, aim for 1500-2500 words. Shorter is usually better.
 
-## When Not to Write a Manifesto
+## Prerequisites
 
-- When the source material has no clear position (manifestos require conviction)
-- When nuance is the point (manifestos flatten nuance)
-- When the audience needs convincing from first principles (manifestos assume sympathy)
-- When accuracy requires hedging (manifestos sacrifice precision for force)
+Manifestos require conviction. Manifestos flatten nuance. Manifestos assume sympathetic readers. Manifestos sacrifice precision for force.
 
-A manifesto is a tool for crystallization and transmission, not for discovery or persuasion from scratch.
+A manifesto is a tool for crystallization and transmission, not for discovery or persuasion.

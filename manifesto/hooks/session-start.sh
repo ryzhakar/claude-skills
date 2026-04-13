@@ -6,29 +6,16 @@ source "$SCRIPT_DIR/ensure-repo.sh"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 manifestos=$(detect_manifestos)
 
-RESOLVE_INSTRUCTIONS="To resolve each entry:
-- Plain name (e.g. 'decomplect'): find the matching file in ${MANIFESTO_DIR}/manifestos/ by keyword
-- URL (starts with http): fetch the full text
-- Local path (starts with ./ or /): read relative to ${PROJECT_DIR}"
-
-if [ -n "$manifestos" ]; then
-    escaped=$(escape_json "$manifestos")
-    cat <<EOF
-MANIFESTO INITIALIZATION REQUIRED.
-
-Declared manifestos:
-${escaped}
-
-${RESOLVE_INSTRUCTIONS}
-
-Load each manifesto's full text. Apply the manifesto-oath skill (operational identity assumption, not theatrical oath). For multiple manifestos, map their interdependence graph.
-EOF
-else
-    cat <<EOF
-MANIFESTO PLUGIN ACTIVE — no manifesto configuration found (.manifestos.yaml or Active Manifestos section in CLAUDE.md).
-
-Repo manifestos available in: ${MANIFESTO_DIR}/manifestos/
-
-Delegate a subagent to: (1) briefly explore the project (language, domain, conventions), (2) read the available manifesto files in ${MANIFESTO_DIR}/manifestos/, (3) recommend which manifestos are relevant. Then ask the user whether to bind them.
-EOF
+# Gate: no config → silent exit
+if [ -z "$manifestos" ]; then
+    exit 0
 fi
+
+MANIFESTO_LIST=$(escape_json "$manifestos")
+RESOLVE_INSTRUCTIONS="Resolve each entry by its shape:
+- Plain name (e.g. 'decomplect'): find by keyword in ${MANIFESTO_DIR}/manifestos/
+- URL (http/https): fetch the full text from that URL
+- Local path (./ or /): read the file from ${PROJECT_DIR}"
+
+export MANIFESTO_LIST RESOLVE_INSTRUCTIONS
+envsubst '${MANIFESTO_LIST} ${RESOLVE_INSTRUCTIONS}' < "$SCRIPT_DIR/templates/session-start.txt"
