@@ -18,8 +18,8 @@
     {
       "name": "product-craft",
       "source": "./product-craft/",
-      "description": "Product definition and architecture skills: extract specs from stakeholders, write user stories, triage bugs, improve codebase architecture, and establish ubiquitous language.",
-      "version": "1.0.0",
+      "description": "Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.",
+      "version": "1.1.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -29,8 +29,8 @@
     {
       "name": "dev-discipline",
       "source": "./dev-discipline/",
-      "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.",
-      "version": "1.0.0",
+      "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.",
+      "version": "1.1.0",
       "author": {
         "name": "ryzhakar"
       },

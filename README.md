@@ -6,10 +6,10 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.0.0` | 4S 3A |
+| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.1.0` | 6S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.0.0` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.3.1` | 4S |
-| [product-craft](product-craft/) | Product definition and architecture skills: extract specs from stakeholders,... | `1.0.0` | 4S |
+| [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.0.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
 | [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `2.5.0` | 1S 4A |
@@ -17,20 +17,22 @@
 
 ---
 
-## [dev-discipline](dev-discipline/) `1.0.0`
+## [dev-discipline](dev-discipline/) `1.1.0`
 
-Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.
+Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.
 
 ### Skills
 
 - **[defensive-planning](dev-discipline/skills/defensive-planning/SKILL.md)** — Write implementation plans, assessments, and corrections for implementers who may cut corners. Use when: (1) creating implementation...
   References: [`execution.md`](dev-discipline/skills/defensive-planning/references/execution.md), [`module-design.md`](dev-discipline/skills/defensive-planning/references/module-design.md), [`tdd-mode.md`](dev-discipline/skills/defensive-planning/references/tdd-mode.md)
+- **[improve-architecture](dev-discipline/skills/improve-architecture/SKILL.md)** — Explores codebases for architectural friction, discovers module-deepening opportunities, and proposes refactors through multi-design...
 - **[receiving-code-review](dev-discipline/skills/receiving-code-review/SKILL.md)** — This skill should be used to apply anti-performative code review protocol: verify-before-implement discipline, YAGNI enforcement, and...
 - **[systematic-debugging](dev-discipline/skills/systematic-debugging/SKILL.md)** — This skill should be used when the user reports a "bug", "test failure", "unexpected behavior", "error", "crash", "flaky test", asks to...
   References: [`condition-based-waiting.md`](dev-discipline/skills/systematic-debugging/references/condition-based-waiting.md), [`defense-in-depth.md`](dev-discipline/skills/systematic-debugging/references/defense-in-depth.md), [`root-cause-tracing.md`](dev-discipline/skills/systematic-debugging/references/root-cause-tracing.md)
   Scripts: [`find-polluter.sh`](dev-discipline/skills/systematic-debugging/scripts/find-polluter.sh)
 - **[tdd](dev-discipline/skills/tdd/SKILL.md)** — This skill should be used when the user asks to "implement using TDD", "write tests first", "use test-driven development",...
   References: [`deep-modules.md`](dev-discipline/skills/tdd/references/deep-modules.md), [`interface-design.md`](dev-discipline/skills/tdd/references/interface-design.md), [`mocking.md`](dev-discipline/skills/tdd/references/mocking.md), [`refactoring.md`](dev-discipline/skills/tdd/references/refactoring.md), [`tests.md`](dev-discipline/skills/tdd/references/tests.md)
+- **[triage-issue](dev-discipline/skills/triage-issue/SKILL.md)** — Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writes issue documents. Triggers: bug reports, "this is...
 ### Agents
 
 - **[code-quality-reviewer](dev-discipline/agents/code-quality-reviewer.md)** (`inherit`) — Use this agent when reviewing code quality after spec compliance has been verified, when completing a feature and...
@@ -61,19 +63,14 @@ Agent delegation framework, multi-agent research orchestration, and development 
 - **[session-close](orchestration/skills/session-close/SKILL.md)** — This skill should be used when the user asks to "close the session", "do session paperwork", "write the session record", "execute the...
   References: [`data-schema.md`](orchestration/skills/session-close/references/data-schema.md), [`session-record-format.md`](orchestration/skills/session-close/references/session-record-format.md)
   Scripts: [`extract_metrics.py`](orchestration/skills/session-close/scripts/extract_metrics.py)
-## [product-craft](product-craft/) `1.0.0`
+## [product-craft](product-craft/) `1.1.0`
 
-Product definition and architecture skills: extract specs from stakeholders, write user stories, triage bugs, improve codebase architecture, and establish ubiquitous language.
+Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.
 
 ### Skills
 
-- **[improve-architecture](product-craft/skills/improve-architecture/SKILL.md)** — This skill should be used when the user asks to "improve the architecture", "find refactoring opportunities", "deepen shallow modules",...
-  References: [`dependency-categories.md`](product-craft/skills/improve-architecture/references/dependency-categories.md), [`rfc-template.md`](product-craft/skills/improve-architecture/references/rfc-template.md)
-- **[spec-chef](product-craft/skills/spec-chef/SKILL.md)** — Extract implicit product decisions from stakeholders into durable artifacts. Triggers: analyzing incomplete specs, stakeholder...
-  References: [`artifact-separation.md`](product-craft/skills/spec-chef/references/artifact-separation.md), [`dependency-tiers.md`](product-craft/skills/spec-chef/references/dependency-tiers.md), [`gap-heuristics.md`](product-craft/skills/spec-chef/references/gap-heuristics.md), [`terminology-extraction.md`](product-craft/skills/spec-chef/references/terminology-extraction.md)
-- **[triage-issue](product-craft/skills/triage-issue/SKILL.md)** — This skill should be used when the user reports a bug, says "this is broken", asks to "triage an issue", "investigate a bug", "find the...
-- **[user-story-chef](product-craft/skills/user-story-chef/SKILL.md)** — Write user stories as value negotiation units, not template-filling exercises. Triggers: writing user stories, acceptance criteria,...
-  References: [`anti-patterns.md`](product-craft/skills/user-story-chef/references/anti-patterns.md), [`slicing.md`](product-craft/skills/user-story-chef/references/slicing.md)
+- **[spec-chef](product-craft/skills/spec-chef/SKILL.md)** — Extracts implicit product decisions from stakeholders into durable artifacts through systematic gap detection and constrained...
+- **[user-story-chef](product-craft/skills/user-story-chef/SKILL.md)** — Writes user stories as value negotiation units, not template-filling exercises. Triggers: writing user stories, acceptance criteria,...
 ## [prompt-engineering](prompt-engineering/) `1.0.0`
 
 Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.

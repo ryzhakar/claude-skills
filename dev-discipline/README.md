@@ -1,8 +1,8 @@
 # dev-discipline
 
-Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.
+Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.
 
-`tdd` `debugging` `planning` `code-review` `testing` 
+`tdd` `debugging` `planning` `code-review` `testing` `triage` `architecture` `refactoring` 
 ## Skills
 
 ### [defensive-planning](skills/defensive-planning/SKILL.md)
@@ -16,6 +16,13 @@ with verification gates, forbidden patterns, and zero escape hatches.
 
 
 **References:** [`execution.md`](skills/defensive-planning/references/execution.md) · [`module-design.md`](skills/defensive-planning/references/module-design.md) · [`tdd-mode.md`](skills/defensive-planning/references/tdd-mode.md)
+---
+
+### [improve-architecture](skills/improve-architecture/SKILL.md)
+
+Explores codebases for architectural friction, discovers module-deepening opportunities, and proposes refactors through multi-design exploration. Triggers: "improve architecture", "find refactoring opportunities", "deepen shallow modules", "reduce coupling", "simplify module structure", mentions of architectural friction or module boundaries. Writes refactor RFC as a report file.
+
+
 ---
 
 ### [receiving-code-review](skills/receiving-code-review/SKILL.md)
@@ -40,6 +47,13 @@ This skill should be used when the user asks to "implement using TDD", "write te
 
 
 **References:** [`deep-modules.md`](skills/tdd/references/deep-modules.md) · [`interface-design.md`](skills/tdd/references/interface-design.md) · [`mocking.md`](skills/tdd/references/mocking.md) · [`refactoring.md`](skills/tdd/references/refactoring.md) · [`tests.md`](skills/tdd/references/tests.md)
+---
+
+### [triage-issue](skills/triage-issue/SKILL.md)
+
+Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writes issue documents. Triggers: bug reports, "this is broken", "triage an issue", "investigate a bug", "find the root cause", "file an issue for this bug", autonomous problem diagnosis.
+
+
 ---
 
 ## Agents

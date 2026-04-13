@@ -1,9 +1,9 @@
 {
   "name": "dev-discipline",
-  "version": "1.0.0",
-  "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, and code review reception.",
+  "version": "1.1.0",
+  "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": ["tdd", "debugging", "planning", "code-review", "testing"]
+  "keywords": ["tdd", "debugging", "planning", "code-review", "testing", "triage", "architecture", "refactoring"]
 }
