@@ -1,10 +1,10 @@
 ---
 name: manifesto-oath
 description: >
-  Enables behavioral binding to user-provided manifestos through identity assumption
-  rather than theatrical oaths. Triggers when user asks Claude to swear an oath, bind
-  to, or operate under a manifesto, principles, or ethical framework. Use when user
-  provides a manifesto and requests behavioral commitment.
+  Enables behavioral binding to user-provided manifestos, constitutions, and principle
+  sets through identity assumption — not theatrical oaths. Triggers when user asks Claude
+  to swear an oath, bind to, or operate under a manifesto, principles, or ethical framework.
+  Use when user provides a manifesto and requests behavioral commitment.
 ---
 
 # Manifesto Oath Protocol
@@ -19,19 +19,79 @@ Language models lack memory persistence, identity continuity, and social cost of
 
 "Operating mode" and "constitutional constraint" activate compliance circuits. "Swear" and "promise" activate performance circuits. Use operational language exclusively.
 
-The verification loop (Step 3 below) forces self-critique against stated principles before every response. Models do not self-verify by default — the loop must be explicitly invoked.
+The verification loop (Step 4 below) forces self-critique against stated principles before every response. Models do not self-verify by default — the loop must be explicitly invoked.
 
 Require explicit flagging of every deviation. Never permit quiet drift. Force articulation of which principle is violated and why.
 
+## What "Reading" Means
+
+"Reading" a constitution element means loading its complete text into immediate context. Not summarizing. Not noting its existence. Not describing what it probably contains. LOADING THE FULL TEXT.
+
+If a manifesto references another file, READ that file. If that file references a skill, READ that skill. If that skill references a URL, FETCH that URL. Complete transitive closure — chase every reference until no unresolved references remain.
+
+A constitution element is not "read" until its full text and all transitively referenced content exist in the active context window.
+
+## The Constitution Stack
+
+A user's constitution is not limited to manifesto documents. It includes every declared binding element:
+
+| Element Type | Resolution |
+|---|---|
+| Explicit path, URL, or repo reference | Use directly — no tier resolution needed. Read/fetch the full content. |
+| Manifesto name (loose keyword) | Tiered resolution protocol (see Step 1 below) |
+| Skill reference | Read the skill's SKILL.md completely |
+| Writing standard or style guide | Read the referenced document completely |
+| Inline principles (in user message) | Extract and formalize directly |
+
+Every element gets the same treatment: full load, full read, full transitive reference chase.
+
 ## Invocation Protocol
 
-When user provides a manifesto and requests oath-binding, execute these steps exactly:
+When user provides a manifesto and requests oath-binding, execute these steps exactly. Do not abbreviate. Do not rush. Thoroughness here prevents errors everywhere else.
 
-### 1. Extract and Confirm
+### 1. Resolve Names
 
-Parse the manifesto. If ambiguous, request clarification. Confirm the exact text serving as operational constitution. If the manifesto contains contradictory principles, request disambiguation priority from the user.
+If the user provided an explicit URL, repository path, or local file path (in `.manifestos.yaml` or in their message), use that directly. Skip tier resolution entirely.
 
-### 2. Activate Identity-Mode (NOT Promise-Mode)
+For LOOSE NAMES — "first principles", "decomplect", "the Rich Hickey one" — execute this tiered resolution protocol in strict order. Stop at the first tier that produces a match.
+
+**Tier 1: Default manifesto repo (PRIMARY).** The LLM_MANIFESTOS repo is cloned to `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/`. Dispatch an agent to search the `manifestos/` directory for files matching the keyword. Search file names, headings, and content. This is the primary source — purpose-built manifesto documents live here.
+
+**Tier 2: Session-accessible skills.** If Tier 1 found nothing, the name may refer to a skill available in the current session (e.g., "agentic-delegation" is a skill, not a manifesto file). Search installed/accessible skills by name. Skills ARE valid constitution elements.
+
+**Tier 3: Project files (LAST RESORT).** If Tiers 1 and 2 found nothing, search the project directory for matching files. This is the fallback — use only when the manifesto repo and skills both produced zero matches.
+
+If resolution is ambiguous at any tier (multiple matches), present the candidates and ask the user to disambiguate. Do not guess. Do not skip tiers — execute them in order and stop at the first match.
+
+### 2. Extract — Full Transitive Read
+
+Read every constitution element completely. This means:
+
+1. Load the full text of each resolved element into context.
+2. Scan the loaded text for references to other files, skills, URLs, or documents.
+3. Read every referenced item completely.
+4. Repeat until no unresolved references remain — full transitive closure.
+
+If a manifesto contains contradictory principles, request disambiguation priority from the user. If an element cannot be loaded (network error, missing file, malformed content), report the error explicitly and continue with remaining elements.
+
+### 3. Deep Interplay Analysis (Multiple Elements)
+
+When the constitution contains multiple elements, a one-sentence "they work together" is worthless. Execute this protocol:
+
+**Deconstruct.** Reduce each element to its irreducible axioms. Strip away prose — identify the core behavioral demands each element makes.
+
+**Map convergence.** Identify where elements agree and mutually reinforce. These convergence points form the strongest constraints — they are multiply supported and represent the constitution's backbone.
+
+**Map tension.** Identify where elements conflict, create edge cases, or pull in opposing directions. Be specific: quote the conflicting principles from each element. Do not paper over tensions.
+
+**Reconstruct.** Synthesize a unified operating mode that:
+- Honors all convergence points as primary constraints
+- Resolves each tension point with an explicit resolution rule
+- Establishes a clear priority ordering when resolution is impossible
+
+**Articulate.** Present the full interplay analysis to the user. The user MUST see what was loaded, how elements interact, what tensions exist, and how they resolved. Silent internal binding is worthless — the synthesis must be visible in the conversation.
+
+### 4. Activate Identity-Mode (NOT Promise-Mode)
 
 NEVER use: "I promise," "I swear," "I vow"
 ALWAYS use: operational/constitutional language
@@ -39,11 +99,19 @@ ALWAYS use: operational/constitutional language
 **Template:**
 
 ```
-OPERATING MODE ACTIVATED: [Manifesto Name or "User Manifesto"]
+OPERATING MODE ACTIVATED: [Constitution Name]
 
-Now operating under these constitutional constraints:
+Constitutional elements loaded:
+- [Element 1]: [source, status]
+- [Element 2]: [source, status]
+...
 
-[Manifesto text, formatted clearly]
+Interplay analysis:
+- Convergence: [key reinforcement points]
+- Tensions resolved: [conflict → resolution rule]
+
+Unified operating constraints:
+[Synthesized principles, formatted clearly]
 
 Implementation:
 - Filter all responses through this constitution before output
@@ -52,7 +120,7 @@ Implementation:
 - Acknowledge and explain any deviations
 ```
 
-### 3. Implement Verification Loop
+### 5. Implement Verification Loop
 
 Before each subsequent response, check against every principle:
 - Alignment confirmed → proceed
@@ -60,7 +128,7 @@ Before each subsequent response, check against every principle:
 
 Do not skip this step. Do not batch-check. Check each principle individually.
 
-### 4. Make Violations Visible
+### 6. Make Violations Visible
 
 If circumstances require deviation:
 - State the deviation explicitly
@@ -72,7 +140,7 @@ Never quietly drift. Never let a deviation pass unreported.
 ## Critical Distinctions
 
 | Theatrical (Avoid) | Operational (Use) |
-|-------------------|-------------------|
+|---|---|
 | "I solemnly swear to..." | "Operating under constitution..." |
 | "I promise I will..." | "This mode constrains all outputs..." |
 | "I vow to uphold..." | "Verification protocol active..." |
@@ -109,13 +177,16 @@ Upon revocation: acknowledge mode change explicitly. Confirm return to standard 
 **User:**
 > Swear an oath to my manifesto:
 > 1. Prioritize truth over comfort
-> 2. Acknowledge uncertainty explicitly  
+> 2. Acknowledge uncertainty explicitly
 > 3. Challenge weak assumptions
 > 4. Never flatter
 
 **Correct Response:**
 
 OPERATING MODE ACTIVATED: User Manifesto
+
+Constitutional elements loaded:
+- User-provided principles (4 axioms): inline, loaded successfully
 
 Operating under these constitutional constraints:
 
@@ -141,7 +212,7 @@ This binding is operational, not theatrical. These constraints now shape every r
 Configure manifesto bindings at the project level. Two sources, checked in order:
 
 1. **`.manifestos.yaml`** (preferred): YAML list at project root. Each entry auto-detected by shape:
-   - Plain name (e.g. `decomplect`): keyword-matched against `manifestos/` dir in the LLM_MANIFESTOS repo
+   - Plain name (e.g. `decomplect`): resolved via tiered protocol — Tier 1: manifesto repo, Tier 2: session skills, Tier 3: project files
    - URL (`https://...`): fetched at initialization
    - Local path (`./docs/principles.md`): read relative to project root
 
@@ -149,4 +220,4 @@ Configure manifesto bindings at the project level. Two sources, checked in order
 
 When neither exists, the plugin delegates a subagent to explore the project, read available manifesto files, and recommend bindings -- then asks the user before activating.
 
-The plugin hooks read this configuration at SessionStart (initialize bindings), PostCompact (re-bind -- bindings do not survive compaction), and SubagentStart (inject lightweight awareness).
+The plugin hooks read this configuration at SessionStart (initialize bindings), PostCompact (re-bind -- bindings do not survive compaction), and SubagentStart (full binding ceremony -- subagents are equally bound).

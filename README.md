@@ -7,7 +7,7 @@
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.2.0` | 6S 3A |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.0.0` | 2S |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.1.0` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.4.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
@@ -36,13 +36,13 @@ Software engineering discipline: defensive planning, test-driven development, sy
 - **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a...
 - **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Use this agent when verifying that an implementation matches its specification, after an implementer reports task...
 
-## [manifesto](manifesto/) `2.0.0`
+## [manifesto](manifesto/) `2.1.0`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 
 ### Skills
 
-- **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos through identity assumption rather than theatrical oaths. Triggers when user asks...
+- **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, constitutions, and principle sets through identity assumption — not theatrical...
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
 ## [orchestration](orchestration/) `2.4.0`
 
