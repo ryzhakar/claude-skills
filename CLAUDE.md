@@ -2,6 +2,8 @@ Manage this repo as a claude marketplace consisting of plugins with skills, agen
 Don't hesitate to launch the built-in claude code documentation agent on as much requests as you need.
 Make use of plugin-dev:* skills and agents as much as possible.
 
+@ETHOS.md
+
 ## Versioning
 
 - Versions live in `plugin.json` only. Skill frontmatters do not carry version fields.
