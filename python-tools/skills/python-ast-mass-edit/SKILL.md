@@ -1,6 +1,6 @@
 ---
 name: python-ast-mass-edit
-description: Systematic workflow for AST-based mass edits in Python codebases. Use when editing 3+ files with structural changes (decorators, function signatures, imports, class definitions). Includes pre-surveying with grep/pyright, idempotent transformations, and validation protocol. NOT for simple string replacements or <5 instances.
+description: Systematic workflow for AST-based mass edits in Python codebases. Use when editing 3+ files with structural changes (decorators, function signatures, imports, class definitions). Includes pre-surveying, idempotent transformations, and validation.
 ---
 
 # AST-Based Mass Edit Protocol
@@ -16,7 +16,7 @@ description: Systematic workflow for AST-based mass edits in Python codebases. U
 - < 5 instances total → Manual edits faster than script setup
 - Complex logic requiring semantic understanding → Manual review safer
 
-## 4-Step Execution Protocol
+## 4-Step Protocol
 
 ### Step 1: Survey (Pre-index instances)
 
@@ -36,7 +36,7 @@ for e in json.load(sys.stdin)['generalDiagnostics']:
     print(f'L{e[\"range\"][\"start\"][\"line\"]+1}: {e[\"message\"]}')" > error_index.txt
 ```
 
-**Output:** Line-indexed list of ALL transformation targets. This is your ground truth.
+**Output:** Line-indexed list of ALL transformation targets.
 
 ### Step 2: Transform (Throwaway AST script)
 
@@ -87,7 +87,7 @@ pytest
 # If ANY step fails: git checkout . and fix the script
 ```
 
-**The diff review is non-negotiable.** AST transformations can have subtle bugs.
+**You must review the diff.** AST transformations can have subtle bugs.
 
 ### Step 4: Commit (Proof-of-work)
 
@@ -172,7 +172,7 @@ if 1 <= old_val <= 7:
 → `ruff format` changed other code. Review diff carefully before committing.
 
 **"Script errors on complex code"**
-→ AST can't handle all Python syntax (f-strings with complex nesting, etc.). Consider manual edits.
+→ AST fails on some complex Python syntax: nested f-strings and similar edge cases. Use manual edits instead.
 
 ## Bundled Resources
 

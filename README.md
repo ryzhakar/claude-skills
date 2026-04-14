@@ -11,7 +11,7 @@
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.4.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
-| [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.0.0` | 2S |
+| [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
 | [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `3.0.0` | 1S 4A |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
 
@@ -72,7 +72,7 @@ Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 
 - **[prompt-eval](prompt-engineering/skills/prompt-eval/SKILL.md)** — This skill should be used when the user asks to "evaluate a prompt", "review a system prompt", "assess prompt quality", "check if this...
 - **[prompt-optimize](prompt-engineering/skills/prompt-optimize/SKILL.md)** — This skill should be used when the user asks to "improve this prompt", "optimize a prompt", "fix this system prompt", "make this prompt...
-## [python-tools](python-tools/) `1.0.0`
+## [python-tools](python-tools/) `1.1.0`
 
 Python development tooling: debug type errors in uv-managed projects with pyright, and perform AST-based mass structural edits across codebases.
 

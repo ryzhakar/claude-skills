@@ -1,6 +1,6 @@
 ---
 name: uv-pyright-debug
-description: Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone pyright reports 0 errors, or when systematic analysis of type errors is needed before mass edits. Critical for projects using pydantic models where Field() defaults may not be properly inferred.
+description: Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone pyright reports 0 errors, or when systematic analysis of type errors is needed before mass edits.
 ---
 
 # UV-Pyright Debugging Workflow
@@ -9,7 +9,7 @@ description: Debug type errors in uv-managed Python projects by accessing true p
 
 **Symptom:** IDE shows hundreds of type errors, but `pyright file.py` reports 0 errors.
 
-**Root Cause:** Standalone pyright uses system Python and can't import project dependencies (pydantic, etc.) installed in the uv-managed venv. Without proper imports, pyright falls back to lenient type inference, hiding real errors.
+**Root Cause:** Standalone pyright uses system Python and lacks access to project dependencies (pydantic, etc.) installed in the uv-managed venv. Without proper imports, pyright falls back to lenient type inference, hiding real errors.
 
 **Solution:** Always run pyright through the project's virtual environment using `uv run`.
 
@@ -25,7 +25,7 @@ pyright structured_query_builder/examples.py
 uv run pyright structured_query_builder/examples.py --outputjson > errors.json
 ```
 
-**Key insight:** `uv run` ensures pyright sees the exact Python environment your code runs in, revealing type errors that depend on third-party package type stubs.
+`uv run` ensures pyright sees the exact Python environment your code runs in, revealing type errors that depend on third-party package type stubs.
 
 ### Step 2: Analyze Error Patterns
 
@@ -78,9 +78,9 @@ L65: (1 error)
   • Argument missing for parameter "table_alias"
 ```
 
-**Use case:** This index guides AST transformation scripts. Know exactly which lines need fixing before writing the transformer.
+This index guides AST transformation scripts. Know exactly which lines need fixing before writing the transformer.
 
-### Step 4: Identify Root Causes
+### Step 4: Root Causes and Fixes
 
 Common patterns in uv-managed projects:
 
@@ -92,7 +92,7 @@ class Query(BaseModel):
     where: Optional[WhereL1] = Field(None, ...)  # Optional but pyright thinks required
 ```
 
-**Cause:** Pyright without pydantic type stubs can't infer that `Field(None, ...)` makes parameters optional.
+**Cause:** Pyright requires pydantic type stubs to infer that `Field(None, ...)` makes parameters optional.
 
 **Pattern 2: Field Alias Issues**
 ```python
@@ -103,11 +103,9 @@ from_: FromClause = Field(..., alias="from")
 **Cause:** Pyright sees parameter name `from_` but user code uses `from` (the alias).
 
 **Pattern 3: Discriminated Union Issues**
-Type narrowing fails when pyright can't see discriminator field definitions from imported models.
+Type narrowing fails when pyright lacks discriminator field definitions from imported models.
 
-### Step 5: Strategic Fixes
-
-**For scattered issues (<10 instances):** Manual fixes using the line-indexed report.
+**For isolated issues (1-9 instances):** Manual fixes using the line-indexed report.
 
 **For systematic issues (10+ instances):** Use AST-based mass edits with the error index as your guide.
 
