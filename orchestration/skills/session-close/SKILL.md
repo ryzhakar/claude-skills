@@ -1,18 +1,54 @@
 ---
 name: session-close
-description: This skill should be used when the user asks to "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", or at the natural end of a development orchestration session. Governs the full session close-out workflow including agent-based metric extraction from raw session data on disk, session record authoring, reference document updates, cost capture, and VCS commit.
-disable-model-invocation: true
+description: >
+  Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers
+  session start (reference doc ingestion), session work (convention adherence), and
+  session close (metric extraction, session record, reference updates, cost capture, VCS commit).
+
+  Triggers: "close the session", "do session paperwork", "write the session record",
+  "execute the LEAVE protocol", "wrap up the session", "start a session", "ARRIVE",
+  "session lifecycle"; or at the natural end of a development orchestration session.
+  Also invoked by model when session persistence context is needed.
 ---
 
-# Session Close
+# Session Lifecycle
 
-Governs the LEAVE protocol for orchestration sessions. Produces durable institutional memory by combining objective data extracted from raw session files on disk with orchestrator context that only the active session possesses.
+Governs the ARRIVE/WORK/LEAVE lifecycle for orchestration sessions. Produces durable institutional memory by combining objective data extracted from raw session files on disk with orchestrator context that only the active session possesses.
 
 ## Core Principle
 
 **The orchestrator holds context no agent can reconstruct.** Agents extract objective data (metrics, git history, file changes) from disk. The orchestrator synthesizes that with the actual decisions made, failures encountered, and reasoning behind choices — then corrects the agents' reconstructions before committing.
 
 Never delegate the final synthesis and correction to an agent. The orchestrator owns the session record.
+
+## Directory Structure
+
+```
+orchestration_log/
+  reference/              LIVING documents. Updated by orchestrator before leaving.
+    conventions.md        How to work: model tiers, dispatch rules, forbidden patterns.
+    codebase_state.md     What exists NOW: inventory, test shape, known limitations, next actions.
+    deferred_items.md     Living backlog: unresolved findings with severity and deferral rationale.
+
+  history/                APPEND-ONLY. Never edit a past session.
+    YYYY-MM-DD/
+      session.md          Timeline, decisions, failures, cost, outcomes.
+      reviews/            Review reports (primary evidence, not summaries).
+
+  recon/                  DISPOSABLE. Gitignored. Regenerate when stale.
+    YYYY-MM-DD/
+      scouts/             Raw agent reports, research findings, data explorations.
+```
+
+### Mutability Rules
+
+| Layer | Mutability | Purpose |
+|-------|-----------|---------|
+| `reference/` | Living -- updated each session | What is true NOW |
+| `history/` | Frozen -- never edited after session ends | What happened THEN |
+| `recon/` | Disposable -- gitignored, regenerate | Raw scouting data |
+
+Living documents that are not updated become lies. Frozen documents that get edited destroy the historical record. Disposable documents that are not gitignored bloat the repository.
 
 ## Session Data on Disk
 
@@ -69,21 +105,24 @@ Model tier: "haiku" if model contains "haiku", "sonnet" if "sonnet", "opus" if "
 
 ### Agent Dispatch Counting
 
-Count unique `agentId` values across all JSONL files (excluding orchestrator ID), or count `Agent` tool_use blocks in orchestrator JSONL.
+Count agents in TWO separate groupings:
 
-### Cost Formulas
+**By model tier.** How many agents ran on haiku, sonnet, opus. Extract from `message.model` field in each agent's JSONL.
 
-| Tier | Input | Output | Cache Read | Cache Write | (per 1M tokens) |
-|------|-------|--------|------------|-------------|-----------------|
-| Opus | $15.00 | $75.00 | $1.50 | $3.75 | |
-| Sonnet | $3.00 | $15.00 | $0.30 | $0.75 | |
-| Haiku | $0.80 | $4.00 | $0.08 | $0.20 | |
+**By agent type.** How many of each `subagent_type` were dispatched (e.g., 5 implementers, 3 spec-reviewers, 15 haiku research agents). Extract from agent metadata or the `subagent_type` field.
 
-Cost = sum of (tokens / 1M * rate) for each of the four token categories per tier.
+Both groupings. Separately. Not collapsed into one table.
 
-### Cache Dominates Cost
+### Cost Source
 
-In long sessions, `cache_read_input_tokens` can be 100-800x larger than direct `input_tokens`. The orchestrator's context window accumulates and is re-sent as cache every turn. This is why Opus dominates cost even when agents do most work — the orchestrator's long context is expensive to cache-read repeatedly.
+`/cost` is the ONLY trusted cost source. No manual counting. No estimation. No JSONL-derived cost numbers — JSONL double-counts subagent internals.
+
+BEFORE trusting `/cost`, cross-verify scope:
+- **Wall time range** — does the reported period match this session?
+- **Branching** — a branched session's `/cost` covers only that branch, not the parent.
+- **Multiple sessions** — did more than one session contribute? `/cost` reports one session.
+
+The verification confirms `/cost` reports for the RIGHT scope. It does not compute an alternative number.
 
 ## Session Record Format
 
@@ -96,12 +135,12 @@ In long sessions, `cache_read_input_tokens` can be 100-800x larger than direct `
 **Session ID:** {session-id}          ← links to raw JSONL files
 **Branch:** {git branch, if branched}  ← omit if main
 **Duration:** {X}h {Y}m API, {Z}h {W}m wall
-**Cost:** ${total} total (${opus} Opus, ${sonnet} Sonnet, ${haiku} Haiku)
+**Cost:** ${total} (from /cost, scope-verified)
 **Code changes:** {N} lines added, {M} removed
 **Outcome:** {1-2 sentence summary of what shipped}
 ```
 
-The session ID links directly to `~/.claude-shared/projects/{slug}/{session-id}.jsonl`. Cost line: fill PLACEHOLDER after running `/cost`. Format: `[PLACEHOLDER - run /cost to fill]` until then.
+The session ID links directly to `~/.claude-shared/projects/{slug}/{session-id}.jsonl`. Cost line: fill PLACEHOLDER after running `/cost`. Format: `[PLACEHOLDER - run /cost to fill]` until then. Cross-verify `/cost` scope before filling (see Cost Source section).
 
 ### Required Sections
 
@@ -121,6 +160,27 @@ Agents reconstruct from git history and file artifacts. They systematically miss
 
 The orchestrator must add all of the above after reviewing the agent draft.
 
+---
+
+## ARRIVE Protocol
+
+Every session begins here. No exceptions.
+
+1. Read `reference/conventions.md` -- how to work
+2. Read `reference/codebase_state.md` -- what exists, what is next
+3. Read `reference/deferred_items.md` -- known debt
+4. `git log --oneline -20` -- recent changes
+
+This takes 2 minutes and prevents the orchestrator from repeating solved problems, violating established conventions, or missing known risks.
+
+---
+
+## WORK Protocol
+
+Follow conventions. Dispatch agents per the `agentic-delegation` skill (decomposition, model ladder, prompt anatomy, execution patterns). Conventions are constraints derived from prior failures — every rule exists because violating it caused a documented problem.
+
+---
+
 ## LEAVE Protocol
 
 The orchestrator executes in this order. Run Steps 1-4 in parallel. Step 5 requires orchestrator participation. Steps 6-7 are sequential.
@@ -129,16 +189,19 @@ The orchestrator executes in this order. Run Steps 1-4 in parallel. Step 5 requi
 
 Dispatch a haiku agent to parse all JSONL files in the session directory. Agent writes to `docs/orchestration_log/recon/{YYYY-MM-DD}/session_metrics.md`.
 
-Dispatch the agent with instructions to count:
-- Unique agentId values (= subagents dispatched)
+Dispatch the agent with instructions to extract:
+- **Agent counts by model tier** — how many agents ran on haiku, sonnet, opus (from `message.model`)
+- **Agent counts by type** — how many of each `subagent_type` (e.g., 5 implementers, 3 spec-reviewers, 15 research agents). From agent metadata or `subagent_type` field
 - Messages by model tier (haiku / sonnet / opus)
 - Tool calls by tool name
 - Token totals by model tier (input, output, cache_read, cache_creation)
 - Timestamp range
 
+Report the two agent groupings as separate tables.
+
 Use `scripts/extract_metrics.py` for reliable parsing.
 
-**JSONL cost warning:** Step 1 provides agent counts and message volumes, NOT cost. JSONL double-counts subagent internals — a session costing $132 was reported as $800 from JSONL parsing. `/cost` is the single authoritative cost source. Step 7 captures cost; Step 1 never attempts it.
+Step 1 provides agent counts and message volumes. NEVER derive cost from JSONL. See Cost Source section — `/cost` is the only trusted source. Step 7 captures cost.
 
 ### Step 2: Extract git history (haiku, background)
 
@@ -196,12 +259,17 @@ Commit only `docs/orchestration_log/history/` and `docs/orchestration_log/refere
 
 ### Step 7: Capture cost (orchestrator)
 
-Run `/cost` command in Claude Code. Dispatch a haiku agent to fill the cost placeholder in the session record:
+Run `/cost`. Before filling the placeholder, cross-verify scope:
+1. Wall time range matches this session.
+2. No branching split the session (branched `/cost` covers only the branch).
+3. No multi-session contribution inflates the number.
+
+If scope checks pass, dispatch a haiku agent to fill the cost placeholder in:
 
 ```
 docs/orchestration_log/history/{YYYY-MM-DD}/session.md
 # Find: [PLACEHOLDER - run /cost to fill]
-# Replace with actual numbers
+# Replace with actual /cost number and note "scope-verified"
 ```
 
 The agent commits with: `"doc: fill session {YYYY-MM-DD} cost data (${TOTAL} total)"`

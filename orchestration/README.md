@@ -48,7 +48,9 @@ Triggers: "research an ecosystem", "survey the landscape", "evaluate options for
 
 ### [session-close](skills/session-close/SKILL.md)
 
-This skill should be used when the user asks to "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", or at the natural end of a development orchestration session. Governs the full session close-out workflow including agent-based metric extraction from raw session data on disk, session record authoring, reference document updates, cost capture, and VCS commit.
+Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers session start (reference doc ingestion), session work (convention adherence), and session close (metric extraction, session record, reference updates, cost capture, VCS commit).
+Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "start a session", "ARRIVE", "session lifecycle"; or at the natural end of a development orchestration session. Also invoked by model when session persistence context is needed.
+
 
 **Scripts:** [`extract_metrics.py`](skills/session-close/scripts/extract_metrics.py)
 ---

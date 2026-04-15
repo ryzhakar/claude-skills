@@ -524,62 +524,53 @@ Launch 5-15 haiku agents with different search angles (all background, all paral
 
 ---
 
-## Session Persistence
+## Session Lifecycle
 
-Multi-session orchestration work accumulates knowledge: which model tiers work, which patterns fail, what the codebase looks like, what debt exists. Without persistence, every session starts from zero and repeats prior mistakes.
+Every orchestration session follows three phases: ARRIVE, WORK, LEAVE. This section gives the structural overview — the shape of a session. The full close-out workflow lives in the `session-close` skill.
 
 ### Directory Structure
 
 ```
 orchestration_log/
-  reference/              LIVING documents. Updated by orchestrator before leaving.
-    conventions.md        How to work: model tiers, dispatch rules, forbidden patterns.
-    codebase_state.md     What exists NOW: inventory, test shape, known limitations, next actions.
-    deferred_items.md     Living backlog: unresolved findings with severity and deferral rationale.
-
-  history/                APPEND-ONLY. Never edit a past session.
+  reference/              LIVING — updated before leaving
+    conventions.md        How to work: model tiers, dispatch rules, forbidden patterns
+    codebase_state.md     What exists NOW: inventory, test shape, known limits, next actions
+    deferred_items.md     Living backlog: unresolved findings with severity and rationale
+  history/                FROZEN — never edit a past session
     YYYY-MM-DD/
-      session.md          Timeline, decisions, failures, cost, outcomes.
-      reviews/            Review reports (primary evidence, not summaries).
-
-  recon/                  DISPOSABLE. Gitignored. Regenerate when stale.
+      session.md          Timeline, decisions, failures, cost, outcomes
+      reviews/            Review reports (primary evidence)
+  recon/                  DISPOSABLE — gitignored, regenerate when stale
     YYYY-MM-DD/
-      scouts/             Raw agent reports, research findings, data explorations.
+      scouts/             Raw agent reports, research findings
 ```
 
 ### Mutability Rules
 
-| Layer | Mutability | Purpose |
-|-------|-----------|---------|
-| `reference/` | Living — updated each session | What is true NOW |
-| `history/` | Frozen — never edited after session ends | What happened THEN |
-| `recon/` | Disposable — gitignored, regenerate | Raw scouting data |
+| Layer | Mutability | Consequence of violation |
+|-------|-----------|------------------------|
+| `reference/` | Living — updated each session | Stale docs become lies |
+| `history/` | Frozen — append-only | Edits destroy the record |
+| `recon/` | Disposable — gitignored | Committed recon bloats the repo |
 
-These are not suggestions. Living documents that are not updated become lies. Frozen documents that get edited destroy the historical record. Disposable documents that are not gitignored bloat the repository.
+### ARRIVE
 
-### Lifecycle Protocol
+Read four things before doing anything else:
 
-**ARRIVE** — Every session begins here. No exceptions.
-
-1. Read `reference/conventions.md` — how to work
-2. Read `reference/codebase_state.md` — what exists, what is next
-3. Read `reference/deferred_items.md` — known debt
+1. `reference/conventions.md` — how to work
+2. `reference/codebase_state.md` — what exists, what is next
+3. `reference/deferred_items.md` — known debt
 4. `git log --oneline -20` — recent changes
 
-This takes 2 minutes and prevents the orchestrator from repeating solved problems, violating established conventions, or missing known risks.
+Two minutes. Prevents repeating solved problems, violating conventions, missing known risks.
 
-**WORK** — Follow conventions. Dispatch agents. The conventions are constraints derived from prior failures. Every rule exists because violating it caused a specific, documented problem.
+### WORK
 
-**LEAVE** — Every session ends here. No exceptions.
+Follow conventions. Dispatch agents per this skill's delegation methodology. Conventions are constraints derived from prior failures — every rule exists because violating it caused a documented problem.
 
-1. Create `history/YYYY-MM-DD/session.md` — full temporal record
-2. Move review reports to `history/YYYY-MM-DD/reviews/`
-3. Update `reference/codebase_state.md` — current truth
-4. Update `reference/deferred_items.md` — add new findings, remove fixed ones
-5. Update `reference/conventions.md` — if patterns changed
-6. Commit the log
+### LEAVE
 
-The LEAVE step is the one that gets skipped. It is also the one that makes the next session productive instead of wasteful.
+Close the session: extract metrics, draft session record, update reference docs, capture cost, commit. For the full LEAVE workflow (Steps 1-7, quality gates, artifact management), invoke the `session-close` skill.
 
 ---
 

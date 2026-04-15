@@ -6,9 +6,9 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.2.0` | 6S 3A |
+| [dev-discipline](dev-discipline/) | Software engineering discipline: defensive planning, test-driven... | `1.3.0` | 6S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.1.0` | 2S |
-| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.5.0` | 4S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and... | `2.6.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -17,7 +17,7 @@
 
 ---
 
-## [dev-discipline](dev-discipline/) `1.2.0`
+## [dev-discipline](dev-discipline/) `1.3.0`
 
 Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.
 
@@ -44,7 +44,7 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, constitutions, and principle sets through identity assumption — not theatrical...
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-## [orchestration](orchestration/) `2.5.0`
+## [orchestration](orchestration/) `2.6.0`
 
 Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
 
@@ -54,7 +54,7 @@ Agent delegation framework, multi-agent research orchestration, and development 
 - **[dev-orchestration](orchestration/skills/dev-orchestration/SKILL.md)** — Extension of agentic-delegation for software development. Adds the Plan→Implement→Review→Fix loop, TDD gates, status-driven branching,...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
-- **[session-close](orchestration/skills/session-close/SKILL.md)** — This skill should be used when the user asks to "close the session", "do session paperwork", "write the session record", "execute the...
+- **[session-close](orchestration/skills/session-close/SKILL.md)** — Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers session start (reference doc ingestion), session work...
   Scripts: [`extract_metrics.py`](orchestration/skills/session-close/scripts/extract_metrics.py)
 ## [product-craft](product-craft/) `1.1.0`
 

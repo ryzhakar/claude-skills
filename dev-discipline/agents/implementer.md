@@ -22,6 +22,7 @@ description: |
   </example>
 
 model: inherit
+isolation: worktree
 color: green
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 ---
