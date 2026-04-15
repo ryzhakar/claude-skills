@@ -138,6 +138,8 @@ Dispatch the agent with instructions to count:
 
 Use `scripts/extract_metrics.py` for reliable parsing.
 
+**JSONL cost warning:** Step 1 provides agent counts and message volumes, NOT cost. JSONL double-counts subagent internals — a session costing $132 was reported as $800 from JSONL parsing. `/cost` is the single authoritative cost source. Step 7 captures cost; Step 1 never attempts it.
+
 ### Step 2: Extract git history (haiku, background)
 
 Dispatch a haiku agent to extract the git log for the session period. Agent writes to `docs/orchestration_log/recon/{YYYY-MM-DD}/git_history.md`.
@@ -145,6 +147,10 @@ Dispatch a haiku agent to extract the git log for the session period. Agent writ
 Commands to run:
 - `git log --format="%ai %H %s" --since="{session-start-date}" --reverse`
 - `git diff --stat {first-session-commit}..HEAD`
+
+### Steps 3-4: Conditional Drafting
+
+**Gate:** If reference docs were updated within the current session (agents already ran LEAVE steps, or orchestrator edited reference docs directly), skip Steps 3-4. The orchestrator reviews existing docs directly in Step 5 instead of reviewing agent drafts. This prevents redundant agent dispatches when docs are already current.
 
 ### Step 3: Draft session record (sonnet, background)
 
@@ -200,6 +206,18 @@ docs/orchestration_log/history/{YYYY-MM-DD}/session.md
 
 The agent commits with: `"doc: fill session {YYYY-MM-DD} cost data (${TOTAL} total)"`
 
+## Artifact Management
+
+Four practices govern artifact hygiene during session close.
+
+**Per-session artifact index.** Every `session.md` ends with an `## Artifacts` section listing committed files (with descriptions), recon files (gitignored, regenerable), and generated data (with regeneration commands). The recon index is especially valuable — recon files are gitignored and will be lost without it.
+
+**Consolidation sweep.** Before close, sweep `reference/` for redundancy (two files on same topic — merge), supersession (newer version exists — delete stale), dead weight (fully resolved — delete), and undiscoverability (not referenced anywhere — add to artifact map or delete). If a file is not discoverable from CLAUDE.md or a session.md, it is dead weight.
+
+**No new files for existing concerns.** When information belongs to an existing file, extend that file. Separate files for the same concern drift immediately. The test: if updating requires touching two files, consolidate.
+
+**Gitignore regenerables.** Any file regenerable from a command (`just test-all`, `just summary`) belongs in `.gitignore`. The command IS the artifact. Document the regeneration command in the artifact index. Exception: deliverables handed to stakeholders (PO reports in `history/`) are committed as point-in-time snapshots.
+
 ## Quality Gates
 
 Before closing:
@@ -211,3 +229,5 @@ Before closing:
 - [ ] Cost placeholder filled
 - [ ] Everything committed
 - [ ] Recon files NOT committed (gitignored)
+- [ ] Artifact index present in session.md
+- [ ] Consolidation sweep completed

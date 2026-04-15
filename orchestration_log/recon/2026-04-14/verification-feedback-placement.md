@@ -1,0 +1,1 @@
+Field feedback from session 2026-04-14/15 applied to agentic-delegation, session-close, qa-orchestration. Verified: dev-orchestration clean (no QA feedback), qa-orchestration properly derived from QA context.

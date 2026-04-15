@@ -339,6 +339,17 @@ Agent A tries approach 1 → Agent B tries approach 2 → Agent C tries approach
 **When:** Exploring solution spaces. Debugging (try 3 hypotheses in parallel). Implementation (try 2 architectures, pick the better one).
 **Why it works:** The cost of 2 "wasted" haiku agents is negligible. The time saved by not trying approaches sequentially is enormous.
 
+### Long-Running Operations
+
+Operations exceeding 60 seconds (test suites, builds, deployments) use background Bash, not agent dispatch. Agents have timeout ceilings — long-running commands inside agents cause hangs.
+
+```
+Agent writes command + output classification logic → Orchestrator runs via background Bash → Notification arrives → Orchestrator applies classification
+```
+
+**When:** Any command that takes >60 seconds. Test execution, full builds, deployment scripts, browser automation suites.
+**Why not agents:** Agent timeout ceilings kill long processes silently. Background Bash has no such ceiling and provides completion notifications.
+
 ### Chained Refinement
 
 Output of one agent becomes the input of the next, each refining.
@@ -474,6 +485,8 @@ Agent self-reports ("DONE, all tests pass") are unreliable. After every agent co
 - Verify that the agent's claimed changes appear in git diff
 
 Agents may run tests on stale versions, use filters that exclude failing tests, report based on partial output, or confuse "no errors printed" with "tests pass." Trust artifacts, not claims.
+
+**Bounded-delta verification:** Read pass/fail counts, `git diff --stat`, finding totals — not full report content. This is bounded context consumption for trust, distinct from relay. Verification reads the delta (3-5 lines); relay reads the content (hundreds of lines). The distinction matters: verification is a fixed cost; relay scales with agent output.
 
 ---
 

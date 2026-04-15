@@ -109,6 +109,22 @@ Findings are data for humans to interpret, not bugs for the healer to fix.
 - Preserve `.claude/qa-phase.txt` across failures for session resumption.
 - The orchestrator never edits test files directly. Agents own all file mutations.
 
+### Conflict Resolution
+
+When a QA spec contradicts a project principle, the project principle wins. Flag the spec for correction. Document the conflict in `.playwright/lessons.md` with: the spec recommendation, the principle it violated, and the resolution applied. Specs serve projects, not the reverse.
+
+### Generator-Agent Dispatch Modes
+
+The generator-agent operates in three modes:
+
+| Mode | Trigger | Input | Behavior |
+|------|---------|-------|----------|
+| **Create** | Phase 2 initial generation | Test plan + page inventory | Full plan-driven generation with verify loop |
+| **Fix** | Timing/structural failures from Phase 3 | Failing test paths + error descriptions | Structural repair (waits, fixtures, architecture) |
+| **Modify** | Targeted change to existing test | File path + modification prompt | The modification prompt IS the spec. Skip test-plan reading, skip verify loop. Direct surgical edit. |
+
+Modify mode exists because the generator's create/fix protocol adds overhead (plan reading, verify loop) that provides no value for targeted edits like "add 20 lines to this test block." The modification prompt contains all context needed.
+
 ## Quality Gates
 
 Three gates at three scopes:
