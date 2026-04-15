@@ -1,5 +1,5 @@
 # Deferred Items
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Synthesis Recommendations Not Yet Implemented
 
@@ -43,16 +43,11 @@ Last updated: 2026-04-14
 
 Analysis identified specific quality gaps across skills. Sample findings:
 
-**qa-orchestration (line 119):**
-- Finding: "substantive data" is vague
-- Fix: Replace with "non-placeholder values (not 'TODO', 'needs implementation', empty strings)"
-- Status: Not yet implemented
-
 **agentic-delegation (line 244):**
 - Finding: TODO mentioned in instructions
 - Context: "If external references don't exist yet, mark them as TODO or create them"
 - Fix: Remove TODO pattern reference
-- Status: Not yet implemented
+- Status: Checked 2026-04-15 — no TODO reference found in current file. Resolved in verification feedback wave.
 
 **dev-orchestration (line 59):**
 - Finding: Completion criteria includes "no TBD/TODO/placeholder language"
@@ -60,7 +55,20 @@ Analysis identified specific quality gaps across skills. Sample findings:
 - Fix: No change needed - this is intentional detection language
 - Status: Confirmed correct
 
-**Status:** Most D4 findings addressed in compression wave. Remaining items tracked here.
+**Status:** Most D4 findings addressed in compression wave + verification feedback wave (2026-04-14/15). Remaining items tracked here.
+
+### 4. instruction-writer Plugin Placement (Low Priority)
+
+**Current state:** instruction-writer agent lives at .claude/agents/ (project-local). Not packaged in any plugin. Auto-discovery works within this project.
+
+**Issue:** Not portable to other Claude Code sessions or installations. Users of individual plugins cannot get the agent without cloning the full repo.
+
+**Options:**
+1. Add to dev-discipline plugin (it is a development discipline tool)
+2. Create a new plugin-dev component
+3. Leave as project-local tooling (current state)
+
+**Status:** Deferred pending user decision on packaging strategy.
 
 ## Excluded from Optimization
 
@@ -115,7 +123,7 @@ Analysis identified specific quality gaps across skills. Sample findings:
 - bridge-research/ - Compression strategies research (1 file)
 - synthesis/ - Final synthesis recommendations (20 files)
 
-**Status:** Synthesis phase complete. Most recommendations implemented in compression wave (commits 038045b through fea6202). Remaining items documented above.
+**Status:** Synthesis phase complete. Most recommendations implemented in compression wave (commits 038045b through fea6202) and verification feedback wave (2026-04-14/15). Remaining items documented above.
 
 **Retention:** Keep all analysis artifacts for:
 1. Audit trail for versioning decisions
@@ -128,7 +136,7 @@ Analysis identified specific quality gaps across skills. Sample findings:
 
 ### 1. Large Skill Size Guideline Violations
 
-**Issue:** research-tree (7565t) and agentic-delegation (5991t) exceed informal 5000t guideline.
+**Issue:** research-tree (7565t) and agentic-delegation (6054t) exceed informal 5000t guideline.
 
 **Analysis verdict (from synthesis):** "This is not bloat -- it is the irreducible operational surface."
 
@@ -170,7 +178,7 @@ Analysis identified specific quality gaps across skills. Sample findings:
 
 ## Session Persistence Adoption
 
-**Issue:** session-close skill added 2026-04-13 (2286t) for ARRIVE/WORK/LEAVE protocol. Unclear if any skills/workflows use it yet.
+**Issue:** session-close skill substantially updated 2026-04-15. Adds /cost discipline, conditional LEAVE gates, two-grouping agent counts. Unclear if workflows are adopting these patterns.
 
 **Next action:** Monitor usage. If adopted, document patterns. If not adopted, investigate barriers.
 

@@ -1,5 +1,5 @@
 # Conventions
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 Established patterns and principles governing plugin development in this marketplace. All conventions trace to observed model behavior, documented platform constraints, or empirical optimization results.
 
@@ -253,6 +253,7 @@ type(scope): description
 - `fix(qa-automation): clean stale hook references after hooks removal`
 - `refactor(orchestration): instruction compression`
 - `doc(CLAUDE): document maintenance principles`
+- `feat(manifestos): clear instructions on reading and interplay modeling`
 
 **Version increment timing:** Bump version in plugin.json in the same commit as the feature/fix.
 
@@ -322,10 +323,27 @@ trigger: When to invoke (natural language)
 description: One-line role description
 tools: [tool1, tool2]  # Optional
 color: blue            # Optional
+isolation: worktree    # Optional — use when agent needs filesystem isolation
 ---
 ```
 
 **Version fields:** NEVER in skill/agent frontmatter. Only in plugin.json.
+
+---
+
+## Agent Isolation
+
+**Field:** `isolation: worktree` in agent frontmatter.
+
+**Purpose:** Each dispatch of the agent operates in a separate git worktree — clean filesystem state, no cross-agent interference.
+
+**When to use:** Agents that make code changes (write/edit files, run tests, commit). Prevents race conditions when multiple implementers run in parallel.
+
+**Current adoption:** implementer agent in dev-discipline. Other agents (spec-reviewer, code-quality-reviewer, qa-automation agents) do not require isolation — they read or produce non-code artifacts.
+
+**Platform fact:** Worktree isolation is a platform capability exposed via the `isolation` frontmatter field. Claude Code provisions the worktree; the agent does not need to manage it.
+
+**Source:** dev-discipline 1.3.0, session 2026-04-15.
 
 ---
 
@@ -384,6 +402,82 @@ color: blue            # Optional
 
 ---
 
+## Cost Source Authority
+
+**Rule:** `/cost` is the ONLY trusted cost source. No JSONL-derived cost numbers.
+
+**Rationale:** JSONL double-counts subagent internals. Cost derived from JSONL message logs is structurally inflated and cannot be trusted.
+
+**Verification before use:** Before filling a cost placeholder, cross-verify `/cost` scope:
+1. Wall time range matches the intended session.
+2. No branching split the session (branched `/cost` covers only that branch).
+3. No multi-session contribution inflates the number.
+
+The verification confirms `/cost` reports for the right scope. It does not compute an alternative number.
+
+**Source:** session-close SKILL.md, session 2026-04-15. Formalized from observed JSONL double-counting behavior.
+
+---
+
+## Agent Count Reporting (Two Groupings)
+
+**Convention:** Report agent counts in two separate tables, not one combined count.
+
+**Table 1 — By model tier:** How many agents ran on haiku, sonnet, opus. Extract from `message.model` field in JSONL.
+
+**Table 2 — By agent type:** How many of each `subagent_type` were dispatched (e.g., 5 implementers, 3 spec-reviewers, 15 research agents). Extract from agent metadata or `subagent_type` field.
+
+**Rationale:** Model tier reveals cost distribution; agent type reveals work decomposition. Conflating them loses both signals.
+
+**Source:** session-close SKILL.md Step 1, session 2026-04-15.
+
+---
+
+## Conditional LEAVE Steps
+
+**Convention:** LEAVE Steps 3-4 (draft session record, draft reference doc updates) are conditional — skip if docs are already current.
+
+**Gate condition:** If reference docs were updated within the current session — by agents running earlier LEAVE steps, or by the orchestrator editing reference docs directly — skip Steps 3-4. The orchestrator reviews existing docs in Step 5 instead.
+
+**Purpose:** Prevents redundant agent dispatches when docs are already current. LEAVE protocol adapts to session state.
+
+**Source:** session-close SKILL.md Step 3-4 gate, session 2026-04-15.
+
+---
+
+## instruction-writer Agent
+
+**Location:** .claude/agents/instruction-writer.md (project-local, not in any plugin)
+
+**Purpose:** Edits skill definitions, agent definitions, and hook templates. Specializes in applying ETHOS principles, Strunk compression, and core-point preservation to instruction files.
+
+**When to invoke:** Rewriting, compressing, restructuring, or applying feedback to SKILL.md or agent .md files. The description includes trigger examples.
+
+**Constitutional binding:** Before any edit, the agent reads the first-principles manifesto, ETHOS.md, and the Strunk SPR document. These govern its writing.
+
+**Process:** (1) Read target file. (2) Identify 5 core points. (3) Apply changes. (4) Run `just tokens` before/after. (5) Report delta.
+
+**Source:** Session 2026-04-14/15. Agent created to formalize instruction editing practice.
+
+---
+
+## Constitution Stack via .manifestos.yaml
+
+**Convention:** Project-level manifesto bindings live in `.manifestos.yaml` at the project root, not embedded in CLAUDE.md.
+
+**Format:** YAML list where each entry is auto-detected by shape:
+- Plain name (`decomplect`): resolved via tiered protocol — Tier 1: manifesto repo, Tier 2: session skills, Tier 3: project files
+- URL (`https://...`): fetched at initialization
+- Local path (`./docs/principles.md`): read relative to project root
+
+**Auto-activation:** manifesto plugin hooks read `.manifestos.yaml` at SessionStart (initialize), PostCompact (re-bind), and SubagentStart (full binding ceremony). Bindings activate automatically without user action each session.
+
+**Fallback:** `## Active Manifestos` heading in CLAUDE.md. Names resolved against the manifesto repo.
+
+**Source:** manifesto-oath SKILL.md Project Configuration section, session 2026-04-14/15.
+
+---
+
 ## Session Persistence (ARRIVE/WORK/LEAVE)
 
 **Framework:** session-close skill implements LEAVE protocol for multi-session workflows.
@@ -397,7 +491,7 @@ color: blue            # Optional
 **WORK:** Update reference/ as understanding evolves. Write to recon/ for scratch work.
 **LEAVE:** session-close skill writes session record and updates reference/ documents.
 
-**Adoption:** Framework established 2026-04-13. Adoption monitoring in progress.
+**Adoption:** Framework established 2026-04-13. Substantially refined 2026-04-15 (cost source authority, conditional gates, two-grouping agent counts).
 
 ---
 
@@ -426,6 +520,9 @@ color: blue            # Optional
 - Research tier ordering (sequential between tiers, parallel within)
 - No major version bumps without approval
 - Agent costs negligible (thoroughness over efficiency)
+- No relay through orchestrator (agents write to disk directly)
+- Verify agent disk output before declaring phase done
+- Collapse references into body (models skip @references)
 
 **Convention updates:** This file (conventions.md) is a living reference. Update when new patterns emerge or old patterns prove ineffective.
 
