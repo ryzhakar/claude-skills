@@ -1,0 +1,10 @@
+# Disposable — regenerate when stale
+orchestration_log/recon/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
