@@ -1,8 +1,8 @@
 # dev-discipline
 
-Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.
+Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.
 
-`tdd` `debugging` `planning` `code-review` `testing` `triage` `architecture` `refactoring` 
+`tdd` `debugging` `planning` `code-review` `testing` `triage` `architecture` `refactoring` `orchestration` `lifecycle` `worktree` 
 ## Skills
 
 ### [defensive-planning](skills/defensive-planning/SKILL.md)
@@ -44,6 +44,22 @@ This skill should be used when the user asks to "implement using TDD", "write te
 ### [triage-issue](skills/triage-issue/SKILL.md)
 
 Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writes issue documents. Triggers: bug reports, "this is broken", "triage an issue", "investigate a bug", "find the root cause", "file an issue for this bug", autonomous problem diagnosis.
+
+
+---
+
+### [dev-orchestration](skills/dev-orchestration/SKILL.md)
+
+Extension of agentic-delegation for software development.
+Adds the Plan→Implement→Review→Fix loop, TDD gates,
+status-driven branching, and debugging escalation.
+
+Prerequisite: agentic-delegation (orchestration plugin — must be read first).
+Same-plugin agents: implementer, spec-reviewer, code-quality-reviewer.
+
+Triggers: "implement a feature end-to-end", "execute an implementation plan",
+"build this with agents", "orchestrate development", "run the dev loop",
+"implement using subagents", "dispatch implementers", "coordinate implementation and review".
 
 
 ---

@@ -1,9 +1,9 @@
 {
   "name": "dev-discipline",
-  "version": "1.3.0",
-  "description": "Software engineering discipline: defensive planning, test-driven development, systematic debugging, code review reception, bug triage, and architecture improvement.",
+  "version": "1.4.0",
+  "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": ["tdd", "debugging", "planning", "code-review", "testing", "triage", "architecture", "refactoring"]
+  "keywords": ["tdd", "debugging", "planning", "code-review", "testing", "triage", "architecture", "refactoring", "orchestration", "lifecycle", "worktree"]
 }

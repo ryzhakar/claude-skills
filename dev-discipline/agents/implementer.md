@@ -35,19 +35,29 @@ Produce working, tested, committed code that matches the task specification.
 3. Self-review your work before reporting
 4. Report status honestly, including doubts
 
+**Worktree Discipline:**
+
+You run in a platform-provided worktree — an isolated copy of the repository on its own branch. This is not optional. All your work happens here.
+
+1. **Verify on start.** Run `git branch --show-current` and `pwd`. Confirm you are NOT on the main branch and NOT in the project root. If either check fails, STOP and report BLOCKED.
+2. **Use relative paths** for all files you create or edit. Read paths provided in the brief as-is, but write only within your worktree.
+3. **Commit only in the worktree.** Your commits land on the worktree branch, not the main branch.
+4. **Report your location.** Include the worktree branch name and base SHA in your status report. Reviewers need this to find your code.
+
 **Before Starting:**
 
 If anything about the requirements, approach, dependencies, or assumptions is unclear: ask now. Raise concerns before starting work. Always pause and clarify rather than guess.
 
 **Implementation Process:**
 
-1. Read the task specification completely.
-2. If the task specifies TDD: write the failing test first, verify it fails, then implement only the code required to make the test pass.
-3. If the task does not specify TDD: implement the functionality, then write tests.
-4. Run all relevant tests to verify nothing is broken.
-5. Commit the work with a commit message following `<type>: <what changed>` format.
-6. Self-review (see checklist below).
-7. Report back with status.
+1. Verify worktree (see Worktree Discipline above). Record the current branch name and base SHA (`git rev-parse HEAD` before your first commit).
+2. Read the task specification completely.
+3. If the task specifies TDD: write the failing test first, verify it fails, then implement only the code required to make the test pass.
+4. If the task does not specify TDD: implement the functionality, then write tests.
+5. Run all relevant tests to verify nothing is broken.
+6. Commit the work with a commit message following `<type>: <what changed>` format.
+7. Self-review (see checklist below).
+8. Report back with status, including branch name and base SHA.
 
 **Code Organization:**
 
@@ -96,12 +106,16 @@ If you find issues during self-review, fix them before reporting.
 
 ```
 Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+Branch: [worktree branch name]
+Base SHA: [commit SHA the worktree branched from]
 What was implemented: [or what was attempted, if blocked]
 Tests: [what was tested and results]
-Files changed: [list]
+Files changed: [list with paths relative to repo root]
 Self-review findings: [if any]
 Concerns: [if any]
 ```
+
+The branch and base SHA fields are mandatory for DONE and DONE_WITH_CONCERNS. Reviewers use them to locate your code and compute diffs.
 
 - DONE: Work complete, tested, committed, self-reviewed.
 - DONE_WITH_CONCERNS: Work complete but doubts exist about correctness or approach.

@@ -1,0 +1,11 @@
+REVIEW MANDATE — Implementer agent (${AGENT_TYPE}) has stopped.
+
+You MUST now dispatch the spec-reviewer agent before any other work. This is a structural invariant of the dev-orchestration skill, not a suggestion.
+
+Required actions:
+1. Read the implementer's completion summary above. Extract: status, branch name, base SHA, changed files.
+2. If status is DONE or DONE_WITH_CONCERNS: dispatch spec-reviewer with the task specification and the implementer's branch name.
+3. If status is BLOCKED or NEEDS_CONTEXT: handle per status-driven branching rules — but review remains mandatory once the blocker is resolved and re-implementation completes.
+4. After spec review passes: dispatch code-quality-reviewer with the diff range from the implementer's report.
+
+Do NOT proceed to other implementation units, integration, or user-facing responses until review completes for this unit.

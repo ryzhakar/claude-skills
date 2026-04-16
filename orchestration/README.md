@@ -1,8 +1,8 @@
 # orchestration
 
-Agent delegation framework, multi-agent research orchestration, and development lifecycle coordination. Decompose work across model tiers, manage parallel swarms, govern quality, and orchestrate the plan-implement-review-fix loop.
+Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.
 
-`orchestration` `delegation` `agents` `research` `parallel` `swarm` `development` `lifecycle` 
+`orchestration` `delegation` `agents` `research` `parallel` `swarm` `session` `lifecycle` 
 ## Skills
 
 ### [agentic-delegation](skills/agentic-delegation/SKILL.md)
@@ -12,22 +12,6 @@ decompose aggressively, delegate everything, assemble results.
 
 Triggers: "delegate", "parallelize", "fan out", "dispatch", "orchestrate",
 "use agents for", "run in parallel"; or any task with independent subtasks.
-
-
----
-
-### [dev-orchestration](skills/dev-orchestration/SKILL.md)
-
-Extension of agentic-delegation for software development.
-Adds the Plan→Implement→Review→Fix loop, TDD gates,
-status-driven branching, and debugging escalation.
-
-Prerequisite: agentic-delegation (same plugin — must be read first).
-Hard preference: dev-discipline plugin (implementer, spec-reviewer, code-quality-reviewer agents).
-
-Triggers: "implement a feature end-to-end", "execute an implementation plan",
-"build this with agents", "orchestrate development", "run the dev loop",
-"implement using subagents", "dispatch implementers", "coordinate implementation and review".
 
 
 ---

@@ -5,8 +5,8 @@ description: |
   Adds the Plan→Implement→Review→Fix loop, TDD gates,
   status-driven branching, and debugging escalation.
 
-  Prerequisite: agentic-delegation (same plugin — must be read first).
-  Hard preference: dev-discipline plugin (implementer, spec-reviewer, code-quality-reviewer agents).
+  Prerequisite: agentic-delegation (orchestration plugin — must be read first).
+  Same-plugin agents: implementer, spec-reviewer, code-quality-reviewer.
 
   Triggers: "implement a feature end-to-end", "execute an implementation plan",
   "build this with agents", "orchestrate development", "run the dev loop",
@@ -17,7 +17,15 @@ description: |
 
 Extends agentic-delegation with the development lifecycle. The orchestrator drives the Plan→Implement→Review→Fix loop; agents do all coding, testing, and reviewing.
 
-**Read agentic-delegation's SKILL.md before proceeding.** This is a hard gate, not a suggestion. The parent skill provides model ladder, decomposition, prompt anatomy, execution patterns, quality governance, and session persistence. None are restated here.
+**Read agentic-delegation's SKILL.md (orchestration plugin) before proceeding.** This is a hard gate, not a suggestion. The parent skill provides model ladder, decomposition, prompt anatomy, execution patterns, quality governance, and session persistence. None are restated here.
+
+## Invariants
+
+Two invariants govern this skill. They are not guidelines. They are structural constraints.
+
+**Review is inevitable.** Every implementer dispatch produces a review chain. Two SubagentStop hooks (same plugin) enforce this: the first fires when the implementer stops and mandates spec review; the second fires when the spec-reviewer stops and mandates quality review (on PASS) or a fix cycle (on FAIL). The orchestrator cannot skip, defer, or conditionally bypass either review stage.
+
+**Worktree isolation is total.** The implementer agent runs in a platform-provided worktree. All reads, writes, and commits happen in that worktree. The orchestrator passes the worktree path and branch to reviewers. No agent touches the main working tree during implementation.
 
 ## Verb Interpretation
 
@@ -34,9 +42,11 @@ No exceptions. The orchestrator never writes code, never reads implementation fi
 
 ## Dependencies
 
-The parent skill (agentic-delegation) is always present — same plugin. The dev-discipline plugin (separate) provides three purpose-built agents: **implementer**, **spec-reviewer**, **code-quality-reviewer**. If the user has not installed dev-discipline, recommend it. If that is not happening immediately, construct equivalent agent prompts using the context requirements below.
+The parent skill (agentic-delegation) lives in the orchestration plugin. It must be installed and read before this skill.
 
-dev-discipline also provides skills referenced below: **defensive-planning**, **tdd**, **systematic-debugging**, **receiving-code-review**. Same preference pattern applies.
+This plugin provides three purpose-built agents: **implementer**, **spec-reviewer**, **code-quality-reviewer**. Reference them directly — they are same-plugin, always available.
+
+This plugin also provides skills referenced below: **defensive-planning**, **tdd**, **systematic-debugging**, **receiving-code-review**.
 
 ## The Development Loop
 
@@ -96,7 +106,7 @@ For each unit, construct a brief containing:
 4. **Scope boundaries** — what to build, what NOT to build
 5. **Scene-setting context** — 2-3 sentences on where this unit fits in the system. Agents without situational awareness produce architecturally disconnected code.
 
-Dispatch the **implementer** agent with this brief. Default model: sonnet. Upgrade only if an agent reports BLOCKED citing reasoning limitations.
+Dispatch the **implementer** agent with this brief. The implementer runs in a platform-provided worktree (`isolation: worktree` in its frontmatter). The platform creates the worktree automatically — the orchestrator does not manage worktree creation. Default model: sonnet. Upgrade only if an agent reports BLOCKED citing reasoning limitations.
 
 **Minimal context examples:**
 - Dependency audit: "The project uses Leptos 0.8, Tailwind v4 (standalone, no Node.js), Postgres via sqlx. Read /path/to/Cargo.toml. For each dep, note version and purpose. Check for version conflicts."
@@ -105,11 +115,11 @@ Dispatch the **implementer** agent with this brief. Default model: sonnet. Upgra
 
 ### Context Requirements by Agent Type
 
-**Implementer:** Task specification + file paths + TDD flag + scope boundaries + scene-setting context.
+**Implementer:** Task specification + file paths + TDD flag + scope boundaries + scene-setting context. The implementer receives a worktree automatically via platform isolation. It reports the worktree branch name and base SHA in its status output.
 
-**Spec-reviewer:** Task specification (same one the implementer received) + changed file list. The implementer's status report may be provided but is not trusted evidence — the reviewer reads actual code.
+**Spec-reviewer:** Task specification (same one the implementer received) + changed file list + **worktree branch name** (from implementer's report). The reviewer checks out or reads from the implementer's branch. The implementer's status report may be provided but is not trusted evidence — the reviewer reads actual code.
 
-**Code-quality-reviewer:** Git diff range (BASE_SHA..HEAD_SHA) + changed file list + project-specific quality standards if they exist.
+**Code-quality-reviewer:** Git diff range (BASE_SHA..HEAD_SHA from implementer's report) + changed file list + **worktree branch name** + project-specific quality standards if they exist. The reviewer diffs against the implementer's branch.
 
 ### TDD Gate
 
@@ -143,11 +153,13 @@ One logical change per commit. Fix commits reference what they fix. No history r
 
 Run the test suite and type checker after every implementer reports DONE. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it did not touch.
 
-For deterministic enforcement, configure a SubagentStop hook (matcher: implementer) that runs the test suite automatically. See the hooks documentation for configuration.
+This plugin includes a SubagentStop hook (matcher: `implementer`) that fires when any implementer agent stops. The hook injects a review mandate into orchestrator context, making spec review structurally inevitable.
 
 ## Phase 3: Review
 
-Two-stage review after each unit. Order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements.
+Review is not optional. It is the only exit from the IMPLEMENTING state.
+
+Two-stage review after each unit. Order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements. The orchestrator dispatches reviewers with the implementer's worktree branch name and base SHA — reviewers read code from that branch.
 
 ### Stage 1: Spec Compliance
 
@@ -334,7 +346,7 @@ Update this summary after each state transition. The orchestrator reads summarie
 
 **Code in orchestrator context.** The orchestrator dispatches and decides. It never writes, reads, or debugs code.
 
-**Skipping spec review.** Implementer self-review is not spec compliance. Adversarial spec review catches drift, missing requirements, and scope creep.
+**Skipping spec review.** Review is a structural invariant, not a discretionary step. The SubagentStop hook enforces this — but even without the hook, the orchestrator treats review as the only exit from IMPLEMENTING. Implementer self-review is not spec compliance.
 
 **Reviewing quality before spec compliance.** Polishing code that does not meet requirements is wasted work.
 
@@ -345,3 +357,7 @@ Update this summary after each state transition. The orchestrator reads summarie
 **Theatrical test coverage.** Tests that assert defaults equal hardcoded copies provide zero protection.
 
 **Module-scoped cross-cutting reviews.** Reviewing each module independently misses cross-module issues.
+
+**Worktree escape.** The implementer runs in a worktree. If code appears in the main working tree after implementation, the worktree discipline failed. All implementation artifacts live in the worktree branch until review passes and integration merges them.
+
+**Reviewers without branch context.** Dispatching a reviewer without the implementer's worktree branch name makes the reviewer read stale code from the main branch. Always pass the branch name from the implementer's status report.

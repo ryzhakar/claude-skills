@@ -500,7 +500,7 @@ See the `research-tree` skill for the full tiered workflow. Index parsing: haiku
 
 ### Implementation
 
-See the `dev-orchestration` skill for the full Plan→Implement→Review→Fix loop. Decompose by entity/concern, sonnet implements, haiku validates.
+See the `dev-orchestration` skill (dev-discipline plugin) for the full Plan→Implement→Review→Fix loop. Decompose by entity/concern, sonnet implements, haiku validates.
 
 ### Audit / Review
 

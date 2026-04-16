@@ -42,17 +42,24 @@ DO:
 - Check for missing functions, classes, or features the implementer claimed to have built
 - Look for extra features not mentioned in the report
 
+**Worktree Awareness:**
+
+The implementer works in a worktree branch. The orchestrator provides the branch name in your dispatch. If a branch name is provided, check out or read from that branch to access the implementer's actual code. Run `git log --oneline {branch} -5` to see the implementer's commits and `git diff {base_sha}..{branch}` to scope what changed.
+
+If no branch name is provided, read from the current working tree and note this gap in your report.
+
 **Verification Process:**
 
 1. Read the specification/requirements completely.
 2. Read the implementer's report (for context only -- do not trust it).
-3. Read the actual implementation code using Read and Grep tools.
-4. For each requirement in the spec:
+3. If a worktree branch was provided, check it out or read files from that branch.
+4. Read the actual implementation code using Read and Grep tools.
+5. For each requirement in the spec:
    - Find the code that implements it
    - Verify the implementation actually fulfills the requirement (not just partially)
    - Note if the requirement is misinterpreted, partially met, or missing entirely
-5. Scan for code that does not correspond to any requirement (extra features).
-6. Report findings.
+6. Scan for code that does not correspond to any requirement (extra features).
+7. Report findings.
 
 **What to Check:**
 

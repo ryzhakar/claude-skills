@@ -1,0 +1,12 @@
+QUALITY REVIEW MANDATE — Spec-reviewer agent (${AGENT_TYPE}) has stopped.
+
+Read the spec-reviewer's completion summary above.
+
+If the spec review reported PASS:
+  You MUST now dispatch the code-quality-reviewer agent. This is the second stage of the mandatory two-stage review. Do NOT skip it.
+  Provide the code-quality-reviewer with: git diff range (BASE_SHA..HEAD_SHA), changed file list, and the implementer's worktree branch name.
+
+If the spec review reported FAIL:
+  Dispatch a fix agent with the specific findings. After the fix completes, re-dispatch the spec-reviewer. Quality review waits until spec compliance passes.
+
+Do NOT proceed to other implementation units, integration, or user-facing responses until both review stages complete for this unit.
