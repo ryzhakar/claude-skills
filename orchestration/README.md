@@ -39,3 +39,18 @@ Triggers: "close the session", "do session paperwork", "write the session record
 **Scripts:** [`extract_metrics.py`](skills/session-close/scripts/extract_metrics.py)
 ---
 
+## Hooks
+
+### ARRIVE Context Injection
+
+Two hooks enforce the ARRIVE protocol — reading reference docs before any work begins.
+
+| Event | Matcher | Script | Purpose |
+|---|---|---|---|
+| SessionStart | `startup\|resume` | `hooks/session-arrive.sh` | Inject reference doc paths at session start |
+| PostCompact | `*` | `hooks/session-arrive.sh` | Re-inject after compaction wipes context |
+
+Both gate on `orchestration_log/reference/` directory existence. Invisible when no orchestration session is active.
+
+---
+

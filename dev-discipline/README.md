@@ -135,3 +135,17 @@ assistant: "I'll use the spec-reviewer agent to compare code to requirements."
 
 ---
 
+## Hooks
+
+### Review Chain Enforcement
+
+Two SubagentStop hooks enforce the mandatory review chain after implementation.
+
+| Event | Matcher | Script | Purpose |
+|---|---|---|---|
+| SubagentStop | `implementer` | `hooks/implementer-stop.sh` | Inject spec-review mandate when implementer finishes |
+| SubagentStop | `spec-reviewer` | `hooks/spec-reviewer-stop.sh` | Inject quality-review mandate when spec review finishes (or fix cycle on FAIL) |
+
+Both use template-based output from `hooks/templates/`. Both include re-entry guards.
+
+---
