@@ -2,8 +2,8 @@
 
 **Orchestrator:** Claude Opus 4.6 (1M context)
 **Session ID:** e2c54fc2-0043-425d-9943-19bd676f111d
-**Duration:** [PLACEHOLDER - run /cost to fill]
-**Cost:** [PLACEHOLDER - run /cost to fill]
+**Duration:** 2h 18m API, 5h 54m wall (scope-verified: matches JSONL range 12:24–18:15 UTC + LEAVE)
+**Cost:** $82.24 (scope-verified: opus $69.91, sonnet $8.99, haiku $3.34)
 **Code changes:** 161 files changed, 1268 insertions(+), 30382 deletions(-) (net: -29114 lines; bulk from recon removal)
 **Outcome:** dev-orchestration relocated to dev-discipline and co-located with its agents; review chain made structurally inevitable via SubagentStop hooks; prompt hooks investigated and rejected; authoritative hooks reference produced; orchestration ARRIVE hooks implemented.
 
