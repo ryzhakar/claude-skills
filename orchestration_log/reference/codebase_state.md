@@ -71,7 +71,7 @@ Last updated: 2026-04-16
 | SessionStart | orchestration | startup\|resume | ARRIVE context injection — inject reference doc paths |
 | PostCompact | orchestration | * | ARRIVE re-injection after compaction wipes context |
 
-All hooks implemented as `type: "command"` calling bash scripts with template-based output. Prompt hooks (`type: "prompt"`) investigated and rejected — pervasive bugs, zero real-world adoption. See docs/hooks-reference.md for the full authoritative reference.
+All hooks implemented as `type: "command"` calling bash scripts with template-based output. Prompt hooks (`type: "prompt"`) investigated and rejected — pervasive bugs, zero real-world adoption. See orchestration_log/reference/hooks-reference.md for the full authoritative reference.
 
 ## Token Distribution
 
@@ -105,7 +105,7 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 4. **Hook research completed:**
    - Prompt hooks (`type: "prompt"`) investigated: broken on Stop, PreToolUse; zero adoption. Rejected.
    - Command hooks (`type: "command"`) investigated: reliable except subagent bypass and CLAUDE_PLUGIN_ROOT injection.
-   - Consolidated authoritative reference: docs/hooks-reference.md (893 lines)
+   - Consolidated authoritative reference: orchestration_log/reference/hooks-reference.md (893 lines)
 
 5. **Orchestration ARRIVE hooks added:**
    - SessionStart (startup|resume) + PostCompact (*) inject reference doc paths
@@ -116,7 +116,7 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 
 **Versioning:**
 - dev-discipline: 1.3.0 → 1.4.0 (dev-orchestration moved in, hooks added, worktree discipline)
-- orchestration: 2.6.0 → 3.0.0 (breaking: dev-orchestration removed)
+- orchestration: 2.6.0 → 3.0.0 → 3.1.0 (breaking: dev-orchestration removed; then ARRIVE hooks added)
 
 ## Known Limitations
 
@@ -128,7 +128,7 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 
 4. **Large skill persistence:** research-tree (7565t) remains large after compression. This is the irreducible operational surface for 6-tier multi-agent orchestration. agentic-delegation (6054t) similarly justified by scope.
 
-5. **Hook coverage:** manifesto (3 hooks) and dev-discipline (2 hooks) use hooks. Hook opportunities identified for orchestration, qa-automation, python-tools, prompt-engineering — pending implementation.
+5. **Hook coverage:** manifesto (3 hooks), dev-discipline (2 hooks), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools, prompt-engineering — pending implementation.
 
 6. **MCP integration:** No plugins currently use .mcp.json despite plugin-dev:mcp-integration skill existing.
 
