@@ -140,3 +140,14 @@ When creating a new domain extension:
 4. Define domain-specific quality gates if the parent's general governance is insufficient. Domain gates subsume, not layer.
 5. Cached derivations of the parent's reasoning are encouraged as shorthand. Trace each to the parent rule it derives from.
 6. Cross-plugin references use the hard-preference pattern (prefer, recommend install, succinct fallback).
+
+## Hooks
+
+The orchestration plugin has two ARRIVE hooks that inject reference document paths into context. Both use the same script and gate on `orchestration_log/reference/` existence — invisible when unconfigured.
+
+| Hook | Matcher | Purpose |
+|------|---------|---------|
+| SessionStart | `startup\|resume` | ARRIVE context injection — injects reference doc paths at session start or resume |
+| PostCompact | `*` | Same injection — re-injects after compaction wipes context |
+
+Both hooks ensure the model always has reference paths available regardless of whether the session just started, was resumed, or underwent compaction.

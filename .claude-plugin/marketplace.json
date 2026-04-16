@@ -8,7 +8,7 @@
       "name": "orchestration",
       "source": "./orchestration/",
       "description": "Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "author": {
         "name": "ryzhakar"
       },

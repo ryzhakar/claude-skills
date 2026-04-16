@@ -1,19 +1,19 @@
 # Codebase State
-Last updated: 2026-04-15
+Last updated: 2026-04-16
 
 ## Plugin Inventory
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
-| dev-discipline | 1.3.0 | 6 | 3 | 0 |
+| dev-discipline | 1.4.0 | 7 | 3 | 2 |
 | manifesto | 2.1.0 | 2 | 0 | 3 |
-| orchestration | 2.6.0 | 4 | 0 | 0 |
+| orchestration | 3.1.0 | 3 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 1.1.0 | 2 | 0 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
 | qa-automation | 3.1.0 | 1 | 4 | 0 |
 | userland-utilities | 1.0.0 | 1 | 0 | 0 |
-| **TOTAL** | - | **20** | **7** | **3** |
+| **TOTAL** | - | **20** | **7** | **7** |
 
 ## Skill Inventory
 
@@ -30,7 +30,7 @@ Last updated: 2026-04-15
 | agentic-delegation | orchestration | 6054 | No | Compressed |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-close | orchestration | 3273 | No | Compressed |
-| dev-orchestration | orchestration | 3684 | No | Compressed |
+| dev-orchestration | dev-discipline | 3684 | No | Compressed, moved from orchestration |
 | spec-chef | product-craft | 1730 | No | Compressed |
 | user-story-chef | product-craft | 1498 | No | Compressed |
 | prompt-eval | prompt-engineering | 3138 | Yes* | Compressed |
@@ -61,13 +61,17 @@ Last updated: 2026-04-15
 
 ## Hooks Inventory
 
-| Hook Type | Plugin | Trigger | Purpose |
+| Hook Type | Plugin | Matcher | Purpose |
 |-----------|--------|---------|---------|
-| SessionStart | manifesto | startup/resume | Initialize manifesto binding |
+| SessionStart | manifesto | startup\|resume | Initialize manifesto binding |
 | PostCompact | manifesto | * | Re-bind manifesto after compaction |
 | SubagentStart | manifesto | * | Inject manifesto into subagent context |
+| SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops |
+| SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops |
+| SessionStart | orchestration | startup\|resume | ARRIVE context injection — inject reference doc paths |
+| PostCompact | orchestration | * | ARRIVE re-injection after compaction wipes context |
 
-All hooks implemented as command hooks calling bash scripts in manifesto/hooks/.
+All hooks implemented as `type: "command"` calling bash scripts with template-based output. Prompt hooks (`type: "prompt"`) investigated and rejected — pervasive bugs, zero real-world adoption. See docs/hooks-reference.md for the full authoritative reference.
 
 ## Token Distribution
 
@@ -82,22 +86,37 @@ All hooks implemented as command hooks calling bash scripts in manifesto/hooks/.
 - Large (3000-6000t): 4 skills, 3 agents
 - XL (6000t+): 2 skills (agentic-delegation, research-tree)
 
-## Recent Changes (Since 2026-04-14)
+## Recent Changes (Since 2026-04-15)
 
-**Verification feedback applied (session 2026-04-14/15):**
-- agentic-delegation: feedback-driven update (6054t, up from 5991t)
-- session-close: feedback-driven update (3273t, up from 2286t) — cost source clarity, conditional LEAVE gates, agent count groupings, worktree isolation note
-- qa-orchestration: feedback-driven update (4353t, up from 4118t) — QA-context-specific derivation
+**Session 2026-04-16 — Major restructure:**
 
-**New components:**
-- instruction-writer agent added at .claude/agents/ (project-local, not shipped in any plugin)
-- implementer agent gained `isolation: worktree` field (dev-discipline 1.3.0)
+1. **dev-orchestration moved** from orchestration to dev-discipline plugin. Co-located with its agents (implementer, spec-reviewer, code-quality-reviewer). orchestration bumped to 3.0.0 (breaking).
+
+2. **Review chain hooks added** to dev-discipline:
+   - SubagentStop (implementer) → injects spec-review mandate
+   - SubagentStop (spec-reviewer) → injects quality-review mandate
+   Review is now structurally inevitable via hook enforcement, not just skill documentation.
+
+3. **Worktree discipline enforced end-to-end:**
+   - implementer: verifies branch on start, reports branch+SHA in status
+   - spec-reviewer + code-quality-reviewer: worktree-aware (read from implementer's branch)
+   - dev-orchestration: dispatch protocol includes worktree context
+
+4. **Hook research completed:**
+   - Prompt hooks (`type: "prompt"`) investigated: broken on Stop, PreToolUse; zero adoption. Rejected.
+   - Command hooks (`type: "command"`) investigated: reliable except subagent bypass and CLAUDE_PLUGIN_ROOT injection.
+   - Consolidated authoritative reference: docs/hooks-reference.md (893 lines)
+
+5. **Orchestration ARRIVE hooks added:**
+   - SessionStart (startup|resume) + PostCompact (*) inject reference doc paths
+   - Gated on orchestration_log/reference/ existence — invisible when unconfigured
+   - orchestration bumped to 3.1.0
+
+5. **Hook opportunity audit** across all 8 plugins completed. Priorities identified for orchestration (ARRIVE/SubagentStop), qa-automation (phase gate chain), python-tools (bare pyright block).
 
 **Versioning:**
-- dev-discipline: 1.2.0 → 1.3.0 (implementer worktree isolation)
-- manifesto: 2.0.0 → 2.1.0 (minor update)
-- orchestration: 2.4.0 → 2.6.0 (session-close + feedback updates)
-- qa-automation: 3.0.0 → 3.1.0 (qa-orchestration feedback update)
+- dev-discipline: 1.3.0 → 1.4.0 (dev-orchestration moved in, hooks added, worktree discipline)
+- orchestration: 2.6.0 → 3.0.0 (breaking: dev-orchestration removed)
 
 ## Known Limitations
 
@@ -109,7 +128,7 @@ All hooks implemented as command hooks calling bash scripts in manifesto/hooks/.
 
 4. **Large skill persistence:** research-tree (7565t) remains large after compression. This is the irreducible operational surface for 6-tier multi-agent orchestration. agentic-delegation (6054t) similarly justified by scope.
 
-5. **Hook coverage:** Only manifesto plugin uses hooks. Other plugins have not identified hook-worthy patterns yet.
+5. **Hook coverage:** manifesto (3 hooks) and dev-discipline (2 hooks) use hooks. Hook opportunities identified for orchestration, qa-automation, python-tools, prompt-engineering — pending implementation.
 
 6. **MCP integration:** No plugins currently use .mcp.json despite plugin-dev:mcp-integration skill existing.
 

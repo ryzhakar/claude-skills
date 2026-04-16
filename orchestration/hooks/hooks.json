@@ -1,0 +1,29 @@
+{
+  "description": "Orchestration lifecycle hooks: ARRIVE context injection at session start and after compaction",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-arrive.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-arrive.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

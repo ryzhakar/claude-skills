@@ -1,0 +1,9 @@
+ARRIVE PROTOCOL — Read these reference docs before any work:
+
+1. ${REF_DIR}/conventions.md — how to work in this project
+2. ${REF_DIR}/codebase_state.md — what exists now, recent changes, next actions
+3. ${REF_DIR}/deferred_items.md — known debt and unresolved findings
+
+Also run: git log --oneline -20
+
+This is not optional. Conventions are constraints derived from prior failures. Skipping ARRIVE means repeating solved problems, violating conventions, or missing known risks.

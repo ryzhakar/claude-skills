@@ -144,16 +144,29 @@ Analysis identified specific quality gaps across skills. Sample findings:
 
 **Status:** Accepted as necessary exception. Documented in codebase_state.md.
 
-### 2. Hook Coverage
+### 2. Hook Expansion (Medium Priority)
 
-**Issue:** Only 1/8 plugins use hooks (manifesto).
+**Issue:** 2/8 plugins use hooks (manifesto, dev-discipline). Hook opportunity audit (2026-04-16) identified high-value candidates in 3 more plugins.
 
-**Analysis:** Most plugins contain skills (judgment-heavy workflows) rather than deterministic enforcement patterns. Hooks require:
-- Clear trigger condition
-- Deterministic action
-- Per-invocation justifiable overhead (or one-time SessionStart/PostCompact/SubagentStart)
+**Identified opportunities (priority order):**
 
-**Status:** No action. Hook adoption is need-driven, not coverage-driven.
+| Plugin | Hook | Event | Purpose |
+|---|---|---|---|
+| orchestration | SubagentStop output verification | SubagentStop / * | Check agent's declared output file exists on disk |
+| orchestration | ARRIVE context injection | SessionStart + PostCompact | Inject reference doc paths for mandatory ARRIVE reads |
+| qa-automation | Phase gate chain (4 hooks) | SubagentStop / each agent | Artifact existence checks between plan→generate→execute→heal |
+| python-tools | Bare pyright block | PreToolUse / Bash | Block `pyright` not prefixed with `uv run` |
+| prompt-engineering | Disk-write contract | Stop | Verify eval report was written to file, not summarized in chat |
+
+**Hook type decision:** Use `type: "command"` exclusively. `type: "prompt"` hooks are broken on Stop and PreToolUse, have zero ecosystem adoption, and suffer from exponential payload bugs. See docs/prompt-hooks-reference.md.
+
+**Known platform limitations affecting hook expansion:**
+- Subagent hooks silently skipped via CLAUDE_CODE_SIMPLE=1 (#43612)
+- CLAUDE_PLUGIN_ROOT may not inject at execution time — needs empirical testing
+- Exit 2 doesn't block Task/Agent tool calls
+- additionalContext accumulates (not ephemeral)
+
+**Status:** Deferred pending user decision on which plugins to hook next.
 
 ### 3. MCP Integration Absence
 
