@@ -1,6 +1,6 @@
 # my-claude-skills
 
-21 skills · 7 agents across 8 plugins
+20 skills · 7 agents across 8 plugins
 
 ## Plugins
 
