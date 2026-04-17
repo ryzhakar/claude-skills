@@ -12,6 +12,22 @@ Write implementation plans, assessments, and corrections for implementers who ma
 
 ---
 
+### [dev-orchestration](skills/dev-orchestration/SKILL.md)
+
+Extension of agentic-delegation for software development.
+Adds the Plan→Implement→Review→Fix loop, TDD gates,
+status-driven branching, and debugging escalation.
+
+Prerequisite: agentic-delegation (orchestration plugin — must be read first).
+Same-plugin agents: implementer, spec-reviewer, code-quality-reviewer.
+
+Triggers: "implement a feature end-to-end", "execute an implementation plan",
+"build this with agents", "orchestrate development", "run the dev loop",
+"implement using subagents", "dispatch implementers", "coordinate implementation and review".
+
+
+---
+
 ### [improve-architecture](skills/improve-architecture/SKILL.md)
 
 Explores codebases for architectural friction, discovers module-deepening opportunities, and proposes refactors through multi-design exploration. Triggers: "improve architecture", "find refactoring opportunities", "deepen shallow modules", "reduce coupling", "simplify module structure", mentions of architectural friction or module boundaries. Writes refactor RFC as a report file.
@@ -44,22 +60,6 @@ This skill should be used when the user asks to "implement using TDD", "write te
 ### [triage-issue](skills/triage-issue/SKILL.md)
 
 Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writes issue documents. Triggers: bug reports, "this is broken", "triage an issue", "investigate a bug", "find the root cause", "file an issue for this bug", autonomous problem diagnosis.
-
-
----
-
-### [dev-orchestration](skills/dev-orchestration/SKILL.md)
-
-Extension of agentic-delegation for software development.
-Adds the Plan→Implement→Review→Fix loop, TDD gates,
-status-driven branching, and debugging escalation.
-
-Prerequisite: agentic-delegation (orchestration plugin — must be read first).
-Same-plugin agents: implementer, spec-reviewer, code-quality-reviewer.
-
-Triggers: "implement a feature end-to-end", "execute an implementation plan",
-"build this with agents", "orchestrate development", "run the dev loop",
-"implement using subagents", "dispatch implementers", "coordinate implementation and review".
 
 
 ---
@@ -135,17 +135,3 @@ assistant: "I'll use the spec-reviewer agent to compare code to requirements."
 
 ---
 
-## Hooks
-
-### Review Chain Enforcement
-
-Two SubagentStop hooks enforce the mandatory review chain after implementation.
-
-| Event | Matcher | Script | Purpose |
-|---|---|---|---|
-| SubagentStop | `implementer` | `hooks/implementer-stop.sh` | Inject spec-review mandate when implementer finishes |
-| SubagentStop | `spec-reviewer` | `hooks/spec-reviewer-stop.sh` | Inject quality-review mandate when spec review finishes (or fix cycle on FAIL) |
-
-Both use template-based output from `hooks/templates/`. Both include re-entry guards.
-
----
