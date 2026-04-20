@@ -2,8 +2,8 @@
 
 **Orchestrator:** Claude Opus 4.7 (1M context)
 **Session ID:** 18b18e82-9044-40c3-a452-44eeee1de30e
-**Duration:** [orchestrator: API hours not computed — derive from token totals or add] / wall clock multi-day, 2026-04-17 → 2026-04-20 (approx. 75.8 hours per session_metrics.md timestamp span)
-**Cost:** [PLACEHOLDER - run /cost to fill]
+**Duration:** 5h 9m API / 3d 4h 6m wall clock (multi-day, 2026-04-17 → 2026-04-20)
+**Cost:** $97.51 total — opus $63.64 / sonnet $30.00 / haiku $3.87 (scope-verified against /cost; wall span matches session_metrics.md)
 **Code changes:** +3,014 lines added, −116 removed across 16 files (from git_history.md)
 **Outcome:** Shipped an authoritative Claude Code plugin-defined-agents reference manual (`orchestration_log/reference/agents-reference.md`), built from verbatim primary-source extraction across 78 official Claude Code documentation pages and deep-link citation rewriting; reference layer and artifact layout updated to canonical agentic-delegation structure. The user authored 4 commits in the session window covering both this deliverable and parallel direct edits to plugins.
 
@@ -128,7 +128,8 @@ The artifact layout was tidied earlier (during the orchestration session, before
 | **Deep-link citations** | 197 (78% of quote-bearing citations) |
 | **URL-only citations (no quote)** | 56 |
 | **URL-only citations (quote unmatched)** | 45 (15%) |
-| **Cost** | [PLACEHOLDER - run /cost to fill] |
+| **Cost** | $97.51 (opus $63.64 / sonnet $30.00 / haiku $3.87) — scope-verified |
+| **Note on token totals** | Token figures above are JSONL-derived (subagent rollups may double-count). For authoritative cost and per-model usage, see /cost output: opus 111.7k input + 562.1k output + 45.4M cache-read; sonnet 193.6k input + 398.6k output + 37.7M cache-read; haiku 422.4k input + 121.9k output + 4.6M cache-read. |
 
 ---
 
