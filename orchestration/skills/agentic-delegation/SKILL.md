@@ -59,14 +59,16 @@ This inverts the decision calculus:
 
 ### The Swarm Principle
 
-20 haiku agents running in parallel cost less and finish faster than 1 sonnet agent doing the same work sequentially. This is arithmetic:
+20 parallel agents finish in the wall time of the slowest one. 1 sequential agent doing the same 20 units takes 20x that. Parallelism is arithmetic:
 
-- **Cost:** 20 haiku calls < 1 sonnet call (often by 10-20x)
-- **Wall time:** 20 parallel agents = the time of the slowest one (~60-120s). 1 sequential agent doing 20 things = 20x that.
-- **Context:** 20 completion summaries (60 sentences) vs reading all the content yourself (thousands of lines)
+- **Cost:** 20 parallel agents = 20 sequential agents. Parallelism trades nothing for wall time.
+- **Wall time:** 20 parallel = the slowest one (~60-120s). 1 sequential = 20x that.
+- **Context:** 20 completion summaries (60 sentences) vs reading all the content yourself (thousands of lines).
 - **Fault tolerance:** If 2 of 20 agents produce garbage, you still have 18 good results. If your 1 agent goes wrong, you start over.
 
-**Launch swarms.** When you have 8 things to check, launch 8 agents. When you have 15 files to audit, launch 15 agents. When you are unsure whether something is worth investigating, launch an agent anyway — speculative, redundant, and exploratory agents are free. The cost of a wasted haiku agent is negligible.
+**Tier follows the work, not the swarm.** A swarm of mechanical fetches is haiku. A swarm of audits or extractions is sonnet (each unit needs to read meaning). Never collapse "many small units" into "use haiku" — count of units does not change the type of work.
+
+**Launch swarms.** When you have 8 things to check, launch 8 agents. When you have 15 files to audit, launch 15 sonnet agents. When you are unsure whether something is worth investigating, launch an agent anyway — speculative, redundant, and exploratory agents remain affordable. Wasted agent cost rounds to zero against orchestrator context cost.
 
 All work belongs in agent context. Any task that seems trivial during planning can expand unexpectedly.
 
@@ -74,33 +76,31 @@ All work belongs in agent context. Any task that seems trivial during planning c
 
 ## The Model Ladder
 
-Three tiers. The cheapest model that can reliably do the task is the correct choice. Upgrade on observed failure, not preemptively.
+Three tiers. Match the tier to the work type, not to ambition or output length. Mechanical transforms run on haiku. Judgment runs on sonnet. Guidance authored for downstream agents runs on opus. Upgrade on observed failure when the work type is borderline; never downgrade across the work-type boundary to save cost.
 
 ### Haiku: The Workhorse
 
 **Cost:** Negligible. Launch dozens without thinking twice.
 
-**Decision authority: None.** Haiku agents gather, extract, count, list, and report. They never decide, judge, evaluate, or recommend. Any task requiring judgment starts at sonnet.
+**Decision authority: None.** Haiku executes deterministic transforms. It never interprets meaning. Any task that asks "what does this mean?" or "what category does this belong to?" starts at sonnet.
 
-**Excels at:**
-- Fetching URLs and extracting structured data
-- Reading files and producing inventories/catalogs
-- Grepping codebases for patterns
-- Parsing structured documents into tables
-- Writing reports from gathered facts
-- Running commands and reporting output
-- Counting things, listing things, categorizing things
-- Any task where the instructions are precise and the judgment required is low
+**Use haiku for (mechanical/deterministic only):**
+- Bash wrangling — running shell commands, managing processes, capturing exit codes
+- Text formatting — rendering markdown tables, status JSON, file rewrites that preserve content
+- File operations — copy, move, exists, mtime, glob counts, glob listings
+- Regex matching against fixed patterns, with no semantic interpretation of matches
+- Status file writes against a predefined schema you provide inline
 
-**Fails at:**
-- Reasoning about type signatures and API compatibility
-- Distinguishing similarly-named entities without explicit guidance
-- Verifying extraordinary claims (tends to accept them)
-- Cross-referencing multiple sources requiring judgment
-- Nuanced architectural judgment
-- Detecting subtle bugs in code
+**NEVER use haiku for:**
+- Extraction (deciding which spans of a document answer a question)
+- Comparison (judging which option fits constraints better)
+- Synthesis (composing findings into a coherent narrative)
+- Judgment (rating, scoring, ranking, recommending)
+- Categorization (assigning items to classes that require reading meaning)
 
-**Prompting strategy:** Be extremely specific. Haiku follows instructions literally. Give it exact file paths, exact commands, exact report formats. The more precise the prompt, the better haiku performs. A great haiku prompt compensates for most of haiku's reasoning limitations.
+These escalate to sonnet. The test: if the work needs the agent to understand what it is reading, it is not haiku work.
+
+**Prompting strategy:** Specify the exact transform. Give absolute paths, exact commands, exact output schemas. Haiku follows instructions literally — the prompt must leave no interpretive surface.
 
 **Failure signal:** If a haiku agent produces a report that contradicts another haiku agent's report, or makes claims that seem extraordinary, do not debug — re-launch the task with sonnet.
 
@@ -131,28 +131,38 @@ Three tiers. The cheapest model that can reliably do the task is the correct cho
 **Use as orchestrator:** You (the opus instance reading this) are the orchestrator. Your context is the most expensive resource. Protect it.
 
 **Use as agent when:**
+- The agent's output is consumed by another agent as guidance for that agent's behavior (skill files, agent definitions, plan documents, instruction templates) — guidance authorship shapes downstream conduct and demands opus
 - Synthesizing 20+ reports across multiple domains
 - Making strategic decisions that require weighing multi-constraint trade-offs
 - The task requires meta-cognitive reasoning that other models cannot deliver consistently
 - The stakes of getting it wrong are high (destructive operations, public-facing decisions, foundational vector-defining microdecisions)
 
-**Rarely needed as an agent.** If you want to delegate to opus, ask: can I decompose this further so sonnet agents handle the parts and I (opus) do the assembly?
+**Do NOT use opus for:**
+- Code production — test files, source modules, fixtures, and similar build artifacts remain sonnet even when downstream agents execute or read them. Code is product, not guidance.
+- Mechanical bulk transforms that fit haiku
+- Routine specialist work that fits sonnet
+
+**Rarely needed as an agent.** If you want to delegate to opus, ask: can I decompose this further so sonnet agents handle the parts and I (opus) do the assembly? Guidance authorship is the one delegation that should not decompose further.
 
 ### The Upgrade Path
 
 ```
-Start every task at haiku level.
+Classify the work first.
+   ↓
+Mechanical/deterministic transform? → haiku.
+Reads meaning, makes judgment, produces a record? → sonnet.
+Authors guidance another agent will read as instructions? → opus.
    ↓
 Agent output seems unreliable? (contradictions, extraordinary claims, shallow reasoning)
    ↓
-Re-launch with sonnet. Do NOT debug the haiku output.
+Re-launch one tier higher. Do NOT debug the agent's output.
    ↓
 Sonnet output insufficient? (rare — usually means the task needs decomposition, not a better model)
    ↓
 Either decompose further OR escalate to opus agent.
 ```
 
-Never pre-assign sonnet "just in case." Launch with haiku, observe, upgrade if needed. The cost of one wasted haiku launch is negligible. The cost of routinely using sonnet for haiku work adds up.
+Never assign haiku to judgment work because it is "small" — task size does not change task type. Never pre-assign opus to ordinary specialist work — guidance authorship is the trigger, not stakes alone.
 
 ---
 
@@ -196,12 +206,14 @@ If truly indivisible → do it yourself (rare).
 **The iteration rule:** Agents cannot launch other agents — the Agent tool is unavailable to subagents. The orchestrator is the only dispatch loop.
 
 ```
-Orchestrator launches Agent A with: "Decompose this task. Return a delegation spec."
+Orchestrator launches sonnet Agent A with: "Decompose this task. Return a delegation spec."
    ↓
 Agent A returns: [{task, tier, inputs, output_path}, ...]
    ↓
 Orchestrator launches Agents B, C, D from the spec
 ```
+
+Decomposition is judgment, so the planner runs on sonnet (or opus when the spec itself is consumed as guidance by a downstream agent).
 
 This keeps the orchestrator in control of cost, parallelism, and quality governance. The platform enforces this — since subagents lack the Agent tool, recursive spawning is structurally impossible.
 
@@ -319,13 +331,13 @@ Launch 10 background agents → do your own work → notifications arrive → pr
 
 ### Map-Reduce
 
-Many agents produce reports (map), one agent reads all reports (reduce).
+Many agents produce structured records (map), one agent reads all records and synthesizes (reduce).
 
 ```
-10 haiku agents write 10 reports → 1 sonnet agent reads all 10 → 1 synthesis report
+10 sonnet agents write 10 fact-record files → 1 sonnet or opus agent reads all 10 → 1 synthesis report
 ```
 
-**When:** The goal is a unified answer from diverse investigation. Research-tree's entire structure is map-reduce.
+**When:** The goal is a unified answer from diverse investigation. Research-tree's entire structure is map-reduce. The map step is sonnet because each record requires extraction; the reduce step is sonnet or opus because synthesis is judgment.
 
 ### Speculative Parallel
 
@@ -337,7 +349,7 @@ Agent A tries approach 1 → Agent B tries approach 2 → Agent C tries approach
 ```
 
 **When:** Exploring solution spaces. Debugging (try 3 hypotheses in parallel). Implementation (try 2 architectures, pick the better one).
-**Why it works:** The cost of 2 "wasted" haiku agents is negligible. The time saved by not trying approaches sequentially is enormous.
+**Why it works:** Wasted sonnet agents remain affordable — sonnet is still cheap relative to orchestrator context. The time saved by not trying approaches sequentially is enormous. (Hypothesis exploration is judgment, so haiku does not run these.)
 
 ### Long-Running Operations
 
@@ -355,10 +367,10 @@ Agent writes command + output classification logic → Orchestrator runs via bac
 Output of one agent becomes the input of the next, each refining.
 
 ```
-Haiku agent produces draft → Sonnet agent critiques → Haiku agent revises based on critique
+Sonnet agent produces draft → Sonnet agent critiques → Sonnet agent revises based on critique
 ```
 
-**When:** Quality needs to exceed what a single agent call achieves, but the task does not justify opus.
+**When:** Quality needs to exceed what a single agent call achieves, but the task does not justify opus. Drafting, critique, and revision are all judgment, so haiku does not appear in this chain.
 
 ---
 
@@ -459,7 +471,7 @@ When two agents disagree:
 3. Give it both file paths and the specific contradiction
 4. It reports back which claim is supported by evidence
 
-The resolution agent checks sources, not opinions. Evidence-based resolution, not credibility judgment. One haiku agent resolves what would have consumed orchestrator context.
+The resolution agent checks sources, not opinions. Evidence-based resolution, not credibility judgment. The resolver runs on sonnet (reading evidence to settle a contradiction is judgment), but a single sonnet dispatch resolves what would have consumed pages of orchestrator context.
 
 ### Spot-Checking
 
@@ -496,31 +508,31 @@ How to delegate common work types. Each archetype shows the decomposition patter
 
 ### Research / Ecosystem Survey
 
-See the `research-tree` skill for the full tiered workflow. Index parsing: haiku. Category surveys: haiku (parallel fan-out). Entity audits: haiku. Candidate verification: haiku for metadata, sonnet for deep reasoning. Synthesis: sonnet or opus (map-reduce).
+See the `research-tree` skill for the full tiered workflow. Mechanical fetches and file inventories run on haiku. Category surveys, entity audits, and candidate evaluation run on sonnet — these read meaning. Synthesis runs on sonnet or opus (map-reduce).
 
 ### Implementation
 
-See the `dev-orchestration` skill (dev-discipline plugin) for the full Plan→Implement→Review→Fix loop. Decompose by entity/concern, sonnet implements, haiku validates.
+See the `dev-orchestration` skill (dev-discipline plugin) for the full Plan→Implement→Review→Fix loop. Decompose by entity/concern, sonnet implements, sonnet reviews. Haiku runs the build, the test command, and the lint command and reports raw exit codes; sonnet interprets the output.
 
 ### Audit / Review
 
-Identify targets to review. Fan out by CONCERN, not by target — a compliance audit agent reads all targets for compliance; a quality audit agent reads all targets for quality. This catches cross-target issues that per-target agents miss. Sonnet synthesizes findings into prioritized review.
+Identify targets to review. Fan out by CONCERN, not by target — a compliance audit agent reads all targets for compliance; a quality audit agent reads all targets for quality. This catches cross-target issues that per-target agents miss. Sonnet runs every audit (auditing is judgment). Sonnet or opus synthesizes findings into prioritized review.
 
 ### Investigation
 
-Receive problem report. Speculative parallel: 3 haiku agents, each investigating a different hypothesis. Whichever finds evidence → sonnet agent implements solution. Haiku agent verifies solution. Speculative parallel is key — test all hypotheses simultaneously.
+Receive problem report. Speculative parallel: 3 sonnet agents, each investigating a different hypothesis (hypothesis-checking is judgment). Whichever finds evidence → sonnet agent implements solution. Sonnet agent verifies solution. Haiku may run reproduction commands and capture output, but never decides whether a hypothesis fits.
 
 ### Validation / Verification
 
-Identify what needs validation. Haiku agents run validation procedures, report results to files. If failures: delegate investigation. Never run long validation procedures in orchestrator context.
+Identify what needs validation. Haiku runs the validation command and writes the raw exit code, stdout, and stderr to a file. Sonnet reads that file and decides pass/fail when the verdict requires interpretation (warnings as errors, partial-pass scenarios). Never run long validation procedures in orchestrator context.
 
 ### Documentation / Writing
 
-Define structure and requirements. Haiku agents gather facts, read sources, extract examples. Sonnet agent assembles into coherent document. Optional haiku agent verifies all claims against sources. Fact-gathering is cheap; assembly requires judgment; verification is cheap again.
+Define structure and requirements. Sonnet agents gather facts, read sources, and extract examples (extraction is judgment). Sonnet or opus assembles into a coherent document. Sonnet verifies claims against sources. Haiku formats the final output (table rendering, file layout) once the prose is settled.
 
 ### Exploration / "What's Out There?"
 
-Launch 5-15 haiku agents with different search angles (all background, all parallel). Read completion summaries → identify interesting threads. Launch 2-3 sonnet agents to go deeper on promising threads. Assemble findings or delegate synthesis. 15 speculative haiku agents exploring different angles cost less than reading one comprehensive document yourself.
+Launch 5-15 sonnet agents with different search angles (all background, all parallel). Each angle requires reading meaning from results, so sonnet is the floor. Read completion summaries → identify interesting threads. Launch 2-3 sonnet or opus agents to go deeper on promising threads. Speculative parallel still applies — wasted sonnet agents are affordable.
 
 ---
 
@@ -578,7 +590,7 @@ Close the session: extract metrics, draft session record, update reference docs,
 
 1. Treat context as expensive. Treat agent calls as cheap. This asymmetry drives every decision.
 2. Decompose aggressively. 10 micro-agents beat 1 macro-agent. Quality emerges in synthesis.
-3. Default to haiku. Every task starts at haiku. Upgrade on observed failure, not preemptively.
+3. Tier follows the work. Mechanical/deterministic transforms run on haiku. Anything requiring interpretation of meaning starts at sonnet. Guidance authored for downstream agents runs on opus. Never select tier by ambition or by output length.
 4. Default to parallel. Sequential only when there is a true data dependency.
 5. Route via file paths. Agents write to disk. Later agents read from disk. The orchestrator routes, never relays.
 6. Isolate judgment. Agents that form opinions get raw facts, not prior opinions.

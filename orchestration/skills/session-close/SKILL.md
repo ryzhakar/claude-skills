@@ -183,7 +183,7 @@ Follow conventions. Dispatch agents per the `agentic-delegation` skill (decompos
 
 ## LEAVE Protocol
 
-The orchestrator executes in this order. Run Steps 1-4 in parallel. Step 5 requires orchestrator participation. Steps 6-7 are sequential.
+The orchestrator executes in this order. Run Steps 1-4 in parallel. Step 4b (orphan-script audit) is optional and parallel-eligible. Step 5 requires orchestrator participation. Steps 6-7 are sequential.
 
 ### Step 1: Extract session metrics (haiku, background)
 
@@ -235,6 +235,29 @@ Dispatch a sonnet agent to update the three living reference documents:
 
 The agent must read actual code — not guess at function signatures.
 
+### Step 4b: Orphan tracked-script audit (sonnet, optional, advisory)
+
+Optional. LEAVE completes whether or not this runs. Skip when no scripts changed and no script-bearing directories were touched this session.
+
+Dispatch a sonnet agent to identify tracked scripts with zero references across the marketplace. Scope:
+- `scripts/`
+- `.claude/scripts/`
+- every plugin `hooks/` directory
+
+Detection: a script is a candidate when no skill (`SKILL.md`), agent (`.md` under `agents/`), hook (`hooks.json`, hook scripts, hook templates), or workflow file references it by path or by basename. Reference judgment requires reading surrounding context — a string match alone does not establish use.
+
+The agent writes a report to `docs/orchestration_log/recon/{YYYY-MM-DD}/orphan_scripts.md`. Each candidate gets a row: script path, the directories searched for references, and a one-line rationale for why no reference was found.
+
+Disposition (orchestrator, in Step 5):
+- **Justify** — annotate the canonical reference path that legitimizes the script (e.g., a hook command, a skill instruction, a `justfile` recipe). Update the consuming file if the reference is missing.
+- **Remove** — `git rm` the orphan and stage with the LEAVE commit.
+
+Boundaries:
+- Removal happens in Step 5 by the orchestrator, not by the audit agent. The agent reports; it does not delete.
+- A missing or incomplete report does not block LEAVE. Steps 5-7 proceed regardless.
+- Haiku does not dispatch this step. Reference judgment requires sonnet — string matching alone misclassifies.
+- Audit scope NEVER extends to `recon/`. Recon is gitignored and disposable; `rm -rf recon/{old-date}/` covers that hygiene separately.
+
 ### Step 5: Review and correct drafts (orchestrator, after Steps 1-4 complete)
 
 Read the draft session record. Correct:
@@ -245,6 +268,8 @@ Read the draft session record. Correct:
 - Guessed function signatures (agent must read actual code, not infer)
 
 This step cannot be delegated. The orchestrator has context no agent can access.
+
+If Step 4b ran, read `orphan_scripts.md` and dispose of each candidate (justify with an annotated reference path, or `git rm`). Stage removals for the Step 6 commit.
 
 ### Step 6: Commit (haiku)
 

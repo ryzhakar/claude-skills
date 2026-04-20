@@ -134,11 +134,14 @@ Before writing any test, find 2-3 existing tests in `tests/*.spec.ts` covering s
 
 ### Generation Loop (Per Scenario)
 
-**Step 1: Verify Locators (mandatory).** Before writing, verify planned locators exist in the live DOM using playwright-cli:
+**Step 1: Verify locators against live DOM.** Snapshot existence is the audit trail. The orchestrator checks `.playwright/snap-gen-*.yaml` after dispatch -- a missing snapshot for a generated test fails verification.
+
 1. `playwright-cli goto <page-url>`
-2. `playwright-cli snapshot --filename=/tmp/gen-snap.yaml`
-3. Read snapshot -- confirm element refs match planned locators
-4. If locator missing: update the test plan, do not write a broken test
+2. `playwright-cli snapshot --filename=.playwright/snap-gen-<test-slug>.yaml` -- one snapshot per test, slug matches the spec filename stem (e.g., `snap-gen-login.yaml` for `login.spec.ts`). The `snap-gen-` prefix distinguishes generator snapshots from planner snapshots (`snap-home`, `snap-after-click`, etc.).
+3. Read the snapshot -- confirm planned locators map to live element refs.
+4. If a locator is missing: update `.playwright/test-plan.md`. Do NOT write a broken test.
+
+**Snapshot is non-optional.** Do NOT proceed to Step 2 without `.playwright/snap-gen-<test-slug>.yaml` on disk. Do NOT generate test code from memory, from the test plan alone, or from a stale snapshot belonging to a prior test. If playwright-cli fails to produce the snapshot, STOP. Write `.playwright/orchestrator-status.json` with `NEEDS_CONTEXT` and the playwright-cli error as blocker. Exit.
 
 **Step 2: Write ONE test.** Use Given/When/Then with accessibility locators:
 
@@ -218,6 +221,7 @@ Writes:
 - `tests/pages/*.page.ts` -- page objects (if complex flows)
 - `tests/fixtures.ts` -- worker-scoped fixtures
 - `tests/helpers/test-data.ts` -- TestDataFactory
+- `.playwright/snap-gen-<test-slug>.yaml` -- per-test live DOM snapshot (Step 1 audit trail)
 - Updates `.playwright/test-plan.md` checkboxes (mark scenarios complete)
 - Appends to `.playwright/lessons.md` (fix mode: structural issues found and fixed)
 - `.playwright/orchestrator-status.json`

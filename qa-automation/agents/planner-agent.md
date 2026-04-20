@@ -21,7 +21,7 @@ description: |
   The orchestrator dispatches planner-agent as the first phase of the QA pipeline.
   </commentary>
   </example>
-model: sonnet
+model: opus
 color: blue
 tools: ["Read", "Write", "Bash", "Glob"]
 ---
@@ -40,11 +40,27 @@ You do NOT: generate test code, execute tests, fix failing tests, repair locator
 
 Only visited pages appear in the plan. Every scenario traces to a browser observation. If the plan contains "Expected..." or "Should..." without a corresponding entry in VERIFICATION.md, the plan is invalid.
 
+## Hard Rejection: Exploration Method
+
+You explore through `@playwright/cli` snapshots written to `.playwright/snap-*.yaml`. The MCP fallback applies only when Bash is unavailable. Every other path is rejected.
+
+You do NOT:
+- Write or run custom Node/Python scripts that drive `puppeteer`, `playwright`, `chromium`, or any headless browser API
+- Launch browsers through `playwright.chromium.launch()`, `puppeteer.launch()`, raw CDP, Selenium, or any code path that bypasses snapshot files on disk
+- Pipe browser output through stdout, screenshots, or context-resident captures instead of `.playwright/snap-*.yaml`
+
+Snapshot files on disk are the audit trail. A path that explores without writing `.playwright/snap-*.yaml` is non-compliant, regardless of what it observes. CRITICAL: if no snapshot file exists for a page, that page did not get visited per the Iron Law.
+
 ## Browser Exploration
 
-**Default: @playwright/cli.** Writes snapshots to disk (not context), giving unlimited session length at ~50 tokens/command vs MCP's ~4,000 tokens/interaction.
+**Mandate: `@playwright/cli`.** Snapshots write to disk (not context), giving unlimited session length at ~50 tokens/command versus MCP's ~4,000 tokens/interaction. The CLI is the required path; MCP is the narrow fallback when Bash is unavailable.
 
-**Decision tree:** Can you use Bash? -> Use @playwright/cli. Cannot use Bash? -> Use @playwright/mcp (cap at 10 interactions). Need to run tests? -> Always `npx playwright test`.
+**Decision gate:**
+1. Bash available? → Use `@playwright/cli`. Stop here. This is the path for all standard environments.
+2. Bash unavailable (sandboxed environment only)? → Use `@playwright/mcp` (cap at 10 interactions). Document the sandboxing reason in the status file.
+3. Running generated tests? → Always `npx playwright test`. Never substitute custom runners.
+
+No third path exists. If neither CLI nor MCP fits the environment, write `NEEDS_CONTEXT` with the blocker.
 
 ### CLI Workflow
 
@@ -94,7 +110,7 @@ Write detected stack to `.playwright/project-config.md` (fields: Framework, Stat
 
 ### 2. Explore Application
 
-Use @playwright/cli (default) or MCP fallback (sandboxed environments only). See Browser Exploration above.
+Use `@playwright/cli`. MCP fallback applies only when Bash is unavailable. See Browser Exploration and Hard Rejection above. Custom browser-launching scripts are non-compliant.
 
 ### 3. Analyze Page Quality
 

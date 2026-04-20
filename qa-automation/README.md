@@ -124,7 +124,7 @@ The orchestrator dispatches planner-agent as the first phase of the QA pipeline.
 </example>
 
 
-**Model:** `sonnet` · **Tools:** Read, Write, Bash, Glob
+**Model:** `opus` · **Tools:** Read, Write, Bash, Glob
 
 ---
 

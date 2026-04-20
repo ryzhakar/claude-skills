@@ -163,16 +163,16 @@ Before any phase:
 
 ## Phase 1: PLAN
 
-Dispatch **planner-agent** with the base URL.
+Record the dispatch start time: `T0=$(date +%s)`. Dispatch **planner-agent** with the base URL.
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` -> verify planner completeness (all 5 artifacts exist), then write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
+- `DONE` -> run Planner Completeness Check AND CLI Evidence Check, then write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
 - `NEEDS_CONTEXT` -> surface the `blocker` field to the user, re-dispatch once after input
 - `BLOCKED` -> surface blocker, stop
 
 ### Planner Completeness Check
 
-Before proceeding to GENERATE, verify all 5 required artifacts exist:
+Verify all 5 required artifacts exist:
 1. `.playwright/test-plan.md`
 2. `.playwright/pages.md`
 3. `.playwright/selector-strategy.md`
@@ -181,14 +181,47 @@ Before proceeding to GENERATE, verify all 5 required artifacts exist:
 
 If any are missing, re-dispatch planner-agent with explicit instructions to produce the missing artifacts.
 
+### CLI Evidence Check
+
+The planner explores via `@playwright/cli`, which writes accessibility snapshots to `.playwright/snap-*.yaml`. Snapshot absence proves non-CLI exploration (MCP-only, scripted, or fabricated from memory). Verify:
+
+```bash
+find .playwright -maxdepth 1 -name 'snap-*.yaml' -newermt "@$T0" | head -1
+```
+
+- **One or more matches** -> CLI evidence present, proceed.
+- **Zero matches (first miss)** -> re-dispatch planner-agent with this added directive: `"MANDATORY: explore via @playwright/cli only. Each visited page MUST produce a .playwright/snap-<page>.yaml snapshot. Scripts that launch browsers are prohibited."` Reset `T0` before re-dispatch.
+- **Zero matches (second miss)** -> escalate: write `NEEDS_CONTEXT` to `.playwright/orchestrator-status.json` with blocker `"planner produced no CLI snapshots across two dispatches; manual investigation required"` and stop.
+
+NEVER mark Phase 1 complete on agent self-report alone. NEVER skip the CLI Evidence Check. NEVER accept a missing snapshot set with the rationale "the agent had a reason" — silent skip is the failure mode this check exists to catch.
+
 ## Phase 2: GENERATE
 
-Dispatch **generator-agent**. Include `.playwright/lessons.md` path in the dispatch if it exists (agents read it before starting -- it contains discoveries from prior cycles).
+Snapshot the pre-dispatch test set: `BEFORE=$(ls tests/*.spec.ts 2>/dev/null | sort)`. Record `T0=$(date +%s)`. Dispatch **generator-agent**. Include `.playwright/lessons.md` path in the dispatch if it exists (agents read it before starting -- it contains discoveries from prior cycles).
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` -> write `GENERATE` to `.claude/qa-phase.txt`, proceed to Phase 3
+- `DONE` -> run Generator Live-Verification Check, then write `GENERATE` to `.claude/qa-phase.txt`, proceed to Phase 3
 - `NEEDS_CONTEXT` -> surface blocker, re-dispatch once
 - `BLOCKED` -> surface blocker, stop
+
+### Generator Live-Verification Check
+
+The generator's locator-verification step writes a snapshot per test to `.playwright/snap-*.yaml`. The disambiguator is the test stem -- for `tests/<name>.spec.ts`, a matching `.playwright/snap-*<name>*.yaml` file MUST exist with mtime after `T0`. Compute the new test set and check:
+
+```bash
+AFTER=$(ls tests/*.spec.ts 2>/dev/null | sort)
+NEW=$(comm -13 <(echo "$BEFORE") <(echo "$AFTER"))
+for t in $NEW; do
+  stem=$(basename "$t" .spec.ts)
+  find .playwright -maxdepth 1 -name "snap-*${stem}*.yaml" -newermt "@$T0" | head -1
+done
+```
+
+- **Every new test has a matching snapshot** -> verification evidence present, proceed.
+- **Any new test lacks a snapshot (first miss)** -> re-dispatch generator-agent with this added directive: `"MANDATORY: for each test in tests/<name>.spec.ts, run the locator-verification step and persist the snapshot to .playwright/snap-<name>.yaml. Tests written without a corresponding snapshot will be rejected."` Reset `T0` and `BEFORE` before re-dispatch.
+- **Any new test still lacks a snapshot (second miss)** -> escalate: write `NEEDS_CONTEXT` to `.playwright/orchestrator-status.json` with blocker `"generator skipped live verification across two dispatches for tests: <list>; manual review required"` and stop.
+
+NEVER mark Phase 2 complete on agent self-report alone. NEVER skip the Live-Verification Check. NEVER accept a missing snapshot with the rationale "the locator was obvious" — the snapshot is the audit trail.
 
 ## Phase 3: EXECUTE
 

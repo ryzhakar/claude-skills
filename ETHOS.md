@@ -43,3 +43,9 @@ When optimizing a skill, identify its 5 core points first (what it most emphatic
 ## Analysis before action
 
 Full optimization follows: 4-dimension analysis (reference optionality, core points, Strunk prose, prompt-eval scoring) → bridge research (compression strategies, platform criteria) → per-unit synthesis → per-plugin implementation. Each phase produces artifacts on disk, verified before proceeding.
+
+## Paired enforcement
+
+Mandatory steps in agent bodies cannot self-enforce. Agents skip silently without consequence. Every mandatory step pairs two things: a verifiable artifact at an established path, and an orchestrator-side post-dispatch check that fails on missing artifact. Agent-side directives alone are aspirational.
+
+Reuse the established artifact map. New paths multiply the verification surface and complicate downstream consumers.

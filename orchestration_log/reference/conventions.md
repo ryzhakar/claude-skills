@@ -54,6 +54,26 @@ This document consolidates operational patterns from both sources plus conventio
 
 ---
 
+## Bilateral Specification
+
+**Core rule:** Every positive directive in skill or agent bodies pairs with an explicit negative prohibition.
+
+**Rationale:** A skill that says "use X" without saying "do not use Y" leaves a gap. Loosely-prompted agents fill that gap with Y. Mandate language without prohibition language is a permission slip for invented alternatives.
+
+**Format flexibility:** Hard Rules, "You do / You do NOT" scope, Iron Law + Hard Rejection list — formats vary by author. Bilateral coverage is mandatory; format is per-author discretion.
+
+**Existing bilateral patterns in the marketplace:**
+- generator-agent — Hard Rules section
+- executor-agent — "You do / You do NOT" scope
+- healer-agent — Iron Law + Hard Rejection list
+- planner-agent — Iron Law only (gap closed session 2026-04-17 per F1)
+
+**Application:** Coverage check during instruction-writer review. A positive directive without a paired prohibition fails review.
+
+**Source:** Session 2026-04-17, codification of pattern observed across qa-automation agents.
+
+---
+
 ## Token Economy
 
 **Measurement:** Use `just tokens FILE` for all token counts.
