@@ -1,5 +1,5 @@
 # Codebase State
-Last updated: 2026-04-16
+Last updated: 2026-04-20
 
 ## Plugin Inventory
 
@@ -7,11 +7,11 @@ Last updated: 2026-04-16
 |--------|---------|--------|--------|-------|
 | dev-discipline | 1.4.0 | 7 | 3 | 2 |
 | manifesto | 2.1.0 | 2 | 0 | 3 |
-| orchestration | 3.1.0 | 3 | 0 | 2 |
+| orchestration | 3.2.0 | 3 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 1.1.0 | 2 | 0 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
-| qa-automation | 3.1.0 | 1 | 4 | 0 |
+| qa-automation | 3.1.1 | 1 | 4 | 0 |
 | userland-utilities | 1.0.0 | 1 | 0 | 0 |
 | **TOTAL** | - | **20** | **7** | **7** |
 
@@ -86,6 +86,62 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 - Large (3000-6000t): 4 skills, 3 agents
 - XL (6000t+): 2 skills (agentic-delegation, research-tree)
 
+## Reference File Inventory
+
+| File | Description | Last Updated |
+|------|-------------|--------------|
+| codebase_state.md | Plugin/skill/agent/hook inventory and version tracking | 2026-04-20 |
+| conventions.md | Established patterns and principles | 2026-04-20 |
+| deferred_items.md | Backlog of known defects and improvement opportunities | 2026-04-20 |
+| hooks-reference.md | Authoritative hooks reference (893 lines, command hooks) | 2026-04-16 |
+| agents-reference.md | Authoritative Claude Code plugin-defined agents reference manual | 2026-04-20 |
+
+**agents-reference.md** — NEW (2026-04-20)
+- Scope: Claude Code platform contract for plugin-defined agents (subagents). Covers definition, discovery, dispatch, execution, and termination.
+- Generation: Multi-agent primary-source extraction wave (9 topic clusters, 78 unique source URLs, 141 corpus files = 87 .md + 54 .html, plus 9 bucket manifests) + deep-link citation rewrite. 298 citations; 197 resolved to deep links (197/242 quote-bearing = 81%).
+- Source corpus: `orchestration_log/recon/2026-04-17/agents-v2/`
+- Traceability: `REFERENCE.md` (no deep links) and `REFERENCE-v2.md` (deep links) preserved at `orchestration_log/recon/2026-04-17/agents-v2/synthesis/`
+- Audience: agent authors; self-contained with no external references required.
+
+## Recon Directory Inventory
+
+| Date | Contents | Status |
+|------|----------|--------|
+| 2026-04-13 | Compression wave analysis: D1-D4 dimensions, synthesis docs for 18/20 skills + all agents | Gitignored, preserved |
+| 2026-04-14 | Instruction-writer agent creation artifacts | Gitignored, preserved |
+| 2026-04-15 | Session-close skill + orchestration ARRIVE hook artifacts | Gitignored, preserved |
+| 2026-04-16 | Hook research corpus, hooks-reference.md source material | Gitignored, preserved |
+| 2026-04-17 | Agents-v2 research wave (see below) | Gitignored, preserved |
+
+**recon/2026-04-17/** — agents-v2 research wave
+```
+orchestration_log/recon/2026-04-17/
+  TIDY-REPORT.md             — layout verification report
+  session_metrics.md         — token/agent/tool-call totals
+  git_history.md             — commit log for the session
+  scouts/                    — prior wave scout reports (preserved)
+  agents-v2/
+    inventory/               — docs sitemap, marketplace sources, prior claims
+    primary-sources/         — 9 topic dirs (01–09), 141 files total (78 unique source URLs)
+      01-subagents-plugins/
+      02-tools-skills-hooks/
+      03-commands-mcp-howitworks/
+      04-settings-config-memory/
+      05-iam-security/
+      06-automation/
+      07-architecture/
+      08-sdk-foundation/
+      09-sdk-reference/
+    synthesis/
+      sections/              — 11 per-section draft files
+      footguns/              — 11 footgun sidecar files
+      citation-rewrite/      — heading-index.tsv, citations.tsv, substitution-map.tsv, REPORT.md
+      REFERENCE.md           — assembled manual, no deep links (traceability copy)
+      REFERENCE-v2.md        — deep-link version (traceability copy)
+```
+
+(Note: an `agent-feedback-analysis/` subdirectory existed mid-session but was removed per user direction before close. Maintainer-review work resolved in a parallel task outside this session.)
+
 ## Recent Changes (Since 2026-04-15)
 
 **Session 2026-04-16 — Major restructure:**
@@ -118,6 +174,20 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 - dev-discipline: 1.3.0 → 1.4.0 (dev-orchestration moved in, hooks added, worktree discipline)
 - orchestration: 2.6.0 → 3.0.0 → 3.1.0 (breaking: dev-orchestration removed; then ARRIVE hooks added)
 
+**Session 2026-04-17 (completed 2026-04-20) — Agents reference wave:**
+
+1. **agents-reference.md published** at `orchestration_log/reference/agents-reference.md`. Authoritative Claude Code plugin-defined agents reference manual. 11 sections + 3 appendices, 2790 lines. Primary source corpus: 78 unique Claude Code docs URLs across 9 topic clusters.
+
+2. **Two-level synthesis (map-reduce):** 11 per-section scouts (sonnet, parallel) produced section drafts; one opus assembler integrated them into the unified REFERENCE.md. Strategy used because corpus exceeded 500KB.
+
+3. **Deep-link citation rewrite:** Pre-computed heading anchor index (awk over 87 source .md files, 1,470 anchor entries) → automated citation rewriter resolved 197 of 242 quote-bearing citations to deep links (81%). Of 298 total citations: 197 deep-linked, 56 prose mentions with URL-only attribution (no quote to anchor), 45 quote-bearing fell back to URL-only (paraphrased text / placeholder syntax / callout-box render differences).
+
+4. **CLI/SDK contradiction preserved as open question (MD-19):** CLAUDE.md documents inheriting across projects and sub-agents; official docs describe it as applying to projects within a single Claude Code session. Open question filed in agents-reference.md Appendix B.
+
+5. **Plugin versions bumped (not by this session's direct code changes — read actual plugin.json):**
+   - orchestration: 3.1.0 → 3.2.0
+   - qa-automation: 3.1.0 → 3.1.1
+
 ## Known Limitations
 
 1. **Reference file pattern not eliminated:** prompt-optimize mentions references/ pattern in instructional content (line 113). Not a functional reference but suggests historical pattern.
@@ -133,6 +203,10 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 6. **MCP integration:** No plugins currently use .mcp.json despite plugin-dev:mcp-integration skill existing.
 
 7. **instruction-writer not in plugin:** Agent lives at .claude/agents/ (project-local). Auto-discovery works, but it is not packaged in any plugin. May need plugin placement for portability.
+
+8. **manifesto repo path unreliable:** `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/Manifesto, first-principles - "break the mold".md` was absent for 4+ scout agents during the 2026-04-17 wave. They fell back to upstream raw GitHub URL. The ensure-repo.sh script may not be cloning reliably.
+
+9. **agents-reference.md citation quality:** 45 of 298 citations are URL-only (no section anchor) due to grep mismatch on paraphrased / placeholder / callout-box text. These are correct URLs but lack deep links. Evidence: `orchestration_log/recon/2026-04-17/agents-v2/synthesis/citation-rewrite/REPORT.md`.
 
 ## Next Actions
 

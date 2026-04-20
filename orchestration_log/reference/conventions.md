@@ -1,5 +1,5 @@
 # Conventions
-Last updated: 2026-04-15
+Last updated: 2026-04-20
 
 Established patterns and principles governing plugin development in this marketplace. All conventions trace to observed model behavior, documented platform constraints, or empirical optimization results.
 
@@ -405,6 +405,12 @@ isolation: worktree    # Optional — use when agent needs filesystem isolation
 - Ground truth informs search design
 - Parallel execution WITHIN tiers, sequential BETWEEN tiers
 
+**Two-level synthesis (map-reduce) for large corpora:** When primary-source corpus exceeds ~500KB, decompose synthesis into per-section scouts (sonnet, parallel) followed by one opus assembler. Single-context synthesis on 600K+ tokens degrades quality. Use this strategy whenever section boundaries are cleanly defined (topic clusters, numbered sections, etc.).
+
+**When it applies:** Research waves where the corpus is expected to span dozens of source pages and produce a multi-section reference document. The 2026-04-17 agents wave used 9 parallel section scouts + 1 opus assembler across 78 source files.
+
+**Evidence:** `orchestration_log/recon/2026-04-17/agents-v2/synthesis/sections/` (11 section files) + `synthesis/REFERENCE.md` (assembled output). Session metrics at `orchestration_log/recon/2026-04-17/session_metrics.md` confirm opus used for assembly (strategic, high-output role).
+
 **Source:** MEMORY.md feedback_swarm_decomposition.md + feedback_tier_ordering.md
 
 ---
@@ -547,3 +553,35 @@ The verification confirms `/cost` reports for the right scope. It does not compu
 **Convention updates:** This file (conventions.md) is a living reference. Update when new patterns emerge or old patterns prove ineffective.
 
 **Feedback loop:** Analysis artifacts → synthesis → implementation → observation → memory → updated conventions.
+
+---
+
+## Doc-Extraction Techniques
+
+Conventions for fetching and processing Claude Code documentation pages at scale.
+
+**Mintlify `.md` URL trick:** Appending `.md` to any `code.claude.com` docs URL returns the page as native markdown, bypassing the JS-rendered HTML shell. Use for any doc-extraction wave where scraping rendered HTML would be necessary otherwise. Example: `https://code.claude.com/docs/en/sub-agents.md` returns raw markdown.
+
+**When it applies:** Any wave that reads Claude Code platform docs. Eliminates need for headless browser or HTML parsing.
+
+**Evidence:** `orchestration_log/recon/2026-04-17/agents-v2/primary-sources/` — all 78 source files fetched via `.md` URL variant.
+
+---
+
+**Pre-computed citation index for deep linking:** When rewriting citations to deep-link URLs, pre-compute the heading anchor index via shell pipeline (awk over fetched `.md` files) and run the rewriter against that index. Never load primary-source files into context during the rewrite pass.
+
+**When it applies:** Any wave where the assembled reference document cites specific passages in source docs. Scales to 100+ citations without blowing the context window.
+
+**Evidence:** `orchestration_log/recon/2026-04-17/agents-v2/synthesis/citation-rewrite/heading-index.tsv` (1470 entries), `citations.tsv` (298 rows), `substitution-map.tsv` (298 rewrites). REPORT.md documents the outcome distribution.
+
+---
+
+## Constitution Reliability
+
+**First Principles manifesto path is unreliable:** `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/Manifesto, first-principles - "break the mold".md` may be absent when agents start. Do not write binding preambles that treat local presence as the default. Every binding preamble must include the upstream fallback as a required step — Try local read; if absent, `curl -fsSL` from the raw GitHub URL.
+
+**Fallback URL:** `https://raw.githubusercontent.com/ryzhakar/LLM_MANIFESTOS/refs/heads/main/manifestos/Manifesto%2C%20first-principles%20-%20%22break%20the%20mold%22.md`
+
+**When it applies:** Every agent dispatch preamble that binds to the First Principles manifesto. The pattern is already used in the 2026-04-17 task instructions and should be the canonical form going forward.
+
+**Evidence:** 4+ scout agents in the 2026-04-17 wave encountered absent local file and fell back to upstream fetch. See `deferred_items.md` DI-1 for remediation tracking.
