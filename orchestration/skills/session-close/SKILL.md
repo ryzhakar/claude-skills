@@ -21,6 +21,25 @@ Governs the ARRIVE/WORK/LEAVE lifecycle for orchestration sessions. Produces dur
 
 Never delegate the final synthesis and correction to an agent. The orchestrator owns the session record.
 
+## Artifact Contract
+
+Canonical paths and ownership for every artifact this skill produces or consumes. Skill body prose may cite rows by ID. Prose MUST NOT contradict this table.
+
+| ID | Path | Producer | Consumer | Format | Required |
+|----|------|----------|----------|--------|----------|
+| A1 | `orchestration_log/recon/${DATE}/session_metrics.md` | Step 1 haiku agent | Step 3 draft agent, Step 5 orchestrator | markdown | yes |
+| A2 | `orchestration_log/recon/${DATE}/git_history.md` | Step 2 haiku agent | Step 3 draft agent, Step 5 orchestrator | markdown | yes |
+| A3 | `orchestration_log/recon/${DATE}/orphan_scripts.md` | Step 4b sonnet agent | Step 5 orchestrator | markdown | conditional |
+| A4 | `orchestration_log/history/${DATE}/session.md` | Step 3 sonnet agent drafts; Step 5 orchestrator corrects; Step 7 haiku fills cost | next-session ARRIVE, future Step 3 drafts (format reference) | markdown | yes |
+| A5 | `orchestration_log/history/${DATE}/reviews/` | review-producing agents during the session | next-session ARRIVE, audits | markdown | conditional |
+| A6 | `orchestration_log/reference/codebase_state.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+| A7 | `orchestration_log/reference/deferred_items.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+| A8 | `orchestration_log/reference/conventions.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+
+Conditional rows: A3 produces only when Step 4b runs (script-bearing directories changed). A5 produces only when reviews ran during the session.
+
+`${DATE}` resolves to the session date as `YYYY-MM-DD`.
+
 ## Directory Structure
 
 ```
@@ -187,7 +206,7 @@ The orchestrator executes in this order. Run Steps 1-4 in parallel. Step 4b (orp
 
 ### Step 1: Extract session metrics (haiku, background)
 
-Dispatch a haiku agent to parse all JSONL files in the session directory. Agent writes to `docs/orchestration_log/recon/{YYYY-MM-DD}/session_metrics.md`.
+Dispatch a haiku agent to parse all JSONL files in the session directory. Agent writes to `orchestration_log/recon/{YYYY-MM-DD}/session_metrics.md`.
 
 Dispatch the agent with instructions to extract:
 - **Agent counts by model tier** — how many agents ran on haiku, sonnet, opus (from `message.model`)
@@ -205,7 +224,7 @@ Step 1 provides agent counts and message volumes. NEVER derive cost from JSONL. 
 
 ### Step 2: Extract git history (haiku, background)
 
-Dispatch a haiku agent to extract the git log for the session period. Agent writes to `docs/orchestration_log/recon/{YYYY-MM-DD}/git_history.md`.
+Dispatch a haiku agent to extract the git log for the session period. Agent writes to `orchestration_log/recon/{YYYY-MM-DD}/git_history.md`.
 
 Commands to run:
 - `git log --format="%ai %H %s" --since="{session-start-date}" --reverse`
@@ -217,10 +236,10 @@ Commands to run:
 
 ### Step 3: Draft session record (sonnet, background)
 
-Dispatch a sonnet agent to draft `docs/orchestration_log/history/{YYYY-MM-DD}/session.md`. Point the agent at:
-- `docs/orchestration_log/history/` — prior session records for format reference
+Dispatch a sonnet agent to draft `orchestration_log/history/{YYYY-MM-DD}/session.md`. Point the agent at:
+- `orchestration_log/history/` — prior session records for format reference
 - The git history recon file (when available)
-- `docs/orchestration_log/reference/` — current reference docs for state context
+- `orchestration_log/reference/` — current reference docs for state context
 
 The agent must use the header template and required sections defined above. Include the session ID for backlinking.
 
@@ -229,9 +248,9 @@ The agent reconstructs from artifacts. **It will miss things and get things wron
 ### Step 4: Draft reference doc updates (sonnet, background)
 
 Dispatch a sonnet agent to update the three living reference documents:
-- `docs/orchestration_log/reference/codebase_state.md` — update from actual code (`grep`, `wc -l`, pytest)
-- `docs/orchestration_log/reference/deferred_items.md` — add new findings, remove resolved items
-- `docs/orchestration_log/reference/conventions.md` — add patterns discovered this session
+- `orchestration_log/reference/codebase_state.md` — update from actual code (`grep`, `wc -l`, pytest)
+- `orchestration_log/reference/deferred_items.md` — add new findings, remove resolved items
+- `orchestration_log/reference/conventions.md` — add patterns discovered this session
 
 The agent must read actual code — not guess at function signatures.
 
@@ -246,7 +265,7 @@ Dispatch a sonnet agent to identify tracked scripts with zero references across 
 
 Detection: a script is a candidate when no skill (`SKILL.md`), agent (`.md` under `agents/`), hook (`hooks.json`, hook scripts, hook templates), or workflow file references it by path or by basename. Reference judgment requires reading surrounding context — a string match alone does not establish use.
 
-The agent writes a report to `docs/orchestration_log/recon/{YYYY-MM-DD}/orphan_scripts.md`. Each candidate gets a row: script path, the directories searched for references, and a one-line rationale for why no reference was found.
+The agent writes a report to `orchestration_log/recon/{YYYY-MM-DD}/orphan_scripts.md`. Each candidate gets a row: script path, the directories searched for references, and a one-line rationale for why no reference was found.
 
 Disposition (orchestrator, in Step 5):
 - **Justify** — annotate the canonical reference path that legitimizes the script (e.g., a hook command, a skill instruction, a `justfile` recipe). Update the consuming file if the reference is missing.
@@ -276,11 +295,11 @@ If Step 4b ran, read `orphan_scripts.md` and dispose of each candidate (justify 
 Dispatch a haiku agent to stage and commit all orchestration log changes.
 
 ```
-git add docs/orchestration_log/
+git add orchestration_log/
 git commit -m "doc: session {YYYY-MM-DD} LEAVE protocol — session record + reference updates"
 ```
 
-Commit only `docs/orchestration_log/history/` and `docs/orchestration_log/reference/`. The recon/ directory is gitignored and disposable; regenerate if needed.
+Commit only `orchestration_log/history/` and `orchestration_log/reference/`. The recon/ directory is gitignored and disposable; regenerate if needed.
 
 ### Step 7: Capture cost (orchestrator)
 
@@ -292,7 +311,7 @@ Run `/cost`. Before filling the placeholder, cross-verify scope:
 If scope checks pass, dispatch a haiku agent to fill the cost placeholder in:
 
 ```
-docs/orchestration_log/history/{YYYY-MM-DD}/session.md
+orchestration_log/history/{YYYY-MM-DD}/session.md
 # Find: [PLACEHOLDER - run /cost to fill]
 # Replace with actual /cost number and note "scope-verified"
 ```
