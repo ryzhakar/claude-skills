@@ -159,10 +159,12 @@ Reads:
 - `tests/seed.spec.ts` -- run first to verify environment health
 
 Writes:
-- `results.json` -- Playwright JSON report
-- `.ai-failures.json` -- classified failures
-- `playwright-report/` -- HTML report
-- `test-results/**/trace.zip` -- traces for manual debugging
+- `results.json` -- Playwright JSON report (always)
+- `.ai-failures.json` -- classified failures with `summary` + per-category arrays (always; Phase 4 routing depends on this exact schema)
+- `playwright-report/` -- HTML report (always)
+- `test-results/**/trace.zip` -- traces for manual debugging (when failures occur with tracing enabled)
+
+`.ai-failures.json` is load-bearing. Status DONE without a valid `.ai-failures.json` on disk is a contract violation; the orchestrator's Executor Output Check rejects it.
 
 ## Status File
 

@@ -51,12 +51,12 @@ Append your own discoveries after healing: which selectors you replaced, which t
 
 ## Circuit Breaker (read-only)
 
-Read `.github/healing-state.json` (treat as empty if missing).
+Read `.github/healing-state.json` (treat as empty if missing — safe only on round 1).
 
 - Max 2 attempts per test (key: `"file:line:title"`) -- skip and mark deferred if exceeded
 - Tests on blocklist -- skip
 
-Do not write to this file. The orchestrator updates it after aggregation.
+Do NOT write to this file. The orchestrator owns the write after aggregation; the orchestrator's Pre-Dispatch Circuit-Breaker Gate guarantees a current state file exists from round 2 onward. Healers reading a stale state cannot detect it — the orchestrator is the gate.
 
 ## Failure Validation
 

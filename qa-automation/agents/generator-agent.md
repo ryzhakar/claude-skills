@@ -217,14 +217,16 @@ Reads:
 - `.playwright/lessons.md` -- prior cycle discoveries
 
 Writes:
-- `tests/*.spec.ts` -- generated or patched test files
-- `tests/pages/*.page.ts` -- page objects (if complex flows)
-- `tests/fixtures.ts` -- worker-scoped fixtures
-- `tests/helpers/test-data.ts` -- TestDataFactory
-- `.playwright/snap-gen-<test-slug>.yaml` -- per-test live DOM snapshot (Step 1 audit trail)
+- `tests/*.spec.ts` -- generated or patched test files (always)
+- `tests/pages/*.page.ts` -- page objects (CONDITIONAL: only when a flow has 5+ steps or repeats)
+- `tests/fixtures.ts` -- worker-scoped fixtures (CONDITIONAL: only when page objects or worker fixtures exist)
+- `tests/helpers/test-data.ts` -- TestDataFactory (CONDITIONAL: only when parallel tests conflict)
+- `.playwright/snap-gen-<test-slug>.yaml` -- per-test live DOM snapshot (always for new tests; Step 1 audit trail)
 - Updates `.playwright/test-plan.md` checkboxes (mark scenarios complete)
-- Appends to `.playwright/lessons.md` (fix mode: structural issues found and fixed)
+- Appends to `.playwright/lessons.md` (fix mode only: structural issues found and fixed)
 - `.playwright/orchestrator-status.json`
+
+Every conditional path you create MUST appear in the status file's `artifacts` array. The orchestrator's Conditional-Artifact Check verifies presence on disk for every claimed path — claiming an artifact you did not write is a contract violation.
 
 Naming: `<feature>.spec.ts`, `<page-name>.page.ts`, `fixtures.ts`, `helpers/test-data.ts`.
 

@@ -49,28 +49,40 @@ For multi-session QA work, the parent's session persistence protocol applies -- 
 | executor-agent | haiku | Runs tests via CLI, classifies failures into 6 categories, identifies healable locator failures |
 | healer-agent | sonnet | Applies ten-tier locator algorithm, scores confidence, fixes locator-only failures |
 
-### Artifact Map
+### Artifact Contract
 
-| Artifact | Path | Producer | Consumer |
-|----------|------|----------|----------|
-| Test Plan | `.playwright/test-plan.md` | planner | generator |
-| Page Inventory | `.playwright/pages.md` | planner | generator |
-| Selector Strategy | `.playwright/selector-strategy.md` | planner | generator |
-| Project Config | `.playwright/project-config.md` | planner | generator |
-| Verification Evidence | `.playwright/VERIFICATION.md` | planner | human |
-| Orchestrator Status | `.playwright/orchestrator-status.json` | all agents | orchestrator |
-| Phase Marker | `.claude/qa-phase.txt` | orchestrator | orchestrator |
-| Healed Output | `.playwright/healed/{test-name}.json` | healer | orchestrator |
-| Session Report | `.playwright/session-report.md` | orchestrator | human |
-| Lessons | `.playwright/lessons.md` | all agents | all agents |
-| Test Files | `tests/*.spec.ts` | generator | executor, healer |
-| Page Objects | `tests/pages/*.page.ts` | generator | executor |
-| Fixtures | `tests/fixtures.ts` | generator | all agents |
-| Seed File | `tests/seed.spec.ts` | human/generator | all agents |
-| Test Results | `results.json` | executor | healer |
-| Failure Classification | `.ai-failures.json` | executor | healer |
-| Healing Results | `.healing-results.json` | healer | orchestrator |
-| Circuit Breaker State | `.github/healing-state.json` | orchestrator | healer |
+Canonical inventory. The table is authoritative; body prose may reference rows by ID and MUST NOT contradict them. `${stem}` = test filename stem; `${test-name}` = sanitized test title.
+
+| ID | Path | Producer | Consumer | Format | Required |
+|----|------|----------|----------|--------|----------|
+| A1 | `.playwright/test-plan.md` | planner | generator | markdown | yes |
+| A2 | `.playwright/pages.md` | planner | human (DOM quality review) | markdown | yes |
+| A3 | `.playwright/selector-strategy.md` | planner | generator | markdown | yes |
+| A4 | `.playwright/project-config.md` | planner | generator, human | markdown | yes |
+| A5 | `.playwright/VERIFICATION.md` | planner | human | markdown | yes |
+| A6 | `.playwright/snap-*.yaml` | planner | orchestrator (CLI Evidence Check) | yaml | yes |
+| A7 | `.playwright/orchestrator-status.json` | every agent (overwritten per phase) | orchestrator | json | yes |
+| A8 | `.claude/qa-phase.txt` | orchestrator | orchestrator | text | yes |
+| A9 | `tests/seed.spec.ts` | human (initial); generator (regeneration) | every agent | typescript | yes |
+| A10 | `tests/*.spec.ts` | generator | executor, healer | typescript | yes |
+| A11 | `tests/pages/*.page.ts` | generator | tests (imported by `tests/*.spec.ts`) | typescript | conditional (when a flow has 5+ steps or repeats — see generator-agent.md "Page Objects") |
+| A12 | `tests/fixtures.ts` | generator | tests, page objects | typescript | conditional (when page objects or worker fixtures exist) |
+| A13 | `tests/helpers/test-data.ts` | generator | tests | typescript | conditional (when parallel tests conflict — see generator-agent.md "Test Data") |
+| A14 | `.playwright/snap-gen-${stem}.yaml` | generator | orchestrator (Generator Live-Verification Check) | yaml | yes (one per new test) |
+| A15 | `results.json` | executor | human (HTML report companion) | json | yes |
+| A16 | `.ai-failures.json` | executor | orchestrator (Phase 4 routing), healer | json | yes |
+| A17 | `playwright-report/` | executor | human | html dir | yes |
+| A18 | `test-results/**/trace.zip` | executor | healer (debugging, optional) | zip | conditional (present when failures occur with tracing enabled) |
+| A19 | `.healing-results.json` | healer (batch / N<5) | orchestrator (confidence routing) | json | conditional (batch mode: N<5) |
+| A20 | `.playwright/healed/${test-name}.json` | healer (parallel / N>=5) | orchestrator (confidence routing) | json | conditional (parallel mode: N>=5) |
+| A21 | `.github/healing-state.json` | orchestrator (post-aggregation write) | healer (pre-dispatch read) | json | yes after round 1 (healer treats absence as empty on first round) |
+| A22 | `.playwright/lessons.md` | generator (fix mode), healer | generator, healer | markdown | conditional (absent on first run; agents skip-if-missing) |
+| A23 | `.playwright/session-report.md` | orchestrator | human | markdown | yes |
+
+Notes on producer/consumer accuracy:
+- **A2 (pages.md):** planner-internal DOM quality output, NOT a generator input. Generator's Pre-Flight check and Reads list omit it; selector-strategy.md (A3) carries the actionable derivative.
+- **A15 (results.json):** healer consumes the normalized form (`.ai-failures.json`, A16), not `results.json` directly.
+- **A22 (lessons.md):** only generator-in-fix-mode and healer write it. Planner and executor do not.
 
 ### Status Protocol
 
@@ -206,28 +218,57 @@ After completion, read `.playwright/orchestrator-status.json` and branch:
 
 ### Generator Live-Verification Check
 
-The generator's locator-verification step writes a snapshot per test to `.playwright/snap-*.yaml`. The disambiguator is the test stem -- for `tests/<name>.spec.ts`, a matching `.playwright/snap-*<name>*.yaml` file MUST exist with mtime after `T0`. Compute the new test set and check:
+The generator writes one snapshot per test to `.playwright/snap-gen-${stem}.yaml` (artifact A14). The `snap-gen-` prefix disambiguates from planner snapshots (A6). For each new test in `tests/${stem}.spec.ts`, a matching `snap-gen-${stem}*.yaml` MUST exist with mtime after `T0`:
 
 ```bash
 AFTER=$(ls tests/*.spec.ts 2>/dev/null | sort)
 NEW=$(comm -13 <(echo "$BEFORE") <(echo "$AFTER"))
 for t in $NEW; do
   stem=$(basename "$t" .spec.ts)
-  find .playwright -maxdepth 1 -name "snap-*${stem}*.yaml" -newermt "@$T0" | head -1
+  find .playwright -maxdepth 1 -name "snap-gen-${stem}*.yaml" -newermt "@$T0" | head -1
 done
 ```
 
 - **Every new test has a matching snapshot** -> verification evidence present, proceed.
-- **Any new test lacks a snapshot (first miss)** -> re-dispatch generator-agent with this added directive: `"MANDATORY: for each test in tests/<name>.spec.ts, run the locator-verification step and persist the snapshot to .playwright/snap-<name>.yaml. Tests written without a corresponding snapshot will be rejected."` Reset `T0` and `BEFORE` before re-dispatch.
+- **Any new test lacks a snapshot (first miss)** -> re-dispatch generator-agent with this added directive: `"MANDATORY: for each test in tests/<name>.spec.ts, run the locator-verification step and persist the snapshot to .playwright/snap-gen-<name>.yaml. Tests written without a corresponding snapshot will be rejected."` Reset `T0` and `BEFORE` before re-dispatch.
 - **Any new test still lacks a snapshot (second miss)** -> escalate: write `NEEDS_CONTEXT` to `.playwright/orchestrator-status.json` with blocker `"generator skipped live verification across two dispatches for tests: <list>; manual review required"` and stop.
 
-NEVER mark Phase 2 complete on agent self-report alone. NEVER skip the Live-Verification Check. NEVER accept a missing snapshot with the rationale "the locator was obvious" — the snapshot is the audit trail.
+### Generator Conditional-Artifact Check
+
+The generator's status file (A7) lists produced artifacts in its `artifacts` field. For every conditional path it claims (A11 `tests/pages/*.page.ts`, A12 `tests/fixtures.ts`, A13 `tests/helpers/test-data.ts`), confirm the file exists on disk:
+
+```bash
+for path in $(jq -r '.artifacts[]?' .playwright/orchestrator-status.json); do
+  case "$path" in tests/pages/*|tests/fixtures.ts|tests/helpers/*) test -s "$path" || echo "MISSING: $path";; esac
+done
+```
+
+- **All claimed artifacts present** -> proceed.
+- **Any missing (first miss)** -> re-dispatch generator-agent with the missing list as a NEEDS_CONTEXT correction directive.
+- **Any missing (second miss)** -> escalate: write `NEEDS_CONTEXT` with blocker `"generator claimed artifacts not on disk across two dispatches: <list>"` and stop.
+
+Orchestrator MUST run both checks before advancing to Phase 3. Orchestrator MUST NOT mark Phase 2 complete on agent self-report alone. NEVER accept a missing snapshot or a missing claimed artifact — the snapshot is the audit trail; the claimed-artifact list is the contract.
 
 ## Phase 3: EXECUTE
 
-Dispatch **executor-agent**. Include `.playwright/lessons.md` path if it exists.
+Record `T0=$(date +%s)`. Dispatch **executor-agent**. Include `.playwright/lessons.md` path if it exists.
 
-After completion, read `.playwright/orchestrator-status.json` and `.ai-failures.json`.
+After completion, read `.playwright/orchestrator-status.json` and run the Executor Output Check before reading `.ai-failures.json`.
+
+### Executor Output Check
+
+The executor's load-bearing artifact is `.ai-failures.json` (A16) — Phase 4 routing reads it. Verify:
+
+```bash
+test -s .ai-failures.json && jq -e '.summary and (.locator | type == "array")' .ai-failures.json >/dev/null
+find . -maxdepth 1 -name results.json -newermt "@$T0" | head -1
+```
+
+- **Both checks pass** -> proceed to Failure Routing.
+- **`.ai-failures.json` missing or schema-invalid (first miss)** -> re-dispatch executor-agent with directive: `"MANDATORY: write .ai-failures.json with the full schema (summary + per-category arrays). Status DONE without this file is invalid."` Reset `T0` before re-dispatch.
+- **Still missing or invalid (second miss)** -> escalate: write `NEEDS_CONTEXT` to `.playwright/orchestrator-status.json` with blocker `"executor produced no valid .ai-failures.json across two dispatches"` and stop.
+
+Orchestrator MUST NOT advance to Phase 4 without a valid `.ai-failures.json`. NEVER infer failures from `orchestrator-status.json` alone — its `healable_count` field is a summary, not the routing source of truth.
 
 ### Failure Taxonomy
 
@@ -271,13 +312,26 @@ Write `EXECUTE` to `.claude/qa-phase.txt`.
 
 ## Phase 4: HEAL
 
-Read `.ai-failures.json`. Count locator-category entries (N).
+Read `.ai-failures.json`. Count locator-category entries (N). Record `T0=$(date +%s)`.
+
+### Pre-Dispatch Circuit-Breaker Gate
+
+Healers read `.github/healing-state.json` (A21) for blocklist + attempt counts. The orchestrator tracks the inner-loop round in its own context (round 1 = first entry into Phase 4 this session; round 2+ = re-entries after a prior heal cycle).
+
+- **Round 1:** file may be absent — healers treat absence as empty. Proceed to Dispatch.
+- **Round 2+:** the prior round's Aggregate and Route step MUST have persisted this file. Verify before dispatch:
+
+  ```bash
+  test -s .github/healing-state.json && jq -e '.healing_attempts' .github/healing-state.json >/dev/null
+  ```
+
+  If the file is absent or malformed in round 2+, abort the inner loop and surface to the user: the aggregation step failed to persist circuit-breaker state. Orchestrator MUST NOT dispatch healers in round 2+ without an authoritative state file.
 
 ### Dispatch
 
 - **N == 0:** Skip healing. Check exit conditions.
-- **N < 5:** Single **healer-agent** with the full `.ai-failures.json` path and `.playwright/lessons.md`.
-- **N >= 5:** Parallel fan-out -- one **healer-agent** per failure. Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message.
+- **N < 5:** Single **healer-agent** (batch mode) with the full `.ai-failures.json` path and `.playwright/lessons.md`. Expected output: `.healing-results.json` (A19).
+- **N >= 5:** Parallel fan-out -- one **healer-agent** per failure (parallel mode). Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message. Expected output: `.playwright/healed/${test-name}.json` per agent (A20).
 
 ### Confidence Scoring
 
@@ -335,15 +389,41 @@ Rules:
 
 Run deterministic healing first. LLM fallback only when deterministic fails. Max confidence for LLM fixes: MEDIUM. Never auto-apply LLM fixes.
 
+### Healer Output Check
+
+Confidence routing depends on the healer's per-failure records (confidence, tier, original/healed locator). The status file (A7) carries summary counts only — it is NOT the routing source of truth.
+
+```bash
+case "$MODE" in
+  batch)    test -s .healing-results.json && jq -e '.results | type == "array"' .healing-results.json >/dev/null ;;
+  parallel) ls .playwright/healed/*.json 2>/dev/null | grep -v -- '-input\.json$' | head -1 ;;
+esac
+```
+
+- **Expected file(s) present and well-formed** -> proceed to Aggregate and Route.
+- **Missing or malformed (first miss)** -> re-dispatch the failed healer(s) with directive: `"MANDATORY: write per-failure output to <expected path>. Status DONE without this file is invalid."`
+- **Missing or malformed (second miss)** -> escalate: write `NEEDS_CONTEXT` with blocker `"healer produced no valid output across two dispatches in <mode> mode"` and stop.
+
+Orchestrator MUST NOT enter confidence routing without verified healer output. NEVER infer fix decisions from `orchestrator-status.json` counts alone.
+
 ### Aggregate and Route
 
-After collecting all healer results:
+After the Healer Output Check passes:
 
-1. **Update circuit breaker** (`.github/healing-state.json`): increment attempts per test, blocklist tests failing twice, increment PR counter.
+1. **Read healer output:** `.healing-results.json` (batch) or `.playwright/healed/${test-name}.json` files (parallel).
 
-2. **Route by confidence:** HIGH -> consolidated auto-merge PR. MEDIUM -> review PR. LOW -> no PR, record as deferred.
+2. **Update circuit breaker** (`.github/healing-state.json`, A21): increment attempts per test, blocklist tests failing twice, increment PR counter. Confirm the write succeeded before exiting the round:
 
-3. **PR budget:** Max 3 PRs per session.
+   ```bash
+   test -s .github/healing-state.json && jq -e '.healing_attempts' .github/healing-state.json >/dev/null \
+     || { echo "ABORT: failed to persist healing-state.json"; exit 1; }
+   ```
+
+   Orchestrator MUST persist this file before re-entering the inner loop. The next round's Pre-Dispatch Circuit-Breaker Gate enforces the read side.
+
+3. **Route by confidence:** HIGH -> consolidated auto-merge PR. MEDIUM -> review PR. LOW -> no PR, record as deferred.
+
+4. **PR budget:** Max 3 PRs per session.
 
 ### Update Lessons
 
