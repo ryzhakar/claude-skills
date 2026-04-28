@@ -600,3 +600,4 @@ Close the session: extract metrics, draft session record, update reference docs,
 10. Standardize formats. Standardized report formats enable multi-agent synthesis. Ad-hoc formats make synthesis impossible.
 11. One agent per file cluster. Never dispatch two parallel agents that write to the same file. The later version wins silently.
 12. Verify independently. Agent self-reports are unreliable. Run the validation command yourself after each agent completes. Trust artifacts, not claims.
+13. Dispatch from source files, not reference docs. When dispatching an implementer to work on existing code, provide source file paths in the brief — type-annotated source IS the interface specification. Reference docs carry architectural rationale (why) and capability inventory (what); they document signatures nowhere. Reference doc sections MUST NOT be supplied as API documentation to implementers.
