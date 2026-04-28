@@ -1,17 +1,17 @@
 # Codebase State
-Last updated: 2026-04-20
+Last updated: 2026-04-24
 
 ## Plugin Inventory
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
-| dev-discipline | 1.4.0 | 7 | 3 | 2 |
+| dev-discipline | 1.4.1 | 7 | 3 | 2 |
 | manifesto | 2.1.0 | 2 | 0 | 3 |
-| orchestration | 3.2.0 | 3 | 0 | 2 |
+| orchestration | 3.2.1 | 3 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 1.1.0 | 2 | 0 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
-| qa-automation | 3.1.1 | 1 | 4 | 0 |
+| qa-automation | 3.1.2 | 1 | 4 | 0 |
 | userland-utilities | 1.0.0 | 1 | 0 | 0 |
 | **TOTAL** | - | **20** | **7** | **7** |
 

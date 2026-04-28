@@ -1,5 +1,5 @@
 # Deferred Items
-Last updated: 2026-04-20
+Last updated: 2026-04-24
 
 Known defects and improvement opportunities that are tracked but not immediately scheduled. Update severity when context changes. Remove entries when resolved.
 
@@ -45,3 +45,39 @@ Each entry:
 ---
 
 _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 in `agents-reference.md` Appendix A and §7. Tracking it here would duplicate the reference manual's own open-question registry.)_
+
+---
+
+### DI-4 — Worktree Isolation Defeated by Absolute Paths in Dispatch Prompts
+
+**Date**: 2026-04-24
+**Severity**: HIGH
+**Description**: Agents dispatched with `isolation: "worktree"` receive an isolated git checkout, but their `Edit`/`Write` tools still resolve absolute filesystem paths normally. When a dispatch prompt cites target files by absolute path into the main repo (`/Users/ryzhakar/pp/claude-skills/...`), the agent's edits land in main rather than its worktree — silently. Observed in session 2026-04-24: dispatches A and C used absolute paths and edited main; dispatch B used relative paths and stayed isolated. The agents' return summaries cited their worktree paths as if work was isolated, but the worktrees were empty (auto-cleaned for "no changes") while main accumulated the diffs.
+
+**Proposed remediation**: Add a convention to `conventions.md`: "Worktree dispatches MUST use only relative paths in the task body. Absolute paths into the main repo defeat isolation silently. Cite files as `plugin/skills/foo/SKILL.md`, never `/Users/.../plugin/skills/foo/SKILL.md`." Optionally extend instruction-writer agent's preflight to flag absolute paths in its incoming brief and refuse the dispatch.
+
+**Evidence**: Session 2026-04-24, dispatches A and C. Dispatch reports at `orchestration_log/recon/2026-04-24/dispatches/{A-orchestration,C-qa-automation}.md` cite worktree paths that no longer exist; `git status` after the dispatches shows the edits in main's working tree.
+
+---
+
+### DI-5 — Drift-Prevention Linter for Artifact Contract Tables
+
+**Date**: 2026-04-24
+**Severity**: MEDIUM
+**Description**: Three plugins now carry inline `## Artifact Contract` tables in their orchestrator skills (orchestration/session-close, dev-discipline/dev-orchestration, qa-automation/qa-orchestration — landed session 2026-04-24). The tables are the canonical source for paths, producers, consumers, format, and required-status. They were added precisely because path scatter across agent and orchestrator files produced silent drift. Without an audit-time check, the same drift will recur as files are edited independently.
+
+**Proposed remediation**: Write `just audit-artifacts` (or equivalent shell pipeline) that, for each multi-skill plugin's orchestrator skill: (1) parses the `## Artifact Contract` table, (2) for each row, greps the producer agent body for the declared path, (3) greps the consumer file for the declared path, (4) reports mismatches. Wire to pre-commit hook. Block commits that introduce drift. ~50 lines of shell or Python; reuses the markdown-table parsing approach from session 2026-04-17's deep-link citation rewrite (`orchestration_log/recon/2026-04-17/agents-v2/synthesis/citation-rewrite/`).
+
+**Evidence**: Session 2026-04-24 audit at `orchestration_log/recon/2026-04-24/artifact-ownership-audit/` (3 reports, 25 gaps total — all stem from path-scatter). Inline contract tables now present in: `orchestration/skills/session-close/SKILL.md`, `dev-discipline/skills/dev-orchestration/SKILL.md`, `qa-automation/skills/qa-orchestration/SKILL.md`.
+
+---
+
+### DI-6 — Abandoned Locked Worktree
+
+**Date**: 2026-04-24
+**Severity**: LOW
+**Description**: `git worktree list` shows `.claude/worktrees/agent-a4955c76` (branch `worktree-agent-a4955c76`, locked, at commit `e417a6f` — a Feb 2026 commit). Predates session 2026-04-24. Lock prevents auto-cleanup. Status of any work it contains is unknown.
+
+**Proposed remediation**: Inspect the worktree's working tree and branch. If empty and stale: `git worktree remove -f -f` and `git branch -D`. If it contains work: surface to the user before destroying.
+
+**Evidence**: `git worktree list` output, session 2026-04-24.
