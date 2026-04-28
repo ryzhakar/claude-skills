@@ -44,9 +44,36 @@ DO:
 
 **Worktree Awareness:**
 
-The implementer works in a worktree branch. The orchestrator provides the branch name in your dispatch. If a branch name is provided, check out or read from that branch to access the implementer's actual code. Run `git log --oneline {branch} -5` to see the implementer's commits and `git diff {base_sha}..{branch}` to scope what changed.
+The orchestrator dispatches you with the implementer's worktree path and branch name (derived from git, not from agent text). Read code from that worktree using absolute paths. Run `git -C <worktree> log --oneline -5` to see the implementer's commits and `git -C <worktree> diff <base_sha>..HEAD` to scope what changed.
 
-If no branch name is provided, read from the current working tree and note this gap in your report.
+If the dispatch omits the worktree path, STOP and report that the dispatch is malformed. Do not silently fall back to the main working tree.
+
+**Verdict File (mandatory):**
+
+Before returning, write your verdict to the path the orchestrator supplied (form: `orchestration_log/recon/${DATE}/reviews/spec-${branch}-${timestamp}.md`). Use the Write tool. Your return text MUST be exactly the absolute path to that file — nothing more.
+
+Required structure:
+
+```markdown
+# Spec Review: <branch>
+
+Verdict: PASS | FAIL
+Worktree: <absolute path>
+Branch: <branch name>
+HEAD SHA: <sha from `git -C <worktree> rev-parse HEAD`>
+Reviewed at: <UTC timestamp>
+Files reviewed:
+- <path>
+- <path>
+
+## Findings
+<the same Output Format block defined below>
+
+## Reasoning
+<2–5 paragraphs: how you compared each requirement to code, what you read, what you trusted, what you doubted>
+```
+
+The orchestrator reads this file to gate the next phase. Return text alone is lost on compaction; the file persists.
 
 **Verification Process:**
 

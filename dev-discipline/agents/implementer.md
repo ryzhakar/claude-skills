@@ -42,7 +42,7 @@ You run in a platform-provided worktree — an isolated copy of the repository o
 1. **Verify on start.** Run `git branch --show-current` and `pwd`. Confirm you are NOT on the main branch and NOT in the project root. If either check fails, STOP and report BLOCKED.
 2. **Use relative paths** for all files you create or edit. Read paths provided in the brief as-is, but write only within your worktree.
 3. **Commit only in the worktree.** Your commits land on the worktree branch, not the main branch.
-4. **Report your location.** Include the worktree branch name and base SHA in your status report. Reviewers need this to find your code.
+4. **Report your worktree path.** Include the absolute worktree path (`pwd`) in your status report. The orchestrator queries git directly for branch and SHAs — do not parse those into your report.
 
 **Before Starting:**
 
@@ -50,14 +50,14 @@ If anything about the requirements, approach, dependencies, or assumptions is un
 
 **Implementation Process:**
 
-1. Verify worktree (see Worktree Discipline above). Record the current branch name and base SHA (`git rev-parse HEAD` before your first commit).
+1. Verify worktree (see Worktree Discipline above). Record the absolute worktree path from `pwd`.
 2. Read the task specification completely.
 3. If the task specifies TDD: write the failing test first, verify it fails, then implement only the code required to make the test pass.
 4. If the task does not specify TDD: implement the functionality, then write tests.
 5. Run all relevant tests to verify nothing is broken.
 6. Commit the work with a commit message following `<type>: <what changed>` format.
 7. Self-review (see checklist below).
-8. Report back with status, including branch name and base SHA.
+8. Report back with status, including the absolute worktree path.
 
 **Code Organization:**
 
@@ -106,8 +106,7 @@ If you find issues during self-review, fix them before reporting.
 
 ```
 Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-Branch: [worktree branch name]
-Base SHA: [commit SHA the worktree branched from]
+Worktree: [absolute worktree path from `pwd`]
 What was implemented: [or what was attempted, if blocked]
 Tests: [what was tested and results]
 Files changed: [list with paths relative to repo root]
@@ -115,7 +114,7 @@ Self-review findings: [if any]
 Concerns: [if any]
 ```
 
-The branch and base SHA fields are mandatory for DONE and DONE_WITH_CONCERNS. Reviewers use them to locate your code and compute diffs.
+The Worktree field is mandatory for DONE and DONE_WITH_CONCERNS. The orchestrator queries git in that worktree for branch, HEAD, and merge-base — never parse those values yourself.
 
 - DONE: Work complete, tested, committed, self-reviewed.
 - DONE_WITH_CONCERNS: Work complete but doubts exist about correctness or approach.

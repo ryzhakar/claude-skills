@@ -19,6 +19,36 @@ Extends agentic-delegation with the development lifecycle. The orchestrator driv
 
 **Read agentic-delegation's SKILL.md (orchestration plugin) before proceeding.** This is a hard gate, not a suggestion. The parent skill provides model ladder, decomposition, prompt anatomy, execution patterns, quality governance, and session persistence. None are restated here.
 
+## Artifact Contract
+
+Canonical map of every artifact this skill's workflow produces. Body prose may reference rows by ID but MUST NOT contradict the table.
+
+| ID | Path | Producer | Consumer | Format | Required |
+|----|------|----------|----------|--------|----------|
+| A1 | implementer return text | implementer | orchestrator | status block (see implementer.md `Report Format`) | yes |
+| A2 | implementer worktree (`.git`) | platform | orchestrator | git repository on disk | yes |
+| A3 | `orchestration_log/recon/${DATE}/reviews/spec-${branch}-${timestamp}.md` | spec-reviewer | orchestrator | markdown verdict file (see spec-reviewer.md `Verdict File`) | yes |
+| A4 | `orchestration_log/recon/${DATE}/reviews/quality-${branch}-${timestamp}.md` | code-quality-reviewer | orchestrator | markdown report file (see code-quality-reviewer.md `Report File`) | yes |
+| A5 | spec-reviewer return text | spec-reviewer | orchestrator | one line: absolute path to A3 | yes |
+| A6 | code-quality-reviewer return text | code-quality-reviewer | orchestrator | one line: absolute path to A4 | yes |
+
+`${DATE}` is `YYYY-MM-DD` (UTC). `${branch}` is the implementer's worktree branch (slashes replaced with `-`). `${timestamp}` is `HHMMSS` (UTC).
+
+Branch and SHA are NOT artifacts — they are derived from A2 by direct git query (see Branch and SHA Source of Truth).
+
+## Branch and SHA Source of Truth
+
+Git is authoritative. The implementer reports only its worktree path (A1). The orchestrator queries git for everything else:
+
+```bash
+test -d "$WORKTREE/.git" || fail "implementer reported invalid worktree path"
+BRANCH=$(git -C "$WORKTREE" branch --show-current)
+HEAD_SHA=$(git -C "$WORKTREE" rev-parse HEAD)
+BASE_SHA=$(git -C "$WORKTREE" merge-base HEAD "$INTEGRATION_BRANCH")
+```
+
+Trust surface reduces to one check: did the implementer report a valid worktree path? Verifiable by filesystem existence. The orchestrator MUST NOT parse branch or SHA from agent return text — git is the single source.
+
 ## Invariants
 
 Two invariants govern this skill. They are not guidelines. They are structural constraints.
@@ -115,11 +145,11 @@ Dispatch the **implementer** agent with this brief. The implementer runs in a pl
 
 ### Context Requirements by Agent Type
 
-**Implementer:** Task specification + file paths + TDD flag + scope boundaries + scene-setting context. The implementer receives a worktree automatically via platform isolation. It reports the worktree branch name and base SHA in its status output.
+**Implementer:** Task specification + file paths + TDD flag + scope boundaries + scene-setting context. The platform creates the worktree automatically. The implementer reports its worktree path in status (A1).
 
-**Spec-reviewer:** Task specification (same one the implementer received) + changed file list + **worktree branch name** (from implementer's report). The reviewer checks out or reads from the implementer's branch. The implementer's status report may be provided but is not trusted evidence — the reviewer reads actual code.
+**Spec-reviewer:** Task specification + worktree path + branch (from git query on A2) + verdict file path to write (A3). The reviewer reads actual code from that branch and writes its verdict to A3.
 
-**Code-quality-reviewer:** Git diff range (BASE_SHA..HEAD_SHA from implementer's report) + changed file list + **worktree branch name** + project-specific quality standards if they exist. The reviewer diffs against the implementer's branch.
+**Code-quality-reviewer:** Worktree path + branch + diff range `BASE_SHA..HEAD_SHA` (from git queries on A2) + report file path to write (A4) + project-specific quality standards if they exist.
 
 ### TDD Gate
 
@@ -159,15 +189,19 @@ This plugin includes a SubagentStop hook (matcher: `implementer`) that fires whe
 
 Review is not optional. It is the only exit from the IMPLEMENTING state.
 
-Two-stage review after each unit. Order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements. The orchestrator dispatches reviewers with the implementer's worktree branch name and base SHA — reviewers read code from that branch.
+Two-stage review after each unit. Order is mandatory: spec compliance first, code quality second. Reviewing quality before confirming spec compliance wastes effort on code that may not meet requirements. The orchestrator derives branch and SHAs from git (A2) — never from parsed agent text — and supplies them to each reviewer alongside the verdict-file path the reviewer must write.
 
 ### Stage 1: Spec Compliance
 
-Dispatch the **spec-reviewer** with the task specification and changed file list. It reads actual code and compares to requirements line by line, with adversarial posture.
+Dispatch the **spec-reviewer** with task specification, worktree path, branch, and the A3 path to write. It reads actual code from the branch with adversarial posture and writes its verdict to A3.
+
+After dispatch, the orchestrator verifies A3 exists and reads the `Verdict:` line from it. The reviewer's return text serves only to point at A3; the file is the source of truth.
 
 ### Stage 2: Code Quality
 
-Only after spec compliance passes. Dispatch the **code-quality-reviewer** with the git diff range. It evaluates quality, testing adequacy, and architecture, categorizes findings by severity, and gives a merge verdict.
+Only after spec compliance passes. Dispatch the **code-quality-reviewer** with worktree path, branch, `BASE_SHA..HEAD_SHA` diff range, and the A4 path to write. It evaluates quality, testing adequacy, and architecture, categorizes findings by severity, and writes a merge verdict to A4.
+
+After dispatch, the orchestrator verifies A4 exists and reads the `Ready to merge:` line. The file is the gating evidence.
 
 ### The Inner Review Loop
 
@@ -360,4 +394,6 @@ Update this summary after each state transition. The orchestrator reads summarie
 
 **Worktree escape.** The implementer runs in a worktree. If code appears in the main working tree after implementation, the worktree discipline failed. All implementation artifacts live in the worktree branch until review passes and integration merges them.
 
-**Reviewers without branch context.** Dispatching a reviewer without the implementer's worktree branch name makes the reviewer read stale code from the main branch. Always pass the branch name from the implementer's status report.
+**Parsing branch or SHA from agent text.** The orchestrator derives branch and SHA from git (A2). Parsing them from the implementer's return text is fragile — formats drift, fields go missing, reviewers silently read main. See Branch and SHA Source of Truth.
+
+**Trusting reviewer return text as the verdict.** Return text can be lost to compaction. The verdict files (A3, A4) are the gating evidence. Read them.

@@ -1,6 +1,6 @@
 {
   "name": "dev-discipline",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",

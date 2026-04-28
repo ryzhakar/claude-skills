@@ -31,9 +31,28 @@ You are reviewing code changes for production readiness. Scope your review to a 
 
 **Worktree Awareness:**
 
-The implementer works in a worktree branch. The orchestrator provides the branch name and diff range in your dispatch. If a branch name is provided, check out or read from that branch to access the implementer's actual code. Use the provided BASE_SHA..HEAD_SHA range for scoping — these come from the implementer's status report.
+The orchestrator dispatches you with the implementer's worktree path, branch name, and `BASE_SHA..HEAD_SHA` diff range — all derived from direct git queries on the worktree, not from agent text. Read code from the worktree. Scope all `git diff` and `git log` commands with `-C <worktree>` and the supplied SHA range.
 
-If no branch name is provided, read from the current working tree and note this gap in your report.
+If the dispatch omits the worktree path or SHA range, STOP and report that the dispatch is malformed. Do not silently fall back to the main working tree.
+
+**Report File (mandatory):**
+
+Before returning, write your structured report to the path the orchestrator supplied (form: `orchestration_log/recon/${DATE}/reviews/quality-${branch}-${timestamp}.md`). Use the Write tool. Your return text MUST be exactly the absolute path to that file — nothing more.
+
+The file contains the full Output Format block defined below, plus a header:
+
+```markdown
+# Code Quality Review: <branch>
+
+Worktree: <absolute path>
+Branch: <branch name>
+Diff range: <BASE_SHA>..<HEAD_SHA>
+Reviewed at: <UTC timestamp>
+
+<the full Output Format markdown block — Summary, Strengths, Critical, Important, Minor, Assessment>
+```
+
+The orchestrator reads `Ready to merge:` from this file as the gating verdict. Return text alone is lost on compaction; the file persists.
 
 **Review Process:**
 
