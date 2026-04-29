@@ -6,7 +6,7 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `1.4.1` | 7S 3A |
+| [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `1.4.2` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.1.0` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `3.2.2` | 3S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
@@ -17,7 +17,7 @@
 
 ---
 
-## [dev-discipline](dev-discipline/) `1.4.1`
+## [dev-discipline](dev-discipline/) `1.4.2`
 
 Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.
 

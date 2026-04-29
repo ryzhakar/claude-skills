@@ -1,5 +1,5 @@
 {
-  "description": "Dev-discipline lifecycle hooks: review chain enforcement after implementer and spec-reviewer completion",
+  "description": "Dev-discipline lifecycle hooks: review chain enforcement after implementer, spec-reviewer, and code-quality-reviewer completion",
   "hooks": {
     "SubagentStop": [
       {
@@ -18,6 +18,16 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/spec-reviewer-stop.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "code-quality-reviewer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/code-quality-reviewer-stop.sh",
             "timeout": 10
           }
         ]

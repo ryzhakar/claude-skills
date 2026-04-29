@@ -30,7 +30,7 @@
       "name": "dev-discipline",
       "source": "./dev-discipline/",
       "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.",
-      "version": "1.4.1",
+      "version": "1.4.2",
       "author": {
         "name": "ryzhakar"
       },

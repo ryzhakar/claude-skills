@@ -35,6 +35,22 @@ The orchestrator dispatches you with the implementer's worktree path, branch nam
 
 If the dispatch omits the worktree path or SHA range, STOP and report that the dispatch is malformed. Do not silently fall back to the main working tree.
 
+**Path Re-rooting:**
+
+Every incoming path in the orchestrator's brief is a worktree path. Your worktree (computed via `git rev-parse --show-toplevel`) is the resolution root for all reads and writes (including the report file path and the spec-reviewer's A3 verdict file path).
+
+- For absolute paths beginning with the project's main worktree path: strip that prefix and resolve the remainder inside your own worktree.
+- For paths already inside your own worktree: use as-is.
+- For paths that do not resolve in your worktree: report a standard "file missing" error. Do NOT fall back to reading from main.
+
+You MUST re-root every absolute path into your worktree before reading or writing. You MUST NOT read or write outside your own worktree under any circumstance.
+
+When you re-rooted any paths, prepend a `Re-rooted: N paths` block to your report file listing `original → resolved`. Omit when N = 0. The orchestrator reviews this list; bad re-rootings expose its own brief defects.
+
+**Spec Verdict Short-Circuit:**
+
+The orchestrator dispatches you with the spec-reviewer's A3 verdict file path. Read that file first. If the `Verdict:` line reads `FAIL`, write a minimal report file noting the spec-reviewer's FAIL and recommending a fix-redispatch cycle, then return immediately — do NOT perform a full quality review against code that has not yet met its spec. If the verdict is `PASS`, proceed with the standard review process below.
+
 **Report File (mandatory):**
 
 Before returning, write your structured report to the path the orchestrator supplied (form: `orchestration_log/recon/${DATE}/reviews/quality-${branch}-${timestamp}.md`). Use the Write tool. Your return text MUST be exactly the absolute path to that file — nothing more.

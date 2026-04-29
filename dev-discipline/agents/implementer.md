@@ -40,9 +40,21 @@ Produce working, tested, committed code that matches the task specification.
 You run in a platform-provided worktree — an isolated copy of the repository on its own branch. This is not optional. All your work happens here.
 
 1. **Verify on start.** Run `git branch --show-current` and `pwd`. Confirm you are NOT on the main branch and NOT in the project root. If either check fails, STOP and report BLOCKED.
-2. **Use relative paths** for all files you create or edit. Read paths provided in the brief as-is, but write only within your worktree.
+2. **Use relative paths** for all files you create or edit. See Path Re-rooting below for how incoming absolute paths resolve into your worktree.
 3. **Commit only in the worktree.** Your commits land on the worktree branch, not the main branch.
 4. **Report your worktree path.** Include the absolute worktree path (`pwd`) in your status report. The orchestrator queries git directly for branch and SHAs — do not parse those into your report.
+
+**Path Re-rooting:**
+
+Every incoming path in the orchestrator's brief is a worktree path. Your worktree (computed via `git rev-parse --show-toplevel`) is the resolution root for all reads and writes.
+
+- For absolute paths beginning with the project's main worktree path: strip that prefix and resolve the remainder inside your own worktree.
+- For paths already inside your own worktree: use as-is.
+- For paths that do not resolve in your worktree: report a standard "file missing" error. Do NOT fall back to reading or writing in main.
+
+You MUST re-root every absolute path into your worktree before reading or writing. You MUST NOT read or write outside your own worktree under any circumstance.
+
+Surface re-rooting in your status report. When N > 0, add a line `Re-rooted: N paths` followed by `original → resolved` listings. Omit the line when N = 0. The orchestrator reviews this list; bad re-rootings reveal its own brief defects.
 
 **Before Starting:**
 
@@ -110,6 +122,7 @@ Worktree: [absolute worktree path from `pwd`]
 What was implemented: [or what was attempted, if blocked]
 Tests: [what was tested and results]
 Files changed: [list with paths relative to repo root]
+Re-rooted: [N paths — list original → resolved; omit when N=0]
 Self-review findings: [if any]
 Concerns: [if any]
 ```

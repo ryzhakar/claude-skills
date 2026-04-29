@@ -49,11 +49,31 @@ BASE_SHA=$(git -C "$WORKTREE" merge-base HEAD "$INTEGRATION_BRANCH")
 
 Trust surface reduces to one check: did the implementer report a valid worktree path? Verifiable by filesystem existence. The orchestrator MUST NOT parse branch or SHA from agent return text — git is the single source.
 
+## Worktree Discipline (Orchestrator Side)
+
+Worktrees are the default vehicle for any real implementation work, not optional ceremony. The implementer agent declares `isolation: worktree` in its frontmatter precisely because every dispatch deserves its own checkout. The orchestrator MUST dispatch implementation work through worktree-isolated agents. The orchestrator MUST NOT execute implementation work in its own context, and MUST NOT route implementation through agents that bypass worktree isolation.
+
+**CWD-drift hazard.** The platform can shift the orchestrator's CWD into a worktree without any explicit `cd` action by the orchestrator. After drift, CWD-relative shell operations resolve in the wrong tree, and any subagent dispatched inherits the wrong starting CWD (subagents start in the main conversation's CWD; `cd` inside a subagent does not persist).
+
+**Defense — awareness, not checklist.** Keep this hazard in mind. Check `pwd` whenever a CWD-relative shell operation or a subagent dispatch is about to propagate failure. No fixed gate; exercise judgment.
+
+**Restoration.** When `pwd` reveals drift away from the project root, `cd` back to the known root. The orchestrator already knows the root — no portable command lives in this skill.
+
+**Bilateral rules.**
+- The orchestrator MUST `cd` back to the project root the moment `pwd` reveals drift.
+- The orchestrator MUST NOT proceed with CWD-relative operations or subagent dispatches after detecting drift, until restoration is verified by a fresh `pwd`.
+
 ## Invariants
 
 Two invariants govern this skill. They are not guidelines. They are structural constraints.
 
-**Review is inevitable.** Every implementer dispatch produces a review chain. Two SubagentStop hooks (same plugin) enforce this: the first fires when the implementer stops and mandates spec review; the second fires when the spec-reviewer stops and mandates quality review (on PASS) or a fix cycle (on FAIL). The orchestrator cannot skip, defer, or conditionally bypass either review stage.
+**Review is inevitable.** Every implementer dispatch produces a full review chain. Three SubagentStop hooks (same plugin) enforce it as unconditional, sequential mandates:
+
+1. `implementer` stop → mandates spec-reviewer dispatch.
+2. `spec-reviewer` stop → mandates code-quality-reviewer dispatch (unconditional; the spec verdict semantics move into the code-quality-reviewer itself, which short-circuits on a FAIL spec verdict).
+3. `code-quality-reviewer` stop → mandates the merge decision (integrate, re-dispatch implementer with findings, or surface to the user).
+
+The orchestrator cannot skip, defer, or conditionally bypass any stage. It no longer evaluates the spec verdict at the spec→quality boundary — that judgment lives inside code-quality-reviewer.
 
 **Worktree isolation is total.** The implementer agent runs in a platform-provided worktree. All reads, writes, and commits happen in that worktree. The orchestrator passes the worktree path and branch to reviewers. No agent touches the main working tree during implementation.
 
@@ -183,7 +203,7 @@ One logical change per commit. Fix commits reference what they fix. No history r
 
 Run the test suite and type checker after every implementer reports DONE. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it did not touch.
 
-This plugin includes a SubagentStop hook (matcher: `implementer`) that fires when any implementer agent stops. The hook injects a review mandate into orchestrator context, making spec review structurally inevitable.
+This plugin includes three SubagentStop hooks (matchers: `implementer`, `spec-reviewer`, `code-quality-reviewer`) that fire when each agent type stops. Each hook injects an unconditional next-step mandate into orchestrator context — spec review after implementer, quality review after spec-reviewer, merge decision after code-quality-reviewer — making the full chain structurally inevitable. The orchestrator no longer evaluates the spec verdict at the spec→quality boundary; that judgment moved into the code-quality-reviewer agent itself.
 
 ## Phase 3: Review
 

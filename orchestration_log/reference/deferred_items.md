@@ -81,3 +81,15 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 **Proposed remediation**: Inspect the worktree's working tree and branch. If empty and stale: `git worktree remove -f -f` and `git branch -D`. If it contains work: surface to the user before destroying.
 
 **Evidence**: `git worktree list` output, session 2026-04-24.
+
+---
+
+### DI-7 — Platform-Induced Orchestrator CWD Drift (Undocumented)
+
+**Date**: 2026-04-29
+**Severity**: MEDIUM
+**Description**: The orchestrator's CWD can shift into a worktree without explicit `cd` action by the orchestrator. agents-reference.md documents inherited subagent CWD behavior (a subagent starts in the main conversation's CWD; `cd` inside subagents does not persist) but does NOT document orchestrator-side platform-induced drift. Observed in session 2026-04-24 and confirmed as a class of failure distinct from operator-induced drift. Effect: CWD-relative shell operations misroute; subagents dispatched after drift inherit the wrong CWD.
+
+**Proposed remediation**: Add a session-vagueness item to `orchestration_log/reference/agents-reference.md` Appendix B (open questions / observed platform behavior) describing the orchestrator-side drift. Cite the dev-orchestration SKILL.md "Worktree Discipline (Orchestrator Side)" subsection as the operational defense already in place. This is documentation work — separate dispatch.
+
+**Evidence**: Session 2026-04-24 (orchestrator's CWD drifted into Dispatch B's worktree during diagnostic queries). Session 2026-04-29 (user confirmed platform-induced variant exists separately from operator-induced drift).

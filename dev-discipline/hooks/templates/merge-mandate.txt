@@ -1,0 +1,5 @@
+MERGE DECISION MANDATE — Code-quality-reviewer agent (${AGENT_TYPE}) has stopped.
+
+You MUST now read the code-quality-reviewer's A4 report file (extract the path from its return text — see the summary above) and decide the merge action: integrate the worktree branch, re-dispatch the implementer with the findings, or surface to the user with the verdict.
+
+Do NOT proceed to other implementation units or user-facing responses until the merge decision is recorded.
