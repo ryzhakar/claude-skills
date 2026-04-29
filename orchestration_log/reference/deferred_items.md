@@ -1,5 +1,5 @@
 # Deferred Items
-Last updated: 2026-04-24
+Last updated: 2026-04-29
 
 Known defects and improvement opportunities that are tracked but not immediately scheduled. Update severity when context changes. Remove entries when resolved.
 
@@ -51,12 +51,17 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 ### DI-4 — Worktree Isolation Defeated by Absolute Paths in Dispatch Prompts
 
 **Date**: 2026-04-24
-**Severity**: HIGH
-**Description**: Agents dispatched with `isolation: "worktree"` receive an isolated git checkout, but their `Edit`/`Write` tools still resolve absolute filesystem paths normally. When a dispatch prompt cites target files by absolute path into the main repo (`/Users/ryzhakar/pp/claude-skills/...`), the agent's edits land in main rather than its worktree — silently. Observed in session 2026-04-24: dispatches A and C used absolute paths and edited main; dispatch B used relative paths and stayed isolated. The agents' return summaries cited their worktree paths as if work was isolated, but the worktrees were empty (auto-cleaned for "no changes") while main accumulated the diffs.
+**Status**: PARTIALLY RESOLVED 2026-04-29 (agent-side defense in dev-discipline 1.4.2; convention codified). Remaining: instruction-writer-side preflight to flag absolute paths in incoming briefs.
+**Severity**: HIGH (now MEDIUM in residual form)
+**Description**: Agents dispatched with `isolation: "worktree"` receive an isolated git checkout, but their `Edit`/`Write` tools still resolve absolute filesystem paths normally. When a dispatch prompt cites target files by absolute path into the main repo (`/Users/ryzhakar/pp/claude-skills/...`), the agent's edits land in main rather than its worktree — silently. Observed in session 2026-04-24: dispatches A and C used absolute paths and edited main; dispatch B used relative paths and stayed isolated. Recurred 2026-04-29 in dispatch E (one path leaked despite explicit "RELATIVE PATHS ONLY" in brief).
 
-**Proposed remediation**: Add a convention to `conventions.md`: "Worktree dispatches MUST use only relative paths in the task body. Absolute paths into the main repo defeat isolation silently. Cite files as `plugin/skills/foo/SKILL.md`, never `/Users/.../plugin/skills/foo/SKILL.md`." Optionally extend instruction-writer agent's preflight to flag absolute paths in its incoming brief and refuse the dispatch.
+**Resolution landed**:
+- dev-discipline 1.4.2 implementer/spec-reviewer/code-quality-reviewer agents now defensively re-root all incoming paths (strip repo-root prefix, resolve relative to own worktree, surface re-rooted paths in status). Defense in depth — even if orchestrator prompts leak absolute paths, agents re-root transparently.
+- `conventions.md` Worktree Dispatches: Relative Paths Only section codifies the orchestrator-side discipline.
 
-**Evidence**: Session 2026-04-24, dispatches A and C. Dispatch reports at `orchestration_log/recon/2026-04-24/dispatches/{A-orchestration,C-qa-automation}.md` cite worktree paths that no longer exist; `git status` after the dispatches shows the edits in main's working tree.
+**Remaining remediation**: instruction-writer agent could preflight its incoming brief — scan for `/Users/.../plugin/...` patterns and refuse the dispatch (or warn) before applying. Would close the orchestrator-side gap completely. Low-priority since agent-side defense now catches the failure.
+
+**Evidence**: Session 2026-04-24, dispatches A and C; session 2026-04-29 dispatch E. Resolution evidence: dispatch E's edits to dev-discipline agent files (commit 6515da5).
 
 ---
 

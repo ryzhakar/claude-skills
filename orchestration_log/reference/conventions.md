@@ -1,5 +1,5 @@
 # Conventions
-Last updated: 2026-04-20
+Last updated: 2026-04-29
 
 Established patterns and principles governing plugin development in this marketplace. All conventions trace to observed model behavior, documented platform constraints, or empirical optimization results.
 
@@ -178,6 +178,28 @@ hooks/
 
 ---
 
+## Hook Mandates: Unconditional Pattern
+
+**Core rule:** SubagentStop hooks that inject orchestrator mandates MUST inject single unconditional commands, not conditional logic that requires the orchestrator to parse and branch.
+
+**Rationale:** Orchestrators avoid work. A conditional mandate ("if PASS dispatch X; if FAIL dispatch Y") becomes an escape hatch — the orchestrator can drop the dispatch by claiming neither branch matched, by missing the parse, or by being distracted by user pressure. Observed in dev-discipline review chain: spec-reviewer hook had a conditional template, code-quality-reviewer dispatch silently failed in real usage.
+
+**Pattern:**
+- Hook injects ONE command: "Dispatch agent X with payload Y."
+- Branching logic moves into the receiving agent — agent X reads its inputs and decides whether to short-circuit, not the orchestrator.
+- Hook scripts stay simple `envsubst`. Don't move parsing into shell.
+
+**Anti-pattern (rejected after spec-chef review 2026-04-29):**
+- Shell script reads upstream artifact, parses verdict, selects template based on parse result. Overengineering — the simpler answer is to remove the conditional entirely and let the receiving agent handle the case.
+
+**Example (dev-discipline 1.4.2):**
+- `quality-review-mandate.txt` was conditional ("if PASS... if FAIL..."). Rewritten as single unconditional dispatch instruction. Code-quality-reviewer reads spec verdict at A3 itself and short-circuits if needed.
+- New `code-quality-reviewer-stop.sh` follows the same shape: single unconditional merge-decision mandate.
+
+**Source:** Session 2026-04-29 spec-chef session, dev-discipline 1.4.2 commit 6515da5.
+
+---
+
 ## Core Points as Untouchable Spine
 
 **Analysis pattern:** When optimizing a skill, identify its 5 core points first - what it most emphatically communicates. (ETHOS.md line 40)
@@ -247,6 +269,38 @@ plugin-name/
 - Skills: kebab-case (spec-chef, triage-issue)
 - Agents: kebab-case (executor-agent, implementer)
 - Plugins: kebab-case (dev-discipline, qa-automation)
+
+---
+
+## Artifact Contract Pattern
+
+**Core rule:** Every multi-skill plugin with hierarchy (orchestrator skill + executor agents) carries an `## Artifact Contract` table near the top of its orchestrator skill.
+
+**Format:**
+```markdown
+## Artifact Contract
+
+| ID | Path | Producer | Consumer | Format | Required |
+|----|------|----------|----------|--------|----------|
+| A1 | <path with placeholders> | <agent or skill> | <agent or skill> | <markdown/json/yaml/...> | yes / conditional |
+```
+
+**Rules:**
+- Path uses `${DATE}`, `${branch}`, `${stem}`, `${timestamp}` placeholders. No curly-brace alternative form.
+- Producer and Consumer name roles that map clearly to dispatched agents, the orchestrator skill itself, downstream phases, or "human" / "next-session ARRIVE."
+- Required: `yes` or `conditional` (with one-line note when conditional).
+- The table is canonical. Body prose may reference rows by ID but MUST NOT contradict the table.
+
+**Rationale:** Without a single greppable artifact contract, paths drift across agent bodies and orchestrator text. Drift is invisible until a phase-chain breakage exposes it. Inline markdown table beats an external `.claude-plugin/artifacts.yaml` manifest because models ignore @references at runtime — the inline table is in the skill the orchestrator already loads.
+
+**Adopted plugins (as of 2026-04-29):**
+- `orchestration/skills/session-close/SKILL.md` (8 rows; commit cafdcb0)
+- `dev-discipline/skills/dev-orchestration/SKILL.md` (6 rows; commit dffae16, extended in 6515da5)
+- `qa-automation/skills/qa-orchestration/SKILL.md` (23 rows; commit e404157)
+
+**Future hardening:** DI-5 proposes an audit-time linter that parses the table and verifies every declared path appears in the producer/consumer files. ~50 lines of shell or Python; pre-commit integration.
+
+**Source:** Session 2026-04-29 marketplace artifact-ownership audit (recon/2026-04-24/artifact-ownership-audit/).
 
 ---
 
@@ -364,6 +418,28 @@ isolation: worktree    # Optional — use when agent needs filesystem isolation
 **Platform fact:** Worktree isolation is a platform capability exposed via the `isolation` frontmatter field. Claude Code provisions the worktree; the agent does not need to manage it.
 
 **Source:** dev-discipline 1.3.0, session 2026-04-15.
+
+---
+
+## Worktree Dispatches: Relative Paths Only
+
+**Core rule:** When dispatching an agent with `isolation: "worktree"`, the dispatch prompt MUST use only relative paths for files the agent edits. Absolute paths into the main repo defeat isolation silently.
+
+**Failure mode:** `isolation: "worktree"` provisions the agent an isolated git checkout, but `Edit`/`Write` tools resolve absolute filesystem paths normally. A path like `/Users/ryzhakar/pp/claude-skills/dev-discipline/...` resolves to MAIN's filesystem regardless of the agent's worktree. The agent's edits land in main; the worktree stays empty and may be auto-cleaned for "no changes."
+
+**Pattern:**
+- Cite files as `dev-discipline/skills/foo/SKILL.md` (relative to worktree root).
+- Never cite as `/Users/.../dev-discipline/skills/foo/SKILL.md`.
+- Exception: paths to gitignored directories not present in the worktree (e.g., `orchestration_log/recon/`) — absolute is correct because the directory does not exist in the worktree.
+- Exception: external read-only context (e.g., a memo from another project) — absolute is correct because it is not in the marketplace at all.
+
+**Defense in depth (dev-discipline 1.4.2):** Even if an orchestrator prompt leaks absolute paths, dev-discipline's implementer / spec-reviewer / code-quality-reviewer agents now defensively re-root marketplace-prefixed paths into their own worktree and surface re-rooted paths in their status report. Other agents (instruction-writer, general-purpose) do not yet have this defense — orchestrator-side prompt discipline remains the primary control.
+
+**Observed failures:** Session 2026-04-29 dispatches A, C, and E each leaked at least one absolute path despite the discipline. DI-4 tracks the residual orchestrator-side gap.
+
+**Related:** Platform-induced orchestrator CWD drift (DI-7) is a separate failure class — distinct from prompt-writing discipline. The orchestrator's CWD can shift into a worktree without explicit `cd`. Defense: keep `pwd`-check awareness; restore CWD when drift detected.
+
+**Source:** Session 2026-04-29, DI-4 + DI-7. Defense landed in dev-discipline 1.4.2 commit 6515da5.
 
 ---
 

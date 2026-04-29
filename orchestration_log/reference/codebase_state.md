@@ -1,19 +1,19 @@
 # Codebase State
-Last updated: 2026-04-24
+Last updated: 2026-04-29
 
 ## Plugin Inventory
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
-| dev-discipline | 1.4.1 | 7 | 3 | 2 |
+| dev-discipline | 1.4.2 | 7 | 3 | 3 |
 | manifesto | 2.1.0 | 2 | 0 | 3 |
-| orchestration | 3.2.1 | 3 | 0 | 2 |
+| orchestration | 3.2.2 | 3 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 1.1.0 | 2 | 0 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
 | qa-automation | 3.1.2 | 1 | 4 | 0 |
 | userland-utilities | 1.0.0 | 1 | 0 | 0 |
-| **TOTAL** | - | **20** | **7** | **7** |
+| **TOTAL** | - | **20** | **7** | **8** |
 
 ## Skill Inventory
 
@@ -27,17 +27,17 @@ Last updated: 2026-04-24
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
 | manifesto-oath | manifesto | 2192 | No | Compressed |
-| agentic-delegation | orchestration | 6054 | No | Compressed |
+| agentic-delegation | orchestration | 6668 | No | Doc-governance Principle #13 (2026-04-29) |
 | research-tree | orchestration | 7565 | No | Compressed |
-| session-close | orchestration | 3273 | No | Compressed |
-| dev-orchestration | dev-discipline | 3684 | No | Compressed, moved from orchestration |
+| session-close | orchestration | 4898 | No | Doc-governance taxonomy + path canon + Artifact Contract (2026-04-29) |
+| dev-orchestration | dev-discipline | 5190 | No | Worktree discipline + Artifact Contract + git-as-SoT (2026-04-29) |
 | spec-chef | product-craft | 1730 | No | Compressed |
 | user-story-chef | product-craft | 1498 | No | Compressed |
 | prompt-eval | prompt-engineering | 3138 | Yes* | Compressed |
 | prompt-optimize | prompt-engineering | 2693 | Yes* | Compressed |
 | uv-pyright-debug | python-tools | 1092 | No | Compressed |
 | python-ast-mass-edit | python-tools | 1270 | No | Compressed |
-| qa-orchestration | qa-automation | 4353 | No | Compressed |
+| qa-orchestration | qa-automation | 6774 | No | Artifact Contract + Phase 1 verification ported to phases 2-4 (2026-04-29) |
 | fix-macos-app | userland-utilities | 263 | No | Excluded from optimization |
 
 *References mentioned in instructional content but not used as separate loadable files.
@@ -46,12 +46,12 @@ Last updated: 2026-04-24
 
 | Agent | Plugin | Tokens | Isolation | Status |
 |-------|--------|--------|-----------|--------|
-| implementer | dev-discipline | 1004 | worktree | Compressed |
-| spec-reviewer | dev-discipline | 782 | none | Compressed |
-| code-quality-reviewer | dev-discipline | 1104 | none | Compressed |
-| executor-agent | qa-automation | 1891 | none | Compressed |
-| generator-agent | qa-automation | 2695 | none | Compressed |
-| healer-agent | qa-automation | 3190 | none | Compressed |
+| implementer | dev-discipline | 1509 | worktree | Path re-rooting + git-as-SoT + status report (2026-04-29) |
+| spec-reviewer | dev-discipline | 1333 | none | Path re-rooting + verdict file at A3 (2026-04-29) |
+| code-quality-reviewer | dev-discipline | 1728 | none | Path re-rooting + report file at A4 (2026-04-29) |
+| executor-agent | qa-automation | 1962 | none | Output Check bilateral spec (2026-04-29) |
+| generator-agent | qa-automation | 2996 | none | Conditional-Artifact Check bilateral spec (2026-04-29) |
+| healer-agent | qa-automation | 3239 | none | Output Check + Circuit-Breaker bilateral spec (2026-04-29) |
 | planner-agent | qa-automation | 1922 | none | Compressed |
 
 **Local (not shipped):**
@@ -66,8 +66,9 @@ Last updated: 2026-04-24
 | SessionStart | manifesto | startup\|resume | Initialize manifesto binding |
 | PostCompact | manifesto | * | Re-bind manifesto after compaction |
 | SubagentStart | manifesto | * | Inject manifesto into subagent context |
-| SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops |
-| SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops |
+| SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops (unconditional) |
+| SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops (unconditional as of 1.4.2) |
+| SubagentStop | dev-discipline | code-quality-reviewer | Inject merge-decision mandate after quality review stops (NEW 2026-04-29, 1.4.2) |
 | SessionStart | orchestration | startup\|resume | ARRIVE context injection — inject reference doc paths |
 | PostCompact | orchestration | * | ARRIVE re-injection after compaction wipes context |
 
@@ -75,24 +76,26 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 
 ## Token Distribution
 
-**Total skill tokens:** 50,989t across 20 skills (avg: 2,549t)
-**Total agent tokens:** 12,588t across 7 agents (avg: 1,798t)
-**System total:** 63,577t (excludes local instruction-writer agent)
+Status Snapshot — regenerated via `just tokens FILE` per session-close §Documentation Categories. Numbers below reflect post-2026-04-29 state.
+
+**Total skill tokens:** 57,155t across 20 skills (avg: 2,858t)
+**Total agent tokens:** 14,689t across 7 agents (avg: 2,098t)
+**System total:** 71,844t (excludes local instruction-writer agent)
 
 **Size categories:**
 - Micro (<500t): 1 skill (fix-macos-app)
 - Small (500-1500t): 7 skills
-- Medium (1500-3000t): 6 skills, 3 agents
-- Large (3000-6000t): 4 skills, 3 agents
-- XL (6000t+): 2 skills (agentic-delegation, research-tree)
+- Medium (1500-3000t): 5 skills, 4 agents
+- Large (3000-6000t): 4 skills, 2 agents
+- XL (6000t+): 3 skills (agentic-delegation, research-tree, qa-orchestration)
 
 ## Reference File Inventory
 
 | File | Description | Last Updated |
 |------|-------------|--------------|
-| codebase_state.md | Plugin/skill/agent/hook inventory and version tracking | 2026-04-20 |
-| conventions.md | Established patterns and principles | 2026-04-20 |
-| deferred_items.md | Backlog of known defects and improvement opportunities | 2026-04-20 |
+| codebase_state.md | Plugin/skill/agent/hook inventory and version tracking | 2026-04-29 |
+| conventions.md | Established patterns and principles | 2026-04-29 |
+| deferred_items.md | Backlog of known defects and improvement opportunities | 2026-04-29 |
 | hooks-reference.md | Authoritative hooks reference (893 lines, command hooks) | 2026-04-16 |
 | agents-reference.md | Authoritative Claude Code plugin-defined agents reference manual | 2026-04-20 |
 
@@ -188,6 +191,30 @@ orchestration_log/recon/2026-04-17/
    - orchestration: 3.1.0 → 3.2.0
    - qa-automation: 3.1.0 → 3.1.1
 
+**Session 2026-04-29 — Artifact-ownership audit + 5 dispatches across 3 plugins:**
+
+1. **Marketplace artifact-ownership audit.** 3 sonnet scouts in parallel surveyed multi-skill plugins with hierarchy (dev-discipline, qa-automation, orchestration). Found 25 paired-enforcement gaps. Cross-cutting failure mode: orchestrators gating on parsed return-message text rather than on artifacts at known paths.
+
+2. **Inline Artifact Contract pattern landed in 3 plugins.** Each multi-skill plugin's orchestrator skill now carries a `## Artifact Contract` table at the top with columns ID/Path/Producer/Consumer/Format/Required. Decision: inline markdown table (not external manifest) — models ignore @references; the inline table is greppable by both model AND future linter.
+
+3. **Plugin-by-plugin remediation (3 opus dispatches):**
+   - **orchestration 3.2.0 → 3.2.1:** session-close path canonicalization (12 wrong `docs/orchestration_log/` → `orchestration_log/`); Artifact Contract table.
+   - **dev-discipline 1.4.0 → 1.4.1:** spec-reviewer + code-quality-reviewer write structured verdict files at A3/A4 paths; orchestrator queries git for branch/SHA instead of parsing return text; Artifact Contract table.
+   - **qa-automation 3.1.1 → 3.1.2:** Artifact Map → Artifact Contract (corrects A2/A15/A22, adds A13/A18, tightens A14 snapshot path); Phase 1 verification pattern ported to phases 2-4 (Generator Conditional-Artifact Check, Executor Output Check, Healer Output Check, Pre-Dispatch Circuit-Breaker Gate).
+
+4. **Doc-governance memo from downstream project (orchestration 3.2.1 → 3.2.2):** Upstream feedback memo proposed 6 changes traced from 4 CRITICAL findings in their own documentation drift forensics. Single opus dispatch applied 4a (Status Snapshot regeneration), 4b (spec lifecycle sweep), 4c (5-row Documentation Categories taxonomy), 4d (Decision Record trigger), 4e (Interface Specification banished from reference docs in Consolidation sweep), 5a (source-file-first dispatch as agentic-delegation Principle #13).
+
+5. **Worktree reinforcement + unconditional review hooks (dev-discipline 1.4.1 → 1.4.2):** Spec-chef'd resolutions to 6 open subtleties. dev-orchestration gains worktree-discipline subsection (use-worktrees encouragement + platform-induced CWD-drift hazard with detection-only prescription). All 3 review-chain agents gain path re-rooting (all incoming paths treated as worktree-relative; absolute paths get prefix stripped; surfaced in status). `quality-review-mandate.txt` rewritten as single unconditional command. New `code-quality-reviewer-stop.sh` + `merge-mandate.txt` template + matcher in `hooks.json` (third hook in the dev-discipline review chain — all three now follow the unconditional pattern).
+
+6. **Three new conventions codified in `conventions.md`:** Artifact Contract Pattern; Worktree Dispatches: Relative Paths Only; Hook Mandates: Unconditional Pattern.
+
+7. **Four deferred items filed (DI-4/5/6/7):** worktree absolute-path leak (HIGH, partially resolved by 1.4.2); drift-prevention linter for Artifact Contract tables (MEDIUM); abandoned locked worktree (LOW); platform-induced orchestrator CWD drift (MEDIUM, target: agents-reference.md Appendix B).
+
+**Versioning (session 2026-04-29):**
+- orchestration: 3.2.0 → 3.2.1 → 3.2.2 (two patches: Artifact Contract + path canon, then doc-governance taxonomy)
+- dev-discipline: 1.4.0 → 1.4.1 → 1.4.2 (two patches: verdict files + git SoT, then worktree reinforcement + hooks)
+- qa-automation: 3.1.1 → 3.1.2 (one patch: artifact map + phase verification)
+
 ## Known Limitations
 
 1. **Reference file pattern not eliminated:** prompt-optimize mentions references/ pattern in instructional content (line 113). Not a functional reference but suggests historical pattern.
@@ -198,7 +225,7 @@ orchestration_log/recon/2026-04-17/
 
 4. **Large skill persistence:** research-tree (7565t) remains large after compression. This is the irreducible operational surface for 6-tier multi-agent orchestration. agentic-delegation (6054t) similarly justified by scope.
 
-5. **Hook coverage:** manifesto (3 hooks), dev-discipline (2 hooks), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools, prompt-engineering — pending implementation.
+5. **Hook coverage:** manifesto (3 hooks), dev-discipline (3 hooks as of 2026-04-29 — full review chain coverage), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools, prompt-engineering — pending implementation.
 
 6. **MCP integration:** No plugins currently use .mcp.json despite plugin-dev:mcp-integration skill existing.
 
