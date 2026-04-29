@@ -510,14 +510,16 @@ isolation: worktree    # Optional — use when agent needs filesystem isolation
 
 **Rationale:** JSONL double-counts subagent internals. Cost derived from JSONL message logs is structurally inflated and cannot be trusted.
 
-**Verification before use:** Before filling a cost placeholder, cross-verify `/cost` scope:
+**Verification before use:** Cross-verify `/cost` scope before trusting the number:
 1. Wall time range matches the intended session.
 2. No branching split the session (branched `/cost` covers only that branch).
 3. No multi-session contribution inflates the number.
 
 The verification confirms `/cost` reports for the right scope. It does not compute an alternative number.
 
-**Source:** session-close SKILL.md, session 2026-04-15. Formalized from observed JSONL double-counting behavior.
+**Capture location:** Verbatim `/cost` output lives in gitignored `orchestration_log/history/${DATE}/cost.md` (Artifact Contract row A9 in session-close). Cost numbers MUST NOT be embedded inline in `session.md` — the session record carries a pointer line only. The cost.md file matches `**/cost.md` in `.gitignore`; it is per-session, local-only, and NEVER committed. Cost data is operational (Status Snapshot per session-close Documentation Categories), not historical artifact.
+
+**Source:** session-close SKILL.md, sessions 2026-04-15 and 2026-04-29. Formalized from observed JSONL double-counting behavior; gitignored capture pattern adopted 2026-04-29.
 
 ---
 

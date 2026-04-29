@@ -550,7 +550,8 @@ orchestration_log/
     deferred_items.md     Living backlog: unresolved findings with severity and rationale
   history/                FROZEN — never edit a past session
     YYYY-MM-DD/
-      session.md          Timeline, decisions, failures, cost, outcomes
+      session.md          Timeline, decisions, failures, outcomes
+      cost.md             Verbatim /cost output — gitignored, per-session
       reviews/            Review reports (primary evidence)
   recon/                  DISPOSABLE — gitignored, regenerate when stale
     YYYY-MM-DD/
@@ -582,7 +583,7 @@ Follow conventions. Dispatch agents per this skill's delegation methodology. Con
 
 ### LEAVE
 
-Close the session: extract metrics, draft session record, update reference docs, capture cost, commit. For the full LEAVE workflow (Steps 1-7, quality gates, artifact management), invoke the `session-close` skill.
+Close the session: extract metrics, draft session record, update reference docs, capture cost to gitignored `cost.md`, commit. For the full LEAVE workflow (Steps 1-7, quality gates, artifact management), invoke the `session-close` skill.
 
 ---
 

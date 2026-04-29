@@ -1,5 +1,6 @@
 # Disposable — regenerate when stale
 orchestration_log/recon/
+orchestration_log/history/*/cost.md
 
 # Python
 __pycache__/

@@ -3,7 +3,7 @@ name: session-close
 description: >
   Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers
   session start (reference doc ingestion), session work (convention adherence), and
-  session close (metric extraction, session record, reference updates, cost capture, VCS commit).
+  session close (metric extraction, session record, reference updates, cost capture to gitignored cost.md, VCS commit).
 
   Triggers: "close the session", "do session paperwork", "write the session record",
   "execute the LEAVE protocol", "wrap up the session", "start a session", "ARRIVE",
@@ -30,13 +30,14 @@ Canonical paths and ownership for every artifact this skill produces or consumes
 | A1 | `orchestration_log/recon/${DATE}/session_metrics.md` | Step 1 haiku agent | Step 3 draft agent, Step 5 orchestrator | markdown | yes |
 | A2 | `orchestration_log/recon/${DATE}/git_history.md` | Step 2 haiku agent | Step 3 draft agent, Step 5 orchestrator | markdown | yes |
 | A3 | `orchestration_log/recon/${DATE}/orphan_scripts.md` | Step 4b sonnet agent | Step 5 orchestrator | markdown | conditional |
-| A4 | `orchestration_log/history/${DATE}/session.md` | Step 3 sonnet agent drafts; Step 5 orchestrator corrects; Step 7 haiku fills cost | next-session ARRIVE, future Step 3 drafts (format reference) | markdown | yes |
+| A4 | `orchestration_log/history/${DATE}/session.md` | Step 3 sonnet agent drafts; Step 5 orchestrator corrects | next-session ARRIVE, future Step 3 drafts (format reference) | markdown | yes |
 | A5 | `orchestration_log/history/${DATE}/reviews/` | review-producing agents during the session | next-session ARRIVE, audits | markdown | conditional |
 | A6 | `orchestration_log/reference/codebase_state.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
 | A7 | `orchestration_log/reference/deferred_items.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
 | A8 | `orchestration_log/reference/conventions.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+| A9 | `orchestration_log/history/${DATE}/cost.md` | Step 7 (orchestrator dispatches haiku to write verbatim `/cost` output) | human only (audit / record-keeping at close); NOT consumed by next-session ARRIVE | markdown | conditional (skip when user directs no cost capture; otherwise required) |
 
-Conditional rows: A3 produces only when Step 4b runs (script-bearing directories changed). A5 produces only when reviews ran during the session.
+Conditional rows: A3 produces only when Step 4b runs (script-bearing directories changed). A5 produces only when reviews ran during the session. A9 (cost.md) is gitignored per `**/cost.md` — per-session, local-only, NEVER in version control. Cost data is operational, not historical artifact; stewardship lives outside git. The session record (A4) carries only a pointer line, never the cost number itself. Not recoverable retroactively: `/cost` reports only the current live session.
 
 `${DATE}` resolves to the session date as `YYYY-MM-DD`.
 
@@ -51,7 +52,8 @@ orchestration_log/
 
   history/                APPEND-ONLY. Never edit a past session.
     YYYY-MM-DD/
-      session.md          Timeline, decisions, failures, cost, outcomes.
+      session.md          Timeline, decisions, failures, outcomes.
+      cost.md             Verbatim /cost output. GITIGNORED (per-session, local-only).
       reviews/            Review reports (primary evidence, not summaries).
 
   recon/                  DISPOSABLE. Gitignored. Regenerate when stale.
@@ -157,6 +159,8 @@ BEFORE trusting `/cost`, cross-verify scope:
 
 The verification confirms `/cost` reports for the RIGHT scope. It does not compute an alternative number.
 
+**Where the captured cost lives.** Step 7 writes verbatim `/cost` output to gitignored `orchestration_log/history/${DATE}/cost.md` (Artifact Contract row A9). The verbatim `/cost` output IS the artifact — a Status Snapshot per the Documentation Categories taxonomy, regenerated only at session close and never reformatted. Cost numbers MUST NOT be embedded inline in session.md, MUST NOT be parsed or summarized, MUST NOT be committed (cost.md matches `**/cost.md` in `.gitignore`). The session record carries a pointer line only.
+
 ## Session Record Format
 
 ### Header Template
@@ -168,12 +172,12 @@ The verification confirms `/cost` reports for the RIGHT scope. It does not compu
 **Session ID:** {session-id}          ← links to raw JSONL files
 **Branch:** {git branch, if branched}  ← omit if main
 **Duration:** {X}h {Y}m API, {Z}h {W}m wall
-**Cost:** ${total} (from /cost, scope-verified)
+**Cost:** see local `cost.md` (gitignored; per-session)
 **Code changes:** {N} lines added, {M} removed
 **Outcome:** {1-2 sentence summary of what shipped}
 ```
 
-The session ID links directly to `~/.claude-shared/projects/{slug}/{session-id}.jsonl`. Cost line: fill PLACEHOLDER after running `/cost`. Format: `[PLACEHOLDER - run /cost to fill]` until then. Cross-verify `/cost` scope before filling (see Cost Source section).
+The session ID links directly to `~/.claude-shared/projects/{slug}/{session-id}.jsonl`. The Cost line is static text pointing at `cost.md` — the cost.md file is the truth, written by Step 7. NEVER substitute a placeholder, NEVER inline the cost number. Skipped capture (per user direction): replace the line with `**Cost:** not captured this session (per user direction)`.
 
 ### Required Sections
 
@@ -183,7 +187,7 @@ The session ID links directly to `~/.claude-shared/projects/{slug}/{session-id}.
 
 **Failure Log** — table: Failure | Root cause | Correction | Prevention. Include OOM/resource failures, agent spec violations, tool failures, skipped protocol steps, wrong initial approaches. The failure log is the most valuable part. Conventions are born from it.
 
-**Quantitative Summary** — table: Metric | Value. API time, wall time, git commits, code changes, tests, pyright errors, agent dispatches, cost.
+**Quantitative Summary** — table: Metric | Value. API time, wall time, git commits, code changes, tests, pyright errors, agent dispatches. Cost lives in gitignored `cost.md` (Step 7), NEVER in this table.
 
 **Next Session Priorities** — ordered list connecting to `deferred_items.md`.
 
@@ -234,7 +238,7 @@ Report the two agent groupings as separate tables.
 
 Use `scripts/extract_metrics.py` for reliable parsing.
 
-Step 1 provides agent counts and message volumes. NEVER derive cost from JSONL. See Cost Source section — `/cost` is the only trusted source. Step 7 captures cost.
+Step 1 provides agent counts and message volumes. NEVER derive cost from JSONL. See Cost Source section — `/cost` is the only trusted source. Step 7 captures cost to gitignored `cost.md`.
 
 ### Step 2: Extract git history (haiku, background)
 
@@ -323,20 +327,22 @@ Commit only `orchestration_log/history/` and `orchestration_log/reference/`. The
 
 ### Step 7: Capture cost (orchestrator)
 
-Run `/cost`. Before filling the placeholder, cross-verify scope:
+Run `/cost`. Cross-verify scope before trusting the number:
 1. Wall time range matches this session.
 2. No branching split the session (branched `/cost` covers only the branch).
 3. No multi-session contribution inflates the number.
 
-If scope checks pass, dispatch a haiku agent to fill the cost placeholder in:
+If scope checks pass, dispatch a haiku agent to write the VERBATIM `/cost` output to:
 
 ```
-orchestration_log/history/{YYYY-MM-DD}/session.md
-# Find: [PLACEHOLDER - run /cost to fill]
-# Replace with actual /cost number and note "scope-verified"
+orchestration_log/history/{YYYY-MM-DD}/cost.md
 ```
 
-The agent commits with: `"doc: fill session {YYYY-MM-DD} cost data (${TOTAL} total)"`
+The agent pastes `/cost` output as a fenced code block, prefixed by a one-line scope-verification note. The agent MUST NOT parse, reformat, summarize, or substitute placeholders — the verbatim output IS the artifact. The agent MUST NOT commit cost.md and MUST NOT embed the cost number inline in session.md.
+
+NO commit. The file is gitignored per `**/cost.md` (Artifact Contract row A9). The Step 6 `git add orchestration_log/` silently skips cost.md because of this gitignore rule — the no-commit fact is enforced by the ignore pattern, not by the agent. Cost is operational data; stewardship lives outside git history.
+
+Skip Step 7 entirely when the user directs no cost capture. Note `**Cost:** not captured this session (per user direction)` in the session record header and proceed without writing cost.md.
 
 ## Artifact Management
 
@@ -363,7 +369,7 @@ Before closing:
 - [ ] Reference docs updated: codebase_state, deferred_items, conventions
 - [ ] Function signatures read from actual code, not guessed
 - [ ] Gold standard results documented if evaluation was run
-- [ ] Cost placeholder filled
+- [ ] cost.md written at orchestration_log/history/${DATE}/cost.md (or skip explicitly noted in session record)
 - [ ] Everything committed
 - [ ] Recon files NOT committed (gitignored)
 - [ ] Artifact index present in session.md

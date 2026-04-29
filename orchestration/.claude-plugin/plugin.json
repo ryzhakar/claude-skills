@@ -1,6 +1,6 @@
 {
   "name": "orchestration",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "description": "Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
