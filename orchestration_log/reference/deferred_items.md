@@ -89,6 +89,18 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 
 ---
 
+### DI-8 — `extract_metrics.py` Carries Dead-Code Cost Computation
+
+**Date**: 2026-04-29
+**Severity**: LOW
+**Description**: `orchestration/skills/session-close/scripts/extract_metrics.py` includes `COST_PER_1M`, `compute_cost`, and a "Total estimated cost" row in its output. Session-close's Cost Source section explicitly forbids JSONL-derived cost numbers ("NEVER derive cost from JSONL — JSONL double-counts subagent internals"). The script's cost-computation logic is dead code per the convention — its output is structurally untrusted and unused by any LEAVE step. As of orchestration 3.2.3, cost capture lives entirely in gitignored `cost.md` written from `/cost` output, not from JSONL parsing.
+
+**Proposed remediation**: Strip `COST_PER_1M`, `compute_cost`, and the cost row + cost column from the script's output. The metrics report stays useful (token counts by tier, agent counts by tier, tool calls, message counts). Removing the cost lines aligns the script with the documented Cost Source rule and prevents future readers from mistaking the JSONL-derived number for a trusted figure.
+
+**Evidence**: `orchestration/skills/session-close/scripts/extract_metrics.py` lines 21, 41-42, 112-113, 128, 133, 149, 153, 158. Session-close `### Cost Source` section (post-3.2.3 version) explicitly prohibits JSONL-derived cost.
+
+---
+
 ### DI-7 — Platform-Induced Orchestrator CWD Drift (Undocumented)
 
 **Date**: 2026-04-29
