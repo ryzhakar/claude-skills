@@ -1,5 +1,5 @@
 # Conventions
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 Established patterns and principles governing plugin development in this marketplace. All conventions trace to observed model behavior, documented platform constraints, or empirical optimization results.
 
@@ -582,6 +582,39 @@ The verification confirms `/cost` reports for the right scope. It does not compu
 
 ---
 
+## Manifesto Manifest Format
+
+**Core rule:** `.manifestos.yaml` uses grouped YAML with `you:` and `subagents:` top-level sections. Flat list at root = orchestrator-only (no subagent propagation).
+
+**Structure:**
+
+```yaml
+you:
+  - element-name                          # string: name only
+  - name: element-name                    # dict: name + optional fields
+    purpose: what this element governs
+    source: https://... or ./local/path
+
+subagents:
+  default:                                # catch-all agent type
+    - element-name
+  implementer:                            # per-type override
+    - name: element-name
+      purpose: what this element governs
+```
+
+**Element shapes:**
+- String (`"name"`): name only, resolved via tiered protocol.
+- Dict with `name` (required) + `purpose` (optional) + `source` (optional URL or local path).
+
+**Rendering rule:** Hook scripts parse YAML via python3 and render structured fields into natural language prose. The `ELEMENT_DESCRIPTION` env var receives prose sentences, never raw YAML blocks. See Natural Language Hook Output convention.
+
+**SubagentStart scope:** SubagentStart hook renders only a one-paragraph reminder that the orchestrator owns subagent binding via dispatch prompt. Full binding ceremony does NOT happen in SubagentStart — it is the orchestrator's responsibility to include manifesto preambles in each agent dispatch.
+
+**Source:** manifesto 2.2.0, session 2026-04-30.
+
+---
+
 ## Session Persistence (ARRIVE/WORK/LEAVE)
 
 **Framework:** session-close skill implements LEAVE protocol for multi-session workflows.
@@ -663,3 +696,53 @@ Conventions for fetching and processing Claude Code documentation pages at scale
 **When it applies:** Every agent dispatch preamble that binds to the First Principles manifesto. The pattern is already used in the 2026-04-17 task instructions and should be the canonical form going forward.
 
 **Evidence:** 4+ scout agents in the 2026-04-17 wave encountered absent local file and fell back to upstream fetch. See `deferred_items.md` DI-1 for remediation tracking.
+
+---
+
+## Natural Language Hook Output
+
+**Core rule:** Hook output MUST be natural language prose. No structured/machine-readable data (numbered lists with field labels, JSON, boolean values, YAML fragments).
+
+**Rationale:** Hooks inject text into the model's context as instructions. Structured data formats activate parsing circuits rather than comprehension circuits. Natural prose integrates with the conversation flow.
+
+**Implementation:** Python rendering blocks in hook scripts build flowing sentences from parsed config data. Templates receive `${ELEMENT_DESCRIPTION}` as prose, not as data blocks.
+
+**Example:**
+- Wrong: `1. only-fluff-die\n   Purpose: communication protocol`
+- Right: `Your constitution has three elements. "only-fluff-die" governs your communication protocol.`
+
+**Evidence:** Session 2026-04-30 — user caught structured data in manifesto hook output; corrected via instruction-writer dispatch.
+
+---
+
+## Skill Inheritance via Invocation
+
+**Core rule:** When skill B extends skill A, B instructs the orchestrator to invoke A first. B carries only its own additions. No content duplication between parent and child.
+
+**Enforcement:** The invocation step is a hard gate — B's instructions state consequences of skipping (data loss, incomplete artifacts). This is the strongest enforcement available without hooks.
+
+**Pattern:** session-checkpoint (base) → session-close (extension via Step 0). dev-orchestration → agentic-delegation (hard gate read directive).
+
+**When it applies:** Any new skill that shares >50% of its behavior with an existing skill. Extract the shared behavior into the base skill; the extension skill invokes it.
+
+**Evidence:** Session 2026-04-30 — session-close restructured to inherit from session-checkpoint. Three existing patterns surveyed (research-tree: standalone, qa-orchestration: soft read, dev-orchestration: hard gate + hooks).
+
+---
+
+## Orchestrator Delegation Discipline
+
+**Core rule:** The orchestrator delegates ALL file operations (reads, searches, edits) to agents. The orchestrator's context window is the most expensive resource — protect it.
+
+**Exceptions:** Session-close/checkpoint context-dependent content (narrative, decisions, failures). Only the orchestrator holds this context; delegation would require relaying content through an agent (the relay anti-pattern).
+
+**Evidence:** Session 2026-04-30 — orchestrator manually edited checkpoint skill twice; user corrected both times. Standing constraint established.
+
+---
+
+## Instruction-Writer for Guidance Authorship
+
+**Core rule:** Use the instruction-writer agent (not implementer) for skill files, agent definitions, hook templates, and any instruction file. These are guidance authorship — they shape downstream agent behavior.
+
+**Rationale:** Per the Model Ladder, guidance authorship demands opus. The instruction-writer agent is purpose-built for this work type. The implementer agent is for code production (source modules, test files, fixtures).
+
+**Evidence:** Session 2026-04-30 — orchestrator initially dispatched dev-discipline:implementer for skill file edits; user corrected to instruction-writer.

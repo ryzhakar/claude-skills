@@ -1,5 +1,5 @@
 # Deferred Items
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 Known defects and improvement opportunities that are tracked but not immediately scheduled. Update severity when context changes. Remove entries when resolved.
 
@@ -110,3 +110,15 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 **Proposed remediation**: Add a session-vagueness item to `orchestration_log/reference/agents-reference.md` Appendix B (open questions / observed platform behavior) describing the orchestrator-side drift. Cite the dev-orchestration SKILL.md "Worktree Discipline (Orchestrator Side)" subsection as the operational defense already in place. This is documentation work — separate dispatch.
 
 **Evidence**: Session 2026-04-24 (orchestrator's CWD drifted into Dispatch B's worktree during diagnostic queries). Session 2026-04-29 (user confirmed platform-induced variant exists separately from operator-induced drift).
+
+---
+
+### DI-9 — Manifesto Hook Code Duplication (session-start.sh / post-compact.sh)
+
+**Date**: 2026-04-30
+**Severity**: LOW
+**Description**: Lines 1-37 of `session-start.sh` and `post-compact.sh` are identical — the entire python3 block for rendering `ELEMENT_DESCRIPTION` from `YOU_STACK`. If the rendering logic needs a fix, it must be applied in two places. The only difference between the scripts is the tail: session-start adds `SUBAGENT_NOTE` logic and references a different template.
+
+**Proposed remediation**: Extract the shared python3 rendering block into a function in `ensure-repo.sh` (which is already sourced by both scripts). Both scripts call the function and receive `ELEMENT_DESCRIPTION` as an exported var.
+
+**Evidence**: Plugin-validator report for manifesto plugin, session 2026-04-30. Major issue #1.

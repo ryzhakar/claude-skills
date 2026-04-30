@@ -1,19 +1,19 @@
 # Codebase State
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Plugin Inventory
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
 | dev-discipline | 1.4.2 | 7 | 3 | 3 |
-| manifesto | 2.1.0 | 2 | 0 | 3 |
-| orchestration | 3.2.2 | 3 | 0 | 2 |
+| manifesto | 2.2.0 | 2 | 0 | 3 |
+| orchestration | 3.3.0 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
-| prompt-engineering | 1.1.0 | 2 | 0 | 0 |
+| prompt-engineering | 2.0.0 | 0 | 2 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
 | qa-automation | 3.1.2 | 1 | 4 | 0 |
 | userland-utilities | 1.0.0 | 1 | 0 | 0 |
-| **TOTAL** | - | **20** | **7** | **8** |
+| **TOTAL** | - | **19** | **9** | **8** |
 
 ## Skill Inventory
 
@@ -29,12 +29,11 @@ Last updated: 2026-04-29
 | manifesto-oath | manifesto | 2192 | No | Compressed |
 | agentic-delegation | orchestration | 6668 | No | Doc-governance Principle #13 (2026-04-29) |
 | research-tree | orchestration | 7565 | No | Compressed |
-| session-close | orchestration | 4898 | No | Doc-governance taxonomy + path canon + Artifact Contract (2026-04-29) |
+| session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
+| session-close | orchestration | 5756 | No | Step 0 checkpoint gate + inheritance reform (2026-04-30) |
 | dev-orchestration | dev-discipline | 5190 | No | Worktree discipline + Artifact Contract + git-as-SoT (2026-04-29) |
 | spec-chef | product-craft | 1730 | No | Compressed |
 | user-story-chef | product-craft | 1498 | No | Compressed |
-| prompt-eval | prompt-engineering | 3138 | Yes* | Compressed |
-| prompt-optimize | prompt-engineering | 2693 | Yes* | Compressed |
 | uv-pyright-debug | python-tools | 1092 | No | Compressed |
 | python-ast-mass-edit | python-tools | 1270 | No | Compressed |
 | qa-orchestration | qa-automation | 6774 | No | Artifact Contract + Phase 1 verification ported to phases 2-4 (2026-04-29) |
@@ -53,6 +52,8 @@ Last updated: 2026-04-29
 | generator-agent | qa-automation | 2996 | none | Conditional-Artifact Check bilateral spec (2026-04-29) |
 | healer-agent | qa-automation | 3239 | none | Output Check + Circuit-Breaker bilateral spec (2026-04-29) |
 | planner-agent | qa-automation | 1922 | none | Compressed |
+| prompt-eval | prompt-engineering | 3314 | none | NEW — converted from skill (2026-04-30) |
+| prompt-optimize | prompt-engineering | 2959 | none | NEW — converted from skill (2026-04-30) |
 
 **Local (not shipped):**
 | Agent | Location | Tokens | Purpose |
@@ -65,7 +66,7 @@ Last updated: 2026-04-29
 |-----------|--------|---------|---------|
 | SessionStart | manifesto | startup\|resume | Initialize manifesto binding |
 | PostCompact | manifesto | * | Re-bind manifesto after compaction |
-| SubagentStart | manifesto | * | Inject manifesto into subagent context |
+| SubagentStart | manifesto | * | Remind subagent to expect bindings from orchestrator (2026-04-30: stripped to reminder-only) |
 | SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops (unconditional) |
 | SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops (unconditional as of 1.4.2) |
 | SubagentStop | dev-discipline | code-quality-reviewer | Inject merge-decision mandate after quality review stops (NEW 2026-04-29, 1.4.2) |
@@ -76,24 +77,24 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 
 ## Token Distribution
 
-Status Snapshot — regenerated via `just tokens FILE` per session-close §Documentation Categories. Numbers below reflect post-2026-04-29 state.
+Status Snapshot — regenerated via `just tokens FILE` per session-close §Documentation Categories. Numbers below reflect post-2026-04-30 state.
 
-**Total skill tokens:** 57,155t across 20 skills (avg: 2,858t)
-**Total agent tokens:** 14,689t across 7 agents (avg: 2,098t)
-**System total:** 71,844t (excludes local instruction-writer agent)
+**Total skill tokens:** 54,012t across 19 skills (avg: 2,843t)
+**Total agent tokens:** 20,962t across 9 agents (avg: 2,329t)
+**System total:** 74,974t (excludes local instruction-writer agent)
 
 **Size categories:**
 - Micro (<500t): 1 skill (fix-macos-app)
 - Small (500-1500t): 7 skills
-- Medium (1500-3000t): 5 skills, 4 agents
-- Large (3000-6000t): 4 skills, 2 agents
+- Medium (1500-3000t): 6 skills, 6 agents
+- Large (3000-6000t): 2 skills, 2 agents
 - XL (6000t+): 3 skills (agentic-delegation, research-tree, qa-orchestration)
 
 ## Reference File Inventory
 
 | File | Description | Last Updated |
 |------|-------------|--------------|
-| codebase_state.md | Plugin/skill/agent/hook inventory and version tracking | 2026-04-29 |
+| codebase_state.md | Plugin/skill/agent/hook inventory and version tracking | 2026-04-30 |
 | conventions.md | Established patterns and principles | 2026-04-29 |
 | deferred_items.md | Backlog of known defects and improvement opportunities | 2026-04-29 |
 | hooks-reference.md | Authoritative hooks reference (893 lines, command hooks) | 2026-04-16 |
@@ -215,9 +216,24 @@ orchestration_log/recon/2026-04-17/
 - dev-discipline: 1.4.0 → 1.4.1 → 1.4.2 (two patches: verdict files + git SoT, then worktree reinforcement + hooks)
 - qa-automation: 3.1.1 → 3.1.2 (one patch: artifact map + phase verification)
 
+**Session 2026-04-30 — Three-plugin release: manifest refactor, session-checkpoint, skills-to-agents:**
+
+1. **Manifesto manifest refactor (2.1.0 → 2.2.0).** `.manifestos.yaml` rewritten from flat list to grouped YAML with `you:` (orchestrator) and `subagents:` (agent-type keys + catch-all) sections. Per-element `purpose` and `source` fields. `detect_manifestos()` refactored with python3 YAML parsing into structured env vars. All hook templates rewritten for natural language rendering — no structured/machine-readable data in hook output. SubagentStart hook stripped to a one-paragraph reminder (orchestrator owns subagent binding via dispatch prompt).
+
+2. **session-checkpoint skill (orchestration 3.2.3 → 3.3.0).** New skill captures context-dependent content (narrative, decisions, failures, deferred items, codebase observations, convention discoveries) to A4/A6/A7/A8 before compaction destroys it. On-demand only. Carries the full Artifact Contract (A1-A9), Directory Structure, Mutability Rules, and Documentation Categories as the self-contained base skill. session-close inherits from checkpoint via Step 0 invocation (hard gate).
+
+3. **session-close reform (orchestration 3.3.0).** Step 0 added: mandatory `/session-checkpoint` invocation before LEAVE steps. Checkpoint-Close Relationship section replaces Checkpoint Consumption. Steps 3-4 updated to extend checkpoint's existing content rather than draft from scratch. Proactive close recommendations removed — session closes only on explicit user request. Gitignore housekeeping pre-step ensures required patterns exist.
+
+4. **prompt-engineering skills → agents (1.1.0 → 2.0.0).** prompt-eval and prompt-optimize converted from skills to agents. Both write file artifacts to orchestrator-specified paths (report-based communication pattern). Agent definitions dogfood the prompt-engineering principles they teach. Objections (summary truncation, no isolation benefit, already composable) addressed by cross-checking against existing orchestration framework patterns.
+
+**Versioning (session 2026-04-30):**
+- manifesto: 2.1.0 → 2.2.0
+- orchestration: 3.2.3 → 3.3.0
+- prompt-engineering: 1.1.0 → 2.0.0
+
 ## Known Limitations
 
-1. **Reference file pattern not eliminated:** prompt-optimize mentions references/ pattern in instructional content (line 113). Not a functional reference but suggests historical pattern.
+1. **Reference file pattern not eliminated:** prompt-optimize (now an agent) may still mention references/ pattern in instructional content. Not a functional reference but suggests historical pattern.
 
 2. **Token measurement coverage:** All current skills/agents measured with `just tokens`. Template files not measured separately.
 
@@ -225,7 +241,7 @@ orchestration_log/recon/2026-04-17/
 
 4. **Large skill persistence:** research-tree (7565t) remains large after compression. This is the irreducible operational surface for 6-tier multi-agent orchestration. agentic-delegation (6054t) similarly justified by scope.
 
-5. **Hook coverage:** manifesto (3 hooks), dev-discipline (3 hooks as of 2026-04-29 — full review chain coverage), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools, prompt-engineering — pending implementation.
+5. **Hook coverage:** manifesto (3 hooks), dev-discipline (3 hooks as of 2026-04-29 — full review chain coverage), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools — pending implementation. prompt-engineering no longer has skills to hook into (agents only).
 
 6. **MCP integration:** No plugins currently use .mcp.json despite plugin-dev:mcp-integration skill existing.
 
@@ -237,14 +253,12 @@ orchestration_log/recon/2026-04-17/
 
 ## Next Actions
 
-1. **Monitor research-tree implementation:** Synthesis recommendations from 2026-04-13 analysis call for inlining 4 reference files (agent-templates, report-formats, tier-playbook, anti-patterns). Not yet implemented. Expected net reduction: -2,128t system total.
+1. **Manifesto hook code duplication.** Extract shared ELEMENT_DESCRIPTION rendering from session-start.sh and post-compact.sh into ensure-repo.sh. Validator finding from 2026-04-30.
 
-2. **Validate compression quality:** Synthesis documents exist for 18/20 skills + all agents. Implementation PRs merged. No quality regression reports yet.
+2. **DI-8: strip dead-code cost computation** from extract_metrics.py. Tracked since 2026-04-29.
 
-3. **Session-close adoption:** Skill updated and clarified (2026-04-15). Monitor for adoption in multi-session workflows.
+3. **Monitor research-tree implementation:** Synthesis recommendations from 2026-04-13 analysis call for inlining 4 reference files. Not yet implemented. Expected net reduction: -2,128t system total.
 
 4. **instruction-writer placement decision:** Decide whether to package as a dev-discipline agent or create a plugin-dev component.
 
-5. **Deferred items tracking:** See deferred_items.md for synthesis recommendations not yet implemented.
-
-6. **Convention documentation:** See conventions.md for established patterns.
+5. **Deferred items tracking:** See deferred_items.md for open items.
