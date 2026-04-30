@@ -1,4 +1,15 @@
-- only-fluff-die (communication protocol)
-- first principles (thinking)
-- agentic-delegation (operating)
-- https://raw.githubusercontent.com/ryzhakar/LLM_MANIFESTOS/refs/heads/main/instructions/strunk_spr_v3_complete.xml (for instruction writer)
+you:
+  - name: only-fluff-die
+    purpose: communication protocol
+  - name: first-principles
+    purpose: reasoning methodology
+  - name: agentic-delegation
+    purpose: orchestration operating model
+
+subagents:
+  instruction-writer:
+    - name: first-principles
+      purpose: reasoning methodology
+    - name: strunk-spr-v3
+      purpose: writing compression standard
+      source: https://raw.githubusercontent.com/ryzhakar/LLM_MANIFESTOS/refs/heads/main/instructions/strunk_spr_v3_complete.xml

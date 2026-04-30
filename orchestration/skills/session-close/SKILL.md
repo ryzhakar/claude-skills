@@ -3,12 +3,12 @@ name: session-close
 description: >
   Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers
   session start (reference doc ingestion), session work (convention adherence), and
-  session close (metric extraction, session record, reference updates, cost capture to gitignored cost.md, VCS commit).
+  session close (checkpoint invocation, metric extraction, session record, reference
+  updates, cost capture to gitignored cost.md, VCS commit).
 
   Triggers: "close the session", "do session paperwork", "write the session record",
   "execute the LEAVE protocol", "wrap up the session", "start a session", "ARRIVE",
-  "session lifecycle"; or at the natural end of a development orchestration session.
-  Also invoked by model when session persistence context is needed.
+  "session lifecycle". Invoked ONLY when the user explicitly requests session close.
 ---
 
 # Session Lifecycle
@@ -19,25 +19,33 @@ Governs the ARRIVE/WORK/LEAVE lifecycle for orchestration sessions. Produces dur
 
 **The orchestrator holds context no agent can reconstruct.** Agents extract objective data (metrics, git history, file changes) from disk. The orchestrator synthesizes that with the actual decisions made, failures encountered, and reasoning behind choices — then corrects the agents' reconstructions before committing.
 
-Never delegate the final synthesis and correction to an agent. The orchestrator owns the session record.
+NEVER delegate the final synthesis and correction to an agent. The orchestrator owns the session record.
+
+## Checkpoint-Close Relationship
+
+Close without checkpoint is close without memory. session-close MUST invoke `/session-checkpoint` as Step 0. Checkpoint captures all context-dependent content (narrative, decisions, failures, deferred items, codebase observations, conventions) directly to A4, A6, A7, A8. Without it, close reconstructs from whatever the orchestrator remembers after compaction — biased toward the last thing done, missing early phases entirely. Close-specific steps (1-7) add computed data and perform the close ceremony.
+
+Checkpoint content is authoritative for pre-compaction context. Close APPENDS to what checkpoint wrote — it NEVER overwrites. When checkpoint and late-session memory conflict, checkpoint wins — it was written closer to the events.
+
+No checkpoint content is normal for short sessions. session-close proceeds and writes the files from scratch.
 
 ## Artifact Contract
 
-Canonical paths and ownership for every artifact this skill produces or consumes. Skill body prose may cite rows by ID. Prose MUST NOT contradict this table.
+Canonical paths and ownership for every session artifact. Matches the table in session-checkpoint.
 
 | ID | Path | Producer | Consumer | Format | Required |
 |----|------|----------|----------|--------|----------|
 | A1 | `orchestration_log/recon/${DATE}/session_metrics.md` | Step 1 haiku agent | Step 3 draft agent, Step 5 orchestrator | markdown | yes |
 | A2 | `orchestration_log/recon/${DATE}/git_history.md` | Step 2 haiku agent | Step 3 draft agent, Step 5 orchestrator | markdown | yes |
 | A3 | `orchestration_log/recon/${DATE}/orphan_scripts.md` | Step 4b sonnet agent | Step 5 orchestrator | markdown | conditional |
-| A4 | `orchestration_log/history/${DATE}/session.md` | Step 3 sonnet agent drafts; Step 5 orchestrator corrects | next-session ARRIVE, future Step 3 drafts (format reference) | markdown | yes |
+| A4 | `orchestration_log/history/${DATE}/session.md` | checkpoint appends; Step 3 sonnet extends; Step 5 orchestrator corrects | next-session ARRIVE, future Step 3 drafts | markdown | yes |
 | A5 | `orchestration_log/history/${DATE}/reviews/` | review-producing agents during the session | next-session ARRIVE, audits | markdown | conditional |
-| A6 | `orchestration_log/reference/codebase_state.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
-| A7 | `orchestration_log/reference/deferred_items.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
-| A8 | `orchestration_log/reference/conventions.md` | Step 4 sonnet agent; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+| A6 | `orchestration_log/reference/codebase_state.md` | checkpoint appends; Step 4 sonnet extends; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+| A7 | `orchestration_log/reference/deferred_items.md` | checkpoint appends; Step 4 sonnet extends; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
+| A8 | `orchestration_log/reference/conventions.md` | checkpoint appends; Step 4 sonnet extends; Step 5 orchestrator corrects | every ARRIVE | markdown | yes |
 | A9 | `orchestration_log/history/${DATE}/cost.md` | Step 7 (orchestrator dispatches haiku to write verbatim `/cost` output) | human only (audit / record-keeping at close); NOT consumed by next-session ARRIVE | markdown | conditional (skip when user directs no cost capture; otherwise required) |
 
-Conditional rows: A3 produces only when Step 4b runs (script-bearing directories changed). A5 produces only when reviews ran during the session. A9 (cost.md) is gitignored per `**/cost.md` — per-session, local-only, NEVER in version control. Cost data is operational, not historical artifact; stewardship lives outside git. The session record (A4) carries only a pointer line, never the cost number itself. Not recoverable retroactively: `/cost` reports only the current live session.
+Conditional rows: A3 produces only when Step 4b runs (script-bearing directories changed). A5 produces only when reviews ran during the session. A9 (cost.md) is gitignored per `orchestration_log/history/*/cost.md` — per-session, local-only, NEVER in version control. Cost data is operational, not historical artifact; stewardship lives outside git. The session record (A4) carries only a pointer line, never the cost number itself. Not recoverable retroactively: `/cost` reports only the current live session.
 
 `${DATE}` resolves to the session date as `YYYY-MM-DD`.
 
@@ -65,25 +73,11 @@ orchestration_log/
 
 | Layer | Mutability | Purpose |
 |-------|-----------|---------|
-| `reference/` | Living -- updated each session | What is true NOW |
-| `history/` | Frozen -- never edited after session ends | What happened THEN |
-| `recon/` | Disposable -- gitignored, regenerate | Raw scouting data |
+| `reference/` | Living — update freely mid-session and at close | What is true NOW |
+| `history/` | Frozen after the session ends, not during | What happened THEN |
+| `recon/` | Disposable — gitignored, regenerate | Raw scouting data |
 
 Living documents that are not updated become lies. Frozen documents that get edited destroy the historical record. Disposable documents that are not gitignored bloat the repository.
-
-### Documentation Categories
-
-Five categories govern documentation drift behavior. Observed in one project's forensics; the abstract pattern likely generalizes — each project should evaluate fit and define its own category-to-location mapping in `reference/conventions.md`. The skill names the categories and the Interface Specification prohibition; location mapping stays in project conventions.
-
-| Category | Definition | Drift behavior |
-|----------|------------|----------------|
-| Decision Record | Architectural choices, rationale, rejected alternatives. Falsifiable only by human reversal. | Stable across refactoring. |
-| Capability Inventory | Semantic descriptions of what the system does — modules, commands, behaviors. | Stable across refactoring; reviewed each LEAVE. |
-| Status Snapshot | Point-in-time measurements (test counts, type-checker status, build metrics, evaluation results). | Decays within hours; MUST be regenerated by commands. |
-| Interface Specification | Function signatures, parameter lists, CLI flag examples. | Decays within hours; PROHIBITED in reference docs — the source code (type-annotated) plus `--help` is the source of truth. |
-| Session Record | Append-only per-session narrative. | Frozen at LEAVE; never edited. |
-
-Reference docs MUST carry only Decision Record, Capability Inventory, and (regenerated) Status Snapshot content. Reference docs MUST NOT carry Interface Specifications.
 
 ## Session Data on Disk
 
@@ -159,7 +153,7 @@ BEFORE trusting `/cost`, cross-verify scope:
 
 The verification confirms `/cost` reports for the RIGHT scope. It does not compute an alternative number.
 
-**Where the captured cost lives.** Step 7 writes verbatim `/cost` output to gitignored `orchestration_log/history/${DATE}/cost.md` (Artifact Contract row A9). The verbatim `/cost` output IS the artifact — a Status Snapshot per the Documentation Categories taxonomy, regenerated only at session close and never reformatted. Cost numbers MUST NOT be embedded inline in session.md, MUST NOT be parsed or summarized, MUST NOT be committed (cost.md matches `**/cost.md` in `.gitignore`). The session record carries a pointer line only.
+**Where the captured cost lives.** Step 7 writes verbatim `/cost` output to gitignored `orchestration_log/history/${DATE}/cost.md` (Artifact Contract row A9). The verbatim `/cost` output IS the artifact — a Status Snapshot per the Documentation Categories taxonomy, regenerated only at session close and never reformatted. Cost numbers MUST NOT be embedded inline in session.md, MUST NOT be parsed or summarized, MUST NOT be committed (cost.md matches `orchestration_log/history/*/cost.md` in `.gitignore`). The session record carries a pointer line only.
 
 ## Session Record Format
 
@@ -220,7 +214,31 @@ Follow conventions. Dispatch agents per the `agentic-delegation` skill (decompos
 
 ## LEAVE Protocol
 
-The orchestrator executes in this order. Run Steps 1-4 in parallel. Step 4b (orphan-script audit) is optional and parallel-eligible. Step 5 requires orchestrator participation. Steps 6-7 are sequential.
+The orchestrator executes in this order. Step 0 runs first. Steps 1-4 run in parallel. Step 4b is optional and parallel-eligible. Step 5 requires orchestrator participation. Steps 6-7 are sequential.
+
+### Pre-step: Verify gitignore rules (orchestrator)
+
+Before dispatching any agents, verify `.gitignore` contains the two required exclusion patterns:
+
+```
+orchestration_log/history/*/cost.md
+orchestration_log/recon/
+```
+
+Check with `grep`:
+
+```
+grep -F "orchestration_log/history/*/cost.md" .gitignore
+grep -F "orchestration_log/recon/" .gitignore
+```
+
+If either pattern is missing, append it to `.gitignore` now. These rules enforce the Artifact Contract: cost files are per-session local-only, recon is disposable. Without them, `git add orchestration_log/` silently commits artifacts that MUST NOT be in version control.
+
+### Step 0: Invoke /session-checkpoint (orchestrator) — HARD GATE
+
+Invoke `/session-checkpoint` before anything else. This is a hard gate, not a suggestion. Skipping Step 0 permanently loses pre-compaction context: the session record becomes a reconstruction from a degraded window, biased toward the tail, missing early phases entirely. The resulting session.md is a lie about what happened — it covers only what the orchestrator remembers after compaction.
+
+The orchestrator captures all context-dependent content (narrative, decisions, failures, deferred items, codebase observations, convention discoveries) to the standing artifacts (A4, A6, A7, A8). After Step 0, the standing artifacts contain everything the context window holds. Steps 1-7 add only computed data, close ceremony, and orchestrator corrections.
 
 ### Step 1: Extract session metrics (haiku, background)
 
@@ -254,10 +272,13 @@ Commands to run:
 
 ### Step 3: Draft session record (sonnet, background)
 
-Dispatch a sonnet agent to draft `orchestration_log/history/{YYYY-MM-DD}/session.md`. Point the agent at:
+Dispatch a sonnet agent to extend `orchestration_log/history/{YYYY-MM-DD}/session.md`. Point the agent at:
+- `orchestration_log/history/{YYYY-MM-DD}/session.md` — checkpoint content already written here (Step 0)
 - `orchestration_log/history/` — prior session records for format reference
 - The git history recon file (when available)
 - `orchestration_log/reference/` — current reference docs for state context
+
+The agent reads the existing session.md that checkpoint wrote (timeline, decisions, failures). The agent adds: quantitative summary from metrics (A1), git history section from A2, header template with session ID and dates. The agent MUST treat checkpoint sections as authoritative — it appends late-session observations, it does not rewrite checkpoint sections.
 
 The agent must use the header template and required sections defined above. Include the session ID for backlinking.
 
@@ -265,10 +286,10 @@ The agent reconstructs from artifacts. **It will miss things and get things wron
 
 ### Step 4: Draft reference doc updates (sonnet, background)
 
-Dispatch a sonnet agent to update the three living reference documents:
-- `orchestration_log/reference/codebase_state.md` — update from actual code (`grep`, `wc -l`, pytest)
-- `orchestration_log/reference/deferred_items.md` — add new findings, remove resolved items
-- `orchestration_log/reference/conventions.md` — add patterns discovered this session
+Dispatch a sonnet agent to extend the three living reference documents:
+- `orchestration_log/reference/codebase_state.md` — checkpoint updated these mid-session; add Status Snapshot regeneration (run measurement commands), patterns discovered after the last checkpoint
+- `orchestration_log/reference/deferred_items.md` — checkpoint added items mid-session; resolve any deferred items completed this session, add late-discovered findings
+- `orchestration_log/reference/conventions.md` — checkpoint added patterns mid-session; add patterns discovered after the last checkpoint
 
 The agent must read actual code — not guess at function signatures.
 
@@ -299,7 +320,7 @@ Boundaries:
 - Haiku does not dispatch this step. Reference judgment requires sonnet — string matching alone misclassifies.
 - Audit scope NEVER extends to `recon/`. Recon is gitignored and disposable; `rm -rf recon/{old-date}/` covers that hygiene separately.
 
-### Step 5: Review and correct drafts (orchestrator, after Steps 1-4 complete)
+### Step 5: Review and correct drafts (orchestrator, after Steps 0-4 complete)
 
 Read the draft session record. Correct:
 - Missing phases (agents reconstruct from git, they miss non-code work)
@@ -340,7 +361,7 @@ orchestration_log/history/{YYYY-MM-DD}/cost.md
 
 The agent pastes `/cost` output as a fenced code block, prefixed by a one-line scope-verification note. The agent MUST NOT parse, reformat, summarize, or substitute placeholders — the verbatim output IS the artifact. The agent MUST NOT commit cost.md and MUST NOT embed the cost number inline in session.md.
 
-NO commit. The file is gitignored per `**/cost.md` (Artifact Contract row A9). The Step 6 `git add orchestration_log/` silently skips cost.md because of this gitignore rule — the no-commit fact is enforced by the ignore pattern, not by the agent. Cost is operational data; stewardship lives outside git history.
+NO commit. The file is gitignored per `orchestration_log/history/*/cost.md` (Artifact Contract row A9). The Step 6 `git add orchestration_log/` silently skips cost.md because of this gitignore rule — the no-commit fact is enforced by the ignore pattern, not by the agent. Cost is operational data; stewardship lives outside git history.
 
 Skip Step 7 entirely when the user directs no cost capture. Note `**Cost:** not captured this session (per user direction)` in the session record header and proceed without writing cost.md.
 
@@ -355,7 +376,7 @@ Four practices govern artifact hygiene during session close.
 - **Supersession** — a newer version exists. Delete the stale one.
 - **Dead weight** — fully resolved or unreferenced. Delete. If a file is not discoverable from CLAUDE.md or a session.md, it is dead weight.
 - **Undiscoverability** — not referenced anywhere. Add to the artifact map or delete.
-- **Interface Specification** — function signatures, parameter lists, or CLI flag examples in reference docs. These decay within hours; the source code (type-annotated) plus `--help` is the source of truth. Remove or redirect to source files. Reference docs MUST NOT carry Interface Specifications (see Documentation Categories).
+- **Interface Specification** — function signatures, parameter lists, or CLI flag examples in reference docs. These decay within hours; the source code (type-annotated) plus `--help` is the source of truth. Remove or redirect to source files. Reference docs MUST NOT carry Interface Specifications.
 
 **No new files for existing concerns.** When information belongs to an existing file, extend that file. Separate files for the same concern drift immediately. The test: if updating requires touching two files, consolidate.
 
@@ -365,6 +386,7 @@ Four practices govern artifact hygiene during session close.
 
 Before closing:
 
+- [ ] Step 0 (checkpoint) ran BEFORE any other step and wrote context-dependent content to A4, A6, A7, A8
 - [ ] Session record covers all phases that changed code, updated docs, or made decisions (including failures)
 - [ ] Reference docs updated: codebase_state, deferred_items, conventions
 - [ ] Function signatures read from actual code, not guessed

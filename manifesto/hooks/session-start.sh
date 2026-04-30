@@ -4,18 +4,43 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/ensure-repo.sh"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
-manifestos=$(detect_manifestos)
+detect_manifestos
 
 # Gate: no config → silent exit
-if [ -z "$manifestos" ]; then
+if [ -z "${YOU_STACK:-}" ] || [ "$YOU_STACK" = "[]" ]; then
     exit 0
 fi
 
-MANIFESTO_LIST=$(escape_json "$manifestos")
-RESOLVE_INSTRUCTIONS="Resolve each entry by its shape:
-- Plain name (e.g. 'decomplect'): find by keyword in ${MANIFESTO_DIR}/manifestos/
-- URL (http/https): fetch the full text from that URL
-- Local path (./ or /): read the file from ${PROJECT_DIR}"
+# Render orchestrator elements as natural language prose
+ELEMENT_DESCRIPTION=$(python3 << 'PYEOF'
+import json, os
 
-export MANIFESTO_LIST RESOLVE_INSTRUCTIONS
-envsubst '${MANIFESTO_LIST} ${RESOLVE_INSTRUCTIONS}' < "$SCRIPT_DIR/templates/session-start.txt"
+stack = json.loads(os.environ["YOU_STACK"])
+n = len(stack)
+count_word = {1:"one",2:"two",3:"three",4:"four",5:"five",6:"six",7:"seven",8:"eight"}.get(n, str(n))
+sentences = [f"Your constitution has {count_word} element{'s' if n != 1 else ''}."]
+
+for el in stack:
+    name = el["name"]
+    purpose = el.get("purpose")
+    source = el.get("source")
+    if purpose and source:
+        sentences.append(f'"{name}" governs your {purpose} — fetch it from {source}.' if source.startswith("http") else f'"{name}" governs your {purpose} — read it from {source}.')
+    elif purpose:
+        sentences.append(f'"{name}" governs your {purpose}.')
+    elif source:
+        sentences.append(f'"{name}" is part of your constitution — fetch it from {source}.' if source.startswith("http") else f'"{name}" is part of your constitution — read it from {source}.')
+    else:
+        sentences.append(f'"{name}" is part of your constitution.')
+
+print(" ".join(sentences))
+PYEOF
+)
+
+SUBAGENT_NOTE="No subagent-specific bindings are configured."
+if [ -n "${SUBAGENT_SECTION:-}" ] && [ "$SUBAGENT_SECTION" != "{}" ]; then
+    SUBAGENT_NOTE="You also have subagent-specific constitution elements configured. When dispatching subagents, YOU are responsible for specifying their constitution bindings in the dispatch prompt. The subagent hook only reminds subagents to expect bindings from you. Check the .manifestos.yaml file for subagent-specific element lists when composing dispatch prompts."
+fi
+
+export ELEMENT_DESCRIPTION SUBAGENT_NOTE MANIFESTO_DIR PROJECT_DIR
+envsubst '${ELEMENT_DESCRIPTION} ${SUBAGENT_NOTE} ${MANIFESTO_DIR} ${PROJECT_DIR}' < "$SCRIPT_DIR/templates/session-start.txt"

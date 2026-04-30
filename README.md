@@ -1,16 +1,16 @@
 # my-claude-skills
 
-20 skills · 7 agents across 8 plugins
+19 skills · 9 agents across 8 plugins
 
 ## Plugins
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `1.4.2` | 7S 3A |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.1.0` | 2S |
-| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `3.2.3` | 3S |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.2.0` | 2S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `3.3.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
-| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `1.1.0` | 2S |
+| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
 | [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `3.1.2` | 1S 4A |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
@@ -37,7 +37,7 @@ Software engineering discipline with development lifecycle orchestration. Plan-i
 - **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a...
 - **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Use this agent when verifying that an implementation matches its specification, after an implementer reports task...
 
-## [manifesto](manifesto/) `2.1.0`
+## [manifesto](manifesto/) `2.2.0`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 
@@ -45,7 +45,7 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Enables behavioral binding to user-provided manifestos, constitutions, and principle sets through identity assumption — not theatrical...
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-## [orchestration](orchestration/) `3.2.3`
+## [orchestration](orchestration/) `3.3.0`
 
 Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.
 
@@ -54,6 +54,7 @@ Agent delegation framework, multi-agent research orchestration, and session life
 - **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Cheap agents are free — decompose aggressively, delegate everything,...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
+- **[session-checkpoint](orchestration/skills/session-checkpoint/SKILL.md)** — Captures context-dependent session state before compaction destroys it. Writes directly to session.md, deferred_items.md,...
 - **[session-close](orchestration/skills/session-close/SKILL.md)** — Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers session start (reference doc ingestion), session work...
   Scripts: [`extract_metrics.py`](orchestration/skills/session-close/scripts/extract_metrics.py)
 ## [product-craft](product-craft/) `1.1.0`
@@ -64,14 +65,15 @@ Product definition skills: extract specs from stakeholders, write user stories, 
 
 - **[spec-chef](product-craft/skills/spec-chef/SKILL.md)** — Extracts implicit product decisions from stakeholders into durable artifacts through systematic gap detection and constrained...
 - **[user-story-chef](product-craft/skills/user-story-chef/SKILL.md)** — Writes user stories as value negotiation units, not template-filling exercises. Triggers: writing user stories, acceptance criteria,...
-## [prompt-engineering](prompt-engineering/) `1.1.0`
+## [prompt-engineering](prompt-engineering/) `2.0.0`
 
 Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 
-### Skills
+### Agents
 
-- **[prompt-eval](prompt-engineering/skills/prompt-eval/SKILL.md)** — This skill should be used when the user asks to "evaluate a prompt", "review a system prompt", "assess prompt quality", "check if this...
-- **[prompt-optimize](prompt-engineering/skills/prompt-optimize/SKILL.md)** — This skill should be used when the user asks to "improve this prompt", "optimize a prompt", "fix this system prompt", "make this prompt...
+- **[prompt-eval](prompt-engineering/agents/prompt-eval.md)** (`sonnet`) — Evaluate a Claude system prompt against a structured rubric. Use when asked to "evaluate a prompt", "review a system...
+- **[prompt-optimize](prompt-engineering/agents/prompt-optimize.md)** (`sonnet`) — Optimize a Claude system prompt by applying improvement patterns. Use when asked to "improve this prompt", "optimize...
+
 ## [python-tools](python-tools/) `1.1.0`
 
 Python development tooling: debug type errors in uv-managed projects with pyright, and perform AST-based mass structural edits across codebases.
