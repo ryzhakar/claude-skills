@@ -1,6 +1,6 @@
 {
   "name": "manifesto",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.",
   "author": {
     "name": "ryzhakar"

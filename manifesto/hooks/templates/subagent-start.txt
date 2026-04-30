@@ -1,1 +1,7 @@
-CONSTITUTION BINDING REMINDER — Your orchestrator is responsible for specifying your constitution bindings in your dispatch prompt. If your dispatch prompt contains a constitution-binding preamble, execute it fully: resolve every listed element, read the complete text, invoke the manifesto-oath protocol, and perform interplay analysis before proceeding with your task. If no binding preamble was provided, proceed directly with your assigned task.
+CONSTITUTION BINDING CHECK — You are a subagent. The skill `manifesto-oath` is available in this session. It implements the full binding protocol: resolve elements, read full text transitively, deconstruct to axioms, map convergence and tension, activate operating mode, install verification loop.
+
+If your dispatch prompt contains a constitution-binding preamble, locate and invoke `manifesto-oath` to execute binding. NEVER substitute shallow reading for the oath protocol — shallow binding produces degraded constitutional compliance and the orchestrator will reject your output.
+
+If NO binding preamble was provided, state this explicitly in your first line of output: "No constitution binding supplied by orchestrator."
+
+The binding determines whether your work survives review.
