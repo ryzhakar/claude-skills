@@ -6,7 +6,7 @@ Last updated: 2026-04-30
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
 | dev-discipline | 1.4.2 | 7 | 3 | 3 |
-| manifesto | 2.2.0 | 2 | 0 | 3 |
+| manifesto | 2.3.0 | 2 | 0 | 3 |
 | orchestration | 3.3.0 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
@@ -66,7 +66,7 @@ Last updated: 2026-04-30
 |-----------|--------|---------|---------|
 | SessionStart | manifesto | startup\|resume | Initialize manifesto binding |
 | PostCompact | manifesto | * | Re-bind manifesto after compaction |
-| SubagentStart | manifesto | * | Remind subagent to expect bindings from orchestrator (2026-04-30: stripped to reminder-only) |
+| SubagentStart | manifesto | agent_type match | Agent-type matching against .manifestos.yaml keys; cascade: exact → prefix-strip → catch-all → fallback (2026-04-30: composable parts/ architecture) |
 | SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops (unconditional) |
 | SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops (unconditional as of 1.4.2) |
 | SubagentStop | dev-discipline | code-quality-reviewer | Inject merge-decision mandate after quality review stops (NEW 2026-04-29, 1.4.2) |
@@ -226,8 +226,10 @@ orchestration_log/recon/2026-04-17/
 
 4. **prompt-engineering skills → agents (1.1.0 → 2.0.0).** prompt-eval and prompt-optimize converted from skills to agents. Both write file artifacts to orchestrator-specified paths (report-based communication pattern). Agent definitions dogfood the prompt-engineering principles they teach. Objections (summary truncation, no isolation benefit, already composable) addressed by cross-checking against existing orchestration framework patterns.
 
+5. **Manifesto composable hook architecture (2.2.0 → 2.3.0).** Hook templates decomposed into `templates/parts/` — shared `binding-core.txt` plus context-specific preambles (`preamble-session.txt`, `preamble-compact.txt`, `preamble-subagent.txt`). SubagentStart hook upgraded from catch-all reminder to agent-type matching: reads `agent_type` from stdin JSON, cascades exact → prefix-strip → catch-all → fallback. Shell scripts compose parts rather than duplicating shared ceremony.
+
 **Versioning (session 2026-04-30):**
-- manifesto: 2.1.0 → 2.2.0
+- manifesto: 2.1.0 → 2.2.0 → 2.3.0
 - orchestration: 3.2.3 → 3.3.0
 - prompt-engineering: 1.1.0 → 2.0.0
 

@@ -746,3 +746,44 @@ Conventions for fetching and processing Claude Code documentation pages at scale
 **Rationale:** Per the Model Ladder, guidance authorship demands opus. The instruction-writer agent is purpose-built for this work type. The implementer agent is for code production (source modules, test files, fixtures).
 
 **Evidence:** Session 2026-04-30 — orchestrator initially dispatched dev-discipline:implementer for skill file edits; user corrected to instruction-writer.
+
+---
+
+## Composable Template Parts
+
+**Core rule:** Hook templates decompose into preamble + shared core + inline footer. Shared ceremony lives in one file (`binding-core.txt`); context-specific content composes by shell scripts at render time.
+
+**Structure (manifesto 2.3.0):**
+```
+hooks/templates/
+  parts/
+    binding-core.txt        # Shared manifesto binding ceremony — included by all hooks
+    preamble-session.txt    # SessionStart-specific intro
+    preamble-compact.txt    # PostCompact-specific intro
+    preamble-subagent.txt   # SubagentStart-specific intro
+```
+
+**Pattern:** Shell scripts cat the relevant preamble, then cat `binding-core.txt`, then append any context-specific footer. No prose duplication across hook scripts.
+
+**When it applies:** Any hook set where two or more hooks share substantial template content. Extract the shared block into `parts/`; each hook script assembles the final output from parts.
+
+**Evidence:** manifesto 2.3.0, session 2026-04-30 (commit 0e603e5).
+
+---
+
+## Agent-Type SubagentStart Matching
+
+**Core rule:** SubagentStart hooks can match `agent_type` from stdin JSON against `.manifestos.yaml` keys. Use cascade: exact match → prefix-strip match → catch-all → fallback.
+
+**Cascade:**
+1. Read `agent_type` from `$CLAUDE_HOOK_EVENT` (stdin JSON).
+2. Exact match against `.manifestos.yaml` `subagents:` keys.
+3. Strip common suffixes (`-agent`, `-reviewer`, `-writer`) and retry.
+4. Fall through to `default:` catch-all key if present.
+5. If no match and no catch-all, emit the generic reminder paragraph.
+
+**Rationale:** Different agent types need different manifesto stacks. A research scout needs First Principles; an implementer needs dev-discipline manifestos. A single catch-all reminder wastes the SubagentStart injection point.
+
+**Platform note:** `agent_type` is available in the hook's stdin JSON as of the current Claude Code release. Parse with python3 `json.load(sys.stdin)["agent_type"]`.
+
+**Evidence:** manifesto 2.3.0, session 2026-04-30 (commit 0e603e5).

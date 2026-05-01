@@ -59,14 +59,58 @@ Session close in progress. Steps 1-7 remain.
 
 ---
 
+## Checkpoint — 00:30 (continuation session)
+
+### Narrative
+
+**Phase 7 — Template merge + subagent enforcement (manifesto 2.2.1, commit f3c822c)**
+- session-start.txt and post-compact.txt merged into single constitution-binding.txt (53% template token reduction)
+- SubagentStart hook strengthened with manifesto-oath mandate
+- Hook gate fixed: subagent-only configs (no `you:` key) no longer silently exit — orchestrator sees subagent bindings
+- SCHEMA.md format reference created
+- prompt-eval + prompt-optimize run on templates (6 improvements)
+
+**Phase 8 — Composable hook architecture (manifesto 2.3.0, commit 0e603e5)**
+- Investigation into SubagentStart payload: `agent_type` field matches agent name, docs ambiguous on plugin prefix
+- Agent-type matching cascade implemented: exact → prefix-strip → `other:` catch-all → static fallback
+- Templates decomposed into composable parts: 3 preambles + 1 shared binding-core in `templates/parts/`
+- Subagents now receive FULL binding ceremony (same resolution protocol, transitive reading, interplay analysis as orchestrator)
+- Orchestrator stripped of subagent supply responsibility — SubagentStart hook handles automatically
+- 21/21 edge-case tests pass across all YAML format variants and agent-type matching scenarios
+- SCHEMA.md updated to reflect composable architecture
+
+**Phase 9 — Orchestrator discipline corrections (throughout)**
+- Caught doing manual edits twice — corrected to delegation-only
+- Invented checkpoint.md intermediate artifact contradicting user's spec-chef answer — purged
+- Communication compression enforced per OFD constitution after user reminder
+- Learned: mutability rules apply AFTER session ends, not during
+
+### Decisions (continuation)
+
+| Decision | Context | Rationale | Outcome |
+|----------|---------|-----------|---------|
+| Runtime agent-type lookup in single hook | Alternative: multiple hook entries per agent type | Single hook, .manifestos.yaml drives routing | Implemented, 21/21 tests |
+| Composable template parts (3+1) with inline footers | 6 part files vs 3+1 vs 1 core only | Preambles earn files (5-10 lines), footers don't (2-3 lines) | Implemented |
+| Full binding ceremony for subagents | Was watered-down reminder | User mandated manifesto-oath enforcement for all | Implemented |
+| Subagent hook handles base bindings automatically | Orchestrator was responsible for supplying | Hook does agent-type matching; orchestrator MAY augment | Implemented |
+
+### Failures (continuation)
+
+| Failure | Root cause | Correction | Prevention |
+|---------|-----------|------------|------------|
+| SubagentStart gate exited silently for subagent-only configs | Gate checked only YOU_STACK | Fixed to check both YOU_STACK and SUBAGENT_SECTION | Edge case in test suite |
+| Verbose communication despite OFD binding | Filler drift after many turns | User reminded; compressed | Check every response against OFD binary |
+
+---
+
 ## Quantitative Summary
 
 | Metric | Value |
 |--------|-------|
 | Wall time | 06:03 → 12:21 UTC (approx. 6h 18m) |
-| Git commits | 1 (f06cfce) |
-| Code changes | 788 lines added, 482 removed across 22 files |
-| Plugin version bumps | 3 plugins (manifesto 2.2.0, orchestration 3.3.0, prompt-engineering 2.0.0) |
+| Git commits | 3 (f06cfce, f3c822c, 0e603e5) |
+| Code changes | ~1033 lines added, ~577 removed |
+| Plugin version bumps | 3 plugins (manifesto 2.1.0→2.3.0, orchestration 3.2.3→3.3.0, prompt-engineering 1.1.0→2.0.0) |
 | Subagents dispatched | 35 total |
 | — Opus | 9 |
 | — Sonnet | 13 |
@@ -104,7 +148,7 @@ Drawn from `orchestration_log/reference/deferred_items.md`:
 
 ## Artifacts
 
-### Committed (commit f06cfce)
+### Committed (commits f06cfce, f3c822c, 0e603e5)
 
 Plugin files changed:
 
@@ -118,7 +162,13 @@ Plugin files changed:
 - `manifesto/hooks/subagent-start.sh` — stripped to reminder-only
 - `manifesto/hooks/templates/post-compact.txt` — prose template
 - `manifesto/hooks/templates/session-start.txt` — prose template
-- `manifesto/hooks/templates/subagent-start.txt` — reminder-only template
+- `manifesto/hooks/templates/subagent-start.txt` — reminder-only → full binding with agent-type matching
+- `manifesto/SCHEMA.md` — new format reference document
+- `manifesto/hooks/templates/parts/preamble-session.txt` — composable preamble (new)
+- `manifesto/hooks/templates/parts/preamble-compact.txt` — composable preamble (new)
+- `manifesto/hooks/templates/parts/preamble-subagent.txt` — composable preamble (new)
+- `manifesto/hooks/templates/parts/binding-core.txt` — shared binding ceremony (new)
+- `manifesto/hooks/templates/constitution-binding.txt` — deleted (superseded by parts)
 - `orchestration/.claude-plugin/plugin.json` — bumped to 3.3.0
 - `orchestration/README.md` — regenerated
 - `orchestration/skills/session-checkpoint/SKILL.md` — new skill (146 lines)
