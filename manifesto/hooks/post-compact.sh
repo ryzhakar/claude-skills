@@ -13,6 +13,15 @@ if $YOU_EMPTY; then
     exit 0
 fi
 
+# PostCompact requires hookSpecificOutput JSON — plain text goes to debug log only.
+emit_json() {
+    python3 -c '
+import json, sys
+text = sys.stdin.read()
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostCompact", "additionalContext": text}}))
+'
+}
+
 # Render orchestrator elements as natural language prose
 ELEMENT_DESCRIPTION=$(python3 << 'PYEOF'
 import json, os
@@ -43,12 +52,13 @@ REBIND_NOTE="Your previous reads are DESTROYED. You must re-read everything from
 
 export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
-envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-compact.txt"
-echo ""
-envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/binding-core.txt"
+{
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-compact.txt"
+    echo ""
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/binding-core.txt"
 
-# Inline footer: compacted user-elements recovery + subagent dispatch note
-cat << 'FOOTER'
+    # Inline footer: compacted user-elements recovery + subagent dispatch note
+    cat << 'FOOTER'
 
 === USER-PROVIDED CONSTITUTION ELEMENTS ===
 
@@ -60,3 +70,4 @@ User-provided elements cannot be reliably recovered from a compacted summary —
 
 The SubagentStart hook injects role-matched constitution bindings into subagents automatically. You MAY add extra elements in dispatch prompts to augment the automatic stack.
 FOOTER
+} | emit_json

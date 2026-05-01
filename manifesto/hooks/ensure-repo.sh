@@ -42,16 +42,21 @@ raw = sys.stdin.read().strip()
 if not raw:
     sys.exit(0)
 
-data = yaml.safe_load(raw)
+try:
+    data = yaml.safe_load(raw)
+except Exception:
+    sys.exit(0)
 
 def normalize_item(item):
-    """String -> {name: str}; dict passes through."""
-    if isinstance(item, str):
-        return {"name": item}
-    return item
+    """String/scalar -> {name: str}; dict passes through; None dropped."""
+    if item is None:
+        return None
+    if isinstance(item, dict):
+        return item
+    return {"name": str(item)}
 
 def normalize_list(lst):
-    return [normalize_item(i) for i in lst]
+    return [x for x in (normalize_item(i) for i in lst) if x is not None]
 
 # Flat list at root = orchestrator only
 if isinstance(data, list):

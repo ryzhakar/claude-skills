@@ -6,14 +6,14 @@ Last updated: 2026-04-30
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
 | dev-discipline | 1.4.2 | 7 | 3 | 3 |
-| manifesto | 2.3.0 | 2 | 0 | 3 |
+| manifesto | 3.0.1 | 2 | 0 | 4 |
 | orchestration | 3.3.0 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
 | qa-automation | 3.1.2 | 1 | 4 | 0 |
 | userland-utilities | 1.0.0 | 1 | 0 | 0 |
-| **TOTAL** | - | **19** | **9** | **8** |
+| **TOTAL** | - | **19** | **9** | **9** |
 
 ## Skill Inventory
 
@@ -66,7 +66,8 @@ Last updated: 2026-04-30
 |-----------|--------|---------|---------|
 | SessionStart | manifesto | startup\|resume | Initialize manifesto binding |
 | PostCompact | manifesto | * | Re-bind manifesto after compaction |
-| SubagentStart | manifesto | agent_type match | Agent-type matching against .manifestos.yaml keys; cascade: exact → prefix-strip → catch-all → fallback (2026-04-30: composable parts/ architecture) |
+| SubagentStart | manifesto | agent_type match | Agent-type matching against .manifestos.yaml keys; cascade: exact → prefix-strip → catch-all → fallback (2026-04-30: composable parts/ architecture). Tier 2 resolution now injects plugin cache path for subagents (3.0.0) |
+| UserPromptSubmit | manifesto | * | Drift-prevention tagline injection — parses manifesto YAML frontmatter taglines, injects compact reminder every user message (NEW 2026-05-01, 3.0.0) |
 | SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops (unconditional) |
 | SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops (unconditional as of 1.4.2) |
 | SubagentStop | dev-discipline | code-quality-reviewer | Inject merge-decision mandate after quality review stops (NEW 2026-04-29, 1.4.2) |
@@ -243,13 +244,13 @@ orchestration_log/recon/2026-04-17/
 
 4. **Large skill persistence:** research-tree (7565t) remains large after compression. This is the irreducible operational surface for 6-tier multi-agent orchestration. agentic-delegation (6054t) similarly justified by scope.
 
-5. **Hook coverage:** manifesto (3 hooks), dev-discipline (3 hooks as of 2026-04-29 — full review chain coverage), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools — pending implementation. prompt-engineering no longer has skills to hook into (agents only).
+5. **Hook coverage:** manifesto (4 hooks as of 3.0.0 — SessionStart, PostCompact, SubagentStart, UserPromptSubmit), dev-discipline (3 hooks — full review chain), and orchestration (2 hooks) use hooks. Hook opportunities identified for qa-automation, python-tools — pending implementation.
 
 6. **MCP integration:** No plugins currently use .mcp.json despite plugin-dev:mcp-integration skill existing.
 
 7. **instruction-writer not in plugin:** Agent lives at .claude/agents/ (project-local). Auto-discovery works, but it is not packaged in any plugin. May need plugin placement for portability.
 
-8. **manifesto repo path unreliable:** `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/Manifesto, first-principles - "break the mold".md` was absent for 4+ scout agents during the 2026-04-17 wave. They fell back to upstream raw GitHub URL. The ensure-repo.sh script may not be cloning reliably.
+8. **manifesto repo path configurable (3.0.0):** `manifesto_dir` in `.manifestos.yaml` overrides the default `/tmp` path. Auto-clone removed — `ensure_repo()` is on-demand. Replaces the previous auto-clone that was unreliable for scout agents (DI-1).
 
 9. **agents-reference.md citation quality:** 45 of 298 citations are URL-only (no section anchor) due to grep mismatch on paraphrased / placeholder / callout-box text. These are correct URLs but lack deep links. Evidence: `orchestration_log/recon/2026-04-17/agents-v2/synthesis/citation-rewrite/REPORT.md`.
 

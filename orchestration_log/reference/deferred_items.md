@@ -1,5 +1,5 @@
 # Deferred Items
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 Known defects and improvement opportunities that are tracked but not immediately scheduled. Update severity when context changes. Remove entries when resolved.
 
@@ -20,15 +20,10 @@ Each entry:
 
 ## Open Items
 
-### DI-1 — Manifesto Repo Path Unreliable in Agent Binding Preambles
+### ~~DI-1 — Manifesto Repo Path Unreliable in Agent Binding Preambles~~
 
-**Date**: 2026-04-20
-**Severity**: HIGH
-**Description**: `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/Manifesto, first-principles - "break the mold".md` was absent for multiple scout agents during the 2026-04-17 wave. At least 4 agents fell back to fetching from the upstream raw GitHub URL before proceeding. The `ensure-repo.sh` script in the manifesto plugin is expected to clone this repo, but the clone is either not persisting across agent contexts or the path is not being created correctly. Every agent that hits this gap must curl upstream, adding latency and a network dependency.
-
-**Proposed remediation**: Inspect `manifesto/hooks/ensure-repo.sh` (or equivalent). Verify it writes to `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/` and that the manifesto file name (with space and quotes in path) is handled correctly. Fix or document the fallback as the intended behavior. Update binding preambles to always include the fallback as a required step, not an optional recovery.
-
-**Evidence**: `orchestration_log/recon/2026-04-17/TIDY-REPORT.md` (Anomalies: none — but upstream fetch was observed in agent logs); session manifesto binding preamble in task instructions (2026-04-17 wave). The task instruction itself says "Try local; if absent, fetch from upstream" — confirming this is a known failure pattern.
+**Status**: RESOLVED 2026-05-01 (manifesto 3.0.0)
+**Resolution**: Auto-clone removed from ensure-repo.sh. `manifesto_dir` config added to `.manifestos.yaml`. `ensure_repo()` function available on-demand. Subagents now receive plugin cache path for Tier 2 skill resolution.
 
 ---
 
@@ -117,8 +112,20 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 
 **Date**: 2026-04-30
 **Severity**: LOW
-**Description**: Lines 1-37 of `session-start.sh` and `post-compact.sh` are identical — the entire python3 block for rendering `ELEMENT_DESCRIPTION` from `YOU_STACK`. If the rendering logic needs a fix, it must be applied in two places. The only difference between the scripts is the tail: session-start adds `SUBAGENT_NOTE` logic and references a different template.
+**Description**: The python3 block for rendering `ELEMENT_DESCRIPTION` from `YOU_STACK` is duplicated in `session-start.sh` and `post-compact.sh`. If the rendering logic needs a fix, it must be applied in two places. Note: post-compact.sh now wraps output in hookSpecificOutput JSON (fixed 2026-05-01) — the scripts are no longer identical in structure, but the rendering block still is.
 
 **Proposed remediation**: Extract the shared python3 rendering block into a function in `ensure-repo.sh` (which is already sourced by both scripts). Both scripts call the function and receive `ELEMENT_DESCRIPTION` as an exported var.
 
 **Evidence**: Plugin-validator report for manifesto plugin, session 2026-04-30. Major issue #1.
+
+---
+
+### DI-10 — ELEMENT_DESCRIPTION Dead Code in emit_static_fallback
+
+**Date**: 2026-05-01
+**Severity**: LOW
+**Description**: `subagent-start.sh` `emit_static_fallback()` sets `ELEMENT_DESCRIPTION="No role-specific elements matched..."` and passes it to `envsubst` on `preamble-subagent.txt`, but the template contains no `${ELEMENT_DESCRIPTION}` placeholder. The description is set but never rendered. The fallback path works correctly — it's distinguishable by its content (preamble + "No binding preamble" heredoc vs full binding-core) — but the intended description text is silently dropped.
+
+**Proposed remediation**: Either add `${ELEMENT_DESCRIPTION}` to `preamble-subagent.txt` or remove the dead assignment from `emit_static_fallback`.
+
+**Evidence**: Adversarial testing session 2026-05-01, test agent 2 (subagent-start + session-start), test T2.
