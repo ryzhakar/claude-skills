@@ -12,7 +12,7 @@ Tier resolution applies ONLY to elements without a source. Execute tiers in stri
 
 TIER 1 — DEFAULT MANIFESTO REPO (PRIMARY): The LLM_MANIFESTOS repo is cloned to ${MANIFESTO_DIR}/. Search the manifestos/ directory for files matching the name — search file names, headings, and content. This is the primary source.
 
-TIER 2 — SESSION-ACCESSIBLE SKILLS: If Tier 1 found nothing, the name may refer to a skill available in the current session (e.g., "agentic-delegation" is a skill, not a manifesto file). Search installed/accessible skills by name. Skills ARE valid constitution elements.
+TIER 2 — INSTALLED PLUGIN SKILLS: If Tier 1 found nothing, the name may refer to a skill installed as a Claude Code plugin. Search the plugin cache at ${PLUGINS_CACHE_DIR}/ — each plugin directory contains a skills/ subdirectory with skill directories, each holding a SKILL.md file. Use Bash `find` or `ls` to locate matching skill names, then Read the SKILL.md completely. Skills ARE valid constitution elements.
 
 TIER 3 — PROJECT FILES (LAST RESORT): If Tiers 1 and 2 found nothing, search the project directory for matching files. Fallback only.
 
