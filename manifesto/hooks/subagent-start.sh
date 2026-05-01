@@ -16,20 +16,32 @@ fi
 
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
 
+# Wrap text in the hookSpecificOutput JSON required by SubagentStart hooks.
+# Plain text stdout is silently discarded; only this wrapper is injected.
+emit_json() {
+    python3 -c '
+import json, sys
+text = sys.stdin.read()
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": text}}))
+'
+}
+
 # Static fallback for unmatched/missing agent types
 emit_static_fallback() {
     ELEMENT_DESCRIPTION="No role-specific elements matched. Your orchestrator provides bindings in the dispatch prompt."
     REBIND_NOTE=""
     export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-subagent.txt"
-    echo ""
-    cat << 'FALLBACK'
+    {
+        envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-subagent.txt"
+        echo ""
+        cat << 'FALLBACK'
 If your dispatch prompt contains a constitution-binding preamble, locate and invoke `manifesto-oath` to execute binding. NEVER substitute shallow reading for the oath protocol — shallow binding produces degraded constitutional compliance and the orchestrator will reject your output.
 
 If NO binding preamble was provided, state this explicitly in your first line of output: "No constitution binding supplied by orchestrator."
 
 The binding determines whether your work survives review.
 FALLBACK
+    } | emit_json
 }
 
 # Read agent_type from stdin JSON; handle missing/malformed input
@@ -131,12 +143,14 @@ PYEOF
 REBIND_NOTE=""
 
 export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
-envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-subagent.txt"
-echo ""
-envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/binding-core.txt"
+{
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-subagent.txt"
+    echo ""
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/binding-core.txt"
 
-# Inline footer: subagent extra elements
-cat << 'FOOTER'
+    # Inline footer: subagent extra elements
+    cat << 'FOOTER'
 
 If your dispatch prompt contains additional constitution elements beyond those listed here, bind those as well using the same protocol.
 FOOTER
+} | emit_json
