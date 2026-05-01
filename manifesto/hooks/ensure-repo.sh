@@ -1,14 +1,18 @@
 #!/bin/bash
 # Shared helper: ensure manifesto repo is cloned + parse .manifestos.yaml
-# Sources this file from other hook scripts.
+# Source this file from hook scripts. No side effects on source.
 
 MANIFESTO_REPO="https://github.com/ryzhakar/LLM_MANIFESTOS.git"
 MANIFESTO_DIR="/tmp/claude-manifesto-repo/LLM_MANIFESTOS"
 
-if [ ! -d "$MANIFESTO_DIR/manifestos" ]; then
-    mkdir -p /tmp/claude-manifesto-repo
-    git clone --depth 1 --quiet "$MANIFESTO_REPO" "$MANIFESTO_DIR" 2>/dev/null || true
-fi
+ensure_repo() {
+    if [ ! -d "$MANIFESTO_DIR/manifestos" ]; then
+        mkdir -p /tmp/claude-manifesto-repo
+        git clone --depth 1 --quiet "$MANIFESTO_REPO" "$MANIFESTO_DIR" 2>/dev/null || true
+    else
+        git -C "$MANIFESTO_DIR" pull --quiet 2>/dev/null || true
+    fi
+}
 
 escape_json() {
     printf '%s' "$1" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1], end="")'
@@ -30,7 +34,7 @@ detect_manifestos() {
         return
     fi
 
-    # Parse YAML into JSON env vars: YOU_STACK, SUBAGENT_SECTION
+    # Parse YAML into shell vars: YOU_STACK, SUBAGENT_SECTION, and optional MANIFESTO_DIR
     eval "$(python3 -c '
 import sys, json, yaml
 
@@ -62,6 +66,9 @@ elif isinstance(data, dict):
         for role, items in sub_raw.items():
             if isinstance(items, list):
                 subagent_section[role] = normalize_list(items)
+    manifesto_dir = data.get("manifesto_dir")
+    if manifesto_dir:
+        print(f"MANIFESTO_DIR={repr(str(manifesto_dir))}")
 else:
     you_stack = []
     subagent_section = {}
@@ -73,5 +80,5 @@ print(f"YOU_STACK={repr(you_json)}")
 print(f"SUBAGENT_SECTION={repr(sub_json)}")
 ' <<< "$raw")"
 
-    export YOU_STACK SUBAGENT_SECTION
+    export YOU_STACK SUBAGENT_SECTION MANIFESTO_DIR
 }
