@@ -7,7 +7,7 @@
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `1.4.2` | 7S 3A |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.3.0` | 2S |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `2.3.1` | 2S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `3.3.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
@@ -37,7 +37,7 @@ Software engineering discipline with development lifecycle orchestration. Plan-i
 - **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a...
 - **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Use this agent when verifying that an implementation matches its specification, after an implementer reports task...
 
-## [manifesto](manifesto/) `2.3.0`
+## [manifesto](manifesto/) `2.3.1`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 
