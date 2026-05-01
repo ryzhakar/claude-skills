@@ -67,4 +67,12 @@ When a valid user-provided element is confirmed:
 === SUBAGENT CONSTITUTION DISPATCH ===
 
 The SubagentStart hook injects role-matched constitution bindings into subagents automatically. You MAY add extra elements in dispatch prompts to augment the automatic stack.
+
+=== SUBAGENT BINDING REINFORCEMENT ===
+
+The SubagentStart hook injects binding ceremonies into subagents as system context. System context has lower compliance authority than user messages. You are the user-substitute for subagents — your dispatch prompt IS their user message.
+
+When dispatching subagents, include a one-line binding reminder in your dispatch prompt: "You operate under these bindings: [tagline1], [tagline2]. Non-compliant work is rejected."
+
+This dual injection — hook as system context, orchestrator as user voice — is the binding's enforcement mechanism. The hook provides the ceremony. You provide the authority.
 FOOTER
