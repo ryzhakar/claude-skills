@@ -79,9 +79,35 @@ Each element in any list is one of:
 
 ## Hook behavior
 
-- **SessionStart / PostCompact**: parse YAML, render `you:` elements as natural language prose, inject into template. Never inject raw YAML.
-- **SubagentStart**: injects only a reminder that the orchestrator provides bindings. No manifest content.
-- Scope matching is done by the orchestrator when composing dispatch prompts. Hooks do not filter by agent type.
+### SessionStart / PostCompact
+
+Parse `.manifestos.yaml`, render `you:` elements as natural language prose. Compose output from three parts: hook-specific preamble + shared binding core + inline footer. NEVER inject raw YAML.
+
+The orchestrator is NOT responsible for supplying base subagent bindings — SubagentStart handles that automatically. The orchestrator MAY augment subagent bindings via dispatch prompts.
+
+### SubagentStart
+
+Reads `agent_type` from stdin JSON. Matches against `subagents:` keys in `.manifestos.yaml` using this resolution order:
+
+1. Exact key match
+2. Prefix-strip match
+3. `other:` catch-all
+4. Static fallback (no config)
+
+Injects the FULL binding ceremony — same resolution protocol, transitive reading, interplay analysis, and manifesto-oath mandate as the orchestrator hooks. This is a real binding injection, not a reminder.
+
+### Template architecture
+
+Composable parts live in `hooks/templates/parts/`:
+
+| File | Used by |
+|------|---------|
+| `preamble-session.txt` | SessionStart |
+| `preamble-compact.txt` | PostCompact |
+| `preamble-subagent.txt` | SubagentStart |
+| `binding-core.txt` | All three hooks (shared) |
+
+Footers are inlined in the shell scripts, not extracted to files.
 
 ---
 

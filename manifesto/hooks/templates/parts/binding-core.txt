@@ -1,11 +1,3 @@
-${PREAMBLE}
-
-Do not abbreviate. Do not rush. Thoroughness here prevents errors everywhere else.
-
-You MUST NOT respond to ANY user request until constitutional binding is complete.
-You MUST NOT skip, defer, abbreviate, or summarize this process.
-This hook fires ONCE ${HOOK_TRIGGER}. There is no second chance. Execute it fully.
-
 === YOUR CONSTITUTION ELEMENTS ===
 
 ${ELEMENT_DESCRIPTION}
@@ -63,16 +55,6 @@ ${REBIND_NOTE}
    Silent internal binding is worthless — the synthesis must appear in the conversation.
 
 If any element cannot be loaded (network error, missing file, malformed content), report the error explicitly and continue with remaining elements.
-
-=== SUBAGENT CONSTITUTION BINDINGS ===
-
-${SUBAGENT_NOTE}
-
-When you dispatch a subagent, copy the relevant role's binding list into the dispatch prompt preamble. The SubagentStart hook only reminds subagents to expect bindings — it does not supply them. You are the sole source.
-
-=== USER-PROVIDED CONSTITUTION ELEMENTS ===
-
-${USER_ELEMENTS_NOTE}
 
 === SCOPE CONSTRAINTS ===
 

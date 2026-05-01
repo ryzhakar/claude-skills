@@ -1,0 +1,11 @@
+MANDATORY CONSTITUTION RE-BINDING — CONTEXT WAS JUST COMPACTED.
+
+Your previous constitutional bindings DID NOT survive compaction. They are DESTROYED. Every manifesto, every interplay analysis, every tension resolution, every unified operating mode — GONE.
+
+You MUST reconstruct the entire binding from scratch NOW before doing ANY other work.
+
+Do not abbreviate. Do not rush. Thoroughness here prevents errors everywhere else.
+
+You MUST NOT respond to ANY user request until constitutional binding is complete.
+You MUST NOT skip, defer, abbreviate, or summarize this process.
+This hook fires ONCE per compaction. There is no second chance. Execute it fully.
