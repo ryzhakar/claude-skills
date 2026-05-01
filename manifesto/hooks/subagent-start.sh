@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGINS_CACHE_DIR="$(cd "$SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
+if [[ "$PLUGINS_CACHE_DIR" != *"plugins"* ]] || [[ "$PLUGINS_CACHE_DIR" != *"cache"* ]]; then
+    PLUGINS_CACHE_DIR=""
+fi
+export PLUGINS_CACHE_DIR
 source "$SCRIPT_DIR/ensure-repo.sh"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
@@ -32,7 +37,7 @@ emit_static_fallback() {
     REBIND_NOTE=""
     export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
     {
-        envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-subagent.txt"
+        envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-subagent.txt"
         echo ""
         cat << 'FALLBACK'
 If your dispatch prompt contains a constitution-binding preamble, locate and invoke `manifesto-oath` to execute binding. NEVER substitute shallow reading for the oath protocol — shallow binding produces degraded constitutional compliance and the orchestrator will reject your output.
@@ -144,9 +149,9 @@ REBIND_NOTE=""
 
 export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
 {
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-subagent.txt"
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-subagent.txt"
     echo ""
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/binding-core.txt"
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
 
     # Inline footer: subagent extra elements
     cat << 'FOOTER'
