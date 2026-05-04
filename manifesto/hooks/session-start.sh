@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGINS_CACHE_DIR="$(cd "$SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
+if [[ "$PLUGINS_CACHE_DIR" != *"plugins"* ]] || [[ "$PLUGINS_CACHE_DIR" != *"cache"* ]]; then
+    PLUGINS_CACHE_DIR="~/.claude/plugins/cache"
+fi
+export PLUGINS_CACHE_DIR
 source "$SCRIPT_DIR/ensure-repo.sh"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
@@ -43,9 +48,9 @@ REBIND_NOTE=""
 
 export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
-envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/preamble-session.txt"
+envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-session.txt"
 echo ""
-envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE}' < "$PARTS_DIR/binding-core.txt"
+envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
 
 # Inline footer: user-provided elements + subagent dispatch note
 cat << 'FOOTER'
