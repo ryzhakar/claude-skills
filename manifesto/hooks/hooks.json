@@ -8,7 +8,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
-            "timeout": 30
+            "timeout": 30,
+            "statusMessage": "Binding constitution..."
           }
         ]
       }
@@ -20,7 +21,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-compact.sh",
-            "timeout": 30
+            "timeout": 30,
+            "statusMessage": "Re-binding constitution..."
           }
         ]
       }
@@ -32,7 +34,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start.sh",
-            "timeout": 10
+            "timeout": 10,
+            "statusMessage": "Injecting subagent bindings..."
           }
         ]
       }
@@ -44,7 +47,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/drift-reminder.sh",
-            "timeout": 5
+            "timeout": 5,
+            "statusMessage": "Checking bindings..."
           }
         ]
       }

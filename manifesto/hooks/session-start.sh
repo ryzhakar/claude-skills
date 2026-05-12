@@ -81,3 +81,4 @@ When dispatching subagents, include a one-line binding reminder in your dispatch
 
 This dual injection — hook as system context, orchestrator as user voice — is the binding's enforcement mechanism. The hook provides the ceremony. You provide the authority.
 FOOTER
+sleep 1

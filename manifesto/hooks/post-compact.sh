@@ -76,3 +76,4 @@ User-provided elements cannot be reliably recovered from a compacted summary —
 The SubagentStart hook injects role-matched constitution bindings into subagents automatically. You MAY add extra elements in dispatch prompts to augment the automatic stack.
 FOOTER
 } | emit_json
+sleep 1

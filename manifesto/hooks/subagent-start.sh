@@ -159,3 +159,4 @@ export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
 If your dispatch prompt contains additional constitution elements beyond those listed here, bind those as well using the same protocol.
 FOOTER
 } | emit_json
+sleep 1

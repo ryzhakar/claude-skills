@@ -34,9 +34,10 @@ detect_manifestos() {
         return
     fi
 
-    # Parse YAML into shell vars: YOU_STACK, SUBAGENT_SECTION, and optional MANIFESTO_DIR
-    eval "$(python3 -c '
-import sys, json, yaml
+    local _tmpdir
+    _tmpdir=$(mktemp -d)
+    python3 -c '
+import os, sys, json, yaml
 
 raw = sys.stdin.read().strip()
 if not raw:
@@ -48,7 +49,6 @@ except Exception:
     sys.exit(0)
 
 def normalize_item(item):
-    """String/scalar -> {name: str}; dict passes through; None dropped."""
     if item is None:
         return None
     if isinstance(item, dict):
@@ -58,7 +58,6 @@ def normalize_item(item):
 def normalize_list(lst):
     return [x for x in (normalize_item(i) for i in lst) if x is not None]
 
-# Flat list at root = orchestrator only
 if isinstance(data, list):
     you_stack = normalize_list(data)
     subagent_section = {}
@@ -72,18 +71,29 @@ elif isinstance(data, dict):
             if isinstance(items, list):
                 subagent_section[role] = normalize_list(items)
     manifesto_dir = data.get("manifesto_dir")
-    if manifesto_dir:
-        print(f"MANIFESTO_DIR={repr(str(manifesto_dir))}")
 else:
     you_stack = []
     subagent_section = {}
 
-# Shell-safe export
-you_json = json.dumps(you_stack)
-sub_json = json.dumps(subagent_section)
-print(f"YOU_STACK={repr(you_json)}")
-print(f"SUBAGENT_SECTION={repr(sub_json)}")
-' <<< "$raw")"
+outdir = sys.argv[1]
+with open(os.path.join(outdir, "you"), "w") as f:
+    json.dump(you_stack, f)
+with open(os.path.join(outdir, "sub"), "w") as f:
+    json.dump(subagent_section, f)
+mdir = locals().get("manifesto_dir") or ""
+if mdir:
+    with open(os.path.join(outdir, "mdir"), "w") as f:
+        f.write(str(mdir))
+' "$_tmpdir" <<< "$raw" 2>/dev/null
+
+    if [ -f "$_tmpdir/you" ]; then
+        YOU_STACK=$(cat "$_tmpdir/you")
+        SUBAGENT_SECTION=$(cat "$_tmpdir/sub")
+        if [ -f "$_tmpdir/mdir" ]; then
+            MANIFESTO_DIR=$(cat "$_tmpdir/mdir")
+        fi
+    fi
+    rm -rf "$_tmpdir"
 
     export YOU_STACK SUBAGENT_SECTION MANIFESTO_DIR
 }
