@@ -1,13 +1,13 @@
 # Codebase State
-Last updated: 2026-04-30
+Last updated: 2026-05-06
 
 ## Plugin Inventory
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
-| dev-discipline | 1.4.2 | 7 | 3 | 3 |
+| dev-discipline | 1.5.0 | 7 | 3 | 3 |
 | manifesto | 3.0.1 | 2 | 0 | 4 |
-| orchestration | 3.3.0 | 4 | 0 | 2 |
+| orchestration | 3.4.0 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
@@ -27,11 +27,11 @@ Last updated: 2026-04-30
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
 | manifesto-oath | manifesto | 2192 | No | Compressed |
-| agentic-delegation | orchestration | 6668 | No | Doc-governance Principle #13 (2026-04-29) |
+| agentic-delegation | orchestration | 8178 | No | Documentation Taxonomy + Discontinuous Existence + escape-hatch elimination + anti-relay hardening (2026-05-06) |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
 | session-close | orchestration | 5756 | No | Step 0 checkpoint gate + inheritance reform (2026-04-30) |
-| dev-orchestration | dev-discipline | 5190 | No | Worktree discipline + Artifact Contract + git-as-SoT (2026-04-29) |
+| dev-orchestration | dev-discipline | 5432 | No | 4 bilateral rules (CWD drift, worktree cleanup, ownership, test markers) + escape-hatch elimination (2026-05-06) |
 | spec-chef | product-craft | 1730 | No | Compressed |
 | user-story-chef | product-craft | 1498 | No | Compressed |
 | uv-pyright-debug | python-tools | 1092 | No | Compressed |
@@ -78,18 +78,18 @@ All hooks implemented as `type: "command"` calling bash scripts with template-ba
 
 ## Token Distribution
 
-Status Snapshot — regenerated via `just tokens FILE` per session-close §Documentation Categories. Numbers below reflect post-2026-04-30 state.
+Status Snapshot — regenerated via `just tokens FILE` per session-close §Documentation Categories. Numbers below reflect post-2026-05-06 state.
 
-**Total skill tokens:** 54,012t across 19 skills (avg: 2,843t)
+**Total skill tokens:** 55,764t across 19 skills (avg: 2,935t)
 **Total agent tokens:** 20,962t across 9 agents (avg: 2,329t)
-**System total:** 74,974t (excludes local instruction-writer agent)
+**System total:** 76,726t (excludes local instruction-writer agent)
 
 **Size categories:**
 - Micro (<500t): 1 skill (fix-macos-app)
 - Small (500-1500t): 7 skills
-- Medium (1500-3000t): 6 skills, 6 agents
+- Medium (1500-3000t): 5 skills, 6 agents
 - Large (3000-6000t): 2 skills, 2 agents
-- XL (6000t+): 3 skills (agentic-delegation, research-tree, qa-orchestration)
+- XL (6000t+): 4 skills (agentic-delegation, research-tree, qa-orchestration, dev-orchestration)
 
 ## Reference File Inventory
 
@@ -233,6 +233,24 @@ orchestration_log/recon/2026-04-17/
 - manifesto: 2.1.0 → 2.2.0 → 2.3.0
 - orchestration: 3.2.3 → 3.3.0
 - prompt-engineering: 1.1.0 → 2.0.0
+
+**Session 2026-05-06 — Downstream feedback integration:**
+
+1. **agentic-delegation gains two pillar sections (orchestration 3.3.0 → 3.4.0).** Documentation Taxonomy: self-contained 5-category table (Decision Record, Capability Inventory, Status Snapshot, Interface Specification=PROHIBITED, Session Record) derived from downstream project drift forensics (4 CRITICAL findings, all Interface Specification content in reference docs). Discontinuous Existence: foundational axiom that the orchestrator does not exist between responses — liveness cron rules, blocking-as-voluntary-death, interval derivation from expected duration, staleness detection. Both sections placed between Prompt Anatomy and Execution Patterns as cross-cutting governance.
+
+2. **Delegation escape hatches eliminated in both skills.** agentic-delegation: removed "do it yourself (rare)" from Decomposition Test, removed "execute directly" from Granularity Heuristic. dev-orchestration: removed "changes requiring no reasoning can be executed directly" carve-out. Independent Verification rewritten from "run the test suite yourself" to "dispatch a verification agent."
+
+3. **Anti-relay hardened to absolute rule.** If content exists as a file, the orchestrator cites the path and line range — never pastes inline. Skill files have physical paths on disk and are not exceptions. All "paste inline" / "provide inline" language removed from Prompt Anatomy, Context Types table, Common Prompt Failures table, and Governing Principle #5.
+
+4. **dev-orchestration gains four bilateral rules (dev-discipline 1.4.2 → 1.5.0).** CWD drift: mandatory `pwd` pre-check (MUST verify before every shell op and dispatch; MUST NOT treat as optional awareness). Worktree cleanup: immediate after cherry-pick (MUST remove before any other operation; MUST NOT leave for later). Ownership scope: pre-existing not exempt (every finding is the orchestrator's responsibility; MUST NOT dismiss as "pre-existing"). Test marker audit: ARRIVE-time blind spot detection (MUST know what default run excludes; MUST NOT report "all pass" when markers exclude tests).
+
+5. **Critical audit verified fixes.** Opus analyst checked all five concerns. Concerns 3 (Discontinuous Existence) and 4 (Documentation Taxonomy) passed. Concerns 1, 2, 5 had residual failures — all fixed in a follow-up pass before commit.
+
+6. **Mandatory background dispatch (orchestration 3.4.0 → 3.4.1).** Every Agent call must have `run_in_background: true`. No exceptions. Sequential Pipeline pattern updated to chain via notifications instead of foreground blocking. "Blocking waits are voluntary death" ontological statement preserved.
+
+**Versioning (session 2026-05-06):**
+- orchestration: 3.3.0 → 3.4.0 → 3.4.1
+- dev-discipline: 1.4.2 → 1.5.0
 
 ## Known Limitations
 
