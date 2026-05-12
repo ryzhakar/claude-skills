@@ -8,7 +8,7 @@
       "name": "orchestration",
       "source": "./orchestration/",
       "description": "Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.",
-      "version": "3.3.0",
+      "version": "3.4.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -30,7 +30,7 @@
       "name": "dev-discipline",
       "source": "./dev-discipline/",
       "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.",
-      "version": "1.4.2",
+      "version": "1.5.0",
       "author": {
         "name": "ryzhakar"
       },

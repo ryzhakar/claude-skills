@@ -55,13 +55,15 @@ Worktrees are the default vehicle for any real implementation work, not optional
 
 **CWD-drift hazard.** The platform can shift the orchestrator's CWD into a worktree without any explicit `cd` action by the orchestrator. After drift, CWD-relative shell operations resolve in the wrong tree, and any subagent dispatched inherits the wrong starting CWD (subagents start in the main conversation's CWD; `cd` inside a subagent does not persist).
 
-**Defense — awareness, not checklist.** Keep this hazard in mind. Check `pwd` whenever a CWD-relative shell operation or a subagent dispatch is about to propagate failure. No fixed gate; exercise judgment.
+**Defense — mandatory pre-check.** Verify `pwd` before every shell operation and every agent dispatch. This is not optional awareness — it is a mandatory pre-check. A shell command run from a wrong CWD is a wrong command. Do NOT treat CWD correctness as something to "keep in mind" — verify it mechanically.
 
 **Restoration.** When `pwd` reveals drift away from the project root, `cd` back to the known root. The orchestrator already knows the root — no portable command lives in this skill.
 
 **Bilateral rules.**
 - The orchestrator MUST `cd` back to the project root the moment `pwd` reveals drift.
 - The orchestrator MUST NOT proceed with CWD-relative operations or subagent dispatches after detecting drift, until restoration is verified by a fresh `pwd`.
+
+**Worktree cleanup timing.** Remove the worktree immediately after cherry-pick, before any other operation. Do NOT leave merged worktrees for later cleanup. A merged worktree is dead weight — disk is a depletable resource with no warning before exhaustion.
 
 ## Invariants
 
@@ -110,7 +112,7 @@ PLAN ──→ IMPLEMENT ──→ REVIEW ──→ [PASS] ──→ INTEGRATE �
 
 The orchestrator drives this loop. Each phase has entry/exit criteria and agent dispatch patterns. Skipping phases produces spec drift, quality regression, or wasted effort.
 
-Apply the full loop for any task touching behavior-carrying code: new features, bug fixes, refactors, migrations. Scale to task size — changes requiring no reasoning (renaming, typos, string literal updates) can be executed directly without agent dispatch; everything else goes through the loop.
+Apply the full loop for every task: new features, bug fixes, refactors, migrations, renaming, typos, string literal updates. No task is too small to delegate. The orchestrator dispatches; agents execute. A "trivial" change that the orchestrator executes directly bypasses worktree isolation, skips the review chain, and burns opus context on sonnet work.
 
 ### State Machine
 
@@ -203,6 +205,10 @@ One logical change per commit. Fix commits reference what they fix. No history r
 
 Run the test suite and type checker after every implementer reports DONE. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it did not touch.
 
+**Test marker audit — bilateral rules.**
+- The orchestrator MUST audit test markers during ARRIVE and before each verification. Any marker that excludes tests from default runs (`@pytest.mark.slow`, `@pytest.mark.skip`, custom markers) is a blind spot. The orchestrator MUST know what the default run excludes.
+- The orchestrator MUST NOT report "all tests pass" when markers exclude tests from the default run. A test suite that silently excludes tests reports false confidence.
+
 This plugin includes three SubagentStop hooks (matchers: `implementer`, `spec-reviewer`, `code-quality-reviewer`) that fire when each agent type stops. Each hook injects an unconditional next-step mandate into orchestrator context — spec review after implementer, quality review after spec-reviewer, merge decision after code-quality-reviewer — making the full chain structurally inevitable. The orchestrator no longer evaluates the spec verdict at the spec→quality boundary; that judgment moved into the code-quality-reviewer agent itself.
 
 ## Phase 3: Review
@@ -236,6 +242,8 @@ After 3 review-fix cycles without PASS, stop. The problem is structural:
 3. **Architectural mismatch** — the unit cannot be implemented as specified because the design is wrong. Return to PLANNING.
 
 Never enter a 4th review cycle without changing something structural (model, spec, or decomposition).
+
+**Ownership has no scope boundary.** Every finding in the codebase is the orchestrator's responsibility regardless of when it was introduced. If a reviewer finds it, the orchestrator owns it. Do NOT dismiss findings as "pre-existing" or "not introduced by this change." Pre-existing is not a valid deferral rationale.
 
 **Review scope narrows on re-review:** the reviewer checks that previously identified issues are resolved, that fixes did not introduce new issues, and that original passing criteria still hold. Re-review scope narrows to the delta, not the full unit — this prevents review cycle inflation.
 

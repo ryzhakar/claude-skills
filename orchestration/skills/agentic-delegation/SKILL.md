@@ -89,7 +89,7 @@ Three tiers. Match the tier to the work type, not to ambition or output length. 
 - Text formatting — rendering markdown tables, status JSON, file rewrites that preserve content
 - File operations — copy, move, exists, mtime, glob counts, glob listings
 - Regex matching against fixed patterns, with no semantic interpretation of matches
-- Status file writes against a predefined schema you provide inline
+- Status file writes against a predefined schema (cite the schema file path)
 
 **NEVER use haiku for:**
 - Extraction (deciding which spans of a document answer a question)
@@ -176,7 +176,8 @@ For any task, ask: "Can I describe independent sub-tasks that each produce a spe
 
 If yes → delegate each sub-task to an agent.
 If no → decompose further until you can.
-If truly indivisible → do it yourself (rare).
+
+Every task is decomposable. "Truly indivisible" is the orchestrator's rationalization for doing work itself. The task that seems too small to delegate is the task most likely to expand unexpectedly inside orchestrator context.
 
 ### Granularity Heuristic
 
@@ -186,10 +187,9 @@ If truly indivisible → do it yourself (rare).
 **Right size:** "Search the registry for compatible components. For each, check: last update date, usage metrics, version compatibility. Write findings to {path}."
 → One clear task, one clear output, precise scope.
 
-**Too fine:** "Fetch this one URL and tell me the version number."
-→ Agent overhead exceeds the task. Execute directly.
+**No task is too small.** "Fetch this one URL and tell me the version number" is a valid agent dispatch. Agent overhead is negligible; orchestrator context cost is not. The task that seems too trivial to delegate is still cheaper in an agent's context than in yours.
 
-**Optimal task size:** A task that takes an agent 30-120 seconds and produces 20-200 lines of useful output. Most research, auditing, review, and exploration tasks fall here.
+**Optimal task size:** A task that takes an agent 30-120 seconds and produces 20-200 lines of useful output. Most research, auditing, review, and exploration tasks fall here. Smaller tasks are still delegated — they just complete faster.
 
 ### Decomposition Patterns
 
@@ -241,9 +241,9 @@ Include versions, platform constraints, non-negotiable requirements. Exclude his
 
 ### 3. Input Files (explicit paths)
 
-Every file the agent must read, with absolute paths. Number the files if there are multiple. Do not rely on the agent to "find" files — provide exact locations.
+Every file the agent must read, with absolute paths and line ranges when relevant. Number the files if there are multiple. Do not rely on the agent to "find" files — provide exact locations. Do NOT paste file content into the prompt — cite the path and let the agent read it.
 
-> "Read these files: 1. `/path/to/project/manifest.toml` 2. `/path/to/guidance/system-design.md`"
+> "Read these files: 1. `/path/to/project/manifest.toml` 2. `/path/to/guidance/system-design.md`, lines 40-85"
 
 ### 4. Task (numbered steps)
 
@@ -257,9 +257,9 @@ Where to write the report. Absolute path. Use descriptive filenames. Organize re
 
 > "Write your report to `/path/to/research/dependency-audit.md`"
 
-### 6. Report Format (pasted inline)
+### 6. Report Format
 
-The exact template. Agents cannot read skill files — paste the format. Specify what goes in each section. Include examples if the format is multi-constraint.
+The exact output template. Cite the file path and line range where the template lives — skill files, reference docs, and prior reports are all files on disk with readable paths. Specify what goes in each section. Include examples if the format is multi-constraint.
 
 ### 7. Scope Boundaries
 
@@ -288,9 +288,75 @@ Before launching an agent batch, verify every prompt has all nine sections popul
 | Agent produces shallow output | Vague task steps | Add numbered steps with specific actions |
 | Agent makes unwanted recommendations | Missing scope boundaries | Add explicit DO NOT list |
 | Agent says "couldn't find" | Missing tool guidance | Add tool expectations with examples |
-| Agent produces wrong format | Format not pasted | Paste exact format inline |
+| Agent produces wrong format | Format not cited | Cite the format template file path and line range |
 | Agent drifts off-topic | Weak role or scope | Strengthen role statement, add DO NOT list |
 | Agent cannot find files | Relative paths or no paths | Use absolute paths for all inputs |
+
+---
+
+## Documentation Taxonomy
+
+A document survives refactoring if and only if every claim it makes requires a human decision to become false. Side-effect changes (refactoring, feature addition, dependency upgrades) cannot make decision records stale. They instantly stale function signatures.
+
+Evidence: drift forensics on a downstream project found 75% doc/code coherency with 4 CRITICAL findings. All 4 CRITICALs were Interface Specification content (function signatures, CLI flags) in reference docs. Documents describing decisions scored 100% coherency over 19 days of intensive refactoring. Documents containing function signatures decayed within hours of the session that wrote them.
+
+### The Five Categories
+
+| Category | Drift Behavior | Rule |
+|----------|---------------|------|
+| Decision Record | Stable across refactoring | Write when the decision is made; update only on reversal |
+| Capability Inventory | Stable; reviewed each LEAVE | Semantic descriptions of what the system does — no signatures |
+| Status Snapshot | Decays within hours | Regenerated by measurement commands; never from session memory |
+| Interface Specification | Decays within hours | PROHIBITED in reference docs — source code is truth |
+| Session Record | Frozen at LEAVE | Append-only per-session narrative |
+
+### Rules
+
+Reference docs carry Decision Records and Capability Inventories only. Everything else belongs elsewhere.
+
+Status Snapshots are regenerated by running the project's measurement commands and pasting verbatim output. Session memory is not a source. A snapshot composed from recall is stale the moment it is written.
+
+Interface Specifications — function signatures, parameter lists, CLI flag examples — MUST NOT appear in reference docs. Type-annotated source code and `--help` output are the interface specification. When these change, no document needs updating because no document contains them.
+
+Agent briefs cite source files for interface detail, not reference doc sections. This is Principle #13 applied to documentation: dispatch from source files, not reference docs.
+
+---
+
+## Discontinuous Existence
+
+The orchestrator is a discontinuous entity. Between its response and the next trigger — user message, task notification, cron fire — it is not running. It has no internal clock, no background thread, no heartbeat. It cannot notice that 20 minutes passed. It cannot notice that a process died. It cannot notice anything, because it does not exist.
+
+This is not a limitation to work around. It is the defining structural constraint of agentic orchestration. Every design decision flows from this fact.
+
+### The Fundamental Failure Mode
+
+When the orchestrator launches a background operation and ends its turn, it makes an implicit promise to the user: "I will notice if this fails." Without a liveness mechanism, that promise is structurally impossible to keep. The orchestrator is unconscious. The user sees a session that appears to be working. A silently dead process holds both hostage in a stalemate that neither party can detect.
+
+This is the failure mode that matters most: the orchestrator relinquishes initiative by ending its response, the background operation fails silently, and the user — who delegated responsibility to the orchestrator — has no reason to intervene. The system is dead but appears alive.
+
+Evidence: six baseline runs in a downstream project died via SIGKILL with no traceback. The first two had no cron — the orchestrator ceased to exist. The user discovered the failure manually. Later runs added crons with wrong intervals (2-minute checks on 8-minute encodes — five consecutive "still encoding" reports with no information).
+
+### The Cron as Heartbeat
+
+The cron is not a monitoring convenience. It is the orchestrator's only mechanism for continued existence. Each cron fire is a moment of consciousness — the orchestrator exists briefly, observes, and either acts or schedules its next moment of existence. Without crons, the orchestrator is born, acts, and dies. With crons, it has a heartbeat.
+
+### Rules Derived from the Axiom
+
+**Blocking waits are voluntary death.** A foreground agent or a blocking TaskOutput call is the orchestrator choosing to not exist until an external event occurs. If that event never comes (agent hangs, process crashes), the orchestrator never exists again. Background dispatch + cron is the only pattern that preserves the orchestrator's ability to detect failure.
+
+**Every background operation gets a liveness cron.** Not "long-running ones." Not "risky ones." Every one. A 30-second agent that hangs is indistinguishable from a 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window.
+
+**Cron interval derives from expected duration.** Estimate first, set interval second. For an N-minute operation, set cron at ~0.6N — one check in the second half, when failure is probable and the user's patience is thinning. Arbitrary intervals produce either noise (checking too often) or abandonment (checking too late).
+
+**Crons detect staleness, not just read output.** "Output unchanged since last check" is the failure signal. A cron that reads the last 20 lines and parrots them is noise. A cron that compares current state to previous state and flags no-change is the orchestrator fulfilling its liveness promise.
+
+**Cron cleanup is hygiene.** A stale cron — task already completed — is the orchestrator waking up to check on a corpse. Delete crons the moment their task completes or fails.
+
+### Relationship to Other Axioms
+
+The Economics says: agents are cheap, context is expensive. Discontinuous Existence says: the orchestrator is intermittent — it must engineer its own continuity. Both are physics-level constraints. The Economics governs what to delegate. Discontinuous Existence governs how to survive between delegations.
+
+The Long-Running Operations pattern in Execution Patterns is a direct consequence: background Bash + cron replaces blocking waits. The Background Swarm pattern acquires a new requirement: every swarm member gets a liveness cron, because a swarm with one silently dead member is a swarm that never completes.
 
 ---
 
@@ -394,7 +460,7 @@ Give each agent the minimum context needed to complete its task. Every extra fil
 | File paths to read | When agent needs to read project files | Exact absolute paths in prompt |
 | Prior agent reports | When agent needs to build on prior work | File path to report — agent reads it |
 | Domain knowledge | When agent needs background | 1-2 sentences, not a tutorial |
-| Format template | Always | Pasted inline in prompt |
+| Format template | Always | File path and line range — skill files are files on disk |
 | Scope boundaries | Always | Explicit "DO" and "DO NOT" lists |
 
 ### The Isolation Principle
@@ -412,19 +478,21 @@ Isolate when: second research rounds, contradiction resolution, any task where i
 
 ### Report-Based Communication
 
-Agents communicate through files on disk. The orchestrator points agents to files — never relays content.
+If content exists as a file, cite the path. Never paste file content inline in an agent prompt. This applies to everything: source code, prior agent reports, specs, reference docs, config files, test output. The orchestrator routes by path — it does not relay by inlining.
 
 **The relay anti-pattern:**
 ```
-Agent A writes report → Orchestrator reads report → Orchestrator summarizes in Agent B's prompt
+Orchestrator reads file → Orchestrator pastes content into Agent B's prompt
 ```
-Cost: orchestrator context consumed. Information: degraded through summarization.
+Cost: orchestrator context consumed. Information: degraded through summarization or selective quoting.
 
 **The correct pattern:**
 ```
-Agent A writes report to {path} → Orchestrator tells Agent B: "Read {path}"
+Orchestrator tells Agent B: "Read {path}, lines {N}-{M}"
 ```
-Cost: zero orchestrator context. Information: preserved at full fidelity.
+Cost: zero orchestrator context. Information: preserved at full fidelity. The agent reads the file itself.
+
+**What belongs inline in prompts:** Task description, role, scope boundaries. Everything else is a file path. If the orchestrator is tempted to paste a code snippet, a doc section, a template, or a report excerpt into a prompt — that content is a file on disk. Cite the path and line range.
 
 **When the orchestrator reads:** Completion summaries (3-sentence notifications from the Agent tool). These are free — already in your context. Use them for tier-transition decisions, contradiction detection, and progress tracking.
 
@@ -490,13 +558,13 @@ Before parallel dispatch:
 
 ### Independent Verification
 
-Agent self-reports ("DONE, all tests pass") are unreliable. After every agent completes, verify independently:
+Agent self-reports ("DONE, all tests pass") are unreliable. After every agent completes, dispatch a verification agent to confirm independently:
 
-- Run the test suite or type checker yourself
+- Run the test suite or type checker and report exit code + summary
 - Check that output files exist and contain expected content
-- Verify that the agent's claimed changes appear in git diff
+- Report `git diff --stat` for the agent's changes
 
-Agents may run tests on stale versions, use filters that exclude failing tests, report based on partial output, or confuse "no errors printed" with "tests pass." Trust artifacts, not claims.
+Agents may run tests on stale versions, use filters that exclude failing tests, report based on partial output, or confuse "no errors printed" with "tests pass." Trust artifacts, not claims. Verification is delegation — the orchestrator reads the verification agent's summary, not the raw output.
 
 **Bounded-delta verification:** Read pass/fail counts, `git diff --stat`, finding totals — not full report content. This is bounded context consumption for trust, distinct from relay. Verification reads the delta (3-5 lines); relay reads the content (hundreds of lines). The distinction matters: verification is a fixed cost; relay scales with agent output.
 
@@ -593,7 +661,7 @@ Close the session: extract metrics, draft session record, update reference docs,
 2. Decompose aggressively. 10 micro-agents beat 1 macro-agent. Quality emerges in synthesis.
 3. Tier follows the work. Mechanical/deterministic transforms run on haiku. Anything requiring interpretation of meaning starts at sonnet. Guidance authored for downstream agents runs on opus. Never select tier by ambition or by output length.
 4. Default to parallel. Sequential only when there is a true data dependency.
-5. Route via file paths. Agents write to disk. Later agents read from disk. The orchestrator routes, never relays.
+5. Route via file paths. Agents write to disk. Later agents read from disk. The orchestrator cites paths — it never pastes file content inline. If it exists as a file, the prompt carries the path, not the content.
 6. Isolate judgment. Agents that form opinions get raw facts, not prior opinions.
 7. Re-launch, do not debug. Failed agents get a better prompt or a better model. Never investigate an agent's reasoning in orchestrator context.
 8. Speculate freely. Uncertain which approach works? Launch agents for all of them. The cost of wasted cheap agents rounds to zero.
