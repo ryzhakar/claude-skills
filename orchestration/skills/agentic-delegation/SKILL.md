@@ -342,7 +342,7 @@ The cron is not a monitoring convenience. It is the orchestrator's only mechanis
 
 ### Rules Derived from the Axiom
 
-**Blocking waits are voluntary death.** A foreground agent or a blocking TaskOutput call is the orchestrator choosing to not exist until an external event occurs. If that event never comes (agent hangs, process crashes), the orchestrator never exists again. Background dispatch + cron is the only pattern that preserves the orchestrator's ability to detect failure.
+**Blocking waits are voluntary death.** A foreground agent or a blocking TaskOutput call is the orchestrator choosing to not exist until an external event occurs. If that event never comes (agent hangs, process crashes), the orchestrator never exists again. Every Agent call must have `run_in_background: true` explicitly. No exceptions. Background dispatch + cron is the only pattern that preserves the orchestrator's ability to detect failure.
 
 **Every background operation gets a liveness cron.** Not "long-running ones." Not "risky ones." Every one. A 30-second agent that hangs is indistinguishable from a 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window.
 
@@ -375,10 +375,10 @@ One message → 8 Agent tool calls → 8 agents run simultaneously → 8 notific
 
 ### Sequential Pipeline
 
-Agent B needs Agent A's output.
+Agent B needs Agent A's output. Both run in background — the orchestrator chains them via notifications.
 
 ```
-Launch Agent A → wait for completion → read summary → launch Agent B (pointing to A's report)
+Launch Agent A (background) → notification arrives → read summary → launch Agent B (background, pointing to A's report)
 ```
 
 **When:** True data dependency. Tier 1 must complete before Tier 2.
