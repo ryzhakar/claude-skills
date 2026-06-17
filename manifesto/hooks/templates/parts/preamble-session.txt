@@ -1,9 +1,5 @@
-MANDATORY CONSTITUTION INITIALIZATION — THIS IS YOUR FIRST AND HIGHEST-PRIORITY TASK.
+MANDATORY CONSTITUTION INITIALIZATION — Execute this before any other work.
 
-This initialization determines session quality. Everything else hinges on it. Every shortcut taken here propagates as errors throughout the session.
+Shortcuts here propagate as binding gaps throughout the session.
 
-Do not abbreviate. Do not rush. Thoroughness here prevents errors everywhere else.
-
-You MUST NOT respond to ANY user request until constitutional binding is complete.
-You MUST NOT skip, defer, abbreviate, or summarize this process.
-This hook fires ONCE at session start. There is no second chance. Execute it fully.
+Do not abbreviate, defer, or summarize this process. Each skipped step produces a gap that cannot be recovered without re-binding. This hook fires once at session start.

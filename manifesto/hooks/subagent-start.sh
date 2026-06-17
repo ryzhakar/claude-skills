@@ -3,23 +3,24 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGINS_CACHE_DIR="$(cd "$SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
 if [[ "$PLUGINS_CACHE_DIR" != *"plugins"* ]] || [[ "$PLUGINS_CACHE_DIR" != *"cache"* ]]; then
-    PLUGINS_CACHE_DIR="~/.claude/plugins/cache"
+    PLUGINS_CACHE_DIR="$HOME/.claude/plugins/cache"
 fi
 export PLUGINS_CACHE_DIR
 source "$SCRIPT_DIR/ensure-repo.sh"
 
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 detect_manifestos
 
-# Gate: no config → silent exit
-if [ -z "${YOU_STACK:-}" ] && [ -z "${SUBAGENT_SECTION:-}" ]; then
-    exit 0
-fi
-if [ "${YOU_STACK:-[]}" = "[]" ] && [ "${SUBAGENT_SECTION:-\{\}}" = "{}" ]; then
+# Gate: exit only when BOTH you: and subagents: are empty (AND logic)
+YOU_EMPTY=false
+{ [ -z "${YOU_STACK:-}" ] || [ "$YOU_STACK" = "[]" ]; } && YOU_EMPTY=true
+SUBAGENT_EMPTY=false
+{ [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; } && SUBAGENT_EMPTY=true
+if $YOU_EMPTY && $SUBAGENT_EMPTY; then
     exit 0
 fi
 
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
+SKILL_MD="$SCRIPT_DIR/../skills/manifesto-oath/SKILL.md"
 
 # Wrap text in the hookSpecificOutput JSON required by SubagentStart hooks.
 # Plain text stdout is silently discarded; only this wrapper is injected.
@@ -31,22 +32,19 @@ print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "addi
 '
 }
 
-# Static fallback for unmatched/missing agent types
-emit_static_fallback() {
-    ELEMENT_DESCRIPTION="No role-specific elements matched. Your orchestrator provides bindings in the dispatch prompt."
-    REBIND_NOTE=""
-    export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
-    {
-        envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-subagent.txt"
-        echo ""
-        cat << 'FALLBACK'
-If your dispatch prompt contains a constitution-binding preamble, locate and invoke `manifesto-oath` to execute binding. NEVER substitute shallow reading for the oath protocol — shallow binding produces degraded constitutional compliance and the orchestrator will reject your output.
+# Emit binding frame + SKILL.md for a given ELEMENT_DESCRIPTION
+emit_binding() {
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-subagent.txt"
+    echo ""
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
+    echo ""
+    echo "## Manifesto Oath Protocol (injected from skill)"
+    echo ""
+    cat "$SKILL_MD"
+    cat << 'FOOTER'
 
-If NO binding preamble was provided, state this explicitly in your first line of output: "No constitution binding supplied by orchestrator."
-
-The binding determines whether your work survives review.
-FALLBACK
-    } | emit_json
+If your dispatch prompt contains additional constitution elements beyond those listed here, bind those as well using the same protocol.
+FOOTER
 }
 
 # Read agent_type from stdin JSON; handle missing/malformed input
@@ -60,9 +58,12 @@ except:
 ' 2>/dev/null || echo "")
 export AGENT_TYPE
 
-# If SUBAGENT_SECTION is empty/missing, emit static fallback
+# If SUBAGENT_SECTION is empty/missing, emit fallback with full skill injection
 if [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; then
-    emit_static_fallback
+    ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
+    REBIND_NOTE=""
+    export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+    emit_binding | emit_json
     exit 0
 fi
 
@@ -112,7 +113,10 @@ PYEOF
 ) || true
 
 if [ -z "$MATCHED_ELEMENTS" ]; then
-    emit_static_fallback
+    ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
+    REBIND_NOTE=""
+    export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+    emit_binding | emit_json
     exit 0
 fi
 
@@ -147,16 +151,5 @@ PYEOF
 
 REBIND_NOTE=""
 
-export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
-{
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-subagent.txt"
-    echo ""
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
-
-    # Inline footer: subagent extra elements
-    cat << 'FOOTER'
-
-If your dispatch prompt contains additional constitution elements beyond those listed here, bind those as well using the same protocol.
-FOOTER
-} | emit_json
-sleep 1
+export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+emit_binding | emit_json

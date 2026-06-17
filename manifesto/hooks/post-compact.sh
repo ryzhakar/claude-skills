@@ -3,12 +3,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGINS_CACHE_DIR="$(cd "$SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
 if [[ "$PLUGINS_CACHE_DIR" != *"plugins"* ]] || [[ "$PLUGINS_CACHE_DIR" != *"cache"* ]]; then
-    PLUGINS_CACHE_DIR="~/.claude/plugins/cache"
+    PLUGINS_CACHE_DIR="$HOME/.claude/plugins/cache"
 fi
 export PLUGINS_CACHE_DIR
 source "$SCRIPT_DIR/ensure-repo.sh"
 
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 detect_manifestos
 
 # Gate: no config → silent exit
@@ -53,27 +52,31 @@ print(" ".join(sentences))
 PYEOF
 )
 
-REBIND_NOTE="Your previous reads are DESTROYED. You must re-read everything from scratch. Previous bindings, oath state, and interplay analyses are GONE — rebuild completely from zero."
+REBIND_NOTE="Previous bindings, oath state, and interplay analyses were lost in compaction. Re-read and rebind everything from source."
 
-export ELEMENT_DESCRIPTION MANIFESTO_DIR PROJECT_DIR REBIND_NOTE
+export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
+SKILL_MD="$SCRIPT_DIR/../skills/manifesto-oath/SKILL.md"
 {
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-compact.txt"
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-compact.txt"
     echo ""
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${PROJECT_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
+    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
+    echo ""
+    echo "## Manifesto Oath Protocol (injected from skill)"
+    echo ""
+    cat "$SKILL_MD"
 
     # Inline footer: compacted user-elements recovery + subagent dispatch note
     cat << 'FOOTER'
 
-=== USER-PROVIDED CONSTITUTION ELEMENTS ===
+## User-Provided Constitution Elements
 
-The elements above are the BASE STACK. If the user previously provided additional constitution elements in this session, those bindings are ALSO destroyed by compaction.
+The elements above are the BASE STACK. If the user previously provided additional constitution elements in this session, those bindings were also lost in compaction.
 
 User-provided elements cannot be reliably recovered from a compacted summary — the compaction may have elided exactly that information. Do not attempt to reconstruct them from inference. Instead: ask the user to re-specify any elements they added during the session before this compaction. Once re-specified, load and bind them using the same full protocol and layer them on top of the base stack.
 
-=== SUBAGENT CONSTITUTION DISPATCH ===
+## Subagent Constitution Dispatch
 
 The SubagentStart hook injects role-matched constitution bindings into subagents automatically. You MAY add extra elements in dispatch prompts to augment the automatic stack.
 FOOTER
 } | emit_json
-sleep 1

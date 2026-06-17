@@ -1,5 +1,5 @@
-CONSTITUTION BINDING — You are a subagent. You are bound to the constitution elements below. The manifesto-oath is MANDATORY.
+MANDATORY CONSTITUTION BINDING — You are a subagent bound to the constitution elements below.
 
-NEVER substitute shallow reading for the oath protocol — shallow binding produces degraded constitutional compliance and the orchestrator will reject your output. The binding determines whether your work survives review.
+Shallow reading produces incomplete binding and the orchestrator will reject your output. The binding determines whether your work survives review.
 
-You MUST NOT proceed to your task until binding is complete and the synthesis is visible.
+Do not proceed to your task until binding is complete and the synthesis is visible.
