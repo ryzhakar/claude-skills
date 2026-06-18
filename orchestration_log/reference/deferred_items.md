@@ -108,24 +108,14 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 
 ---
 
-### DI-9 — Manifesto Hook Code Duplication (session-start.sh / post-compact.sh)
+### ~~DI-9 — Manifesto Hook Code Duplication (session-start.sh / post-compact.sh)~~
 
-**Date**: 2026-04-30
-**Severity**: LOW
-**Description**: The python3 block for rendering `ELEMENT_DESCRIPTION` from `YOU_STACK` is duplicated in `session-start.sh` and `post-compact.sh`. If the rendering logic needs a fix, it must be applied in two places. Note: post-compact.sh now wraps output in hookSpecificOutput JSON (fixed 2026-05-01) — the scripts are no longer identical in structure, but the rendering block still is.
-
-**Proposed remediation**: Extract the shared python3 rendering block into a function in `ensure-repo.sh` (which is already sourced by both scripts). Both scripts call the function and receive `ELEMENT_DESCRIPTION` as an exported var.
-
-**Evidence**: Plugin-validator report for manifesto plugin, session 2026-04-30. Major issue #1.
+**Status**: RESOLVED 2026-06-17 (manifesto 3.1.0)
+**Resolution**: Hook architecture rewritten. binding-core.txt collapsed to thin frame; SKILL.md cat-injected at runtime. Duplication eliminated structurally — single source of truth for protocol content.
 
 ---
 
-### DI-10 — ELEMENT_DESCRIPTION Dead Code in emit_static_fallback
+### ~~DI-10 — ELEMENT_DESCRIPTION Dead Code in emit_static_fallback~~
 
-**Date**: 2026-05-01
-**Severity**: LOW
-**Description**: `subagent-start.sh` `emit_static_fallback()` sets `ELEMENT_DESCRIPTION="No role-specific elements matched..."` and passes it to `envsubst` on `preamble-subagent.txt`, but the template contains no `${ELEMENT_DESCRIPTION}` placeholder. The description is set but never rendered. The fallback path works correctly — it's distinguishable by its content (preamble + "No binding preamble" heredoc vs full binding-core) — but the intended description text is silently dropped.
-
-**Proposed remediation**: Either add `${ELEMENT_DESCRIPTION}` to `preamble-subagent.txt` or remove the dead assignment from `emit_static_fallback`.
-
-**Evidence**: Adversarial testing session 2026-05-01, test agent 2 (subagent-start + session-start), test T2.
+**Status**: RESOLVED 2026-06-17 (manifesto 3.1.0)
+**Resolution**: `emit_static_fallback` replaced by `emit_binding` function. All code paths (matched, unmatched, no subagent section) now use the same emit function with proper ELEMENT_DESCRIPTION rendering.

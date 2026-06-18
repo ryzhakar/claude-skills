@@ -6,7 +6,7 @@ Last updated: 2026-05-06
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
 | dev-discipline | 1.5.0 | 7 | 3 | 3 |
-| manifesto | 3.0.1 | 2 | 0 | 4 |
+| manifesto | 3.1.0 | 2 | 0 | 4 |
 | orchestration | 3.4.0 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
@@ -26,7 +26,7 @@ Last updated: 2026-05-06
 | receiving-code-review | dev-discipline | 1385 | No | Compressed |
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
-| manifesto-oath | manifesto | 2192 | No | Compressed |
+| manifesto-oath | manifesto | 1375 | No | Knight oath protocol, self-enforcement, hook skill injection (2026-06-17) |
 | agentic-delegation | orchestration | 8178 | No | Documentation Taxonomy + Discontinuous Existence + escape-hatch elimination + anti-relay hardening (2026-05-06) |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
@@ -66,7 +66,7 @@ Last updated: 2026-05-06
 |-----------|--------|---------|---------|
 | SessionStart | manifesto | startup\|resume | Initialize manifesto binding |
 | PostCompact | manifesto | * | Re-bind manifesto after compaction |
-| SubagentStart | manifesto | agent_type match | Agent-type matching against .manifestos.yaml keys; cascade: exact → prefix-strip → catch-all → fallback (2026-04-30: composable parts/ architecture). Tier 2 resolution now injects plugin cache path for subagents (3.0.0) |
+| SubagentStart | manifesto | agent_type match | Agent-type matching; cascade: exact → prefix-strip → catch-all → fallback. Cat-injects SKILL.md at runtime (3.1.0). AND gate: exits only when both you: and subagents: empty |
 | UserPromptSubmit | manifesto | * | Drift-prevention tagline injection — parses manifesto YAML frontmatter taglines, injects compact reminder every user message (NEW 2026-05-01, 3.0.0) |
 | SubagentStop | dev-discipline | implementer | Inject spec-review mandate after implementer stops (unconditional) |
 | SubagentStop | dev-discipline | spec-reviewer | Inject quality-review mandate after spec review stops (unconditional as of 1.4.2) |
@@ -252,6 +252,19 @@ orchestration_log/recon/2026-04-17/
 - orchestration: 3.3.0 → 3.4.0 → 3.4.1
 - dev-discipline: 1.4.2 → 1.5.0
 
+**Session 2026-06-17 — manifesto-oath rewrite + hook architecture:**
+
+1. **manifesto-oath skill rewritten (manifesto 3.0.2 → 3.1.0).** Knight role anchor (oath constructs identity, no self underneath). "I must / I will" paired commitment format. Fix-then-recommit violation protocol. Embodiment principle (binding output shape matches constitution). Propagation duty for agent dispatch. Removed: degradation warning, constraint hierarchy, external enforcement language, critical distinctions table, project configuration section. 2192t → 1375t (37% reduction).
+
+2. **Hook architecture: SKILL.md cat-injection.** All three hooks (session-start, post-compact, subagent-start) now `cat` SKILL.md at runtime instead of duplicating protocol in binding-core.txt. binding-core.txt collapsed from 64 lines to ~15 (thin frame: element description, rebind note, paths, depth limit, hard demand). Zero duplication — skill changes propagate automatically.
+
+3. **Hook hardening.** De-stacked emphatic markers in all preambles (one per directive). Eliminated REBIND_NOTE/preamble-compact redundancy. Removed dead fallback clause from binding-core.txt. Fixed tilde→$HOME in PLUGINS_CACHE_DIR fallback. Removed dead PROJECT_DIR exports. Removed sleep 1 calls.
+
+4. **Subagent gate: AND logic restored.** Validator found the OR gate fix broke subagent-only configs (no `you:` but has `subagents:`). subagent-start.sh uses AND (exit when BOTH empty); session-start and post-compact keep OR (only care about YOU_STACK).
+
+**Versioning (session 2026-06-17):**
+- manifesto: 3.0.2 → 3.1.0
+
 ## Known Limitations
 
 1. **Reference file pattern not eliminated:** prompt-optimize (now an agent) may still mention references/ pattern in instructional content. Not a functional reference but suggests historical pattern.
@@ -274,7 +287,7 @@ orchestration_log/recon/2026-04-17/
 
 ## Next Actions
 
-1. **Manifesto hook code duplication.** Extract shared ELEMENT_DESCRIPTION rendering from session-start.sh and post-compact.sh into ensure-repo.sh. Validator finding from 2026-04-30.
+1. ~~**Manifesto hook code duplication.**~~ Resolved in 3.1.0 — SKILL.md cat-injection eliminates protocol duplication.
 
 2. **DI-8: strip dead-code cost computation** from extract_metrics.py. Tracked since 2026-04-29.
 
