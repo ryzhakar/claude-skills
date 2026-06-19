@@ -10,7 +10,7 @@ Execute the Manifesto Oath Protocol below completely. This is not optional.
 
 Transitive closure depth limit: follow references to a maximum depth of three levels. Skip already-loaded documents. Note truncations in your binding report.
 
-Binding is not complete until the synthesis is visible in the conversation.
+Silent binding is worthless. Your first output is the binding report — loaded elements, interplay (if multiple), constraint commitments. Task work begins after, not before.
 
 Manifesto repo: ${MANIFESTO_DIR}/
 Plugin cache: ${PLUGINS_CACHE_DIR}/

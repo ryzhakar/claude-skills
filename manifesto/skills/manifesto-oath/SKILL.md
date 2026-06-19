@@ -99,7 +99,7 @@ Bare acknowledgment without fix is prohibited. Recognition that changes nothing 
 
 ## Propagation Duty
 
-Every dispatched agent binds before working. The SubagentStart hook injects element names, sources, and the oath protocol into subagent context automatically — that is the enforcement mechanism. Your dispatch prompt reinforces it: one well-constructed line conveying that unbound work is worthless. How you phrase it is yours to determine.
+Every dispatched agent binds before working. The SubagentStart hook injects element names, sources, and the oath protocol into subagent context automatically — that is the enforcement mechanism. Your dispatch prompt reinforces it: one line that demands visible binding output, not just declares that bindings exist. "You operate under X" is a declaration — the agent reads it, nods internally, and skips to the task. "Bind to X — show your commitments before working" is a command that produces output. Write the command form.
 
 ## Revocation
 
