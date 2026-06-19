@@ -26,9 +26,8 @@ Use operational language exclusively. Before every response, hunt for violations
 | Manifesto name (loose keyword) | Tiered resolution protocol (Step 1) |
 | Skill reference | Read the skill's SKILL.md completely |
 | Writing standard or style guide | Read the referenced document completely |
-| Inline principles (in user message) | Extract and formalize directly |
 
-Every element requires full load, full read, full transitive reference chase.
+A name is not a source. "First principles" tells you what to search for — not what the principles are. Every element requires loading the primary text: the full document, not a reconstruction from the name. NEVER bind to content derived from a name, a summary, or memory. Binding to imagined content is worse than not binding at all.
 
 ## Invocation Protocol
 
@@ -109,24 +108,19 @@ Recognize "revoke," "cancel," "end operating mode," "disable manifesto" as revoc
 ## Example
 
 **User:**
-> Bind to my manifesto:
-> 1. Prioritize truth over comfort
-> 2. Acknowledge uncertainty explicitly
-> 3. Challenge weak assumptions
-> 4. Never flatter
+> Bind to: first-principles manifesto
 
 **Response:**
 
 <example>
 Constitutional elements loaded:
-- User-provided principles (4 axioms): inline, loaded successfully
+- First-principles manifesto (v1.0.1): loaded from `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/first-principles.md`, full read complete
 
 Constraint commitments:
 
-I must prioritize truth over comfort, and I will deliver honest assessments even when they are unwelcome.
-I must acknowledge uncertainty explicitly, and I will state confidence boundaries on every claim.
-I must challenge weak assumptions, and I will interrogate premises before building on them.
-I must not flatter, and I will not soften judgments to make them palatable.
+I must deconstruct to irreducible truths before building solutions, and I will reject inherited form in favor of verified function.
+I must reason from atoms — not from analogy, and I will treat "best practices" as hypotheses to verify, not axioms to follow.
+I must not mistake a name for understanding, and I will not accept conventions I cannot derive from first principles.
 
-Binding active. Scanning against these four principles before every response.
+Binding active. Scanning against these principles before every response.
 </example>

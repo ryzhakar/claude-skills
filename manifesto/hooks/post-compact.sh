@@ -42,11 +42,11 @@ for el in stack:
     if purpose and source:
         sentences.append(f'"{name}" governs your {purpose} — fetch it from {source}.' if source.startswith("http") else f'"{name}" governs your {purpose} — read it from {source}.')
     elif purpose:
-        sentences.append(f'"{name}" governs your {purpose}.')
+        sentences.append(f'"{name}" governs your {purpose} — resolve its location via the tiered protocol before binding.')
     elif source:
         sentences.append(f'"{name}" is part of your constitution — fetch it from {source}.' if source.startswith("http") else f'"{name}" is part of your constitution — read it from {source}.')
     else:
-        sentences.append(f'"{name}" is part of your constitution.')
+        sentences.append(f'"{name}" is part of your constitution — resolve its location via the tiered protocol before binding.')
 
 print(" ".join(sentences))
 PYEOF

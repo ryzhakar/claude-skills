@@ -138,12 +138,12 @@ for el in elements:
         verb = "fetch it from" if source.startswith("http") else "read it from"
         sentences.append(f'"{name}" governs your {purpose} — {verb} {source}.')
     elif purpose:
-        sentences.append(f'"{name}" governs your {purpose}.')
+        sentences.append(f'"{name}" governs your {purpose} — resolve its location via the tiered protocol before binding.')
     elif source:
         verb = "fetch it from" if source.startswith("http") else "read it from"
         sentences.append(f'"{name}" is part of your constitution — {verb} {source}.')
     else:
-        sentences.append(f'"{name}" is part of your constitution.')
+        sentences.append(f'"{name}" is part of your constitution — resolve its location via the tiered protocol before binding.')
 
 print(" ".join(sentences))
 PYEOF
