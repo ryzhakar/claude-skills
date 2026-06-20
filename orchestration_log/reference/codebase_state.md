@@ -5,9 +5,9 @@ Last updated: 2026-06-19
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
-| dev-discipline | 1.5.0 | 7 | 3 | 3 |
+| dev-discipline | 1.5.1 | 7 | 3 | 3 |
 | manifesto | 3.1.2 | 2 | 0 | 4 |
-| orchestration | 3.4.2 | 4 | 0 | 2 |
+| orchestration | 3.4.3 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
@@ -27,11 +27,11 @@ Last updated: 2026-06-19
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
 | manifesto-oath | manifesto | 1458 | No | Anti-confabulation + binding output demand (2026-06-19) |
-| agentic-delegation | orchestration | 8457 | No | Tools prohibition as identity + session-checkpoint exception (2026-06-19) |
+| agentic-delegation | orchestration | 8627 | No | Tools prohibition + narration prohibition + Principle #14 (2026-06-19) |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
 | session-close | orchestration | 5756 | No | Step 0 checkpoint gate + inheritance reform (2026-04-30) |
-| dev-orchestration | dev-discipline | 5432 | No | 4 bilateral rules (CWD drift, worktree cleanup, ownership, test markers) + escape-hatch elimination (2026-05-06) |
+| dev-orchestration | dev-discipline | 5469 | No | Hook-as-backstop framing + 4 bilateral rules (2026-06-19) |
 | spec-chef | product-craft | 1730 | No | Compressed |
 | user-story-chef | product-craft | 1498 | No | Compressed |
 | uv-pyright-debug | python-tools | 1092 | No | Compressed |
@@ -273,9 +273,14 @@ orchestration_log/recon/2026-04-17/
 
 3. **Tools prohibition as orchestrator identity (orchestration 3.4.1 → 3.4.2).** Opening frame rewritten: "Read, Write, Edit, and their Bash workarounds do not exist for you. An orchestrator that reads files is not an orchestrator." New Tools Prohibition section with forbidden/permitted table. Session-checkpoint as single scoped exception with explicit entry/exit boundaries. 8244t → 8457t.
 
+4. **Hook-as-enforcer framing inverted (dev-discipline 1.5.0 → 1.5.1).** dev-orchestration: three passages framed SubagentStop hooks as the entity that "enforces" the review chain ("structurally inevitable"). Inverted all three: orchestrator drives the cycle, hooks are backstop that injects reminders on missed dispatch. 5447t → 5469t.
+
+5. **Narration prohibition (orchestration 3.4.2 → 3.4.3).** agentic-delegation: new User-Facing Output section after Verb Interpretation — user sees all tool calls directly, narrating dispatches/completions is noise. Governing Principle #14: "Output results, not process." 8457t → 8627t.
+
 **Versioning (session 2026-06-19):**
 - manifesto: 3.1.0 → 3.1.1 → 3.1.2
-- orchestration: 3.4.1 → 3.4.2
+- orchestration: 3.4.1 → 3.4.2 → 3.4.3
+- dev-discipline: 1.5.0 → 1.5.1
 
 ## Known Limitations
 

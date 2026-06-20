@@ -45,11 +45,11 @@ Three commits landed. Session close in progress.
 
 | Metric | Value |
 |--------|-------|
-| Subagents dispatched | 15 |
-| By tier | Opus: 3, Sonnet: 12, Haiku: 0 (2 attempted, model unavailable) |
-| Git commits | 3 (73b9c90, c6824a3, 594976c) |
-| Code changes | 36 insertions, 32 deletions, 10 files |
-| Files modified | manifesto SKILL.md, 3 hook scripts, binding-core.txt, 2 plugin.json, 2 generated READMEs, marketplace.json |
+| Subagents dispatched | 21 |
+| By tier | Opus: 5, Sonnet: 16, Haiku: 0 (2 attempted, model unavailable) |
+| Git commits | 5 (73b9c90, c6824a3, 594976c, a779459, 03286d0) |
+| Code changes | 58 insertions, 47 deletions |
+| Files modified | manifesto SKILL.md, 3 hook scripts, binding-core.txt, agentic-delegation SKILL.md, dev-orchestration SKILL.md, 3 plugin.json, generated READMEs, marketplace.json, session record, codebase_state |
 
 ## Artifacts
 
@@ -60,12 +60,41 @@ Three commits landed. Session close in progress.
 - `manifesto/hooks/subagent-start.sh` — tiered resolution gate
 - `manifesto/hooks/templates/parts/binding-core.txt` — forceful output demand restored
 - `manifesto/.claude-plugin/plugin.json` — 3.1.0 → 3.1.2
-- `orchestration/skills/agentic-delegation/SKILL.md` — tools prohibition as identity (8457t)
-- `orchestration/.claude-plugin/plugin.json` — 3.4.1 → 3.4.2
+- `orchestration/skills/agentic-delegation/SKILL.md` — tools prohibition + narration prohibition (8627t)
+- `orchestration/.claude-plugin/plugin.json` — 3.4.1 → 3.4.3
+- `dev-discipline/skills/dev-orchestration/SKILL.md` — hook-as-backstop framing (5469t)
+- `dev-discipline/.claude-plugin/plugin.json` — 1.5.0 → 1.5.1
 
 ### Recon (gitignored, regenerable)
 - `orchestration_log/recon/2026-06-19/session_metrics.md` — NOTE: extracted from wrong session ID (2026-06-17); current session counts from orchestrator context
 - `orchestration_log/recon/2026-06-19/git_history.md`
+
+---
+
+## Checkpoint 2 — 01:00
+
+### Narrative
+
+**Phase 5 — Hook framing + narration prohibition (dev-discipline 1.5.1, orchestration 3.4.3).** Two issues identified by user after the initial LEAVE attempt.
+
+(a) dev-orchestration: three passages framed SubagentStop hooks as the entity that "enforces" the review chain, making it "structurally inevitable." The orchestrator read this as permission to be passive. Dispatched sonnet scout — found the exact phrases ("Three SubagentStop hooks enforce it as unconditional, sequential mandates", "making the full chain structurally inevitable"). Dispatched opus instruction-writer to invert all three passages: orchestrator drives, hooks are backstop. Anti-Patterns passage (already correct) used as template for the other two.
+
+(b) agentic-delegation: zero language about user-facing output. The orchestrator narrated every dispatch, completion, and re-launch — pure noise since the user sees all tool calls in the UI. Dispatched opus instruction-writer — added User-Facing Output section after Verb Interpretation and Governing Principle #14: "Output results, not process."
+
+Committed as 03286d0.
+
+**LEAVE protocol (partial).** Pre-step gitignore verified. Step 0 checkpoint ran. Steps 1-2 dispatched (haiku failed — model unavailable; re-dispatched on sonnet). Steps 3-4 skipped (gate: reference docs updated during checkpoint). Step 5 review: session record extended with quantitative data. Step 6: committed as a779459. Step 7 cost capture failed (cannot invoke /cost programmatically). Metrics extraction picked wrong session ID (2026-06-17 instead of current) — counts from orchestrator context used instead.
+
+### Decisions
+
+| Decision | Context | Rationale |
+|----------|---------|-----------|
+| Invert hook-as-enforcer framing | Three passages said hooks "enforce" the chain | "Enforce" transfers ownership; "structurally inevitable" gives explicit permission to be passive. Orchestrator must drive; hooks are backstop. |
+| Add narration prohibition | No existing language about user-facing output | User sees all tool calls directly. Narrating dispatches/completions repeats the UI. Principle #14: output results, not process. |
+
+### Working State
+
+Five commits landed (73b9c90, c6824a3, 594976c, a779459, 03286d0). Session close resuming — need to update reference docs for Phase 5, re-commit, capture cost.
 
 ## Next Session Priorities
 
@@ -73,4 +102,5 @@ Three commits landed. Session close in progress.
 2. Monitor research-tree inlining (expected -2128t)
 3. instruction-writer placement decision
 4. Verify manifesto 3.1.2 binding behavior in a real session (subagent visible binding output)
-5. Consider extending tools prohibition exception to session-close Step 5 (context-dependent corrections share the same justification as checkpoint)
+5. Consider extending tools prohibition exception to session-close Step 5
+6. Fix haiku model availability (model ID may have changed)
