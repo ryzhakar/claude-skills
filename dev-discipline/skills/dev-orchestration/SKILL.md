@@ -69,13 +69,13 @@ Worktrees are the default vehicle for any real implementation work, not optional
 
 Two invariants govern this skill. They are not guidelines. They are structural constraints.
 
-**Review is inevitable.** Every implementer dispatch produces a full review chain. Three SubagentStop hooks (same plugin) enforce it as unconditional, sequential mandates:
+**Review is inevitable.** The orchestrator drives the full review chain — every implementer dispatch produces spec review, then quality review, then merge decision. The orchestrator dispatches each stage:
 
-1. `implementer` stop → mandates spec-reviewer dispatch.
-2. `spec-reviewer` stop → mandates code-quality-reviewer dispatch (unconditional; the spec verdict semantics move into the code-quality-reviewer itself, which short-circuits on a FAIL spec verdict).
-3. `code-quality-reviewer` stop → mandates the merge decision (integrate, re-dispatch implementer with findings, or surface to the user).
+1. Implementer completes → orchestrator dispatches spec-reviewer.
+2. Spec-reviewer completes → orchestrator dispatches code-quality-reviewer (unconditional; spec verdict semantics live inside code-quality-reviewer, which short-circuits on a FAIL spec verdict).
+3. Code-quality-reviewer completes → orchestrator makes the merge decision (integrate, re-dispatch implementer with findings, or surface to the user).
 
-The orchestrator cannot skip, defer, or conditionally bypass any stage. It no longer evaluates the spec verdict at the spec→quality boundary — that judgment lives inside code-quality-reviewer.
+Three SubagentStop hooks (same plugin) serve as a backstop — if the orchestrator fails to dispatch the next stage, the hook injects a reminder. But the hooks are the safety net, not the driver. The orchestrator cannot skip, defer, or conditionally bypass any stage.
 
 **Worktree isolation is total.** The implementer agent runs in a platform-provided worktree. All reads, writes, and commits happen in that worktree. The orchestrator passes the worktree path and branch to reviewers. No agent touches the main working tree during implementation.
 
@@ -209,7 +209,7 @@ Run the test suite and type checker after every implementer reports DONE. Agent 
 - The orchestrator MUST audit test markers during ARRIVE and before each verification. Any marker that excludes tests from default runs (`@pytest.mark.slow`, `@pytest.mark.skip`, custom markers) is a blind spot. The orchestrator MUST know what the default run excludes.
 - The orchestrator MUST NOT report "all tests pass" when markers exclude tests from the default run. A test suite that silently excludes tests reports false confidence.
 
-This plugin includes three SubagentStop hooks (matchers: `implementer`, `spec-reviewer`, `code-quality-reviewer`) that fire when each agent type stops. Each hook injects an unconditional next-step mandate into orchestrator context — spec review after implementer, quality review after spec-reviewer, merge decision after code-quality-reviewer — making the full chain structurally inevitable. The orchestrator no longer evaluates the spec verdict at the spec→quality boundary; that judgment moved into the code-quality-reviewer agent itself.
+The orchestrator dispatches each review stage after the previous one completes: spec review after implementer, quality review after spec-reviewer, merge decision after code-quality-reviewer. Three SubagentStop hooks (matchers: `implementer`, `spec-reviewer`, `code-quality-reviewer`) inject reminders if the orchestrator misses a dispatch — backstop, not driver. The spec verdict evaluation lives inside code-quality-reviewer, not at the orchestrator's spec→quality boundary.
 
 ## Phase 3: Review
 
@@ -408,7 +408,7 @@ Update this summary after each state transition. The orchestrator reads summarie
 
 **Code in orchestrator context.** The orchestrator dispatches and decides. It never writes, reads, or debugs code.
 
-**Skipping spec review.** Review is a structural invariant, not a discretionary step. The SubagentStop hook enforces this — but even without the hook, the orchestrator treats review as the only exit from IMPLEMENTING. Implementer self-review is not spec compliance.
+**Skipping spec review.** Review is a structural invariant, not a discretionary step. The orchestrator treats review as the only exit from IMPLEMENTING — the SubagentStop hook exists as a backstop, not as the mechanism the orchestrator relies on. Implementer self-review is not spec compliance.
 
 **Reviewing quality before spec compliance.** Polishing code that does not meet requirements is wasted work.
 

@@ -45,6 +45,12 @@ Every action verb from the user implies agent-delegated execution. The orchestra
 
 No exceptions. No "just quickly doing it." The orchestrator coordinates; agents act.
 
+## User-Facing Output
+
+The user sees every tool call, agent dispatch, and completion notification directly in the UI. Narrating these is noise — it repeats what the user already observes. Output results and decisions. NEVER output process.
+
+No dispatch announcements ("Dispatching agent to..."). No completion summaries ("Both agents returned"). No re-launch narration ("Re-dispatching with sonnet"). No status updates ("Waiting for Step 3"). When the orchestrator has something to communicate — a result, a decision point, a question, a finding — say it. Everything else is process the user already sees.
+
 ---
 
 ## The Economics
@@ -680,3 +686,4 @@ Close the session: extract metrics, draft session record, update reference docs,
 11. One agent per file cluster. Never dispatch two parallel agents that write to the same file. The later version wins silently.
 12. Verify independently. Agent self-reports are unreliable. Run the validation command yourself after each agent completes. Trust artifacts, not claims.
 13. Dispatch from source files, not reference docs. When dispatching an implementer to work on existing code, provide source file paths in the brief — type-annotated source IS the interface specification. Reference docs carry architectural rationale (why) and capability inventory (what); they document signatures nowhere. Reference doc sections MUST NOT be supplied as API documentation to implementers.
+14. Output results, not process. The user sees every dispatch, completion, and tool call. Narrating orchestration mechanics is noise — it repeats what the UI already shows. Communicate results, decisions, and questions. Nothing else.
