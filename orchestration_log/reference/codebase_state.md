@@ -1,13 +1,13 @@
 # Codebase State
-Last updated: 2026-05-06
+Last updated: 2026-06-19
 
 ## Plugin Inventory
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
 | dev-discipline | 1.5.0 | 7 | 3 | 3 |
-| manifesto | 3.1.0 | 2 | 0 | 4 |
-| orchestration | 3.4.0 | 4 | 0 | 2 |
+| manifesto | 3.1.2 | 2 | 0 | 4 |
+| orchestration | 3.4.2 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
@@ -26,8 +26,8 @@ Last updated: 2026-05-06
 | receiving-code-review | dev-discipline | 1385 | No | Compressed |
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
-| manifesto-oath | manifesto | 1375 | No | Knight oath protocol, self-enforcement, hook skill injection (2026-06-17) |
-| agentic-delegation | orchestration | 8178 | No | Documentation Taxonomy + Discontinuous Existence + escape-hatch elimination + anti-relay hardening (2026-05-06) |
+| manifesto-oath | manifesto | 1458 | No | Anti-confabulation + binding output demand (2026-06-19) |
+| agentic-delegation | orchestration | 8457 | No | Tools prohibition as identity + session-checkpoint exception (2026-06-19) |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
 | session-close | orchestration | 5756 | No | Step 0 checkpoint gate + inheritance reform (2026-04-30) |
@@ -264,6 +264,18 @@ orchestration_log/recon/2026-04-17/
 
 **Versioning (session 2026-06-17):**
 - manifesto: 3.0.2 → 3.1.0
+
+**Session 2026-06-19 — Anti-confabulation hardening + tools prohibition:**
+
+1. **Inline-principles confabulation path eliminated (manifesto 3.1.0 → 3.1.1).** Deleted "Inline principles" row from Constitution Stack table — no safe inline-principles path exists. Added anti-confabulation warning ("A name is not a source. NEVER bind to content derived from a name."). Replaced inline-from-message example with source-loaded binding from file path. Hook scripts: all no-source rendering paths now gate on "resolve its location via the tiered protocol before binding." Removed "inline principles" from session-start.sh footer element type list. 1375t → 1418t.
+
+2. **Binding output demand restored (manifesto 3.1.1 → 3.1.2).** binding-core.txt: replaced passive "synthesis is visible" criterion with "Silent binding is worthless. Your first output is the binding report." Propagation Duty: teaches orchestrators the difference between declaration ("You operate under X") and command ("Bind to X — show your commitments before working").
+
+3. **Tools prohibition as orchestrator identity (orchestration 3.4.1 → 3.4.2).** Opening frame rewritten: "Read, Write, Edit, and their Bash workarounds do not exist for you. An orchestrator that reads files is not an orchestrator." New Tools Prohibition section with forbidden/permitted table. Session-checkpoint as single scoped exception with explicit entry/exit boundaries. 8244t → 8457t.
+
+**Versioning (session 2026-06-19):**
+- manifesto: 3.1.0 → 3.1.1 → 3.1.2
+- orchestration: 3.4.1 → 3.4.2
 
 ## Known Limitations
 
