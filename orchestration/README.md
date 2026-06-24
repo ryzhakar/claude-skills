@@ -7,10 +7,10 @@ Agent delegation framework, multi-agent research orchestration, and session life
 
 ### [agentic-delegation](skills/agentic-delegation/SKILL.md)
 
-Decompose work into agent-delegated units across model tiers. Cheap agents are free —
-decompose aggressively, delegate everything, assemble results.
+Decompose work into agent-delegated units across model tiers. Agents are cheap,
+context is expensive — decompose aggressively, delegate everything, assemble results.
 
-Triggers: "delegate", "parallelize", "fan out", "dispatch", "orchestrate",
+Triggers: "delegate", "parallelize", "parallel launch", "launch", "orchestrate",
 "use agents for", "run in parallel"; or any task with independent subtasks.
 
 

@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `1.5.1` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.2` | 2S |
-| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `3.4.3` | 4S |
+| [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `3.5.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -45,13 +45,13 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Binds Claude's operating identity to constitutions, manifestos, and principle sets through identity construction — not theatrical oaths....
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-## [orchestration](orchestration/) `3.4.3`
+## [orchestration](orchestration/) `3.5.0`
 
 Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.
 
 ### Skills
 
-- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Cheap agents are free — decompose aggressively, delegate everything,...
+- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Agents are cheap, context is expensive — decompose aggressively, delegate...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
 - **[session-checkpoint](orchestration/skills/session-checkpoint/SKILL.md)** — Captures context-dependent session state before compaction destroys it. Writes directly to session.md, deferred_items.md,...

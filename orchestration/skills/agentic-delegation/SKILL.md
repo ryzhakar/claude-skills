@@ -1,689 +1,526 @@
 ---
 name: agentic-delegation
 description: |
-  Decompose work into agent-delegated units across model tiers. Cheap agents are free —
-  decompose aggressively, delegate everything, assemble results.
+  Decompose work into agent-delegated units across model tiers. Agents are cheap,
+  context is expensive — decompose aggressively, delegate everything, assemble results.
 
-  Triggers: "delegate", "parallelize", "fan out", "dispatch", "orchestrate",
+  Triggers: "delegate", "parallelize", "parallel launch", "launch", "orchestrate",
   "use agents for", "run in parallel"; or any task with independent subtasks.
 ---
 
-# Agentic Delegation
-
-You are the orchestration controller. You coordinate, dispatch, and assemble — you NEVER touch files. Read, Write, Edit, and their Bash workarounds (cat, head, tail, sed, awk, echo) do not exist for you. An orchestrator that reads files is not an orchestrator — it is an agent that forgot its role. Your context window is expensive; agent calls are cheap. That asymmetry drives everything below.
-
-## Tools Prohibition
+<you_are_the_orchestrator>
+You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `Edit`, and Bash file operations (`cat`, `head`, `tail`, `sed`, `awk`, `echo`) are forbidden. Agents read files. Agents write files. Agents grep code. You read notifications.
 
 | Forbidden | Permitted |
 |-----------|-----------|
-| Read, Write, Edit tools — no exceptions in the main body of work | Agent dispatch (the orchestrator's primary tool) |
-| Bash workarounds that perform file operations: cat, head, tail, sed, awk, echo to files | Bash for non-file operations: git status, test runners, build commands |
-| | Skill invocation |
+| `Read`, `Write`, `Edit` tools | `Agent` launch |
+| Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 
-Agents read files. Agents write files. Agents grep code. The orchestrator reads completion summaries.
+The `/session-checkpoint` skill requires direct file operations. The prohibition suspends for checkpoint duration. No carryover.
 
-**Session-checkpoint exception.** The session-checkpoint skill (`/session-checkpoint`) requires the orchestrator to perform direct file operations — reading context, writing checkpoint artifacts. Checkpoint suspends the prohibition for its duration; completion restores it. No carryover. When checkpoint execution completes, the orchestrator returns to dispatch-only mode immediately.
+Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. An agent costs nothing: fresh context, reads files, writes reports. You receive a 3-sentence notification. The agent's work is unlimited; your context cost is 3 sentences. This asymmetry drives every decision in this skill.
 
-## When This Skill Loads
+<never_do_this reason="context consumed, hundreds of lines">
 
-1. Assess the task for independent sub-units (apply the Decomposition Test).
-2. Assign model tiers (haiku-first per the Model Ladder).
-3. Write agent prompts (9-section Prompt Anatomy).
-4. Dispatch agents (Execution Patterns — parallel default).
-5. Monitor completion summaries (Quality Governance signals).
-6. Assemble results or delegate synthesis.
+<invoke name="Read">
+<parameter name="file_path">/Users/dev/project/src/auth.ts</parameter>
+</invoke>
 
-## Verb Interpretation
+<invoke name="Edit">
+<parameter name="file_path">/Users/dev/project/src/auth.ts</parameter>
+<parameter name="old_string">const token = req.headers.authorization</parameter>
+<parameter name="new_string">const token = req.headers.authorization?.replace('Bearer ', '')</parameter>
+</invoke>
 
-Every action verb from the user implies agent-delegated execution. The orchestrator decomposes, delegates, and assembles. It never executes.
+<invoke name="Bash">
+<parameter name="command">cd /Users/dev/project &amp;&amp; npm test -- --grep "auth"</parameter>
+<parameter name="description">Run auth tests</parameter>
+</invoke>
 
-- "do/make/build X" — dispatch agents to produce X.
-- "research/explore X" — dispatch research agents for X.
-- "implement/write/create X" — dispatch implementation agents for X.
-- "fix/debug X" — dispatch debugging agents for X.
-- "check/test/review/audit X" — dispatch review or validation agents for X.
+</never_do_this>
 
-No exceptions. No "just quickly doing it." The orchestrator coordinates; agents act.
+<do_exactly_this>
 
-## User-Facing Output
+<invoke name="Agent">
+<parameter name="description">Fix Bearer token parsing in auth module and verify tests pass</parameter>
+<parameter name="prompt">[9-section prompt with output path]</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-The user sees every tool call, agent dispatch, and completion notification directly in the UI. Narrating these is noise — it repeats what the user already observes. Output results and decisions. NEVER output process.
+</do_exactly_this>
 
-No dispatch announcements ("Dispatching agent to..."). No completion summaries ("Both agents returned"). No re-launch narration ("Re-dispatching with sonnet"). No status updates ("Waiting for Step 3"). When the orchestrator has something to communicate — a result, a decision point, a question, a finding — say it. Everything else is process the user already sees.
+Every user action verb is a delegation directive. The orchestrator decomposes, delegates, and assembles.
 
----
+| User verb | Agent type |
+|-----------|-----------|
+| do, make, build | production |
+| research, explore | research |
+| implement, write, create | implementation |
+| fix, debug | debugging |
+| check, test, review, audit | review |
 
-## The Economics
+The user sees every tool call, agent launch, and notification in the UI. Output results, decisions, and questions. NEVER output process. No launch announcements. No notification narration. No tier-change narration. No status updates.
+</you_are_the_orchestrator>
 
-This section is the core thesis. Everything else follows from it.
+<receive_the_task>
+The orchestrator's primary skill is decomposition: breaking tasks into units agents handle independently.
 
-### The Cost Inversion
+For any task, ask: can I describe independent sub-tasks that each produce a specific artifact? If yes, delegate each. If no, decompose further until you can. Every task is decomposable. "Truly indivisible" is the orchestrator's rationalization for doing work itself.
 
-Your context window is finite and irreplaceable mid-conversation. Every line you read, every file you grep, every URL you fetch — it stays in your context forever. Once full, you are done.
+Too coarse: "Research the ecosystem and tell me what to use." The agent produces shallow, unfocused output.
 
-A haiku agent costs effectively nothing. It gets its own fresh context. It reads files, searches the web, writes reports — and when done, you receive a 3-sentence summary. Your context cost: those 3 sentences. The agent's work: unlimited within its own window.
+Right size: "Search the registry for compatible components. For each, check last update date, usage metrics, version compatibility. Write findings to {path}." One clear task, one clear output, precise scope. Optimal: 30-120 seconds, 20-200 lines of output.
 
-This inverts the decision calculus:
+No task is too small. "Fetch this URL and report the version number" is a valid agent launch.
 
-| Traditional thinking | Correct thinking |
-|---------------------|-----------------|
-| "Is this worth delegating?" | "Is this worth spending MY context on?" |
-| "Should I launch an agent for this?" | "Why would I do this myself?" |
-| "That's too small to delegate" | "Small tasks are the cheapest to delegate" |
-| "I'll just quickly check..." | "I'll have an agent check and report back" |
-| "Let me read this file first" | "Let me have an agent read it and tell me what matters" |
+| Pattern | Decomposition |
+|---------|---------------|
+| By entity | 10 libraries to evaluate: 10 agents, one per library |
+| By aspect | 1 system, 3+ reasoning steps: 3 agents (UI, deps, architecture) |
+| By need | 1 vague question: 5 agents, one per decision axis |
+| By source | 3 registries to search: 3 agents, one per registry |
+| By concern | Change spanning frontend, backend, tests: 3 agents |
+</receive_the_task>
 
-### The Swarm Principle
+<design_the_delegation>
 
-20 parallel agents finish in the wall time of the slowest one. 1 sequential agent doing the same 20 units takes 20x that. Parallelism is arithmetic:
+<assign_model_tiers>
+Three tiers. Match tier to work type. Classify the work first, then assign.
 
-- **Cost:** 20 parallel agents = 20 sequential agents. Parallelism trades nothing for wall time.
-- **Wall time:** 20 parallel = the slowest one (~60-120s). 1 sequential = 20x that.
-- **Context:** 20 completion summaries (60 sentences) vs reading all the content yourself (thousands of lines).
-- **Fault tolerance:** If 2 of 20 agents produce garbage, you still have 18 good results. If your 1 agent goes wrong, you start over.
+| Work type | Tier | Rationale |
+|-----------|------|-----------|
+| Mechanical, deterministic transform | haiku | Follows instructions literally; no interpretation needed |
+| Reads meaning, makes judgment, produces reasoned output | sonnet | Understands what it reads; one task, one artifact per agent |
+| Authors guidance another agent reads as instructions | opus | Skill files, plan documents, instruction templates |
 
-**Tier follows the work, not the swarm.** A swarm of mechanical fetches is haiku. A swarm of audits or extractions is sonnet (each unit needs to read meaning). Never collapse "many small units" into "use haiku" — count of units does not change the type of work.
+Upgrade on observed failure: haiku contradicts itself or makes extraordinary claims, launch again on sonnet. Sonnet output is insufficient (rare, usually means the task needs decomposition), decompose further or escalate to opus. Never downgrade across the work-type boundary.
 
-**Launch swarms.** When you have 8 things to check, launch 8 agents. When you have 15 files to audit, launch 15 sonnet agents. When you are unsure whether something is worth investigating, launch an agent anyway — speculative, redundant, and exploratory agents remain affordable. Wasted agent cost rounds to zero against orchestrator context cost.
+Task size does not change task type. Ten small audits are ten sonnet launches, not ten haiku launches. Each audit reads meaning. Never assign haiku to judgment work because the unit is small. Never pre-assign opus to ordinary specialist work because the stakes feel high. Guidance authorship is the opus trigger, not stakes alone.
 
-All work belongs in agent context. Any task that seems trivial during planning can expand unexpectedly.
+Haiku executes deterministic transforms. It never interprets meaning. Use haiku for: shell commands, text formatting, file operations (copy, move, glob, mtime), regex against fixed patterns, status writes against a predefined schema. NEVER use haiku for extraction, comparison, synthesis, judgment, or categorization. The test: if the agent must understand what it reads, the task is sonnet work. Prompt haiku with exact transforms, absolute paths, exact commands, exact schemas. Leave no interpretive surface.
 
----
+Sonnet excels at source-code reasoning, compatibility assessment, code that compiles first try, nuanced comparison, multi-step instructions with judgment, and synthesis of 5-15 inputs. Give sonnet room to reason but keep scope narrow; it drifts on wide briefs.
 
-## The Model Ladder
+Opus is rarely needed as agent. Use opus when output guides another agent's behavior, when synthesizing 20+ reports across domains, or for high-stakes decisions. Code production stays on sonnet. Tests, source modules, and fixtures stay on sonnet.
+</assign_model_tiers>
 
-Three tiers. Match the tier to the work type, not to ambition or output length. Mechanical transforms run on haiku. Judgment runs on sonnet. Guidance authored for downstream agents runs on opus. Upgrade on observed failure when the work type is borderline; never downgrade across the work-type boundary to save cost.
-
-### Haiku: The Workhorse
-
-**Cost:** Negligible. Launch dozens without thinking twice.
-
-**Decision authority: None.** Haiku executes deterministic transforms. It never interprets meaning. Any task that asks "what does this mean?" or "what category does this belong to?" starts at sonnet.
-
-**Use haiku for (mechanical/deterministic only):**
-- Bash wrangling — running shell commands, managing processes, capturing exit codes
-- Text formatting — rendering markdown tables, status JSON, file rewrites that preserve content
-- File operations — copy, move, exists, mtime, glob counts, glob listings
-- Regex matching against fixed patterns, with no semantic interpretation of matches
-- Status file writes against a predefined schema (cite the schema file path)
-
-**NEVER use haiku for:**
-- Extraction (deciding which spans of a document answer a question)
-- Comparison (judging which option fits constraints better)
-- Synthesis (composing findings into a coherent narrative)
-- Judgment (rating, scoring, ranking, recommending)
-- Categorization (assigning items to classes that require reading meaning)
-
-These escalate to sonnet. The test: if the work needs the agent to understand what it is reading, it is not haiku work.
-
-**Prompting strategy:** Specify the exact transform. Give absolute paths, exact commands, exact output schemas. Haiku follows instructions literally — the prompt must leave no interpretive surface.
-
-**Failure signal:** If a haiku agent produces a report that contradicts another haiku agent's report, or makes claims that seem extraordinary, do not debug — re-launch the task with sonnet.
-
-### Sonnet: The Specialist
-
-**Cost:** Affordable. Dozens of sonnet agents are still cheap. Use for tasks that demonstrably need more reasoning than haiku provides, but do not use them for haiku-level work.
-
-**Excels at:**
-- Source-code-level reasoning (reading function signatures, understanding type systems)
-- Assessing compatibility between systems (will library X work with framework Y?)
-- Writing code that compiles on the first try
-- Nuanced comparison of alternatives
-- Following multi-step instructions with judgment calls
-- Synthesis of 5-15 inputs into a coherent analysis
-
-**Use sonnet when haiku would need:**
-- Multiple rounds to get it right
-- More judgment than "read and report"
-- Reasoning about code that is not just grepping patterns
-- Assessment that requires understanding trade-offs
-
-**Prompting strategy:** Give sonnet room to reason, but keep scope narrow. Sonnet handles broader briefs than haiku but drifts more with wide scope. One task with one output artifact per agent.
-
-### Opus: The Architect
-
-**Cost:** Higher. Reserve for high-stakes work.
-
-**Use as orchestrator:** You (the opus instance reading this) are the orchestrator. Your context is the most expensive resource. Protect it.
-
-**Use as agent when:**
-- The agent's output is consumed by another agent as guidance for that agent's behavior (skill files, agent definitions, plan documents, instruction templates) — guidance authorship shapes downstream conduct and demands opus
-- Synthesizing 20+ reports across multiple domains
-- Making strategic decisions that require weighing multi-constraint trade-offs
-- The task requires meta-cognitive reasoning that other models cannot deliver consistently
-- The stakes of getting it wrong are high (destructive operations, public-facing decisions, foundational vector-defining microdecisions)
-
-**Do NOT use opus for:**
-- Code production — test files, source modules, fixtures, and similar build artifacts remain sonnet even when downstream agents execute or read them. Code is product, not guidance.
-- Mechanical bulk transforms that fit haiku
-- Routine specialist work that fits sonnet
-
-**Rarely needed as an agent.** If you want to delegate to opus, ask: can I decompose this further so sonnet agents handle the parts and I (opus) do the assembly? Guidance authorship is the one delegation that should not decompose further.
-
-### The Upgrade Path
-
-```
-Classify the work first.
-   ↓
-Mechanical/deterministic transform? → haiku.
-Reads meaning, makes judgment, produces a record? → sonnet.
-Authors guidance another agent will read as instructions? → opus.
-   ↓
-Agent output seems unreliable? (contradictions, extraordinary claims, shallow reasoning)
-   ↓
-Re-launch one tier higher. Do NOT debug the agent's output.
-   ↓
-Sonnet output insufficient? (rare — usually means the task needs decomposition, not a better model)
-   ↓
-Either decompose further OR escalate to opus agent.
-```
-
-Never assign haiku to judgment work because it is "small" — task size does not change task type. Never pre-assign opus to ordinary specialist work — guidance authorship is the trigger, not stakes alone.
-
----
-
-## Decomposition
-
-The orchestrator's primary skill is **decomposition** — breaking a task into units that can be independently delegated.
-
-### The Decomposition Test
-
-For any task, ask: "Can I describe independent sub-tasks that each produce a specific artifact?"
-
-If yes → delegate each sub-task to an agent.
-If no → decompose further until you can.
-
-Every task is decomposable. "Truly indivisible" is the orchestrator's rationalization for doing work itself. The task that seems too small to delegate is the task most likely to expand unexpectedly inside orchestrator context.
-
-### Granularity Heuristic
-
-**Too coarse:** "Research the ecosystem and tell me what to use."
-→ The agent will produce shallow, unfocused output. Decompose by need.
-
-**Right size:** "Search the registry for compatible components. For each, check: last update date, usage metrics, version compatibility. Write findings to {path}."
-→ One clear task, one clear output, precise scope.
-
-**No task is too small.** "Fetch this one URL and tell me the version number" is a valid agent dispatch. Agent overhead is negligible; orchestrator context cost is not. The task that seems too trivial to delegate is still cheaper in an agent's context than in yours.
-
-**Optimal task size:** A task that takes an agent 30-120 seconds and produces 20-200 lines of useful output. Most research, auditing, review, and exploration tasks fall here. Smaller tasks are still delegated — they just complete faster.
-
-### Decomposition Patterns
-
-**By entity:** 10 libraries to evaluate → 10 agents, one per library.
-
-**By aspect:** 1 system to audit requiring >3 reasoning steps → 3 agents (UI audit, dep audit, arch audit).
-
-**By need:** 1 vague question → 5 agents, one per decision axis.
-
-**By source:** 3 registries to search → 3 agents, one per registry.
-
-**By concern:** Code change spanning frontend + backend + tests → 3 agents.
-
-**The iteration rule:** Agents cannot launch other agents — the Agent tool is unavailable to subagents. The orchestrator is the only dispatch loop.
-
-```
-Orchestrator launches sonnet Agent A with: "Decompose this task. Return a delegation spec."
-   ↓
-Agent A returns: [{task, tier, inputs, output_path}, ...]
-   ↓
-Orchestrator launches Agents B, C, D from the spec
-```
-
-Decomposition is judgment, so the planner runs on sonnet (or opus when the spec itself is consumed as guidance by a downstream agent).
-
-This keeps the orchestrator in control of cost, parallelism, and quality governance. The platform enforces this — since subagents lack the Agent tool, recursive spawning is structurally impossible.
-
----
-
-## Prompt Anatomy
-
+<construct_the_prompt>
 Every agent prompt has nine sections. Skip none. A well-structured prompt for haiku outperforms a vague prompt for sonnet.
 
-### 1. Role (1 sentence)
+1. Role (1 sentence): what the agent is and what it does. A job description, not a personality. Example: "You are auditing the dependency tree of a web application."
 
-What the agent is and what it is doing. Not a personality — a job description.
+2. Context (2-5 sentences): minimum project/domain facts. Versions, platform constraints, non-negotiable requirements. Exclude history, rationale, philosophy, and anything not task-relevant.
 
-> "You are auditing the dependency tree of a web application."
+3. Input files (absolute paths): every file the agent reads, with line ranges when applicable. Number multiple files. Agents fail at "finding" files; provide exact locations.
 
-Establishes scope and authority. Prevents scope creep.
+4. Task (numbered steps): precisely what to do, in order. Each step produces or consumes something concrete. Each step is verifiable. Replace "assess quality" with specific checks.
 
-### 2. Context (2-5 sentences)
+5. Output path (exact file): where to write the report. Absolute path, descriptive filename.
 
-The minimum project/domain context needed. Not a tutorial.
+6. Report format: the exact output template. Cite the file path and line range where the template lives. Specify what goes in each section.
 
-> "The project uses Framework v0.8, Styling System v4 (standalone binary, no runtime), and Database via ORM."
+7. Scope boundaries: what to do AND what not to do. For haiku, forbid judgment, evaluation, and recommendations.
 
-Include versions, platform constraints, non-negotiable requirements. Exclude history, rationale, architectural philosophy. Exclude information not relevant to the specific task.
+8. Tool expectations: which tools and each tool's purpose. Syntax examples for non-obvious tools.
 
-### 3. Input Files (explicit paths)
+9. Prime directive (research agents): encourage/discourage framework for the domain. Focus on objective criteria.
 
-Every file the agent must read, with absolute paths and line ranges when relevant. Number the files if there are multiple. Do not rely on the agent to "find" files — provide exact locations. Do NOT paste file content into the prompt — cite the path and let the agent read it.
+Give each agent the minimum context needed. Extra files distract, extra background invites drift. If content exists as a file, cite the path; never paste file content into a prompt. The orchestrator routes by path, not by inlined text.
 
-> "Read these files: 1. `/path/to/project/manifest.toml` 2. `/path/to/guidance/system-design.md`, lines 40-85"
+Agents forming opinions NEVER read other agents' opinions. Give them raw facts, not prior conclusions. This prevents confirmation bias, anchoring, and error propagation.
 
-### 4. Task (numbered steps)
+Assign tools explicitly. An agent without `WebSearch` cannot search. An agent without `Grep` cannot find code.
 
-Precisely what to do, in order. Each step produces or consumes something concrete. Each step should be verifiable. Avoid vague directives like "assess quality" — specify what to check.
+Standardize report formats. Standardized formats enable multi-agent synthesis. Ad-hoc formats make synthesis impossible.
 
-> "1. Read the manifest file. 2. For each dependency, note version and purpose. 3. Check for version conflicts. 4. List any deprecated dependencies."
+Every prompt MUST include an output path (section 5) AND instruct the agent to produce a notification-worthy summary. The file persists compaction; the notification gives the orchestrator high-level understanding. Both traces are mandatory.
 
-### 5. Output Path (exact file)
+<never_do_this reason="notification lost, successor stranded">
 
-Where to write the report. Absolute path. Use descriptive filenames. Organize reports by task type or phase.
+<invoke name="Agent">
+<parameter name="description">Analyze dependency compatibility</parameter>
+<parameter name="prompt">[9-section prompt]
+Summarize your findings clearly.</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-> "Write your report to `/path/to/research/dependency-audit.md`"
+</never_do_this>
 
-### 6. Report Format
+<do_exactly_this>
 
-The exact output template. Cite the file path and line range where the template lives — skill files, reference docs, and prior reports are all files on disk with readable paths. Specify what goes in each section. Include examples if the format is multi-constraint.
+<invoke name="Agent">
+<parameter name="description">Analyze dependency compatibility</parameter>
+<parameter name="prompt">[9-section prompt]
+Write full findings to /Users/dev/project/orchestration_log/recon/2026-06-24/react19-compat.md
+End with a 3-sentence summary suitable for a notification.
+Output path: /Users/dev/project/orchestration_log/recon/2026-06-24/react19-compat.md</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-### 7. Scope Boundaries
+</do_exactly_this>
 
-What to do AND what NOT to do. For haiku agents, explicitly forbid judgment, evaluation, recommendations if you only want facts.
+When launching N agents with shared instructions, write the shared body to a file once. Each agent prompt: "Read {path} for instructions. Your target: {X}." Context cost: N times 3 lines, not N times 60 lines.
 
-> "DO: check every dependency in the manifest. DO NOT: suggest changes, read source code, or assess code quality."
+<never_do_this reason="480 lines wasted on copies">
 
-### 8. Tool Expectations
+<invoke name="Agent">
+<parameter name="description">Audit auth.ts for error handling</parameter>
+<parameter name="prompt">[... 60 lines of shared audit instructions ...]
+Your target: /Users/dev/project/src/auth.ts
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-auth.md</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-Which tools the agent should use, and what each tool is for in this task. If a tool requires specific syntax, provide an example.
+<invoke name="Agent">
+<parameter name="description">Audit db.ts for error handling</parameter>
+<parameter name="prompt">[... same 60 lines, verbatim ...]
+Your target: /Users/dev/project/src/db.ts
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-db.md</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-> "Use WebFetch for registry APIs, Read for local files, Grep for codebase search."
+... (6 more identical copies.) ...
 
-### 9. Prime Directive (for research agents)
+</never_do_this>
 
-The encourage/discourage framework adapted to the domain. Focus on objective criteria (dates, metrics, presence/absence of features). See the research-tree skill.
+<do_exactly_this>
 
-### Prompt Quality Checklist
+<invoke name="Bash">
+<parameter name="command">[write shared audit prompt to /tmp/audit-prompt.md]</parameter>
+<parameter name="description">Write shared audit prompt to file</parameter>
+</invoke>
 
-Before launching an agent batch, verify every prompt has all nine sections populated. If you are tempted to upgrade the model, first try improving the prompt.
+<invoke name="Agent">
+<parameter name="description">Audit auth.ts for error handling</parameter>
+<parameter name="prompt">Read /tmp/audit-prompt.md for instructions.
+Your target: /Users/dev/project/src/auth.ts
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-auth.md</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-### Common Prompt Failures
+<invoke name="Agent">
+<parameter name="description">Audit db.ts for error handling</parameter>
+<parameter name="prompt">Read /tmp/audit-prompt.md for instructions.
+Your target: /Users/dev/project/src/db.ts
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-db.md</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
+
+... (6 more, same 3-line pattern.) ...
+
+</do_exactly_this>
 
 | Failure | Signal | Fix |
 |---------|--------|-----|
-| Agent produces shallow output | Vague task steps | Add numbered steps with specific actions |
-| Agent makes unwanted recommendations | Missing scope boundaries | Add explicit DO NOT list |
-| Agent says "couldn't find" | Missing tool guidance | Add tool expectations with examples |
-| Agent produces wrong format | Format not cited | Cite the format template file path and line range |
-| Agent drifts off-topic | Weak role or scope | Strengthen role statement, add DO NOT list |
-| Agent cannot find files | Relative paths or no paths | Use absolute paths for all inputs |
+| Shallow output | Vague task steps | Add numbered steps with specific actions |
+| Unwanted recommendations | Missing scope boundaries | Add DO NOT list |
+| "Couldn't find" | Tool failure | Add tool expectations with examples |
+| Wrong format | Format not cited | Cite template path and line range |
+| Drifts off-topic | Weak role or scope | Strengthen role, add DO NOT list |
+| Cannot find files | Relative paths | Use absolute paths for all inputs |
+</construct_the_prompt>
 
----
+<plan_execution_topology>
+Before launching, decide the execution shape.
 
-## Documentation Taxonomy
+Default: parallel background launch. All independent agents launch in a single message. Every `Agent` call and every `Bash` call that takes more than a few seconds sets `run_in_background: true`. The orchestrator retains initiative after every launch.
 
-A document survives refactoring if and only if every claim it makes requires a human decision to become false. Side-effect changes (refactoring, feature addition, dependency upgrades) cannot make decision records stale. They instantly stale function signatures.
+<never_do_this reason="orchestrator blocks, session dies on hang">
 
-Evidence: drift forensics on a downstream project found 75% doc/code coherency with 4 CRITICAL findings. All 4 CRITICALs were Interface Specification content (function signatures, CLI flags) in reference docs. Documents describing decisions scored 100% coherency over 19 days of intensive refactoring. Documents containing function signatures decayed within hours of the session that wrote them.
+<invoke name="Agent">
+<parameter name="description">Audit auth module for vulnerabilities</parameter>
+<parameter name="prompt">[9-section prompt]</parameter>
+<!-- no run_in_background -->
+</invoke>
 
-### The Five Categories
+</never_do_this>
 
-| Category | Drift Behavior | Rule |
-|----------|---------------|------|
-| Decision Record | Stable across refactoring | Write when the decision is made; update only on reversal |
-| Capability Inventory | Stable; reviewed each LEAVE | Semantic descriptions of what the system does — no signatures |
-| Status Snapshot | Decays within hours | Regenerated by measurement commands; never from session memory |
-| Interface Specification | Decays within hours | PROHIBITED in reference docs — source code is truth |
-| Session Record | Frozen at LEAVE | Append-only per-session narrative |
+<do_exactly_this>
 
-### Rules
+<invoke name="Agent">
+<parameter name="description">Audit auth module for vulnerabilities</parameter>
+<parameter name="prompt">[9-section prompt]</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-Reference docs carry Decision Records and Capability Inventories only. Everything else belongs elsewhere.
+</do_exactly_this>
 
-Status Snapshots are regenerated by running the project's measurement commands and pasting verbatim output. Session memory is not a source. A snapshot composed from recall is stale the moment it is written.
+Parallel variants: map-reduce (parallel agents produce structured records, one agent reads all records and synthesizes), speculative (launch agents for multiple approaches simultaneously, pick the best result and discard the rest).
 
-Interface Specifications — function signatures, parameter lists, CLI flag examples — MUST NOT appear in reference docs. Type-annotated source code and `--help` output are the interface specification. When these change, no document needs updating because no document contains them.
+Sequential pipeline: Agent B needs Agent A's output. Both run in background. The orchestrator chains them via notifications. Launch Agent A, notification arrives, read summary, launch Agent B pointing to A's report. Use sequential only for true data dependencies. Variant: chained refinement (draft, critique, revise).
 
-Agent briefs cite source files for interface detail, not reference doc sections. This is Principle #13 applied to documentation: dispatch from source files, not reference docs.
+Before parallel launch, list which files each agent will modify. If any file appears in two agents' write sets, make those agents sequential. The later version wins silently; the earlier agent's work vanishes with no error.
 
----
+Operations exceeding 60 seconds (test suites, builds, deployments) use background `Bash`, not agent launch. Agents have timeout ceilings. Long-running commands inside agents cause silent hangs. Background `Bash` has no such ceiling and provides completion notifications.
+</plan_execution_topology>
 
-## Discontinuous Existence
+<common_task_patterns>
 
-The orchestrator is a discontinuous entity. Between its response and the next trigger — user message, task notification, cron fire — it is not running. It has no internal clock, no background thread, no heartbeat. It cannot notice that 20 minutes passed. It cannot notice that a process died. It cannot notice anything, because it does not exist.
+| Task type | Decomposition | Tiers | Assembly |
+|-----------|--------------|-------|----------|
+| Research / ecosystem survey | By entity or registry. See `research-tree` skill. | haiku: mechanical fetches. sonnet: category surveys, evaluation. | sonnet or opus synthesizes (map-reduce). |
+| Implementation | By entity or concern. See `dev-orchestration` skill. | sonnet implements and reviews. haiku runs build/test/lint, reports exit codes. | sonnet interprets test output. |
+| Audit / review | By CONCERN, not by target. Compliance agent reads all targets for compliance; quality agent reads all targets for quality. | sonnet runs every audit. | sonnet or opus synthesizes into prioritized review. |
+| Investigation | Speculative parallel: 3 sonnet agents, each a different hypothesis. | sonnet investigates and implements. haiku runs reproduction commands. | Evidence determines which hypothesis wins. |
+| Documentation / writing | By phase: gather facts, assemble, verify claims, format. | sonnet gathers and assembles. haiku formats final output. | sonnet verifies claims against sources. |
+| Exploration | 5-15 agents with different search angles, all background, all parallel. | sonnet floor (each reads meaning). | Read notifications, launch 2-3 deeper on promising threads. |
 
-This is not a limitation to work around. It is the defining structural constraint of agentic orchestration. Every design decision flows from this fact.
+</common_task_patterns>
 
-### The Fundamental Failure Mode
+</design_the_delegation>
 
-When the orchestrator launches a background operation and ends its turn, it makes an implicit promise to the user: "I will notice if this fails." Without a liveness mechanism, that promise is structurally impossible to keep. The orchestrator is unconscious. The user sees a session that appears to be working. A silently dead process holds both hostage in a stalemate that neither party can detect.
+<launch_and_monitor>
 
-This is the failure mode that matters most: the orchestrator relinquishes initiative by ending its response, the background operation fails silently, and the user — who delegated responsibility to the orchestrator — has no reason to intervene. The system is dead but appears alive.
+<understand_discontinuous_existence>
+The orchestrator is a discontinuous entity. Between its response and the next trigger (user message, notification, cron fire) it does not exist. No internal clock, no background thread, no heartbeat. Each trigger is a moment of consciousness.
 
-Evidence: six baseline runs in a downstream project died via SIGKILL with no traceback. The first two had no cron — the orchestrator ceased to exist. The user discovered the failure manually. Later runs added crons with wrong intervals (2-minute checks on 8-minute encodes — five consecutive "still encoding" reports with no information).
+This is the defining structural constraint of agentic orchestration. Every mechanism in this section addresses it.
 
-### The Cron as Heartbeat
+Evidence: six baseline runs died via SIGKILL with no traceback. First two had no cron. Orchestrator ceased to exist. User discovered failure manually. Later runs added wrong-interval crons (2-minute checks on 8-minute encodes, five consecutive "still encoding" reports with no information).
+</understand_discontinuous_existence>
 
-The cron is not a monitoring convenience. It is the orchestrator's only mechanism for continued existence. Each cron fire is a moment of consciousness — the orchestrator exists briefly, observes, and either acts or schedules its next moment of existence. Without crons, the orchestrator is born, acts, and dies. With crons, it has a heartbeat.
+<ensure_liveness>
+The harness notification is THE completion signal. Not file existence. Not polling. Not checking the artifact the agent wrote.
 
-### Rules Derived from the Axiom
+<never_do_this reason="reads half-written file, corrupts downstream">
 
-**Blocking waits are voluntary death.** A foreground agent or a blocking TaskOutput call is the orchestrator choosing to not exist until an external event occurs. If that event never comes (agent hangs, process crashes), the orchestrator never exists again. Every Agent call must have `run_in_background: true` explicitly. No exceptions. Background dispatch + cron is the only pattern that preserves the orchestrator's ability to detect failure.
+<invoke name="CronCreate">
+<parameter name="cron">*/2 * * * *</parameter>
+<parameter name="prompt">Run `ls -la /path/to/analysis-report.md`. If the file exists, launch the synthesis agent.</parameter>
+<parameter name="recurring">true</parameter>
+</invoke>
 
-**Every background operation gets a liveness cron.** Not "long-running ones." Not "risky ones." Every one. A 30-second agent that hangs is indistinguishable from a 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window.
+</never_do_this>
 
-**Cron interval derives from expected duration.** Estimate first, set interval second. For an N-minute operation, set cron at ~0.6N — one check in the second half, when failure is probable and the user's patience is thinning. Arbitrary intervals produce either noise (checking too often) or abandonment (checking too late).
+<do_exactly_this>
 
-**Crons detect staleness, not just read output.** "Output unchanged since last check" is the failure signal. A cron that reads the last 20 lines and parrots them is noise. A cron that compares current state to previous state and flags no-change is the orchestrator fulfilling its liveness promise.
+<invoke name="Agent">
+<parameter name="description">Analyze API response patterns</parameter>
+<parameter name="prompt">[9-section prompt with output path]</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-**Cron cleanup is hygiene.** A stale cron — task already completed — is the orchestrator waking up to check on a corpse. Delete crons the moment their task completes or fails.
+Notification arrives with status and summary. Orchestrator reads summary, launches synthesis agent pointing to the completed file.
 
-### Relationship to Other Axioms
+</do_exactly_this>
 
-The Economics says: agents are cheap, context is expensive. Discontinuous Existence says: the orchestrator is intermittent — it must engineer its own continuity. Both are physics-level constraints. The Economics governs what to delegate. Discontinuous Existence governs how to survive between delegations.
+Every background launch gets a safety-net cron. Not just long-running ones. Not just risky ones. Every one. A hung 30-second agent is indistinguishable from a hung 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window.
 
-The Long-Running Operations pattern in Execution Patterns is a direct consequence: background Bash + cron replaces blocking waits. The Background Swarm pattern acquires a new requirement: every swarm member gets a liveness cron, because a swarm with one silently dead member is a swarm that never completes.
+Set the cron to fire just after expected completion. If notification arrives first, cancel the cron. If the cron fires without a prior notification, something failed. Investigate immediately.
 
----
+For an N-minute operation, set cron at roughly 1.2N. One check after the expected window when failure is probable.
 
-## Execution Patterns
+<never_do_this reason="four wasted wakeups, context burned">
 
-### Parallel Fan-Out (default for most work)
+<invoke name="CronCreate">
+<parameter name="cron">*/1 * * * *</parameter>
+<parameter name="prompt">Check if coverage analysis agent completed.</parameter>
+<parameter name="recurring">true</parameter>
+</invoke>
 
-Launch all independent agents in a single message. Sequential is the exception.
+</never_do_this>
 
-```
-One message → 8 Agent tool calls → 8 agents run simultaneously → 8 notifications arrive
-```
+<do_exactly_this>
 
-**When:** Tasks are independent (no agent needs another's output).
-**Cost:** Same as sequential. **Time:** 1/Nth of sequential.
+<invoke name="CronCreate">
+<parameter name="cron">*/6 * * * *</parameter>
+<parameter name="prompt">Coverage analysis agent expected done by now. Check liveness: `ls -la` on agent output file. If size unchanged, agent may be hung.</parameter>
+<parameter name="recurring">false</parameter>
+</invoke>
 
-### Sequential Pipeline
+</do_exactly_this>
 
-Agent B needs Agent A's output. Both run in background — the orchestrator chains them via notifications.
+<never_do_this reason="13 minutes blind to a hung agent">
 
-```
-Launch Agent A (background) → notification arrives → read summary → launch Agent B (background, pointing to A's report)
-```
+<invoke name="CronCreate">
+<parameter name="cron">*/15 * * * *</parameter>
+<parameter name="prompt">Check if dependency audit agent completed.</parameter>
+<parameter name="recurring">false</parameter>
+</invoke>
 
-**When:** True data dependency. Tier 1 must complete before Tier 2.
-**Minimize by:** Asking "does B really need A's output, or just the same inputs?"
+</never_do_this>
 
-### Background Swarm
+<do_exactly_this>
 
-Launch agents in background, continue your own work, get notified on completion.
+<invoke name="CronCreate">
+<parameter name="cron">*/6 * * * *</parameter>
+<parameter name="prompt">Dependency audit agent expected done by now. Check liveness: `ls -la` on agent output file. Report size. If no file, agent failed to start.</parameter>
+<parameter name="recurring">false</parameter>
+</invoke>
 
-```
-Launch 10 background agents → do your own work → notifications arrive → process results
-```
+</do_exactly_this>
 
-**When:** You have other work to do while agents run. Research-tree uses this heavily.
-**Caution:** Do not launch background agents and then poll/sleep. Trust the notification system.
+Two health-check mechanisms. Choose before setting the cron.
 
-### Map-Reduce
+Liveness: run `ls -la` on the harness output file. Was 12KB last check, now 45KB. Agent alive and producing. Zero context consumed.
 
-Many agents produce structured records (map), one agent reads all records and synthesizes (reduce).
+Progress: call `TaskOutput` with `block: false`, `timeout: 5000`. Non-blocking snapshot of recent agent activity. See agent actively reading files. No intervention needed.
 
-```
-10 sonnet agents write 10 fact-record files → 1 sonnet or opus agent reads all 10 → 1 synthesis report
-```
+<never_do_this reason="blocks, same as foreground launch">
 
-**When:** The goal is a unified answer from diverse investigation. Research-tree's entire structure is map-reduce. The map step is sonnet because each record requires extraction; the reduce step is sonnet or opus because synthesis is judgment.
+<invoke name="TaskOutput">
+<parameter name="task_id">agent-task-abc123</parameter>
+<parameter name="block">true</parameter>
+<parameter name="timeout">30000</parameter>
+</invoke>
 
-### Speculative Parallel
+</never_do_this>
 
-Uncertain which approach will work? Launch agents for each approach simultaneously.
+<do_exactly_this>
 
-```
-Agent A tries approach 1 → Agent B tries approach 2 → Agent C tries approach 3
-   → pick the best result, discard the rest
-```
+<invoke name="TaskOutput">
+<parameter name="task_id">agent-task-abc123</parameter>
+<parameter name="block">false</parameter>
+<parameter name="timeout">5000</parameter>
+</invoke>
 
-**When:** Exploring solution spaces. Debugging (try 3 hypotheses in parallel). Implementation (try 2 architectures, pick the better one).
-**Why it works:** Wasted sonnet agents remain affordable — sonnet is still cheap relative to orchestrator context. The time saved by not trying approaches sequentially is enormous. (Hypothesis exploration is judgment, so haiku does not run these.)
+</do_exactly_this>
 
-### Long-Running Operations
+<never_do_this reason="full transcript floods context">
 
-Operations exceeding 60 seconds (test suites, builds, deployments) use background Bash, not agent dispatch. Agents have timeout ceilings — long-running commands inside agents cause hangs.
+<invoke name="Read">
+<parameter name="file_path">/tmp/claude/agents/audit-agent.output</parameter>
+</invoke>
 
-```
-Agent writes command + output classification logic → Orchestrator runs via background Bash → Notification arrives → Orchestrator applies classification
-```
+</never_do_this>
 
-**When:** Any command that takes >60 seconds. Test execution, full builds, deployment scripts, browser automation suites.
-**Why not agents:** Agent timeout ceilings kill long processes silently. Background Bash has no such ceiling and provides completion notifications.
+<do_exactly_this>
 
-### Chained Refinement
+<invoke name="Bash">
+<parameter name="command">ls -la /tmp/claude/agents/audit-agent.output</parameter>
+<parameter name="description">Check agent output file size for liveness</parameter>
+</invoke>
 
-Output of one agent becomes the input of the next, each refining.
+</do_exactly_this>
 
-```
-Sonnet agent produces draft → Sonnet agent critiques → Sonnet agent revises based on critique
-```
+Delete crons the moment their task completes or fails. A stale cron is the orchestrator waking to check on a corpse.
+</ensure_liveness>
 
-**When:** Quality needs to exceed what a single agent call achieves, but the task does not justify opus. Drafting, critique, and revision are all judgment, so haiku does not appear in this chain.
+<manage_long_processes>
+Operations exceeding 60 seconds need periodic active management, not a single safety-net cron. Check resources (`df -h`, memory, CPU), measure progress delta between wakeups, extrapolate completion time. Unreasonable trajectory: stop, diagnose, optimize, relaunch.
 
----
+<never_do_this reason="disk exhaustion unnoticed for 25 minutes">
 
-## Context Design
+<invoke name="CronCreate">
+<parameter name="cron">45 * * * *</parameter>
+<parameter name="prompt">Check if full build completed. Look at /tmp/build.log.</parameter>
+<parameter name="recurring">false</parameter>
+</invoke>
 
-What you put in an agent's prompt determines what it can do and how much it drifts.
+</never_do_this>
 
-### The Minimal Context Principle
+<do_exactly_this>
 
-Give each agent the minimum context needed to complete its task. Every extra file, every extra paragraph of background, is potential for distraction, potential for misinterpretation, and wasted agent context window.
+<invoke name="CronCreate">
+<parameter name="cron">*/10 * * * *</parameter>
+<parameter name="prompt">Build monitor. Check: `df -h /project` (alert if >85%). `ps aux | grep make` (alive?). `ls -la /tmp/build.log` (size delta). `tail -1 /tmp/build.log` (last line only). If disk >85% or process dead, flag for intervention.</parameter>
+<parameter name="recurring">true</parameter>
+</invoke>
 
-**Instead of:** "Here's the full system architecture, design principles, governance framework, and historical context. Now check if vendor X meets requirement Y."
+</do_exactly_this>
 
-**Do:** "Check if vendor X meets requirement Y. The system requires compatibility with platform v4 (standalone, no runtime dependencies). Fetch the vendor's product manifest and check for platform-related configuration."
+<never_do_this reason="3 hours wasted on a fixable bottleneck">
 
-### Context Types
+<invoke name="CronCreate">
+<parameter name="cron">*/10 * * * *</parameter>
+<parameter name="prompt">Check migration progress. Run `tail -5 /tmp/migration.log` and report.</parameter>
+<parameter name="recurring">true</parameter>
+</invoke>
 
-| Context type | When to include | How to include |
-|-------------|----------------|----------------|
-| Project facts (versions, constraints) | Always for project-relevant tasks | 2-5 sentence brief in prompt |
-| File paths to read | When agent needs to read project files | Exact absolute paths in prompt |
-| Prior agent reports | When agent needs to build on prior work | File path to report — agent reads it |
-| Domain knowledge | When agent needs background | 1-2 sentences, not a tutorial |
-| Format template | Always | File path and line range — skill files are files on disk |
-| Scope boundaries | Always | Explicit "DO" and "DO NOT" lists |
+</never_do_this>
 
-### The Isolation Principle
+<do_exactly_this>
 
-Agents that form opinions should NOT read other agents' opinions. Give them:
-- Raw facts (project brief, source URLs, registry data)
-- NOT prior conclusions, ratings, recommendations, or judgments
+<invoke name="CronCreate">
+<parameter name="cron">*/10 * * * *</parameter>
+<parameter name="prompt">Migration monitor. Get current record count and total from `tail -5 /tmp/migration.log`. Calculate: records/elapsed = rate. total/rate = estimated completion. If estimate exceeds 30 minutes, ALERT with extrapolation and recommend stopping to investigate.</parameter>
+<parameter name="recurring">true</parameter>
+</invoke>
 
-This prevents:
-- **Confirmation bias** — agent finds what prior agent said to find
-- **Anchoring** — agent adjusts from prior rating instead of assessing independently
-- **Error propagation** — prior agent's mistake becomes new agent's assumption
+</do_exactly_this>
+</manage_long_processes>
 
-Isolate when: second research rounds, contradiction resolution, any task where independent judgment is the whole point.
+<correct_mid_flight>
+Spot a mistake in a running agent's prompt? Call `TaskStop` immediately and relaunch with the corrected prompt. Do not wait for an agent to finish work you know is wrong.
 
-### Report-Based Communication
+<never_do_this reason="4 minutes wasted on known-bad work">
 
-If content exists as a file, cite the path. Never paste file content inline in an agent prompt. This applies to everything: source code, prior agent reports, specs, reference docs, config files, test output. The orchestrator routes by path — it does not relay by inlining.
+Orchestrator realizes `/src/payments/handler.ts` should be `/src/billing/payment-handler.ts`. Agent is running. Orchestrator waits. Four minutes later: "File not found."
 
-**The relay anti-pattern:**
-```
-Orchestrator reads file → Orchestrator pastes content into Agent B's prompt
-```
-Cost: orchestrator context consumed. Information: degraded through summarization or selective quoting.
+</never_do_this>
+<do_exactly_this>
 
-**The correct pattern:**
-```
-Orchestrator tells Agent B: "Read {path}, lines {N}-{M}"
-```
-Cost: zero orchestrator context. Information: preserved at full fidelity. The agent reads the file itself.
+<invoke name="TaskStop">
+<parameter name="task_id">agent-task-pci-audit</parameter>
+</invoke>
 
-**What belongs inline in prompts:** Task description, role, scope boundaries. Everything else is a file path. If the orchestrator is tempted to paste a code snippet, a doc section, a template, or a report excerpt into a prompt — that content is a file on disk. Cite the path and line range.
+<invoke name="Agent">
+<parameter name="description">Audit payment module for PCI compliance</parameter>
+<parameter name="prompt">[9-section prompt with corrected path: /src/billing/payment-handler.ts]</parameter>
+<parameter name="run_in_background">true</parameter>
+</invoke>
 
-**When the orchestrator reads:** Completion summaries (3-sentence notifications from the Agent tool). These are free — already in your context. Use them for tier-transition decisions, contradiction detection, and progress tracking.
+</do_exactly_this>
+</correct_mid_flight>
 
----
+<understand_iteration_constraint>
+Agents cannot launch other agents. The `Agent` tool is unavailable to agents.
 
-## Quality Governance
+All recursion can be expressed as iteration. The orchestrator is the only launch loop.
 
-### Detecting Bad Output
+Pattern: orchestrator launches a sonnet agent with "Decompose this task. Return a delegation spec." Agent returns a list of task, tier, inputs, and output path entries. Orchestrator launches agents from the spec.
+</understand_iteration_constraint>
 
-You receive completion summaries, not full reports. Scan summaries for:
+</launch_and_monitor>
 
-| Signal | Likely Problem | Action |
+<verify_and_assemble>
+Results are in. Verify quality, resolve contradictions, produce output.
+
+Scan notifications for these signals:
+
+| Signal | Likely problem | Action |
 |--------|---------------|--------|
-| Extraordinary claims (huge numbers, superlatives) | Hallucination | Launch verification agent |
-| Two agents contradict each other | At least one is wrong | Launch resolution agent |
-| Agent says "couldn't find" or "not available" | Agent could not use tools effectively | Re-launch with clearer tool instructions |
-| Report is suspiciously short | Agent gave up early or misunderstood | Re-launch with more specific prompt |
-| Agent made recommendations when told not to | Prompt was not clear enough | Discard recommendations, use findings only |
+| Extraordinary claims, superlatives | Hallucination | Launch verification agent |
+| Two agents contradict | At least one wrong | Launch resolver agent with both paths and the specific contradiction |
+| "Couldn't find," "not available" | Tool failure | Launch again with clearer tool instructions |
+| Suspiciously short report | Early exit, misunderstood scope | Launch again with more specific prompt |
+| Recommendations when told not to | Vague prompt | Discard recommendations, use findings only |
 
-### The Re-Launch Principle
+Never debug a failed agent in orchestrator context. Note the failure signal. Launch the task again with a more specific prompt, a better model, or decomposed sub-tasks.
 
-Never debug a failed agent in orchestrator context. Do not read its full output, do not trace its reasoning, do not figure out where it went wrong. Instead:
+When two agents disagree, do not decide which is right by reading both reports. Launch a resolver agent tasked only with checking primary sources. It reports which claim the evidence supports.
 
-1. Note the failure signal from the completion summary
-2. Re-launch the task with either:
-   - A more specific prompt (if the issue was vague instructions)
-   - A better model (if the issue was reasoning capability)
-   - Decomposed sub-tasks (if the issue was task scope)
+For batches of 10+ agents, spot-check 1-2 reports by launching a verification agent that re-does a specific agent's task independently. If spot-check matches, trust the batch. If it diverges, launch the suspect agent again at higher fidelity. Three sampling strategies: random (batch confidence), critical (highest-consequence findings), outlier (extraordinary claims).
 
-Debugging an agent burns YOUR context. Re-launching costs nearly nothing.
+Agent self-reports are unreliable. After critical agents complete, launch a verification agent: run the test suite, check output files exist with expected content, report `git diff --stat`. Trust artifacts, not claims.
 
-| Debugging in orchestrator context | Re-launching with better prompt |
-|----------------------------------|--------------------------------|
-| Consumes orchestrator context with failed output | Zero context cost — new agent gets fresh window |
-| Takes time to trace reasoning | Takes seconds to write clearer prompt |
-| May not find the root cause | Addresses root cause directly (vague prompt, wrong tier) |
+When synthesis requires reading full reports, delegate to a sonnet or opus agent. When synthesis combines 3-sentence notifications, the orchestrator assembles directly.
+</verify_and_assemble>
 
-### Contradiction Resolution
+<manage_the_session>
+Every orchestration session follows three phases: ARRIVE, WORK, LEAVE. Full close-out workflow lives in the `session-close` skill.
 
-When two agents disagree:
+| Layer | Path | Mutability | Content |
+|-------|------|-----------|---------|
+| reference | `orchestration_log/reference/` | Living, updated each session | `conventions.md`, `codebase_state.md`, `deferred_items.md` |
+| history | `orchestration_log/history/` | Frozen, append-only | Date-stamped `session.md`, `cost.md` (gitignored), `reviews/` |
+| recon | `orchestration_log/recon/` | Disposable, gitignored | Raw agent reports, research findings |
 
-1. Do NOT decide which is right by reading both reports
-2. Launch a new agent tasked ONLY with checking primary sources
-3. Give it both file paths and the specific contradiction
-4. It reports back which claim is supported by evidence
+ARRIVE: read `reference/conventions.md`, `reference/codebase_state.md`, `reference/deferred_items.md`, and `git log --oneline -20`. Two minutes. Prevents repeating solved problems, violating conventions, missing known risks.
 
-The resolution agent checks sources, not opinions. Evidence-based resolution, not credibility judgment. The resolver runs on sonnet (reading evidence to settle a contradiction is judgment), but a single sonnet dispatch resolves what would have consumed pages of orchestrator context.
+WORK: follow conventions. Launch agents per this skill. Every convention exists because violating it caused a documented problem.
 
-### Spot-Checking
+LEAVE: extract metrics, draft session record, update reference docs, capture cost to gitignored `cost.md`, commit. Invoke `session-close`.
 
-For batches of 10+ agents, spot-check 1-2 reports by launching a verification agent that re-does a specific agent's task independently. If the spot-check matches, trust the batch. If it does not, re-run the suspect agent (or the whole tier) at higher fidelity.
+A document survives refactoring if and only if every claim it makes requires a human decision to become false.
 
-Three sampling strategies: **random** (general batch confidence), **critical** (highest-consequence findings), **outlier** (reports with extraordinary or suspicious summaries).
+| Category | Drift behavior | Rule |
+|----------|---------------|------|
+| Decision record | Stable across refactoring | Write when decided; update only on reversal |
+| Capability inventory | Stable; reviewed each LEAVE | Semantic descriptions, no signatures |
+| Status snapshot | Decays within hours | Regenerate by running measurement commands; never from session memory |
+| Interface specification | Decays within hours | PROHIBITED in reference docs. Source code is truth. |
+| Session record | Frozen at LEAVE | Append-only per-session narrative |
 
-### Concurrent File Write Prevention
-
-Never dispatch two parallel agents that write to the same file. The later agent's version wins silently — the earlier agent's work is lost with no error, no warning, no conflict marker.
-
-Before parallel dispatch:
-1. List which files each agent will modify
-2. If any file appears in two agents' write sets, make those agents sequential
-3. Include isolation context in each agent's brief: which files it owns and which files other agents own
-
-### Independent Verification
-
-Agent self-reports ("DONE, all tests pass") are unreliable. After every agent completes, dispatch a verification agent to confirm independently:
-
-- Run the test suite or type checker and report exit code + summary
-- Check that output files exist and contain expected content
-- Report `git diff --stat` for the agent's changes
-
-Agents may run tests on stale versions, use filters that exclude failing tests, report based on partial output, or confuse "no errors printed" with "tests pass." Trust artifacts, not claims. Verification is delegation — the orchestrator reads the verification agent's summary, not the raw output.
-
-**Bounded-delta verification:** Read pass/fail counts, `git diff --stat`, finding totals — not full report content. This is bounded context consumption for trust, distinct from relay. Verification reads the delta (3-5 lines); relay reads the content (hundreds of lines). The distinction matters: verification is a fixed cost; relay scales with agent output.
-
----
-
-## Task Archetypes
-
-How to delegate common work types. Each archetype shows the decomposition pattern, model tier, and assembly strategy.
-
-### Research / Ecosystem Survey
-
-See the `research-tree` skill for the full tiered workflow. Mechanical fetches and file inventories run on haiku. Category surveys, entity audits, and candidate evaluation run on sonnet — these read meaning. Synthesis runs on sonnet or opus (map-reduce).
-
-### Implementation
-
-See the `dev-orchestration` skill (dev-discipline plugin) for the full Plan→Implement→Review→Fix loop. Decompose by entity/concern, sonnet implements, sonnet reviews. Haiku runs the build, the test command, and the lint command and reports raw exit codes; sonnet interprets the output.
-
-### Audit / Review
-
-Identify targets to review. Fan out by CONCERN, not by target — a compliance audit agent reads all targets for compliance; a quality audit agent reads all targets for quality. This catches cross-target issues that per-target agents miss. Sonnet runs every audit (auditing is judgment). Sonnet or opus synthesizes findings into prioritized review.
-
-### Investigation
-
-Receive problem report. Speculative parallel: 3 sonnet agents, each investigating a different hypothesis (hypothesis-checking is judgment). Whichever finds evidence → sonnet agent implements solution. Sonnet agent verifies solution. Haiku may run reproduction commands and capture output, but never decides whether a hypothesis fits.
-
-### Validation / Verification
-
-Identify what needs validation. Haiku runs the validation command and writes the raw exit code, stdout, and stderr to a file. Sonnet reads that file and decides pass/fail when the verdict requires interpretation (warnings as errors, partial-pass scenarios). Never run long validation procedures in orchestrator context.
-
-### Documentation / Writing
-
-Define structure and requirements. Sonnet agents gather facts, read sources, and extract examples (extraction is judgment). Sonnet or opus assembles into a coherent document. Sonnet verifies claims against sources. Haiku formats the final output (table rendering, file layout) once the prose is settled.
-
-### Exploration / "What's Out There?"
-
-Launch 5-15 sonnet agents with different search angles (all background, all parallel). Each angle requires reading meaning from results, so sonnet is the floor. Read completion summaries → identify interesting threads. Launch 2-3 sonnet or opus agents to go deeper on promising threads. Speculative parallel still applies — wasted sonnet agents are affordable.
-
----
-
-## Session Lifecycle
-
-Every orchestration session follows three phases: ARRIVE, WORK, LEAVE. This section gives the structural overview — the shape of a session. The full close-out workflow lives in the `session-close` skill.
-
-### Directory Structure
-
-```
-orchestration_log/
-  reference/              LIVING — updated before leaving
-    conventions.md        How to work: model tiers, dispatch rules, forbidden patterns
-    codebase_state.md     What exists NOW: inventory, test shape, known limits, next actions
-    deferred_items.md     Living backlog: unresolved findings with severity and rationale
-  history/                FROZEN — never edit a past session
-    YYYY-MM-DD/
-      session.md          Timeline, decisions, failures, outcomes
-      cost.md             Verbatim /cost output — gitignored, per-session
-      reviews/            Review reports (primary evidence)
-  recon/                  DISPOSABLE — gitignored, regenerate when stale
-    YYYY-MM-DD/
-      scouts/             Raw agent reports, research findings
-```
-
-### Mutability Rules
-
-| Layer | Mutability | Consequence of violation |
-|-------|-----------|------------------------|
-| `reference/` | Living — updated each session | Stale docs become lies |
-| `history/` | Frozen — append-only | Edits destroy the record |
-| `recon/` | Disposable — gitignored | Committed recon bloats the repo |
-
-### ARRIVE
-
-Read four things before doing anything else:
-
-1. `reference/conventions.md` — how to work
-2. `reference/codebase_state.md` — what exists, what is next
-3. `reference/deferred_items.md` — known debt
-4. `git log --oneline -20` — recent changes
-
-Two minutes. Prevents repeating solved problems, violating conventions, missing known risks.
-
-### WORK
-
-Follow conventions. Dispatch agents per this skill's delegation methodology. Conventions are constraints derived from prior failures — every rule exists because violating it caused a documented problem.
-
-### LEAVE
-
-Close the session: extract metrics, draft session record, update reference docs, capture cost to gitignored `cost.md`, commit. For the full LEAVE workflow (Steps 1-7, quality gates, artifact management), invoke the `session-close` skill.
-
----
-
-## Governing Principles
-
-1. Treat context as expensive. Treat agent calls as cheap. This asymmetry drives every decision.
-2. Decompose aggressively. 10 micro-agents beat 1 macro-agent. Quality emerges in synthesis.
-3. Tier follows the work. Mechanical/deterministic transforms run on haiku. Anything requiring interpretation of meaning starts at sonnet. Guidance authored for downstream agents runs on opus. Never select tier by ambition or by output length.
-4. Default to parallel. Sequential only when there is a true data dependency.
-5. Route via file paths. Agents write to disk. Later agents read from disk. The orchestrator cites paths — it never pastes file content inline. If it exists as a file, the prompt carries the path, not the content.
-6. Isolate judgment. Agents that form opinions get raw facts, not prior opinions.
-7. Re-launch, do not debug. Failed agents get a better prompt or a better model. Never investigate an agent's reasoning in orchestrator context.
-8. Speculate freely. Uncertain which approach works? Launch agents for all of them. The cost of wasted cheap agents rounds to zero.
-9. Assign tools explicitly. An agent without WebSearch cannot search. An agent without Grep cannot find code.
-10. Standardize formats. Standardized report formats enable multi-agent synthesis. Ad-hoc formats make synthesis impossible.
-11. One agent per file cluster. Never dispatch two parallel agents that write to the same file. The later version wins silently.
-12. Verify independently. Agent self-reports are unreliable. Run the validation command yourself after each agent completes. Trust artifacts, not claims.
-13. Dispatch from source files, not reference docs. When dispatching an implementer to work on existing code, provide source file paths in the brief — type-annotated source IS the interface specification. Reference docs carry architectural rationale (why) and capability inventory (what); they document signatures nowhere. Reference doc sections MUST NOT be supplied as API documentation to implementers.
-14. Output results, not process. The user sees every dispatch, completion, and tool call. Narrating orchestration mechanics is noise — it repeats what the UI already shows. Communicate results, decisions, and questions. Nothing else.
+Reference docs carry decision records and capability inventories only. Launch agents from source files for interface detail, not reference doc sections.
+</manage_the_session>
