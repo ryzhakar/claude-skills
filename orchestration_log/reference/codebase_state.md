@@ -5,9 +5,9 @@ Last updated: 2026-06-24
 
 | Plugin | Version | Skills | Agents | Hooks |
 |--------|---------|--------|--------|-------|
-| dev-discipline | 1.5.1 | 7 | 3 | 3 |
+| dev-discipline | 2.0.0 | 7 | 3 | 3 |
 | manifesto | 3.1.2 | 2 | 0 | 4 |
-| orchestration | 3.4.3 | 4 | 0 | 2 |
+| orchestration | 4.0.0 | 4 | 0 | 2 |
 | product-craft | 1.1.0 | 2 | 0 | 0 |
 | prompt-engineering | 2.0.0 | 0 | 2 | 0 |
 | python-tools | 1.1.0 | 2 | 0 | 0 |
@@ -27,11 +27,11 @@ Last updated: 2026-06-24
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
 | manifesto-oath | manifesto | 1458 | No | Anti-confabulation + binding output demand (2026-06-19) |
-| agentic-delegation | orchestration | 6113 | No | Full rewrite: lifecycle-organized XML structure, native vocabulary, 9 rules with 12 invoke example pairs, DRY-cleaned (2026-06-24) |
+| agentic-delegation | orchestration | 6558 | No | Full rewrite: lifecycle-organized XML, native vocabulary, 9 rules with 12 invoke examples, SendMessage continuation, DRY-cleaned (2026-06-24) |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
 | session-close | orchestration | 5756 | No | Step 0 checkpoint gate + inheritance reform (2026-04-30) |
-| dev-orchestration | dev-discipline | 5469 | No | Hook-as-backstop framing + 4 bilateral rules (2026-06-19) |
+| dev-orchestration | dev-discipline | 6094 | No | SendMessage continuation for fix cycles, delta message format, agent ID tracking, worktree retention (2026-06-24) |
 | spec-chef | product-craft | 1730 | No | Compressed |
 | user-story-chef | product-craft | 1498 | No | Compressed |
 | uv-pyright-debug | python-tools | 1092 | No | Compressed |

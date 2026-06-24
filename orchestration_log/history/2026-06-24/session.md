@@ -1,4 +1,11 @@
-# Session 2026-06-24 — Agentic Delegation Skill Rewrite
+# Session: 2026-06-24
+
+**Orchestrator:** Claude Opus 4.6 (1M context)
+**Session ID:** 6bc0a9aa-9f10-41cf-a9bb-11650424f803
+**Duration:** ~2d 12h API, ~3d wall (2026-06-22 to 2026-06-24)
+**Cost:** see local `cost.md` (gitignored; per-session)
+**Code changes:** 574 lines added, 555 removed (12 files)
+**Outcome:** Agentic-delegation rewritten from scratch (8627→6558t, -24%, lifecycle-organized XML, 9 rules with invoke examples, native vocabulary). Dev-orchestration extended with SendMessage continuation for fix cycles. Orchestration v4.0.0, dev-discipline v2.0.0.
 
 ## Checkpoint — 19:45
 
@@ -52,3 +59,94 @@ Final: 8,627 tokens to 6,113 tokens (-29.1%). 689 lines to 525 lines. Valid XML.
 Agentic-delegation skill rewrite is complete and committed. Version incremented by user.
 
 Remaining work in this session: session close (LEAVE protocol) if desired. Dev-orchestration and qa-orchestration compression opportunities identified in Phase 1 but not implemented.
+
+## Checkpoint — 21:30
+
+### Narrative
+
+Phase 9 (downstream feedback): Scouted feedback files in `~/competera/embedding_finetuning_for_ecommerce/`. Found 5 undelivered upstream feedback memos. Three target agentic-delegation directly: SendMessage agent reuse paradigm, Workflow orchestration offload, and manifesto hook path bug.
+
+Phase 10 (SendMessage ripple — agentic-delegation): Opus agent traced every ripple of SendMessage continuation against the just-rewritten skill. Found 4 CONTRADICTIONs and 11 INCOMPLETEs. Applied minimal integration: 6 additions (~445 tokens). Key changes: SendMessage + TaskStop in permitted tools, agent reuse as happy path for follow-ups, scoped correction via SendMessage vs fundamental failure via fresh launch, safety-net cron extended to continuations.
+
+Phase 11 (SendMessage ripple — dev-orchestration): Opus agent traced ripples into the Plan→Implement→Review→Fix loop. Found 1 CONTRADICTION (NEEDS_CONTEXT handler forbade multi-message context) and 19 INCOMPLETEs. Applied minimal path + resolved all remaining INCOMPLETEs: fix cycle continuation, delta message format, reviewer continuation for re-review, NEEDS_CONTEXT rewritten, worktree retention during fix cycles, BLOCKED escalation paths mapped to continue vs fresh-launch, state machine entry criteria updated, context requirements table (first dispatch vs continuation), file conflict re-evaluation before continuations, agent ID tracking per unit (impl/spec/quality), merge-mandate hook template updated.
+
+Phase 12 (verification): Confirmed SendMessage parameters from changelog — `to` field with agent ID, auto-resumes completed and stopped agents in background. TaskStop confirmed working on agents (`task_type: "local_agent"`). Stopped agents are resumable (platform change — used to error, now auto-resumes).
+
+Committed and pushed as `ea3ea09`: orchestration v4.0.0, dev-discipline v2.0.0. User bumped orchestration major version.
+
+### Decisions
+
+| Decision | Context | Rationale |
+|----------|---------|-----------|
+| SendMessage continuation as happy path for follow-ups | Downstream feedback: 3-5k tokens wasted per fix cycle re-initialization | Agent already holds source files, task context, and its own changes. Re-launching discards all context. |
+| Minimal integration over maximal | Maximal braids statefulness into every section, complecting the skill | Continuation is an optimization for iterative workflows, not a paradigm shift. Start minimal, measure, expand if data justifies. |
+| Worktree retention during fix cycles | Worktree cleanup destroys continuation possibility | The worktree cleanup is the point of no return for agent continuation. Before cleanup: continue. After cleanup: fresh launch only. |
+| Agent ID tracking per unit | Orchestrator needs to know which agent to continue for each unit | Three columns (impl/spec/quality) — each agent type independently continuable. |
+| Scoped vs fundamental failure distinction | "Launch again, never debug" closed off the resume path entirely | Scoped failures (tool confusion, missing context, unclear scope) → SendMessage. Fundamental failures (hallucination, wrong approach, wrong tier) → fresh launch. |
+| Stopped agents are continuable | User believed they weren't; changelog confirmed platform change | "SendMessage now auto-resumes stopped agents in the background instead of returning an error" — recent platform update. |
+| Workflow offload deferred | Enhancement, not failure. Additive pattern. | No existing behavior is wrong without it. Track in deferred items. |
+| Manifesto hook path bug deferred | Different plugin (manifesto), not orchestration/dev-discipline | Real failure but different scope. Needs separate session. |
+
+### Failures
+
+| Failure | Root cause | Correction |
+|---------|-----------|------------|
+| Research agent claimed TaskStop doesn't apply to subagents | Agent read docs that were imprecise | Verified from this session: TaskStop returned `task_type: "local_agent"` on a stopped agent. Changelog confirms. |
+| SendMessage schema not fully known | Tool not in deferred tools list, no published schema | Confirmed `to` field from Agent tool description + changelog. Message body parameter name unconfirmed — used prose descriptions instead of invoke syntax for SendMessage examples. |
+
+### Working State
+
+Both plugins committed and pushed. Orchestration v4.0.0, dev-discipline v2.0.0.
+
+Deferred to future sessions:
+- Manifesto hook path bug (manifesto plugin scope, 3 proposals from downstream memo)
+- Workflow orchestration offload (enhancement, 6 proposals from downstream memo)
+- QA-orchestration Multi-App Mode dead spec investigation
+- Dev-orchestration and qa-orchestration compression (identified in Phase 1)
+- DI-11 through DI-15 (5 example insertion points for non-procedural examples)
+
+## Quantitative Summary
+
+| Metric | Value |
+|--------|-------|
+| API duration | ~2d 12h |
+| Wall duration | ~3d (2026-06-22 to 2026-06-24) |
+| Git commits | 2 (33c1f2a, 9bef092 — earlier session commit ea3ea09 was squashed) |
+| Code changes | 574 added, 555 removed, 12 files |
+| Total agents dispatched | 30 |
+| Agents by tier | opus 22, sonnet 6, synthetic 2 |
+| Agents by type | instruction-writer 23, general-purpose 6, claude-code-guide 1 |
+| Total messages | 1,030 |
+| Total tool calls | 681 |
+| Top tools | Bash 354, Read 189, Edit 56, Agent 30, Write 24 |
+| Token totals | 122M cache_read, 8.6M cache_creation, 447K output, 21K input |
+
+## Git History
+
+| Commit | Message |
+|--------|---------|
+| 33c1f2a | refactor(orchestration): address failure modes in agentic-delegation with example pairs |
+| 9bef092 | feat(orchestration,dev-discipline): v3.5.0, v2.0.0 — SendMessage continuation, XML structure, native vocabulary |
+
+## Next Session Priorities
+
+1. Manifesto hook path bug — hardcoded `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/` in `manifesto-oath/SKILL.md` (3 proposals from downstream memo, real failure)
+2. Workflow orchestration offload — optional pattern for deterministic inner loops (6 proposals from downstream memo, enhancement)
+3. QA-orchestration Multi-App Mode dead spec investigation
+4. Dev-orchestration and qa-orchestration compression opportunities (Phase 1 findings)
+5. DI-11 through DI-15 — non-procedural example insertion points for agentic-delegation
+
+## Artifacts
+
+Committed:
+- `orchestration/skills/agentic-delegation/SKILL.md` — full rewrite, lifecycle-organized XML, 6558 tokens
+- `dev-discipline/skills/dev-orchestration/SKILL.md` — SendMessage continuation integration, 6094 tokens
+- `dev-discipline/hooks/templates/merge-mandate.txt` — continuation option in merge decision
+- `orchestration_log/history/2026-06-24/session.md` — this file
+- `orchestration_log/reference/codebase_state.md` — updated plugin versions, skill token counts, status lines
+- `orchestration_log/reference/conventions.md` — 3 new conventions (XML structure, native vocabulary, lifecycle organization)
+- `orchestration_log/reference/deferred_items.md` — DI-11 through DI-15 added
+
+Recon (gitignored, regenerable):
+- `orchestration_log/recon/2026-06-22/skill-review/` — 12 analysis files (3 skill reviews, 4 deep compression reviews, example points, failure taxonomy, restructure proposal, vocabulary map, semantic diff, concrete examples + compressed)
+- `orchestration_log/recon/2026-06-24/` — downstream feedback catalog, feedback summary, two SendMessage ripple analyses, session metrics, git history
