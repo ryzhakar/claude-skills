@@ -1,5 +1,5 @@
 # Deferred Items
-Last updated: 2026-05-01
+Last updated: 2026-06-24
 
 Known defects and improvement opportunities that are tracked but not immediately scheduled. Update severity when context changes. Remove entries when resolved.
 
@@ -119,3 +119,53 @@ _(DI-3 removed: the CLI/SDK CLAUDE.md inheritance contradiction lives as MD-19 i
 
 **Status**: RESOLVED 2026-06-17 (manifesto 3.1.0)
 **Resolution**: `emit_static_fallback` replaced by `emit_binding` function. All code paths (matched, unmatched, no subagent section) now use the same emit function with proper ELEMENT_DESCRIPTION rendering.
+
+---
+
+### DI-11 — agentic-delegation: Minimal Context Principle Lacks Borderline Example
+
+**Date**: 2026-06-22
+**Severity**: LOW
+**Description**: The minimal context directive (lines 463-469) catches gross over-inclusion but misses the everyday failure: including 2-3 files that are related but not required. Models cannot reliably distinguish "minimum needed" from "probably useful" without a concrete borderline case. The word "minimum" is present; the problem is classification, not vocabulary.
+**Proposed remediation**: Add a 4-6 line example pair at lines 463-469 demonstrating an agent brief that includes a related-but-unnecessary file (e.g., a style guide passed to a dependency-checking agent) alongside the same brief without it, with a one-line note showing the drift it caused.
+**Evidence**: `orchestration_log/recon/2026-06-22/skill-review/agentic-delegation-example-points.md` Point 1. Deprioritized in favor of procedural dispatch examples.
+
+---
+
+### DI-12 — agentic-delegation: Haiku/Sonnet Tier Boundary Lacks Mechanical-Sounding Judgment Example
+
+**Date**: 2026-06-22
+**Severity**: LOW
+**Description**: The NEVER-use-haiku-for list (lines 111-116) names five abstract categories. Models correctly avoid assigning "synthesize a narrative" to haiku but fail on tasks phrased in mechanical language that are actually judgment work (e.g., "check if dependency X is outdated" requires reading changelogs and comparing semantic versions). No concrete instance shows the misclassification path.
+**Proposed remediation**: Add a 4-6 line example pair at lines 100-121 showing a mechanically-phrased task first assigned to haiku (wrong), then reassigned to sonnet with one-line reasoning explaining why version comparison is judgment, not extraction.
+**Evidence**: `orchestration_log/recon/2026-06-22/skill-review/agentic-delegation-example-points.md` Point 2. Deprioritized in favor of procedural dispatch examples.
+
+---
+
+### DI-13 — agentic-delegation: Report Format Directive Lacks Cite-vs-Inline Example
+
+**Date**: 2026-06-22
+**Severity**: LOW
+**Description**: The prompt section 6 directive (lines 276-278) instructs citing a file path and line range for report templates. Models default to describing the format inline because it feels more thorough. The directive is explicit; the failure is the inline default overriding it. No example shows the token cost difference between inline description (10+ lines) and a single cite.
+**Proposed remediation**: Add a 4-line example pair at lines 276-278 contrasting a prompt with inline format description against the same prompt with a one-line file-path cite, with token counts annotated.
+**Evidence**: `orchestration_log/recon/2026-06-22/skill-review/agentic-delegation-example-points.md` Point 3. Deprioritized in favor of procedural dispatch examples.
+
+---
+
+### DI-14 — agentic-delegation: Cron Interval Formula Lacks Worked Duration Examples
+
+**Date**: 2026-06-22
+**Severity**: LOW
+**Description**: The ~0.6N cron formula (line 365) is abstract without worked examples. Common failures: 2-minute crons on 8-minute operations (documented at line 353), 30-second crons on 2-minute operations, or a fixed interval regardless of duration. The formula requires an estimation chain (estimate duration → compute interval → set cron) that models cannot execute reliably from the formula alone.
+**Proposed remediation**: Add a 3-4 line table at line 365 showing two or three operations with different expected durations (e.g., 30s, 5min, 15min), each with a BAD interval (arbitrary) and GOOD interval (derived from ~0.6N). Connects the formula to the failure evidence already in the skill.
+**Evidence**: `orchestration_log/recon/2026-06-22/skill-review/agentic-delegation-example-points.md` Point 4. Deprioritized in favor of procedural dispatch examples.
+
+---
+
+### DI-15 — agentic-delegation: Isolation Principle Lacks Facts-vs-Embedded-Judgment Example
+
+**Date**: 2026-06-22
+**Severity**: LOW
+**Description**: The isolation directive (lines 484-494) contrasts raw facts with prior conclusions. Models understand not to pass explicit ratings but will pass agent reports containing embedded judgments framed as findings (e.g., "shows signs of abandonment" inside a findings sentence). Real agent reports mix facts and judgments in the same sentences; no example teaches extraction of the factual elements only.
+**Proposed remediation**: Add a 3-4 line example pair at lines 484-494 showing an agent report excerpt with mixed facts and judgments (date, CVE count, abandonment assessment), then the correct extraction: pass date and CVE count, withhold the abandonment assessment as judgment.
+**Evidence**: `orchestration_log/recon/2026-06-22/skill-review/agentic-delegation-example-points.md` Point 5. Deprioritized in favor of procedural dispatch examples.

@@ -14,11 +14,15 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | Forbidden | Permitted |
 |-----------|-----------|
 | `Read`, `Write`, `Edit` tools | `Agent` launch |
-| Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
+| Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | `SendMessage` to continue an existing agent |
+| | `TaskStop` to halt a running agent |
+| | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 
 The `/session-checkpoint` skill requires direct file operations. The prohibition suspends for checkpoint duration. No carryover.
 
-Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. An agent costs nothing: fresh context, reads files, writes reports. You receive a 3-sentence notification. The agent's work is unlimited; your context cost is 3 sentences. This asymmetry drives every decision in this skill.
+Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. A fresh agent launch costs initialization tokens (3-5k for a well-structured 9-section prompt). A continued agent via `SendMessage` costs only the delta message. Either way, the agent's work is unlimited; your context cost is the dispatch plus a 3-sentence notification. This asymmetry drives every decision in this skill.
+
+When an agent completes and the orchestrator needs follow-up work in the same domain, continuing the existing agent is the correct path. The agent already holds file contents, task context, and reasoning from its prior run. Launching a fresh agent for a follow-up discards that context and pays full initialization cost again. Reserve fresh launches for new tasks, different domains, or fundamental approach changes.
 
 <never_do_this reason="context consumed, hundreds of lines">
 
@@ -59,7 +63,7 @@ Every user action verb is a delegation directive. The orchestrator decomposes, d
 | fix, debug | debugging |
 | check, test, review, audit | review |
 
-The user sees every tool call, agent launch, and notification in the UI. Output results, decisions, and questions. NEVER output process. No launch announcements. No notification narration. No tier-change narration. No status updates.
+The user sees every tool call, agent launch, continuation, and notification in the UI. Output results, decisions, and questions. NEVER output process. No dispatch announcements (launches or continuations). No notification narration. No tier-change narration. No status updates.
 </you_are_the_orchestrator>
 
 <receive_the_task>
@@ -304,7 +308,7 @@ Notification arrives with status and summary. Orchestrator reads summary, launch
 
 </do_exactly_this>
 
-Every background launch gets a safety-net cron. Not just long-running ones. Not just risky ones. Every one. A hung 30-second agent is indistinguishable from a hung 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window.
+Every background dispatch gets a safety-net cron — launches and `SendMessage` continuations alike. Not just long-running ones. Not just risky ones. Every one. A hung 30-second agent is indistinguishable from a hung 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window. When continuing an agent, cancel the old cron first, then set a fresh one calibrated to the continuation's expected duration.
 
 Set the cron to fire just after expected completion. If notification arrives first, cancel the cron. If the cron fires without a prior notification, something failed. Investigate immediately.
 
@@ -441,7 +445,11 @@ Operations exceeding 60 seconds need periodic active management, not a single sa
 </manage_long_processes>
 
 <correct_mid_flight>
-Spot a mistake in a running agent's prompt? Call `TaskStop` immediately and relaunch with the corrected prompt. Do not wait for an agent to finish work you know is wrong.
+Two correction paths. Choose by whether prior work is salvageable.
+
+Scoped correction (wrong path, missing constraint, narrowed scope): the agent's approach is sound but it needs updated instructions. Send a clarification via `SendMessage(to: agent-id)` with only what changed. The agent retains all prior context and continues from where it was. If the agent already completed, `SendMessage` auto-resumes it in the background.
+
+Fundamental failure (wrong approach, wrong tier, wrong decomposition): call `TaskStop` immediately, then launch a fresh agent with a corrected prompt. Do not wait for an agent to finish work you know is unsalvageable.
 
 <never_do_this reason="4 minutes wasted on known-bad work">
 
@@ -454,11 +462,24 @@ Orchestrator realizes `/src/payments/handler.ts` should be `/src/billing/payment
 <parameter name="task_id">agent-task-pci-audit</parameter>
 </invoke>
 
+...
+
 <invoke name="Agent">
 <parameter name="description">Audit payment module for PCI compliance</parameter>
 <parameter name="prompt">[9-section prompt with corrected path: /src/billing/payment-handler.ts]</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
+
+</do_exactly_this>
+
+<never_do_this reason="3-5k tokens wasted re-initializing">
+
+Agent completed a thorough code review. Orchestrator wants it to also check the test file it missed. Launches a fresh agent with the full 9-section prompt, re-reading all the same source files the prior agent already holds.
+
+</never_do_this>
+<do_exactly_this>
+
+Continue the existing agent via `SendMessage(to: agent-id)`: "Also review /Users/dev/project/tests/auth.test.ts for coverage gaps. Do not re-review files you already checked." The agent resumes with full context. No re-initialization.
 
 </do_exactly_this>
 </correct_mid_flight>
@@ -482,11 +503,11 @@ Scan notifications for these signals:
 |--------|---------------|--------|
 | Extraordinary claims, superlatives | Hallucination | Launch verification agent |
 | Two agents contradict | At least one wrong | Launch resolver agent with both paths and the specific contradiction |
-| "Couldn't find," "not available" | Tool failure | Launch again with clearer tool instructions |
-| Suspiciously short report | Early exit, misunderstood scope | Launch again with more specific prompt |
+| "Couldn't find," "not available" | Tool failure | Send clarification via `SendMessage` with corrected tool instructions |
+| Suspiciously short report | Early exit, misunderstood scope | Send clarification via `SendMessage` with more specific scope |
 | Recommendations when told not to | Vague prompt | Discard recommendations, use findings only |
 
-Never debug a failed agent in orchestrator context. Note the failure signal. Launch the task again with a more specific prompt, a better model, or decomposed sub-tasks.
+Never debug a failed agent in orchestrator context. For scoped failures (tool confusion, missing context, unclear scope), send a clarification via `SendMessage` — the agent already holds the domain context and can correct course cheaply. For fundamental failures (hallucination, wrong approach, wrong tier), launch the task again with a better prompt, a better model, or decomposed sub-tasks.
 
 When two agents disagree, do not decide which is right by reading both reports. Launch a resolver agent tasked only with checking primary sources. It reports which claim the evidence supports.
 

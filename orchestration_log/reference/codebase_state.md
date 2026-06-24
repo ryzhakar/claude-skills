@@ -1,5 +1,5 @@
 # Codebase State
-Last updated: 2026-06-19
+Last updated: 2026-06-24
 
 ## Plugin Inventory
 
@@ -27,7 +27,7 @@ Last updated: 2026-06-19
 | tdd | dev-discipline | 1559 | No | Compressed |
 | manifesto-writing | manifesto | 1243 | No | Compressed |
 | manifesto-oath | manifesto | 1458 | No | Anti-confabulation + binding output demand (2026-06-19) |
-| agentic-delegation | orchestration | 8627 | No | Tools prohibition + narration prohibition + Principle #14 (2026-06-19) |
+| agentic-delegation | orchestration | 6113 | No | Full rewrite: lifecycle-organized XML structure, native vocabulary, 9 rules with 12 invoke example pairs, DRY-cleaned (2026-06-24) |
 | research-tree | orchestration | 7565 | No | Compressed |
 | session-checkpoint | orchestration | 1830 | No | NEW — mid-session context capture (2026-04-30) |
 | session-close | orchestration | 5756 | No | Step 0 checkpoint gate + inheritance reform (2026-04-30) |

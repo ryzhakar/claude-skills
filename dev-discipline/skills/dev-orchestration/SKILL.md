@@ -25,7 +25,7 @@ Canonical map of every artifact this skill's workflow produces. Body prose may r
 
 | ID | Path | Producer | Consumer | Format | Required |
 |----|------|----------|----------|--------|----------|
-| A1 | implementer return text | implementer | orchestrator | status block (see implementer.md `Report Format`) | yes |
+| A1 | implementer return text | implementer | orchestrator | status block (see implementer.md `Report Format`). Continuations produce a new notification covering the delta only; the orchestrator reads the latest notification from a given agent ID. | yes |
 | A2 | implementer worktree (`.git`) | platform | orchestrator | git repository on disk | yes |
 | A3 | `orchestration_log/recon/${DATE}/reviews/spec-${branch}-${timestamp}.md` | spec-reviewer | orchestrator | markdown verdict file (see spec-reviewer.md `Verdict File`) | yes |
 | A4 | `orchestration_log/recon/${DATE}/reviews/quality-${branch}-${timestamp}.md` | code-quality-reviewer | orchestrator | markdown report file (see code-quality-reviewer.md `Report File`) | yes |
@@ -63,7 +63,7 @@ Worktrees are the default vehicle for any real implementation work, not optional
 - The orchestrator MUST `cd` back to the project root the moment `pwd` reveals drift.
 - The orchestrator MUST NOT proceed with CWD-relative operations or subagent dispatches after detecting drift, until restoration is verified by a fresh `pwd`.
 
-**Worktree cleanup timing.** Remove the worktree immediately after cherry-pick, before any other operation. Do NOT leave merged worktrees for later cleanup. A merged worktree is dead weight — disk is a depletable resource with no warning before exhaustion.
+**Worktree cleanup timing.** Do NOT remove the worktree until no further continuations of that implementer will occur. During fix cycles (pre-integration), the worktree is retained — the continued implementer needs its filesystem context intact. After integration (cherry-pick into the main branch), remove the worktree immediately. A merged worktree is dead weight — disk is a depletable resource with no warning before exhaustion.
 
 ## Invariants
 
@@ -114,13 +114,15 @@ The orchestrator drives this loop. Each phase has entry/exit criteria and agent 
 
 Apply the full loop for every task: new features, bug fixes, refactors, migrations, renaming, typos, string literal updates. No task is too small to delegate. The orchestrator dispatches; agents execute. A "trivial" change that the orchestrator executes directly bypasses worktree isolation, skips the review chain, and burns opus context on sonnet work.
 
+Fix cycles continue the original implementer via `SendMessage` when the approach was sound and the worktree is intact. The implementer already holds source files, task understanding, and its own changes — re-launching discards all of that and pays 3-5k tokens of re-initialization for context that already exists. Fresh launch is the fallback for fundamental approach failures, tier upgrades, or scope changes.
+
 ### State Machine
 
 | State | Entry Criteria | Exit Criteria |
 |-------|---------------|---------------|
 | PLANNING | Task exists; codebase context understood; scope clear enough to decompose | Every unit has self-contained spec; dependencies explicit; verification commands defined; no TBD/TODO/placeholder language |
-| IMPLEMENTING | Approved plan with concrete unit specs; each unit has files, behavior, verification; dependencies mapped | Agent reports terminal status (DONE/DONE_WITH_CONCERNS/BLOCKED); code committed |
-| SPEC REVIEWING | Implementer reported DONE or DONE_WITH_CONCERNS (addressed); changes committed; task spec available | Reviewer reports PASS, or fix-re-review loop produces PASS |
+| IMPLEMENTING | First dispatch: approved plan with concrete unit specs. Fix cycle: review findings via `SendMessage` continuation. | Agent reports terminal status (DONE/DONE_WITH_CONCERNS/BLOCKED); code committed |
+| SPEC REVIEWING | First review: implementer reported DONE/DONE_WITH_CONCERNS. Re-review: continued reviewer via `SendMessage` with updated diff range. | Reviewer reports PASS, or fix-re-review loop produces PASS |
 | QUALITY REVIEWING | Spec review passed; git diff range known | Reviewer reports merge-ready, or all Critical/Important findings addressed and re-review passes |
 | INTEGRATING | All units passed both review stages; full test suite runnable | Full test suite passes; interface compatibility verified; end-to-end behavior matches spec |
 
@@ -160,6 +162,11 @@ For each unit, construct a brief containing:
 
 Dispatch the **implementer** agent with this brief. The implementer runs in a platform-provided worktree (`isolation: worktree` in its frontmatter). The platform creates the worktree automatically — the orchestrator does not manage worktree creation. Default model: sonnet. Upgrade only if an agent reports BLOCKED citing reasoning limitations.
 
+The 5-section brief applies to first dispatch only. Fix-cycle continuations via `SendMessage` carry a delta message:
+1. Review findings — specific issues with file:line citations (not the reviewer's summary judgment)
+2. Fix scope — explicit list of what to change and what NOT to change ("do not alter code that passed review")
+3. Verification command — how to confirm the fix (if different from the original)
+
 **Minimal context examples:**
 - Dependency audit: "The project uses Leptos 0.8, Tailwind v4 (standalone, no Node.js), Postgres via sqlx. Read /path/to/Cargo.toml. For each dep, note version and purpose. Check for version conflicts."
 - Compatibility check: "Check if library X supports Tailwind v4. The project uses v4 standalone (no Node.js). Fetch library docs and check for Tailwind-related config."
@@ -167,11 +174,11 @@ Dispatch the **implementer** agent with this brief. The implementer runs in a pl
 
 ### Context Requirements by Agent Type
 
-**Implementer:** Task specification + file paths + TDD flag + scope boundaries + scene-setting context. The platform creates the worktree automatically. The implementer reports its worktree path in status (A1).
-
-**Spec-reviewer:** Task specification + worktree path + branch (from git query on A2) + verdict file path to write (A3). The reviewer reads actual code from that branch and writes its verdict to A3.
-
-**Code-quality-reviewer:** Worktree path + branch + diff range `BASE_SHA..HEAD_SHA` (from git queries on A2) + report file path to write (A4) + project-specific quality standards if they exist.
+| Agent | First dispatch | Continuation via `SendMessage` |
+|-------|---------------|-------------------------------|
+| Implementer | Task spec + file paths + TDD flag + scope boundaries + scene-setting context. Platform creates worktree. Reports worktree path in A1. | Review findings with file:line citations + fix scope + "do not alter passing code" + verification command (if changed). |
+| Spec-reviewer | Task spec + worktree path + branch (git query on A2) + A3 path. | Updated diff range (new commits from fix) + "re-review delta and check passing criteria hold" + new A3 path (fresh timestamp). |
+| Code-quality-reviewer | Worktree path + branch + `BASE_SHA..HEAD_SHA` diff range (git queries on A2) + A4 path + project quality standards. | Updated diff range + re-review scope + new A4 path (fresh timestamp). |
 
 ### TDD Gate
 
@@ -197,13 +204,13 @@ Dispatch integration verification agent
 
 ### Commit Discipline
 
-Agents commit their own work with descriptive messages. When review reveals needed fixes, dispatch a fix agent — the orchestrator does not edit code, does not commit code, does not debug code.
+Agents commit their own work with descriptive messages. When review reveals needed fixes, continue the implementer with findings or launch a fresh agent — the orchestrator does not edit code, does not commit code, does not debug code.
 
 One logical change per commit. Fix commits reference what they fix. No history rewriting (no rebase, no amend, no force push).
 
 ### Verification After Each Agent
 
-Run the test suite and type checker after every implementer reports DONE. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it did not touch.
+Run the test suite and type checker after every implementer completion — first dispatch or continuation. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it did not touch.
 
 **Test marker audit — bilateral rules.**
 - The orchestrator MUST audit test markers during ARRIVE and before each verification. Any marker that excludes tests from default runs (`@pytest.mark.slow`, `@pytest.mark.skip`, custom markers) is a blind spot. The orchestrator MUST know what the default run excludes.
@@ -247,6 +254,8 @@ Never enter a 4th review cycle without changing something structural (model, spe
 
 **Review scope narrows on re-review:** the reviewer checks that previously identified issues are resolved, that fixes did not introduce new issues, and that original passing criteria still hold. Re-review scope narrows to the delta, not the full unit — this prevents review cycle inflation.
 
+Continue the reviewer via `SendMessage` for re-review after a fix cycle. The reviewer already holds the task specification, codebase context, and its own prior findings. Delta message: updated diff range (new commits from the fix), scope constraint ("re-review only the delta and check that passing criteria still hold"), and new verdict file path (A3/A4 with fresh timestamp).
+
 Apply receiving-code-review's verify-before-implement discipline and YAGNI enforcement when processing findings.
 
 ## Phase 4: Status-Driven Branching
@@ -270,28 +279,28 @@ Determine what is missing:
 - **Architectural decision** → make decision, update spec, re-dispatch
 - **User input required** → ask user, then re-dispatch
 
-Construct a new dispatch with the original brief plus missing context. Rewrite the relevant section inline — the agent should not piece together context from multiple messages.
+Continue the implementer via `SendMessage` with the missing context inlined in the delta message. The implementer's existing context plus the continuation message form a complete picture — no re-initialization needed. Fresh re-dispatch only when the missing context changes the task fundamentally (architectural decision that invalidates prior work).
 
 ### BLOCKED Escalation
 
 Dispatch a diagnosis agent to determine the cause:
 
-1. **Missing dependency** — provide it, re-dispatch implementer.
-2. **Insufficient reasoning** — re-dispatch with a more capable model. Same spec.
-3. **Task too large** — decompose into sub-units.
-4. **Plan defect** — the plan's assumptions are wrong. Escalate to the user.
-5. **Unknown** — dispatch investigation agents.
+1. **Missing dependency** — continue the implementer via `SendMessage` with the dependency provided.
+2. **Insufficient reasoning** — fresh launch with a more capable model. `SendMessage` cannot change tier.
+3. **Task too large** — fresh launch with decomposed sub-units. New scope.
+4. **Plan defect** — the plan's assumptions are wrong. Escalate to the user. Fresh launch after user input.
+5. **Unknown** — dispatch investigation agents. If one identifies the root cause, continue it with "propose a minimal fix" rather than launching a separate fix agent.
 
 Never force retry without changing inputs.
 
 ### Re-Dispatch After Review Failure
 
-Dispatch a fix agent with:
-1. The original task specification (reference)
-2. The reviewer's specific findings (the FAIL report)
-3. Instructions to fix ONLY the identified issues, test each individually, and report status
+Continue the implementer via `SendMessage` with:
+1. The reviewer's specific findings (the FAIL report, with file:line citations)
+2. Instructions to fix ONLY the identified issues, test each individually, and report status
+3. Explicit constraint: "Do not alter code that passed review"
 
-Scope the fix to the specific findings.
+The implementer already holds the task specification — do not re-send it. Fresh launch only when the implementer's approach is fundamentally wrong or a tier upgrade is needed.
 
 ## Debugging Escalation
 
@@ -338,7 +347,7 @@ After all units pass individual review:
 
 When dispatching multiple implementers in parallel:
 
-1. **Verify independence.** No two agents may write to the same file. If they do, make them sequential.
+1. **Verify independence.** No two agents may write to the same file. If they do, make them sequential. Re-evaluate write sets before every `SendMessage` continuation — a fix cycle can change what files an agent writes.
 2. **Provide isolation context.** Each agent's brief mentions which other units exist and which files they own.
 3. **Stagger reviews.** As implementers complete, dispatch their reviews immediately. Do not wait for all to finish.
 4. **Handle conflicts.** If two parallel agents produce conflicting changes, identify which matches the spec, keep it, re-dispatch the other with updated context.
@@ -386,12 +395,12 @@ Track the overall orchestration state with a summary block:
 ## Orchestration Status
 
 ### Units
-| Unit | Status | Spec Review | Quality Review | Notes |
-|------|--------|-------------|----------------|-------|
-| A: Data model | DONE | PASS | PASS | -- |
-| B: API handler | DONE | PASS | In Progress | -- |
-| C: CLI command | IMPLEMENTING | -- | -- | -- |
-| D: Integration | WAITING | -- | -- | Depends on A, C |
+| Unit | Status | Impl Agent | Spec Agent | Quality Agent | Notes |
+|------|--------|------------|------------|---------------|-------|
+| A: Data model | DONE | a1b2c3 | j1k2l3 | m4n5o6 | PASS |
+| B: API handler | DONE | d4e5f6 | p7q8r9 | s1t2u3 | Quality in progress |
+| C: CLI command | IMPLEMENTING | g7h8i9 | -- | -- | Fix cycle 1 via SendMessage |
+| D: Integration | WAITING | -- | -- | -- | Depends on A, C |
 
 ### Integration
 - [ ] Full test suite
@@ -425,3 +434,5 @@ Update this summary after each state transition. The orchestrator reads summarie
 **Parsing branch or SHA from agent text.** The orchestrator derives branch and SHA from git (A2). Parsing them from the implementer's return text is fragile — formats drift, fields go missing, reviewers silently read main. See Branch and SHA Source of Truth.
 
 **Trusting reviewer return text as the verdict.** Return text can be lost to compaction. The verdict files (A3, A4) are the gating evidence. Read them.
+
+**Fresh-launching for fix cycles.** The implementer already holds source files, task context, and its own changes. Continuing via `SendMessage` costs ~500 tokens; fresh-launching costs 3-5k tokens. Continue for scoped fixes. Fresh-launch only for fundamental approach changes, tier upgrades, or scope changes that invalidate prior work.

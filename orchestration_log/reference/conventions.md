@@ -1,5 +1,5 @@
 # Conventions
-Last updated: 2026-04-30
+Last updated: 2026-06-24
 
 Established patterns and principles governing plugin development in this marketplace. All conventions trace to observed model behavior, documented platform constraints, or empirical optimization results.
 
@@ -787,3 +787,49 @@ hooks/templates/
 **Platform note:** `agent_type` is available in the hook's stdin JSON as of the current Claude Code release. Parse with python3 `json.load(sys.stdin)["agent_type"]`.
 
 **Evidence:** manifesto 2.3.0, session 2026-04-30 (commit 0e603e5).
+
+---
+
+## XML-Style Structured Input for Skills
+
+**Core rule:** Use XML tags for structural boundaries in skill files. Claude attends to XML tags as hard scope delimiters more reliably than markdown headers.
+
+**Tag naming:** Active imperative voice. Tag names are directives the model reads, not section labels for humans. Examples: `<you_are_the_orchestrator>`, `<receive_the_task>`, `<design_the_delegation>`, `<launch_and_monitor>`.
+
+**Content inside tags:** Plain prose + markdown tables (for data mappings) + inline backticks (for tool/parameter names). No bold, no headers, no bullets, no code fences, no blockquotes inside XML tags.
+
+**Neg/pos example pairs:** Use `<never_do_this reason="consequence in 3-5 words">` and `<do_exactly_this>` tags. The `reason` attribute on the negative tag embeds consequence as metadata. No other tags carry attributes.
+
+**Embedded invoke syntax:** Example pairs can contain `<invoke>` / `<parameter>` elements showing actual tool call syntax. These parse as real XML. Escape `&` as `&amp;` and `<` as `&lt;` in parameter content (e.g., bash commands with `&&` or `<<`). Avoid heredoc syntax in examples — use descriptive placeholders instead.
+
+**Shorthand tokens for examples:** `[9-section prompt]`, `[9-section prompt with output path]`, `[task prompt]` — placeholder tokens for prompt content not the subject of the example. `...` for sequential continuation (replaces "Then:" prose).
+
+**Evidence:** Session 2026-06-24. Anthropic migration guide uses `<search_first>` pattern for behavioral instructions. Claude Code harness uses XML extensively (`<system-reminder>`, `<task-notification>`, `<example>`).
+
+---
+
+## Native Vocabulary Preference
+
+**Core rule:** Use Claude Code's native platform vocabulary in skill files wherever a native equivalent exists. Native terms are recognized faster by the model.
+
+**Key replacements (SKILL term -> NATIVE term):** dispatch -> launch. subagent -> agent. completion summary -> notification. re-launch -> launch again. fan-out -> parallel launch. swarm -> parallel agents. blocking wait -> foreground. relay anti-pattern -> describe the mistake directly.
+
+**Retain (no native equivalent):** model ladder, tier, haiku/sonnet/opus, guidance authorship, liveness cron, staleness detection, ARRIVE/WORK/LEAVE, prompt anatomy.
+
+**Source of native terms:** Agent tool ("launch a new agent"), Bash tool ("run in the background"), CronCreate ("schedule", "fire"), TaskOutput ("block"), TaskStop ("stops a running background task"). Full vocabulary map at `orchestration_log/recon/2026-06-22/skill-review/native-vocabulary-map.md`.
+
+**Evidence:** Session 2026-06-24. Seven vocabulary conflicts identified and resolved in favor of native terms.
+
+---
+
+## Lifecycle-Organized Skill Structure
+
+**Core rule:** Organize orchestration skills by the orchestrator's operational lifecycle, not by abstract concepts.
+
+**Lifecycle phases:** identity -> receive task -> design delegation -> launch and monitor -> verify and assemble -> session management.
+
+**Rationale:** Concept-organized structures split related content across distant sections. Operational rules integrate naturally at the lifecycle phase where they fire.
+
+**DRY enforcement:** State each piece of knowledge once. Governing principles sections that restate body content are DRY violations — eliminate them.
+
+**Evidence:** Session 2026-06-24. 12-section concept structure replaced by 6-section lifecycle. 14 governing principles eliminated (12 were DRY violations). 9 operational rules integrated at point of use.
