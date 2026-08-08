@@ -173,3 +173,8 @@ Evidence: `orchestration/skills/agentic-delegation/SKILL.md`; `orchestration/MAI
 
 An agent that did not write the changes ran 20 checks: 19 passed on the first sweep, the one failure misattributed an artifact's authorship inside the direct-write boundary, and the corrected state verified clean. License: measured verdict.
 Evidence: `orchestration_log/history/2026-08-08/session.md`; commit `ce49a77`.
+
+## 2026-08-08 — session-state.md collapsed; session.md written at will
+
+The scratch continuity file is retired. The orchestrator writes `orchestration_log/history/${DATE}/session.md` directly, at will, same as the five living files and `failures.md` — a seven-file exception. One session, one continuity surface. License: owner ruling.
+Evidence: session transcript 2026-08-08; commit pending (orchestration 4.2.0).

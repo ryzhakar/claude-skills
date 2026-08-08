@@ -19,7 +19,8 @@
 - **Land** — committed on `refactor/orchestration-artifact-management` as `ce49a77`, then fast-forwarded onto `main`.
 - **Checkpoint** — first checkpoint recorded post-land, marking the boundary before the migration phase began.
 - **Migration** — moved this repo's own `orchestration_log/reference/` onto the five-file ontology: added `capabilities.md`, `decisions.md`, `ground-truth.md`, `user_deferred_items.md`; retired `codebase_state.md` and `deferred_items.md`; trimmed `conventions.md` and `agents-reference.md`. Uncommitted at LEAVE L5.
-- **LEAVE** — this record.
+- **LEAVE** — session record finalized, verification sweep run (2 pointer-durability findings disposed), committed as `fe26145`.
+- **Post-close ruling (owner)** — `session-state.md` collapsed; `session.md` joined the at-will write set (seven-file exception). Applied across agentic-delegation, session-checkpoint, session-close, hooks; orchestration 4.2.0. Decision recorded in `decisions.md`.
 
 ## Pointers
 

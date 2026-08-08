@@ -152,4 +152,4 @@ The orchestration plugin has two ARRIVE hooks that inject the five-file read ord
 | SessionStart | `startup\|resume` | Injects the read order — `ground-truth.md`, `user_deferred_items.md`, the `decisions.md` tail, `capabilities.md`, `conventions.md` — at session start or resume |
 | PostCompact | `*` | Same injection after compaction |
 
-The script appends one line naming `orchestration_log/recon/${DATE}/session-state.md` when that file exists. The read order itself lives in `hooks/templates/arrive-context.txt`; agentic-delegation's `<manage_the_session>` owns its content.
+The read order itself lives in `hooks/templates/arrive-context.txt`; agentic-delegation's `<manage_the_session>` owns its content.

@@ -32,7 +32,7 @@ Triggers: "research an ecosystem", "survey the landscape", "evaluate options for
 
 ### [session-checkpoint](skills/session-checkpoint/SKILL.md)
 
-Flushes decisions not yet written and dumps in-flight operational state to disposable scratch. Two functions, nothing else: append any decision made this session that is missing from orchestration_log/reference/decisions.md, and overwrite orchestration_log/recon/${DATE}/session-state.md with current lanes, worktrees, watchers, and blockers.
+Flushes decisions not yet written and brings the session record current. Two functions, nothing else: append any decision made this session that is missing from orchestration_log/reference/decisions.md, and append to orchestration_log/history/${DATE}/session.md what has happened since its last write — phases completed, work in flight, and current direction.
 Triggers: "checkpoint", "save session state", "capture progress", "session-checkpoint", "snapshot the session", "save context".
 
 
@@ -40,7 +40,7 @@ Triggers: "checkpoint", "save session state", "capture progress", "session-check
 
 ### [session-close](skills/session-close/SKILL.md)
 
-Runs the LEAVE protocol: verify memory completeness, then commit. Six ordered steps — verify the .gitignore patterns, finalize orchestration_log/history/${DATE}/failures.md, dispatch a verification sweep across the five living files, dispose every finding by direct write, draft and correct orchestration_log/history/${DATE}/session.md, commit orchestration_log/. Optional telemetry follows: session metrics, verbatim /cost into gitignored cost.md, orphan-script sweep.
+Runs the LEAVE protocol: verify memory completeness, then commit. Six ordered steps — verify the .gitignore patterns, finalize orchestration_log/history/${DATE}/failures.md, dispatch a verification sweep across the five living files, dispose every finding by direct write, finalize orchestration_log/history/${DATE}/session.md, commit orchestration_log/. Optional telemetry follows: session metrics, verbatim /cost into gitignored cost.md, orphan-script sweep.
 Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "session-close". Invoked ONLY when the user explicitly requests session close.
 
 

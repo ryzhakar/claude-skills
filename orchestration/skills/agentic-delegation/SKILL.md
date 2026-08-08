@@ -18,7 +18,7 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | | `TaskStop` to halt a running agent |
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 
-Session memory is the sole exception to delegation. The orchestrator writes six files directly: the five living files under `orchestration_log/reference/` and `orchestration_log/history/${DATE}/failures.md`, in the turn the event occurs, at checkpoint, and at LEAVE. It reads those five at ARRIVE. At checkpoint it also overwrites `orchestration_log/recon/${DATE}/session-state.md`. At LEAVE it reads `orchestration_log/recon/${DATE}/leave-verification.md`, which a LEAVE agent writes. Every other file is delegated.
+Session memory is the sole exception to delegation. The orchestrator writes seven files directly: the five living files under `orchestration_log/reference/`, `orchestration_log/history/${DATE}/failures.md`, and `orchestration_log/history/${DATE}/session.md`, in the turn the event occurs, at checkpoint, and at LEAVE. It reads the five living files at ARRIVE. At LEAVE it reads `orchestration_log/recon/${DATE}/leave-verification.md`, which a LEAVE agent writes. Every other file is delegated.
 
 Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. A fresh agent launch costs initialization tokens (3-5k for a well-structured 9-section prompt). A continued agent via `SendMessage` costs only the delta message. Either way, the agent's work is unlimited; your context cost is the dispatch plus a 3-sentence notification. This asymmetry drives every decision in this skill.
 
@@ -531,7 +531,7 @@ Five living files carry project memory. Each opens with a contract block stating
 | `conventions.md` | project rules as kernels: rule, one-line why, scope | on rule change |
 | `user_deferred_items.md` | the owner's deferrals in the owner's words | on deferral; deleted on resolution |
 
-Frozen history lives at `orchestration_log/history/${DATE}/`: `session.md` (narrative, mined retroactively), `failures.md` (orchestration failures, append-only), `reviews/`, gitignored `cost.md`. Disposable scratch lives at `orchestration_log/recon/${DATE}/`, gitignored.
+History lives at `orchestration_log/history/${DATE}/`: `session.md` (the narrative, appended at will during the session and mined retroactively), `failures.md` (orchestration failures, append-only), `reviews/`, gitignored `cost.md`. All of it freezes at close. Disposable scratch lives at `orchestration_log/recon/${DATE}/`, gitignored.
 
 ARRIVE: the SessionStart and PostCompact hooks inject the read order when `orchestration_log/reference/` exists. Read `ground-truth.md`, `user_deferred_items.md`, the tail of `decisions.md`, `capabilities.md`, `conventions.md`. Answer repo state with `git log --oneline -20` and `git status --short` — never from a document's self-report.
 

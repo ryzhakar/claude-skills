@@ -3,8 +3,8 @@ name: session-close
 description: >
   Runs the LEAVE protocol: verify memory completeness, then commit. Six ordered steps — verify
   the .gitignore patterns, finalize orchestration_log/history/${DATE}/failures.md, dispatch a
-  verification sweep across the five living files, dispose every finding by direct write, draft
-  and correct orchestration_log/history/${DATE}/session.md, commit orchestration_log/. Optional
+  verification sweep across the five living files, dispose every finding by direct write, finalize
+  orchestration_log/history/${DATE}/session.md, commit orchestration_log/. Optional
   telemetry follows: session metrics, verbatim /cost into gitignored cost.md, orphan-script sweep.
 
   Triggers: "close the session", "do session paperwork", "write the session record",
@@ -32,11 +32,10 @@ The `agentic-delegation` skill owns that order. This skill owns LEAVE.
 | L3 | `orchestration_log/reference/decisions.md` | orchestrator, in the turn a decision is made; checkpoint flushes any missed | ARRIVE step 3 (tail) | markdown, append-only | yes |
 | L4 | `orchestration_log/reference/conventions.md` | orchestrator, in the turn a rule is established or retired | ARRIVE step 5 | markdown | yes |
 | L5 | `orchestration_log/reference/user_deferred_items.md` | orchestrator, on owner deferral; entry deleted on resolution | ARRIVE step 2 | markdown | yes |
-| H1 | `orchestration_log/history/${DATE}/session.md` | LEAVE L4 sonnet drafts, orchestrator corrects | retroactive mining, audits — never ARRIVE | markdown, frozen at close | yes |
+| H1 | `orchestration_log/history/${DATE}/session.md` | orchestrator, at will during the session; frozen at close | retroactive mining, audits — never ARRIVE | markdown, frozen at close | yes |
 | H2 | `orchestration_log/history/${DATE}/failures.md` | orchestrator, in the turn a failure is diagnosed | retroactive mining, convention derivation | markdown, append-only, frozen at close | conditional (absent when the session had no failures) |
 | H3 | `orchestration_log/history/${DATE}/reviews/` | review-producing agents during the session | audits, LEAVE verification | markdown, frozen | conditional (reviews ran) |
 | H4 | `orchestration_log/history/${DATE}/cost.md` | LEAVE L6, haiku writes verbatim `/cost` | human audit only — never ARRIVE | markdown, gitignored, never committed | conditional (skip when the user directs no cost capture; otherwise required) |
-| S1 | `orchestration_log/recon/${DATE}/session-state.md` | checkpoint, overwritten each invocation | the same session after compaction; LEAVE L4 draft | markdown, disposable, gitignored | conditional (checkpoint ran) |
 | S2 | `orchestration_log/recon/${DATE}/leave-verification.md` | LEAVE L2 sonnet agent | orchestrator at L3 | markdown, disposable, gitignored | yes at close |
 | S3 | `orchestration_log/recon/${DATE}/*.md` | dispatched agents during the session | orchestrator, same session | markdown, disposable, gitignored | conditional |
 | S4 | `orchestration_log/recon/${DATE}/session_metrics.md` | LEAVE L6 haiku via `extract_metrics.py` | human audit — no LEAVE step consumes it | markdown, disposable, gitignored | optional telemetry |
@@ -84,15 +83,14 @@ entry, delete resolved owner items, replace or supplement gitignored pointers, c
 overlong contract block, move failure content to `failures.md`, date or delete a bare count.
 This step is not delegated.
 
-### L4 — Session record (sonnet drafts, orchestrator corrects)
+### L4 — Session record (orchestrator, direct write)
 
-Dispatch a sonnet agent to write `orchestration_log/history/${DATE}/session.md`. Point it at
-`decisions.md` entries dated today, `history/${DATE}/failures.md`, `recon/${DATE}/session-state.md`,
-prior session records for format, and `git log`. The record carries the header block, a timeline of
-phases anchored to commits, and pointers. Failures appear as a few words plus `see failures.md`.
-
-The orchestrator then adds phases that produced no commits, conversation-driven decisions, and user
-corrections, and verifies every file path and signature against source.
+Bring `orchestration_log/history/${DATE}/session.md` to final form: the canonical header block, a
+timeline of phases anchored to commits, and pointers. Draw on `decisions.md` entries dated today,
+`history/${DATE}/failures.md`, prior session records for format, and `git log`. Failures appear as a
+few words plus `see failures.md`. Cover phases that produced no commits, conversation-driven
+decisions, and user corrections, and verify every file path and signature against source.
+This step is not delegated.
 
 ### L5 — Commit (haiku)
 
