@@ -32,7 +32,7 @@ Triggers: "research an ecosystem", "survey the landscape", "evaluate options for
 
 ### [session-checkpoint](skills/session-checkpoint/SKILL.md)
 
-Captures context-dependent session state before compaction destroys it. Writes directly to session.md, deferred_items.md, codebase_state.md, and conventions.md — the same artifact paths session-close uses (A4, A6, A7, A8). Each invocation appends a timestamped section. session-close invokes checkpoint as Step 0 before adding computed data and close ceremony.
+Flushes decisions not yet written and dumps in-flight operational state to disposable scratch. Two functions, nothing else: append any decision made this session that is missing from orchestration_log/reference/decisions.md, and overwrite orchestration_log/recon/${DATE}/session-state.md with current lanes, worktrees, watchers, and blockers.
 Triggers: "checkpoint", "save session state", "capture progress", "session-checkpoint", "snapshot the session", "save context".
 
 
@@ -40,8 +40,8 @@ Triggers: "checkpoint", "save session state", "capture progress", "session-check
 
 ### [session-close](skills/session-close/SKILL.md)
 
-Governs the ARRIVE/WORK/LEAVE session lifecycle for orchestration sessions. Covers session start (reference doc ingestion), session work (convention adherence), and session close (checkpoint invocation, metric extraction, session record, reference updates, cost capture to gitignored cost.md, VCS commit).
-Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "start a session", "ARRIVE", "session lifecycle". Invoked ONLY when the user explicitly requests session close.
+Runs the LEAVE protocol: verify memory completeness, then commit. Six ordered steps — verify the .gitignore patterns, finalize orchestration_log/history/${DATE}/failures.md, dispatch a verification sweep across the five living files, dispose every finding by direct write, draft and correct orchestration_log/history/${DATE}/session.md, commit orchestration_log/. Optional telemetry follows: session metrics, verbatim /cost into gitignored cost.md, orphan-script sweep.
+Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "session-close". Invoked ONLY when the user explicitly requests session close.
 
 
 **Scripts:** [`extract_metrics.py`](skills/session-close/scripts/extract_metrics.py)

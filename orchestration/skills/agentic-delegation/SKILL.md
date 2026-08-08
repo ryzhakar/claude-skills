@@ -18,7 +18,7 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | | `TaskStop` to halt a running agent |
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 
-The `/session-checkpoint` skill requires direct file operations. The prohibition suspends for checkpoint duration. No carryover.
+Session memory is the sole exception to delegation. The orchestrator writes six files directly: the five living files under `orchestration_log/reference/` and `orchestration_log/history/${DATE}/failures.md`, in the turn the event occurs, at checkpoint, and at LEAVE. It reads those five at ARRIVE. At checkpoint it also overwrites `orchestration_log/recon/${DATE}/session-state.md`. At LEAVE it reads `orchestration_log/recon/${DATE}/leave-verification.md`, which a LEAVE agent writes. Every other file is delegated.
 
 Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. A fresh agent launch costs initialization tokens (3-5k for a well-structured 9-section prompt). A continued agent via `SendMessage` costs only the delta message. Either way, the agent's work is unlimited; your context cost is the dispatch plus a 3-sentence notification. This asymmetry drives every decision in this skill.
 
@@ -519,29 +519,31 @@ When synthesis requires reading full reports, delegate to a sonnet or opus agent
 </verify_and_assemble>
 
 <manage_the_session>
-Every orchestration session follows three phases: ARRIVE, WORK, LEAVE. Full close-out workflow lives in the `session-close` skill.
+Every orchestration session runs three phases: ARRIVE, WORK, LEAVE. Full close-out lives in the `session-close` skill; mid-session capture lives in `session-checkpoint`.
 
-| Layer | Path | Mutability | Content |
-|-------|------|-----------|---------|
-| reference | `orchestration_log/reference/` | Living, updated each session | `conventions.md`, `codebase_state.md`, `deferred_items.md` |
-| history | `orchestration_log/history/` | Frozen, append-only | Date-stamped `session.md`, `cost.md` (gitignored), `reviews/` |
-| recon | `orchestration_log/recon/` | Disposable, gitignored | Raw agent reports, research findings |
+Five living files carry project memory. Each opens with a contract block stating what it holds, what it refuses, and when it changes.
 
-ARRIVE: read `reference/conventions.md`, `reference/codebase_state.md`, `reference/deferred_items.md`, and `git log --oneline -20`. Two minutes. Prevents repeating solved problems, violating conventions, missing known risks.
+| File (`orchestration_log/reference/`) | Holds | Changes |
+|---|---|---|
+| `ground-truth.md` | task, success criterion, data, protocol, fixed constraints | on owner override |
+| `capabilities.md` | inventory, surface, vocabulary, limits, dated measured facts | on merge |
+| `decisions.md` | append-only entries: decision, one-line why, license tag, evidence | in the turn decided |
+| `conventions.md` | project rules as kernels: rule, one-line why, scope | on rule change |
+| `user_deferred_items.md` | the owner's deferrals in the owner's words | on deferral; deleted on resolution |
 
-WORK: follow conventions. Launch agents per this skill. Every convention exists because violating it caused a documented problem.
+Frozen history lives at `orchestration_log/history/${DATE}/`: `session.md` (narrative, mined retroactively), `failures.md` (orchestration failures, append-only), `reviews/`, gitignored `cost.md`. Disposable scratch lives at `orchestration_log/recon/${DATE}/`, gitignored.
 
-LEAVE: extract metrics, draft session record, update reference docs, capture cost to gitignored `cost.md`, commit. Invoke `session-close`.
+ARRIVE: the SessionStart and PostCompact hooks inject the read order when `orchestration_log/reference/` exists. Read `ground-truth.md`, `user_deferred_items.md`, the tail of `decisions.md`, `capabilities.md`, `conventions.md`. Answer repo state with `git log --oneline -20` and `git status --short` — never from a document's self-report.
+
+WORK: write memory on events, not on ceremonies. A ruling lands in `decisions.md` in the turn it is spoken. A merge carries its `capabilities.md` delta in the same turn. A resolved owner item is deleted, not marked. A diagnosed failure lands in `failures.md`. The orchestrator makes these writes directly, under the session-memory exception. Every other file is delegated.
+
+LEAVE: verify completeness, then commit. Invoke `session-close`.
+
+Two invariants govern every living file.
+
+One knowledge, one home. Every other mention is a one-line pointer.
+
+No living document describes itself, its process, or its status. The contract block is the whole of the permitted self-description.
 
 A document survives refactoring if and only if every claim it makes requires a human decision to become false.
-
-| Category | Drift behavior | Rule |
-|----------|---------------|------|
-| Decision record | Stable across refactoring | Write when decided; update only on reversal |
-| Capability inventory | Stable; reviewed each LEAVE | Semantic descriptions, no signatures |
-| Status snapshot | Decays within hours | Regenerate by running measurement commands; never from session memory |
-| Interface specification | Decays within hours | PROHIBITED in reference docs. Source code is truth. |
-| Session record | Frozen at LEAVE | Append-only per-session narrative |
-
-Reference docs carry decision records and capability inventories only. Launch agents from source files for interface detail, not reference doc sections.
 </manage_the_session>

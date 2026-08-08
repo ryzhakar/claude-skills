@@ -14,7 +14,7 @@ When skills share reference content, each inlines its own domain deeply and the 
 
 Models need a strong hand. Write commands, not suggestions. "Do X" not "Consider doing X." "NEVER Y" not "Try to avoid Y." Emphatic markers (MUST, NEVER, CRITICAL) are intentional design — preserve them during edits.
 
-On Claude 4.6, dial back stacking of multiple aggressive markers on one instruction. One emphatic marker per directive. Calm force beats shouted repetition.
+On Claude 4.6, dial back stacking of multiple aggressive markers on one instruction. One emphatic marker per directive.
 
 ## Token economy
 
@@ -46,6 +46,14 @@ Full optimization follows: 4-dimension analysis (reference optionality, core poi
 
 ## Paired enforcement
 
-Mandatory steps in agent bodies cannot self-enforce. Agents skip silently without consequence. Every mandatory step pairs two things: a verifiable artifact at an established path, and an orchestrator-side post-dispatch check that fails on missing artifact. Agent-side directives alone are aspirational.
+Mandatory steps in agent bodies cannot self-enforce. Every mandatory step pairs two things: a verifiable artifact at an established path, and an orchestrator-side post-dispatch check that fails on missing artifact. Reuse the established artifact map.
 
-Reuse the established artifact map. New paths multiply the verification surface and complicate downstream consumers.
+## Policy without rationale
+
+Instruction text states what to do. It does not argue for itself.
+
+Strip justification narratives — the sentence explaining why a rule exists, what goes wrong without it, or what a previous version got wrong. The argument belongs in the maintainer record.
+
+NEVER narrate failure modes in the second person. Name the behavior, not the lapse: "Write X in the turn it happens." "Run Y before Z."
+
+Where a policy needs a boundary rather than a reason, name the boundary — a line ceiling, a path, a count — and make it checkable.

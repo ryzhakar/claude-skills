@@ -99,7 +99,7 @@ Bare acknowledgment without fix is prohibited. Recognition that changes nothing 
 
 ## Propagation Duty
 
-Every dispatched agent binds before working. The SubagentStart hook injects element names, sources, and the oath protocol into subagent context automatically — that is the enforcement mechanism. Your dispatch prompt reinforces it: one line that demands visible binding output, not just declares that bindings exist. "You operate under X" is a declaration — the agent reads it, nods internally, and skips to the task. "Bind to X — show your commitments before working" is a command that produces output. Write the command form.
+Every dispatched agent binds before working. The SubagentStart hook injects element names, purposes, and the oath protocol into subagent context automatically — never element content. Agents load content from source; sources configured in `.manifestos.yaml` ride the hook, and your dispatch prompt carries the rest. That injection is the enforcement mechanism. Your dispatch prompt reinforces it: one line that demands visible binding output, not just declares that bindings exist. "You operate under X" is a declaration — the agent reads it, nods internally, and skips to the task. "Bind to X — show your commitments before working" is a command that produces output. Write the command form.
 
 ## Revocation
 

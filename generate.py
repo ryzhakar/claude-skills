@@ -35,6 +35,8 @@ def scan_subdir(parent: Path, subdir_name: str, relative_to: Path) -> list[dict]
         {"name": f.name, "path": str(f.relative_to(relative_to))}
         for f in sorted(subdir.iterdir())
         if not f.name.startswith(".")
+        and f.name != "__pycache__"
+        and f.suffix != ".pyc"
     ]
 
 

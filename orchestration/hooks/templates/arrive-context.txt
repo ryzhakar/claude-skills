@@ -1,9 +1,13 @@
-ARRIVE PROTOCOL — Read these reference docs before any work:
+ARRIVE PROTOCOL — read in this order before dispatching the first agent:
 
-1. ${REF_DIR}/conventions.md — how to work in this project
-2. ${REF_DIR}/codebase_state.md — what exists now, recent changes, next actions
-3. ${REF_DIR}/deferred_items.md — known debt and unresolved findings
+1. ${REF_DIR}/ground-truth.md — task, success criterion, data, protocol, fixed constraints
+2. ${REF_DIR}/user_deferred_items.md — the owner's open intentions, in the owner's words
+3. ${REF_DIR}/decisions.md — read the tail: tail -n 150 ${REF_DIR}/decisions.md
+4. ${REF_DIR}/capabilities.md — what the system is and does
+5. ${REF_DIR}/conventions.md — how to work in this project
 
-Also run: git log --oneline -20
+Answer repo state with git, never from a document: git log --oneline -20 and git status --short.
 
-This is not optional. Conventions are constraints derived from prior failures. Skipping ARRIVE means repeating solved problems, violating conventions, or missing known risks.
+Write memory on events. A ruling reaches decisions.md in the turn it is spoken; a merge carries its
+capabilities.md delta in the same turn; a resolved owner item is deleted. The agentic-delegation
+skill governs this order.

@@ -18,13 +18,6 @@ from datetime import datetime
 from pathlib import Path
 
 
-COST_PER_1M = {
-    "opus":   {"input": 15.00, "output": 75.00, "cache_read": 1.50,  "cache_write": 3.75},
-    "sonnet": {"input":  3.00, "output": 15.00, "cache_read": 0.30,  "cache_write": 0.75},
-    "haiku":  {"input":  0.80, "output":  4.00, "cache_read": 0.08,  "cache_write": 0.20},
-}
-
-
 def model_tier(model_str: str) -> str:
     if not model_str:
         return "unknown"
@@ -36,18 +29,6 @@ def model_tier(model_str: str) -> str:
     if "opus" in m:
         return "opus"
     return "unknown"
-
-
-def compute_cost(tier: str, usage: dict) -> float:
-    rates = COST_PER_1M.get(tier)
-    if not rates:
-        return 0.0
-    return (
-        usage.get("input_tokens", 0)                / 1e6 * rates["input"]
-        + usage.get("output_tokens", 0)             / 1e6 * rates["output"]
-        + usage.get("cache_read_input_tokens", 0)   / 1e6 * rates["cache_read"]
-        + usage.get("cache_creation_input_tokens", 0) / 1e6 * rates["cache_write"]
-    )
 
 
 def parse_jsonl(path: Path) -> list[dict]:
@@ -109,14 +90,6 @@ def extract_metrics(root: Path) -> dict:
                 if isinstance(block, dict) and block.get("type") == "tool_use":
                     tool_calls[block.get("name", "unknown")] += 1
 
-    # Compute costs
-    costs = {tier: compute_cost(tier, {
-        "input_tokens": d["input"],
-        "output_tokens": d["output"],
-        "cache_read_input_tokens": d["cache_read"],
-        "cache_creation_input_tokens": d["cache_write"],
-    }) for tier, d in tokens.items()}
-
     return {
         "sessions": sorted(sessions),
         "agent_count": len(agents),
@@ -125,12 +98,10 @@ def extract_metrics(root: Path) -> dict:
         "latest": max(timestamps) if timestamps else "unknown",
         "tool_calls": dict(sorted(tool_calls.items(), key=lambda x: -x[1])),
         "tokens": tokens,
-        "costs": costs,
     }
 
 
 def format_report(m: dict, root: Path) -> str:
-    total_cost = sum(m["costs"].values())
     lines = [
         f"# Session Metrics",
         f"",
@@ -146,24 +117,21 @@ def format_report(m: dict, root: Path) -> str:
         f"| Subagents dispatched | {m['agent_count']:,} |",
         f"| Earliest timestamp | {m['earliest'][:19]} |",
         f"| Latest timestamp | {m['latest'][:19]} |",
-        f"| **Total estimated cost** | **${total_cost:,.2f}** |",
         f"",
         f"## Token Usage by Model Tier",
         f"",
-        f"| Tier | Input | Output | Cache Read | Cache Write | Est. Cost |",
-        f"|------|-------|--------|------------|-------------|-----------|",
+        f"| Tier | Input | Output | Cache Read | Cache Write |",
+        f"|------|-------|--------|------------|-------------|",
     ]
     for tier in ("opus", "sonnet", "haiku", "unknown"):
         t = m["tokens"][tier]
-        c = m["costs"][tier]
         if any(t.values()):
             lines.append(
                 f"| {tier.title()} "
                 f"| {t['input']:,} "
                 f"| {t['output']:,} "
                 f"| {t['cache_read']:,} "
-                f"| {t['cache_write']:,} "
-                f"| ${c:.2f} |"
+                f"| {t['cache_write']:,} |"
             )
     lines += [
         f"",

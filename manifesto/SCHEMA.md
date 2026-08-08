@@ -107,6 +107,8 @@ Reads `agent_type` from stdin JSON. Matches against `subagents:` keys in `.manif
 
 Injects the FULL binding ceremony — same resolution protocol, transitive reading, interplay analysis, and manifesto-oath mandate as the orchestrator hooks. This is a real binding injection, not a reminder.
 
+The ceremony carries element names, purposes, and configured sources — never element content. Subagents read or fetch each element themselves; dispatch prompts carry sources for elements the config omits.
+
 Tier 2 resolution injects the plugin cache path so subagents can resolve skills from the installed plugin location without knowing the absolute path at authoring time.
 
 ### UserPromptSubmit

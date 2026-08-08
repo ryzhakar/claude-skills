@@ -77,6 +77,6 @@ User-provided elements cannot be reliably recovered from a compacted summary —
 
 ## Subagent Constitution Dispatch
 
-The SubagentStart hook injects role-matched constitution bindings into subagents automatically. You MAY add extra elements in dispatch prompts to augment the automatic stack.
+The SubagentStart hook injects role-matched element names, purposes, and the oath protocol into subagents automatically — never element content. Subagents load content from source, so your dispatch prompt MUST carry the path or URL for every element without a configured source. You MAY add extra elements in dispatch prompts to augment the automatic stack.
 FOOTER
 } | emit_json

@@ -87,6 +87,8 @@ These invariants apply to ALL orchestration skills in this plugin.
 
 Any analysis beyond reading a status code is itself work that must be re-delegated to agents, preferably in parallel.
 
+**Carve-out — session memory.** The orchestrator's direct file access is bounded by the session-memory exception defined in `skills/agentic-delegation/SKILL.md`, opening section. Everything outside that boundary is delegated.
+
 ### Communication Model
 
 Agents communicate through artifacts on disk. The orchestrator routes via completion summaries.
@@ -143,11 +145,11 @@ When creating a new domain extension:
 
 ## Hooks
 
-The orchestration plugin has two ARRIVE hooks that inject reference document paths into context. Both use the same script and gate on `orchestration_log/reference/` existence — invisible when unconfigured.
+The orchestration plugin has two ARRIVE hooks that inject the five-file read order into context. Both use the same script and gate on `orchestration_log/reference/` existence — invisible when unconfigured.
 
 | Hook | Matcher | Purpose |
 |------|---------|---------|
-| SessionStart | `startup\|resume` | ARRIVE context injection — injects reference doc paths at session start or resume |
-| PostCompact | `*` | Same injection — re-injects after compaction wipes context |
+| SessionStart | `startup\|resume` | Injects the read order — `ground-truth.md`, `user_deferred_items.md`, the `decisions.md` tail, `capabilities.md`, `conventions.md` — at session start or resume |
+| PostCompact | `*` | Same injection after compaction |
 
-Both hooks ensure the model always has reference paths available regardless of whether the session just started, was resumed, or underwent compaction.
+The script appends one line naming `orchestration_log/recon/${DATE}/session-state.md` when that file exists. The read order itself lives in `hooks/templates/arrive-context.txt`; agentic-delegation's `<manage_the_session>` owns its content.
