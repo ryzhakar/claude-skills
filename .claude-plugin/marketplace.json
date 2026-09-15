@@ -91,6 +91,17 @@
       },
       "repository": "https://github.com/ryzhakar/claude-skills",
       "license": "MIT"
+    },
+    {
+      "name": "memento",
+      "source": "./memento/",
+      "description": "A memory and record-keeping system for agents without continuity across sessions.",
+      "version": "0.1.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
     }
   ]
 }
