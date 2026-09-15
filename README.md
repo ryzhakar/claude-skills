@@ -1,6 +1,6 @@
 # my-claude-skills
 
-19 skills · 9 agents across 9 plugins
+20 skills · 9 agents across 9 plugins
 
 ## Plugins
 
@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.0.0` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.3` | 2S |
-| [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.1.0` | 0S |
+| [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.1.0` | 1S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `4.2.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
@@ -50,6 +50,9 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 A memory and record-keeping system for agents without continuity across sessions.
 
+### Skills
+
+- **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — written instructions to be read and followed. Triggers: "create a skill", "write a skill", "new skill", "add a skill",...
 ## [orchestration](orchestration/) `4.2.0`
 
 Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.

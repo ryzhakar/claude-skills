@@ -299,6 +299,26 @@ Evidence: session 2026-09-15, adversarial authoring design.
 No concern is stripped from the existing plugin as its replacement lands. Both run; divergence is accepted for the duration. License: owner ruling.
 Evidence: `orchestration_log/recon/2026-09-15/five-axis-harvest.md`.
 
+## 2026-09-15 — A distributed skill assumes no repository-local tooling
+
+A skill shipped inside a plugin runs in projects holding none of this repository's commands. `just tokens`, the justfile, `generate.py`, and every local script are unavailable to it. A skill names only what the platform itself guarantees; where no portable method exists, the rule depending on it is dropped rather than stated unenforceably. License: owner ruling.
+Evidence: session 2026-09-15.
+
+## 2026-09-15 — Internal vocabulary never reaches a person
+
+The owner's words: "NONE of it EVER must leak to the user - user does not benfit nor cares for any of that, for them all of that language is confusing rather than revealing." System terms and a skill's internal language serve agent comprehension only. Every user-facing sentence uses ordinary words. Governs orchestrator reporting, skill output, and any text a person reads. License: owner ruling.
+Evidence: session 2026-09-15.
+
+## 2026-09-15 — skill-creation writes to the project-local skills directory and holds no record-management scope
+
+Authored skills land under `.claude/skills/`, not a plugin or marketplace layout. The skill carries no artifact map, record tier, corpus, or reconciliation content; those belong to other skills in the plugin. License: owner ruling.
+Evidence: `memento/skills/skill-creation/SKILL.md`; session 2026-09-15.
+
+## 2026-09-15 — Shared content is extracted into its own skill, never an internal reference
+
+The owner's words: "instead of internal references for shared parts, i choose to extract them into separate skills." Referencing another skill is permitted and is not a passive file pointer — the measured rule against pointed-to content governs files a reader must fetch, not skills the platform invokes. Artifact map and management becomes a skill referenced by both the record-keeping and orientation lanes. License: owner ruling.
+Evidence: `memento/ONTOLOGY.md`; session 2026-09-15.
+
 ## 2026-09-15 — Routine authority follows supply, not authorship
 
 A routine supplied by the owner carries owner authority regardless of who wrote it. A harness-provided routine latches onto user authority. Anything arbitrarily sourced, from a location the harness does not trust, requires explicit ratification before running. Online content is never trusted. License: owner ruling.
