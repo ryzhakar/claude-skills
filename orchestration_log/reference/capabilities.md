@@ -22,8 +22,8 @@ the ARRIVE/WORK/LEAVE frame, and the session-memory exception boundary), `resear
 (breadth-first survey then depth-first verification across a knowledge surface), `session-checkpoint`
 (decision flush plus in-flight state dump), `session-close` (the LEAVE protocol).
 Hooks: SessionStart on `startup|resume` and PostCompact on `*`, both running `session-arrive.sh`,
-which renders `templates/arrive-context.txt` when `orchestration_log/reference/` exists and appends
-the day's `session-state.md` path when that file exists.
+which renders `templates/arrive-context.txt` when `orchestration_log/reference/` exists. The script
+tests that one condition and has no other branch (measured 2026-09-15).
 Script: `skills/session-close/scripts/extract_metrics.py` parses session JSONL into token, agent, and
 tool-call totals.
 
@@ -77,7 +77,7 @@ plus a changes report).
 |---|---|---|
 | `reference/` | the five living files plus two standalone manuals | tracked |
 | `history/${DATE}/` | `session.md`, `failures.md`, `reviews/`, `cost.md` | tracked, except `cost.md` |
-| `recon/${DATE}/` | agent reports, `session-state.md`, `leave-verification.md`, telemetry | gitignored |
+| `recon/${DATE}/` | agent reports, `leave-verification.md`, telemetry | gitignored |
 
 `.gitignore` carries exactly two orchestration patterns: `orchestration_log/recon/` and
 `orchestration_log/history/*/cost.md`.
