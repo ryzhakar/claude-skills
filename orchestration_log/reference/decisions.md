@@ -218,3 +218,88 @@ Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`.
 
 The hook script tests only whether `orchestration_log/reference/` exists, then prints a static template. Nothing in the hook layer references `session-state.md`; the mechanism was deleted in the commit that retired the file. The retired name was also removed from the `recon/` contents row. License: measured verdict.
 Evidence: `orchestration_log/reference/capabilities.md`; `orchestration_log/recon/2026-09-15/hook-behavior-verification.md`.
+
+## 2026-09-15 — Delegated workers are peers, never limbs
+
+A worker dispatched inside a span returns a claim, marked at receipt, requiring verification before it grounds anything. Self-authority does not extend through a dispatch. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, authority model.
+
+## 2026-09-15 — The goal is never the agent's concern
+
+The owner's words: "goal CHANGES are always owner-triggered... if it's there, its the goal." The goal is read from the charter, never negotiated. No ratification request, no escalation, no proposal path. Absent goal means preservation mode. The charter file is implicitly holy. Removes the ratification process from the ontology. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, goal entity.
+
+## 2026-09-15 — memento holds no size ceilings, at any point
+
+The owner's words: "memento system is not concerned with size ceilings, never, at any point." Autoload is the charter file plus the closure of its `@`-pointers, which extend the always-loaded tier onto pointed files. No capacity limit, no demotion rule, no budget. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, record tiers.
+
+## 2026-09-15 — Contradictions in shipped orchestration skills are out of scope
+
+Declared entirely out of scope by the owner. Not to be re-raised, re-investigated, or re-reported in any future session. License: owner ruling.
+Evidence: owner directive, session 2026-09-15.
+
+## 2026-09-15 — Span measures memory continuity, not existence
+
+The owner's words: "span is NOT a unit of existence, it's unit of narrative or memory continuity... it's perfectly possible to die in the middle of the span." Existence continuity and memory continuity are orthogonal axes, not two grades of one boundary. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, boundary taxonomy.
+
+## 2026-09-15 — The digest is uncontrollable and carries self-authority
+
+The owner's words: "we 0 control over digest, but the digest content carries the authority of self." No fidelity schema, no field guarantees. An artifact the principal cannot author or inspect nonetheless enters the next span at the highest authority class. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, authority model.
+
+## 2026-09-15 — Peer claims get arbitrary-depth content verification, never shape-only
+
+The owner's words: "arbitrary-depth content verification, fully dependent on the impact. but NEVER existence-an-shape only." Depth scales with impact; a check confirming only that a file exists and parses is refused as verification. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, verification.
+
+## 2026-09-15 — No destruction mechanic; the environment is the eraser
+
+Paths deliberately downgraded to gitignored locations are de-facto disposable. The system declares no destruction process and offers no persistence guarantee: contents may be rewritten, erased, or created by the world. Useful for forensics within a span, unreliable beyond one. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, record tiers.
+
+## 2026-09-15 — Single principal assumed, unless the owner overrides
+
+Concurrency is not modelled. A second simultaneous principal requires the owner to override the assumption and supply the coping mechanism. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, open questions.
+
+## 2026-09-15 — Records track memory continuity only, never existence
+
+The owner's words: "records do not concern themselves with existence continuity." No boundary record distinguishes a crash from a clean end. Compaction is recorded as a memory event, not an existence event. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, boundary taxonomy.
+
+## 2026-09-15 — A waking cause carries a pat-down protocol, not a payload
+
+The woken run re-derives the truth from the corpus rather than inheriting instructions from the run that laid the cause. Removes stale-instruction risk; makes re-derivation a named process. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, waking causes.
+
+## 2026-09-15 — The digest is self-authored under derealisation
+
+The owner's words: "it is actually self-authored in a state of derealisation of sorts, then the memory of the process is lost, but the record is there." Authorship is real; only the memory of authoring it is gone. Full self-authority, no exception clause in the authority model. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, authority model.
+
+## 2026-09-15 — The first skill creates ontology routines in canonical skill form
+
+Skill form is the most-used lever of routine creation, not the exclusive one. The skill produces routines as the ontology defines them, shaped as Claude Code skills; other forms remain possible and unshipped. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, routines.
+
+## 2026-09-15 — The using-adversary receives the skill text alone
+
+No ontology, no references, nothing fetched. The test doubles as a self-containment check: a skill needing outside content to be usable fails by the same measurement that produced the inlining rule. License: owner ruling.
+Evidence: session 2026-09-15, adversarial authoring design.
+
+## 2026-09-15 — The adversarial authoring loop caps at six rounds, then ships
+
+Terminates early when the using-adversary reports zero forced guesses and the auditing-adversary reports zero self-violations. At round six the skill ships with its residue recorded. License: owner ruling.
+Evidence: session 2026-09-15, adversarial authoring design.
+
+## 2026-09-15 — orchestration stays untouched while memento is built
+
+No concern is stripped from the existing plugin as its replacement lands. Both run; divergence is accepted for the duration. License: owner ruling.
+Evidence: `orchestration_log/recon/2026-09-15/five-axis-harvest.md`.
+
+## 2026-09-15 — Routine authority follows supply, not authorship
+
+A routine supplied by the owner carries owner authority regardless of who wrote it. A harness-provided routine latches onto user authority. Anything arbitrarily sourced, from a location the harness does not trust, requires explicit ratification before running. Online content is never trusted. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, routines.
