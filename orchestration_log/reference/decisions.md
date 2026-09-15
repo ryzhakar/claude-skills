@@ -177,4 +177,44 @@ Evidence: `orchestration_log/history/2026-08-08/session.md`; commit `ce49a77`.
 ## 2026-08-08 — session-state.md collapsed; session.md written at will
 
 The scratch continuity file is retired. The orchestrator writes `orchestration_log/history/${DATE}/session.md` directly, at will, same as the five living files and `failures.md` — a seven-file exception. One session, one continuity surface. License: owner ruling.
-Evidence: session transcript 2026-08-08; commit pending (orchestration 4.2.0).
+Evidence: session transcript 2026-08-08; commit `00b3d68` (orchestration 4.2.0).
+
+## 2026-09-15 — Transcript size cannot distinguish a hung agent from a generating one
+
+A subagent transcript grows per completed message, not per token, so an agent composing a long document writes nothing for the whole generation. Zero delta across two samples is not evidence of a hang. `ls -la` on the harness output path reports the 142-byte symlink, never the transcript; `ls -laL` is required. License: measured verdict.
+Evidence: `orchestration_log/history/2026-09-15/failures.md`, entries 00:07 and 00:41.
+
+## 2026-09-15 — `TaskOutput` is unusable on a local agent from the orchestrator
+
+Deprecated for that task type. It returns the full subagent transcript and floods orchestrator context permanently. No non-flooding progress check for a local agent was identified. License: measured verdict.
+Evidence: `orchestration_log/history/2026-09-15/failures.md`, entry 00:41.
+
+## 2026-09-15 — The standing session-management system is not the evaluation baseline
+
+It is one project's coping mechanisms and will be transformed. Outside approaches are not scored against it. Conflicts are stated symmetrically, with what each side buys, what each costs, and the evidence each carries. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/skill-governance-and-harvest.md`, Part 3.
+
+## 2026-09-15 — `skill-governance-and-harvest.md` adopted in full as the standing record
+
+Sixteen governance rules, the mental model, eight symmetric conflicts, thirty-one harvest items, what was considered and excluded, and the source-reliability record. One document: the separate Anthropic integration report was folded in and deleted after section-by-section carry-over verification. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/skill-governance-and-harvest.md`.
+
+## 2026-09-15 — The skill evaluation harness is out of scope
+
+Paired with-and-without runs, trigger-rate query sets, held-out splits, blind judging, and aggregation are recorded as excluded by decision, not rejected on merit, with what each would have measured named beside it. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/skill-governance-and-harvest.md`, Part 5.
+
+## 2026-09-15 — Five concerns leave the orchestration plugin and get rebuilt
+
+Discontinuous existence, artifact management generalized under a declared schema, orientation, record keeping, and session management dissolved into a general system. Only artifact management, record keeping, and half of session management are textually fused; one sentence in `agentic-delegation` carries all three. No machine-readable schema exists for any Artifact Contract table. License: owner ruling.
+Evidence: `orchestration_log/recon/2026-09-15/five-axis-harvest.md`.
+
+## 2026-09-15 — The replacement system is defined ontology-first, before any skill is drafted
+
+`memento` is the system name, admitted because the word independently means an object kept as a reminder. The naming policy is a recoverability test: a term enters only if a reader who never met the source can recover the referent from the term plus one defining sentence. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`.
+
+## 2026-09-15 — `capabilities.md` corrected: the arrive hook has one condition and no session-state branch
+
+The hook script tests only whether `orchestration_log/reference/` exists, then prints a static template. Nothing in the hook layer references `session-state.md`; the mechanism was deleted in the commit that retired the file. The retired name was also removed from the `recon/` contents row. License: measured verdict.
+Evidence: `orchestration_log/reference/capabilities.md`; `orchestration_log/recon/2026-09-15/hook-behavior-verification.md`.
