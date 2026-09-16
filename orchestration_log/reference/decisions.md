@@ -299,6 +299,26 @@ Evidence: session 2026-09-15, adversarial authoring design.
 No concern is stripped from the existing plugin as its replacement lands. Both run; divergence is accepted for the duration. License: owner ruling.
 Evidence: `orchestration_log/recon/2026-09-15/five-axis-harvest.md`.
 
+## 2026-09-16 — A built-in schema ships with the plugin; a project config replaces it
+
+Closes the bootstrap gap. A working schema always exists, so no project ever starts in a state where nothing qualifies as a record and nothing can legally supply the first one. License: owner ruling.
+Evidence: `orchestration_log/recon/2026-09-15/ontology-config-audit.md`; `memento/ONTOLOGY.md`.
+
+## 2026-09-16 — Harness-supplied content inherits owner authority for schemas, not only routines
+
+Widens the existing inheritance rule so the shipped default carries owner standing. No new author class. License: owner ruling.
+Evidence: `orchestration_log/recon/2026-09-15/ontology-config-audit.md`.
+
+## 2026-09-16 — Exactly one schema is ever in force
+
+Loading a project config replaces the built-in default outright rather than coexisting with it. Two schemas never disagree, so the contradiction-without-supersession fault cannot trip. A config is whole, never partial. License: owner ruling.
+Evidence: `orchestration_log/recon/2026-09-15/ontology-config-audit.md`.
+
+## 2026-09-16 — The config supplies the schema; `map` keeps its derived meaning
+
+Owner delegated the naming. The schema already means what the config declares — record kinds, homes, event taxonomy, verification demands — so the config needs no new term and nothing in the ontology is renamed. `map` continues to name the index built from what exists. The owner's phrase "artifact map" is retired as a term of art. License: orchestrator call under delegated authority.
+Evidence: `memento/ONTOLOGY.md`; naming policy, recoverability test.
+
 ## 2026-09-15 — A distributed skill assumes no repository-local tooling
 
 A skill shipped inside a plugin runs in projects holding none of this repository's commands. `just tokens`, the justfile, `generate.py`, and every local script are unavailable to it. A skill names only what the platform itself guarantees; where no portable method exists, the rule depending on it is dropped rather than stated unenforceably. License: owner ruling.
