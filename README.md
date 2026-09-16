@@ -52,7 +52,7 @@ A memory and record-keeping system for agents without continuity across sessions
 
 ### Skills
 
-- **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — written instructions to be read and followed. Triggers: "create a skill", "write a skill", "new skill", "add a skill",...
+- **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — text to be read and followed. "create a skill", "write a skill", "new skill", "add a skill", "make this repeatable", or...
 ## [orchestration](orchestration/) `4.2.0`
 
 Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.
