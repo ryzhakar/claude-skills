@@ -547,3 +547,25 @@ Two questions were put to the owner in the system's terms — tiers, grounds, pa
 
 The owner holds none of the internal model in mind and should not have to. A question earns an answer by pointing at something the owner already recognizes and asking what should happen to it. This binds every question `/setup` puts to a fresh owner, where the gap is wider still. License: measured verdict, two failures and two successes.
 Evidence: session transcript 2026-09-17.
+
+## 2026-09-17 — Five design calls setup made where the ontology is silent
+
+Writing `setup` forced five decisions the design does not settle, each taken as the nearest defensible fit and each open to reversal.
+
+A project that already carries a charter is handed to `corpus-reconciliation`. The ontology has no reconfigure process, and reconciliation is the closest thing to one without being built for it.
+
+Files found during migration are treated as unknown-authored and routed through quarantine to `owner-ruling`. This follows from `record-writing`'s authorship rules but is stated in no skill.
+
+Content the owner rules kept as data goes to the archive beside retirements. `owner-ruling` names the shape and no home for it.
+
+The charter gains one directive naming `memento:init`. Nothing in the design puts it there, and with both hooks unbuilt it is the only live mechanism that starts anything.
+
+`setup` never interviews for the frame. The frame is owner-stated and the ontology supplies no way to source one, so an empty frame home surfaces in the closing list by path rather than being filled by interview.
+
+License: orchestrator call, taken under the owner's instruction to settle what does not need an owner.
+Evidence: `memento/skills/setup/SKILL.md`.
+
+## 2026-09-17 — The plugin's own root is named by variable, never by prose
+
+`setup` reaches the shipped default through `${CLAUDE_PLUGIN_ROOT}`. `schema-resolution` names the same location as "in this plugin", which resolves for no reader and is recorded as residue. The variable is the form; the prose is the defect. License: orchestrator call.
+Evidence: `memento/skills/setup/SKILL.md`; `memento/skills/schema-resolution/SKILL.md`; `memento/maintainers/coverage.md`.
