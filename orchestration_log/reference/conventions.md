@@ -67,3 +67,26 @@ description (`capabilities.md`).
 - **This repo's constitution stack lives in `.manifestos.yaml`, grouped form.** `you:` binds the
   orchestrator and `subagents:` binds by agent type; a flat list at root binds the orchestrator only.
   Full schema: `manifesto/SCHEMA.md`. Governs the repo root config.
+
+- **Instruction text is built by an author against two blind checkers, iterating to a cap.** One agent
+  writes; one checker audits the draft against its governing standard; one checker reads the draft alone
+  and follows it literally on a case it invents, counting every point that forces a guess. Neither checker
+  sees the other's report or the author's reasoning, because a checker that knows the intent stops reading
+  what the text says. Each report opens with `PENDING` on line one, replaced by a bare integer as the final
+  edit, so a file that exists is distinguishable from a check that finished. Rounds cap at four, then the
+  draft ships and its open findings are recorded as residue. Governs `*/skills/*/SKILL.md`, agent
+  definitions, and hook templates.
+
+- **A settled ruling goes in the checker's prompt, never in a filter on its output.** Filtering after the
+  fact spends a checker to produce findings already known to be struck; checkers carrying the rulings inline
+  returned counts up to eight times cleaner on the same file. Governs every checker dispatch.
+
+- **A change lands only after an agent that did not produce it verifies it.** Three agents each edited their
+  own file correctly today and the contradiction existed only between them — no single-file check could
+  reach it. Governs every edit to shipped instruction text, including one-word edits and edits made under an
+  owner ruling.
+
+- **A question to the owner names something the owner already recognizes.** Questions carrying internal
+  vocabulary came back unparsed twice; the same questions rewritten to name a file the owner wrote were
+  answered immediately. Point at a file, a rule, or a sentence they made, and ask what should happen to it.
+  Governs every owner question, and binds `memento:setup` where the reader is a stranger to the system.
