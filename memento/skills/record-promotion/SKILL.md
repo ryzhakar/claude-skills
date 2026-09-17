@@ -16,7 +16,9 @@ Move the nominee up one tier of the three — the bench, holding what no gate ha
 
 Take the gate from the destination; never take it from who put the nominee forward.
 
-Replace a promoted record by supersession — replacement that keeps what it replaced and the lineage, the chain back through every earlier version; never replace one silently.
+Replace a promoted record seated in any tier but charter by supersession — replacement that keeps what it replaced and the lineage, the chain back through every earlier version; never replace one silently.
+
+Correct a record seated in the charter tier — rewriting it where it sits — through record-writing; never supersede one.
 
 Leave every change to the charter, and to the goal — the purpose the charter sets — with the owner, the human whose project this is; never change either without an owner act.
 </settle-the-move>
@@ -38,7 +40,7 @@ Hold a failed claim on the bench with its lack written down; never promote it.
 </check-the-evidence>
 
 <check-the-ground>
-Open this gate when a command — an instruction offered without a ground, the fact or goal it cites — is nominated for the dossier; never open it for an assertion.
+Open this gate when a command — an instruction offered without a ground, the fact, the goal, or the frame (the fixed conditions the goal is stated in) it cites — is nominated for the dossier; never open it for an assertion.
 
 Give the command at least one ground before moving it; never move an ungrounded command.
 
@@ -50,7 +52,7 @@ Shape the directive at authoring for repetition-safety — running it twice harm
 
 Check the directive for that safety at authoring; never rest it on the tools the directive calls.
 
-Change a directive by supersession; never edit one where it sits.
+Change a directive seated in any tier but charter by supersession; never edit such a directive where it sits.
 
 End a directive at fulfillment, at expiry, or at supersession; never end one by silence.
 </check-the-ground>
@@ -60,13 +62,13 @@ Open this gate on the owner's word; never open it on a reading of what the chart
 
 Read the nominee's grounds before placing it; never commit a nominee whose grounds go unread.
 
-Place the nominee in the charter with its lineage; never place one silently.
+Place the nominee in the charter with its lineage where the charter holds nothing the nominee replaces; never place one silently.
 
 Record the commitment with its date; never leave one unrecorded.
 
 Create an autoload pointer — a charter entry whose target loads with the charter — from owner-authored or owner-directed charter content; never create one from anything else.
 
-Retarget an autoload pointer with its lineage; never retarget one silently.
+Retarget an autoload pointer by correction through record-writing; never retarget one silently.
 
 End an autoload pointer by removing it from the charter; never end one by retiring its target.
 </take-the-owners-word>
@@ -74,7 +76,7 @@ End an autoload pointer by removing it from the charter; never end one by retiri
 <shape-the-goal>
 Read the goal from the charter as it stands; never negotiate what it says.
 
-Carry a goal into the charter by this gate, whether newly set, amended, or decomposed; never change one where it sits.
+Carry a goal into the charter by this gate, whether newly set, amended, or decomposed; never change one outside this gate.
 
 Give every goal an object — the testable end condition or tended condition it pursues or maintains, stated concretely — and a horizon, terminal for a reachable end or standing for open-ended tending; never commit a goal missing either.
 
@@ -96,7 +98,7 @@ Write every promoted record through record-writing; never place one in a tier wi
 
 Place on the dossier facts with the evidence they name, live directives with their grounds, baselines recording the state the project is expected to be in, the map that indexes what exists, and assessments of other actors held as facts; never place unchecked material there.
 
-Reach the goal from the dossier by a pointer — a record whose content is where the goal sits in the charter; never copy the goal onto the dossier.
+Leave the goal where the charter states it; never copy it onto the dossier.
 
 Read the dossier as holding force until replaced and reached at need; never expect it to arrive on its own.
 
@@ -106,7 +108,7 @@ Pass every other write into the dossier through a gate; never place ungated cont
 
 Take what the dossier already holds as checked content; never gate it twice.
 
-Send a superseded dossier entry to the archive, where replaced content is kept; never leave it live beside its replacement.
+Move a superseded dossier entry into the archive — where replaced content is kept — through record-writing; never leave it live beside its replacement.
 
 Leave a gateless dossier entry to the audit, which strips its force and holds it in quarantine with its lineage; never place one knowingly.
 </write-the-move>

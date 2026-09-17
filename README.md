@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.0.0` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.3` | 2S |
-| [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.2.0` | 11S |
+| [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.3.0` | 11S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `4.2.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
@@ -46,7 +46,7 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Binds Claude's operating identity to constitutions, manifestos, and principle sets through identity construction — not theatrical oaths....
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-## [memento](memento/) `0.2.0`
+## [memento](memento/) `0.3.0`
 
 A memory and record-keeping system for agents without continuity across sessions.
 

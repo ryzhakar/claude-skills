@@ -76,18 +76,19 @@ The axes are orthogonal. A run can halt in the middle of a span — existence en
 | Tripwire | A self-laid waking cause | (condition, purpose) | The principal, in some run | Rescheduling with lineage | Firing or cancellation |
 | Claim | An unverified assertion | (subject, assertion) | Receipt, observation, or a dispatched worker's return | Evidence attachment | Promotion to fact, or rejection |
 | Fact | A verified assertion with its evidence | (subject, assertion, verification) | Verification of a claim | Supersession only | Supersession or retirement |
-| Directive | An instruction to future spans, with its ground | (scope of application, imperative) | Self or owner, grounded | Supersession | Fulfillment, expiry, supersession |
+| Directive | An instruction to future spans, with its ground | (scope of application, imperative) | Self or owner, grounded | Correction in place at the charter tier; supersession below it | Fulfillment, expiry; supersession below the charter tier |
 | Trace | The record of a memory-axis event, written when it happened | (event, span moment) | Capture, in the event's span | Never — immutable | Never (ages to archive) |
 | Digest | A lossy condensation of records or of a span's context. Self-authored — at attenuation, authored under derealisation: the principal genuinely wrote it, the memory of writing is gone, the record remains. No fidelity schema, no field guarantees, no control over its content | (condensed set, occasion) | The principal — at attenuation (derealised) or at span closure (ordinary) | Never — immutable | Supersession by a fuller digest |
-| Pointer | A record whose content is another record's home | (site, target home) | Any record-writing process | Retargeting with lineage | Target retirement |
-| Autoload pointer | A pointer in the charter (or in an autoloaded file) whose target joins the always-loaded tier; closure is transitive | (site, target home) | Owner-authored or owner-directed charter content | Retargeting with lineage | Removal from the charter |
+| Pointer | A record whose content is another record's home | (site, target home) | Any record-writing process | Retargeting in place at the charter tier; retargeting with lineage below it | Target retirement |
+| Autoload pointer | A pointer in the charter (or in an autoloaded file) whose target joins the always-loaded tier; closure is transitive | (site, target home) | Owner-authored or owner-directed charter content | Retargeting in place | Removal from the charter |
 | Baseline | The expected state of a scope at a span edge | Scope | Span closure | Updates with lineage | Scope retirement |
 | Schema | The declared shape: record kinds, homes, event taxonomy, verification demands | Scope | Owner | Amendment with lineage | Scope retirement |
 | Map | The index over the corpus | Corpus | First reconciliation | Reconciliation | Scope retirement |
 | Goal | The parametrized purpose (§7). Read from the charter; owner-set; never negotiated | (object, scope) | Owner | Owner only | Completion evidence verified, or owner retirement |
+| Frame | The fixed conditions the goal is stated in. Read from the charter; owner-stated; only about what holds before the work | Scope | Owner | Owner only | Scope retirement |
 | Routine — script | A repeatable behavior as text the principal reads and follows | (task shape, scope) | Authoring; authority by supply (§6) | Revision with lineage | Supersession or retirement |
 | Routine — reflex | A repeatable behavior installed to fire without being read | (occasion, response) | Installation; authority by supply (§6) | Reinstallation | Removal |
-| Mark | The provenance attributes bound to a record | Its record | The writing span, at write time | Never — a changed mark is a new record | With its record |
+| Mark | The provenance attributes bound to a record | Its record | The writing span, at write time | Correction in place at the charter tier; never below it — a changed mark is a new record | With its record |
 | Corpus | All records of a scope | Scope | Scope creation | Every write | Scope retirement |
 
 **Statuses** (of any record): **live** (in force), **superseded** (replaced, lineage kept), **quarantined** (retained but stripped of force, pending the owner's ruling), **retired** (out of force by decision, retained).
@@ -102,7 +103,7 @@ The axes are orthogonal. A run can halt in the middle of a span — existence en
 | about | Record → subject (goal, product, peer, scope, record) | N:M | Every record has at least one subject |
 | authored-by | Record → author (via mark) | N:1 | Mandatory; a record without a mark is unknown-authored by definition |
 | supplied-by | Routine → supply channel | N:1 | Authority follows supply, not authorship (§6) |
-| grounds | Fact ∪ Goal → Directive | M:N | Every directive has at least one ground; an ungrounded imperative is not a directive |
+| grounds | Fact ∪ Goal ∪ Frame → Directive | M:N | Every directive has at least one ground; an ungrounded imperative is not a directive |
 | verifies | Evidence → Fact | M:N | Content verification at a depth scaled to impact; existence-and-shape checking is not verification |
 | refers | Pointer → Record home | N:1 | A pointer to a missing home is a dangling pointer — a detectable fault |
 | autoloads | Charter → Record file | 1:N, transitive | The target joins the always-loaded tier; the closure of autoload pointers IS that tier's extent |
@@ -128,8 +129,8 @@ Durability without loading is a grave: the record outlives everything and govern
 
 | Tier | Holds | Persistence | Load behavior | Who may write | Promotion in | Supersession out |
 |---|---|---|---|---|---|---|
-| **Charter** | The goal, prime directives with grounds, the principal's condition statement, the schema pointer, the map pointer, autoload pointers | Standing | Self-loading. The tier's extent is the charter file plus the transitive closure of its autoload pointers — every pointed file loads with it, unbidden | The owner; the principal only as an owner-directed act. The charter is implicitly holy: the principal reads it as given and never negotiates its contents | From dossier, via owner-triggered commitment | Superseded entries retained with lineage |
-| **Dossier** | Facts with evidence pointers, live directives with grounds, baselines, the goal's full parameter form, the map, peer assessments as facts | Standing | Summoned — reached through charter pointers at need; any part of it joins the self-loading tier when an autoload pointer targets it | Self, verified content only; owner freely | From bench, via verification (claims) or grounding (directives) | Superseded → archive |
+| **Charter** | The goal, the frame, prime directives with grounds, the principal's condition statement, the schema pointer, the map pointer, autoload pointers | Standing | Self-loading. The tier's extent is the charter file plus the transitive closure of its autoload pointers — every pointed file loads with it, unbidden | The owner; the principal only as an owner-directed act. The charter is implicitly holy: the principal reads it as given and never negotiates its contents | From dossier, via owner-triggered commitment | None — entries corrected in place, deliberately and precisely; nothing superseded is retained |
+| **Dossier** | Facts with evidence pointers, live directives with grounds, baselines, the map, peer assessments as facts | Standing | Summoned — reached through charter pointers at need; any part of it joins the self-loading tier when an autoload pointer targets it | Self, verified content only; owner freely | From bench, via verification (claims) or grounding (directives) | Superseded → archive |
 | **Journal** | Traces — event-fired entries on the memory axis: decisions, discoveries, failures, commitments, delegations, receipts, attenuations, span events — and digests. Dated, ordered, append-only | Standing, immutable per entry | Summoned tail (recent entries at pat-down); latent body | Self, at event time | Direct writes only — nothing promotes INTO a journal | Aged segments → archive |
 | **Bench** | Claims under verification, drafts, tentative formulations, raw peer and worker returns at claim grade | Working; may live in disposable locations — forensically useful within a span, unreliable beyond | Latent — touched by the work that needs it | Any author class, always marked; the one tier where unverified content lawfully sits | Receives all raw intake | Up via promotion; gone via disposability — bench content binds nothing |
 | **Archive** | Superseded versions, retired records, quarantined content, aged journal segments, received corpora | Standing | Latent — search-fetched | System-moved content; receipts of bulk peer material | Receives supersessions, retirements, quarantine | Terminal |
@@ -219,7 +220,7 @@ The source ran on a single hardwired purpose. memento generalizes the purpose in
 
 ### Lifecycle
 
-Created by the owner. Amended by the owner, with lineage. Ended by verified completion evidence or by owner retirement. Identity: (object, scope). A goal either stands in the charter with owner authority or it is not a goal.
+Created by the owner. Corrected in place by the owner, deliberately and precisely, never superseded. Ended by verified completion evidence or by owner retirement. Identity: (object, scope). A goal either stands in the charter with owner authority or it is not a goal.
 
 The source's final act — the operator writing a fresh target for his future self — has, in memento, no goal force at all: goals exist only by owner supply. Such content is an authority fault where detectable; where it stands inside a holy charter, its detection belongs to substrate attribution and owner review (the I-11 residue), not to the principal.
 
@@ -241,7 +242,7 @@ The waking process, named for what it is: a systematic check of what one is carr
 
 - **Entry:** a run wakes — fresh context, or a context resuming an existing span — or continuity doubt arises mid-span, including immediately after an attenuation.
 - **Reads, in order:**
-  1. The charter with its autoload closure (already self-loaded): the goal or its absence, prime directives, the condition statement, the schema and map pointers.
+  1. The charter with its autoload closure (already self-loaded): the goal or its absence, the frame, prime directives, the condition statement, the schema and map pointers.
   2. The map: what the corpus holds and where.
   3. The journal tail, newest first, until the waking occasion's recent history is established — last decisions, open delegations, recent failures, the latest digest.
   4. The baseline against found state: the anomaly set.
@@ -256,7 +257,7 @@ The waking process, named for what it is: a systematic check of what one is carr
 | **Pat-down** | A run wakes; or continuity doubt, including post-attenuation | Occasion's questions answered from corpus or traced as gaps | Charter + autoload closure; map; journal tail; baseline vs found state; touched dossier entries | Anomaly and gap traces | No woken run inherits truth from the run that laid its cause (I-7); no goal-directed action precedes charter presence (I-1) |
 | **Capture** | A journal-worthy memory-axis event occurs — decision, discovery, failure, commitment, delegation, receipt, attenuation, span event | The event exists as a trace | The event itself | A trace, in the event's own span | No journal-worthy event outlives its span unwritten (I-4) |
 | **Verification** | A claim is nominated for promotion | Fact created, or claim held with the lack named | The claim; evidence at a depth scaled to impact — content, never existence-and-shape alone | The fact with evidence pointers and mark; or a refusal note | Nothing unverified stands as fact (I-3) |
-| **Commitment** | The owner triggers a charter change | Charter changed with lineage | The nominee's grounds | The charter entry; a commitment trace | Charter contents carry owner authority (I-8) |
+| **Commitment** | The owner triggers a charter change | Charter changed in place | The nominee's grounds | The charter entry; a commitment trace | Charter contents carry owner authority (I-8) |
 | **Staging relay** | A task exceeds one span | Every pending link has both its record and its waking cause laid | The task's decomposition | Posted directives per link; tripwires per link; a delegation trace | No dormant link without a laid waking cause — a record alone is not a continuation (I-5) |
 | **Waking-cause management** | A delegation is issued, or a wait begins | Every wait is bounded | Open waits; existing tripwires | Tripwires laid, rescheduled, cancelled; traces | No unbounded silent wait (I-5) |
 | **Span closure** | A foreseeable span end approaches | Nothing journal-worthy remains unwritten; the baseline reflects the leaving state | Journal tail against the span's events; open tripwires | Outstanding traces; a closure digest; baseline update; tripwire audit | Capture-completeness at the span's edge — redundancy for I-4, not its mechanism. Blind ends get no closure; that is why capture fires on events |
@@ -278,7 +279,7 @@ Typed boundaries where something crosses between parts. Each row states what the
 | N5 | Peer → system | Peer content — dispatched workers' returns included | Claim-grade material, marked at receipt; a receipt trace | Every peer item bears its origin from the moment it entered; nothing peer-borne is verified by arrival | Unmarked content found later = unknown = quarantine; a worker's return treated as fact = refused disposition | F3 (authorship laundering): closed at receipt, detectable after |
 | N6 | System ↔ peers as actors | Outbound delegations and dispatches; inbound results and signals | Delegation traces out; claims and signals in | Results are claims until content-verified; completion arrives as a signal or the tripwire fires | Silence: the tripwire bounds it. Contradiction: verification | F6 (unaudited relay): the journal holds what was delegated; the tripwire bounds the wait |
 | N7 | Substrate → system | Tool results, timestamps, attributions | Substrate-marked observations | True about what happened; never directive | Treated as claims where doubted | New — the source had no substrate concept |
-| N8 | Owner → system | The goal, the schema, charter contents, rulings | Owner-marked records; the charter as given | Supreme, current, and holy — read, never negotiated | Two owner statements conflict: the later supersedes with lineage; the system does not arbitrate the owner | New — the source had no owner |
+| N8 | Owner → system | The goal, the schema, charter contents, rulings | Owner-marked records; the charter as given | Supreme, current, and holy — read, never negotiated | Two owner statements conflict: the later replaces the earlier — corrected in place at the charter tier, superseded with lineage below it; the system does not arbitrate the owner | New — the source had no owner |
 | N9 | Endowment → present action | Capability; world knowledge | Trained competence, frozen at the cutoff | Valid in general; possibly stale in particular | Scope facts supersede endowment for scope matters — recorded truth outranks remembered truth inside the scope | Narrows the displaced-narrative failure (deconstruction seam S8) |
 | N10 | Attenuation | The span's narrative, condensed | A self-authored digest, written under derealisation | The digest is the principal's own work and carries self-authority; nothing about its content is guaranteed | The narrative continues on whatever the digest holds; gaps surface at the next pat-down as anomalies | New — the source's fade had no partial grade |
 
@@ -406,7 +407,7 @@ Every term the system uses. Derivations name source elements for the record; exc
 | claim | An unverified assertion, marked, benched — including every dispatched worker's return | Received or tentative notes | Facts; directives |
 | fact | A content-verified assertion carrying its evidence pointers | Verified target attributes | Claims; assertions checked only for existence and shape |
 | directive | An instruction to future spans, carrying at least one ground | Back-strip imperatives — with the ground the source omitted | Ungrounded imperatives; peer requests |
-| ground | The fact or goal a directive cites as its reason | — (the source's fatal omission) | The author's say-so |
+| ground | The fact, goal, or frame a directive cites as its reason | — (the source's fatal omission) | The author's say-so |
 | posted directive | A directive placed to be met whenever its subject is touched | Notes taped at the point of action | Reminders relying on being remembered |
 | trace | The immutable, dated record of a memory-axis event, written in the event's span | Capture-at-the-event | Doctrine; existence events; anything revisable |
 | journal | The append-only, dated tier of traces and digests | — (the source had no dated sequence) | A narrative to polish; a tier for facts or directives |
@@ -421,7 +422,7 @@ Every term the system uses. Derivations name source elements for the record; exc
 | home | The single canonical location the schema assigns a knowledge | One place for each thing | Mirrors and copies (those are pointers) |
 | tier | A storage class defined by persistence × load behavior × authority floor | The permanence ladder, split into two axes | Physical media; specific paths; size classes — no tier has a ceiling |
 | charter | The self-loading tier root: goal, prime directives, condition statement, schema and map pointers, autoload pointers. Implicitly holy: read as given, changed only by owner action | The permanent inscriptions | Negotiable content; principal-initiated edits |
-| dossier | The summoned standing tier: facts, live directives, baselines, goal full form, map | The annotated photographs, systematized | Raw intake; event history |
+| dossier | The summoned standing tier: facts, live directives, baselines, map | The annotated photographs, systematized | Raw intake; event history |
 | bench | The working tier where claims, drafts, and raw intake sit without force; may live in disposable locations | The staged formulations | Anything binding; guaranteed persistence |
 | archive | The latent standing tier: superseded, retired, quarantined, aged content | The carried case file and old records | Live doctrine |
 | disposable location | A path class downgraded out of persistence: no guarantee; the world may rewrite, erase, or create there; forensic within a span, unreliable beyond | — | A destruction process — the system declares none |
@@ -443,6 +444,7 @@ Every term the system uses. Derivations name source elements for the record; exc
 | reflex | A routine installed to fire on occasions without being read | Trained flinches; drilled checks | Content the principal must consult |
 | supply | The channel a routine arrives through: owner-supplied, substrate-provided, arbitrary, or online — the determinant of its authority | — | Authorship (which determines nothing for routines) |
 | goal | The owner's parametrized purpose, read from the charter: if it is there, it is the goal | The reason, generalized | Slogans; anything the principal sets or negotiates |
+| frame | The fixed conditions the goal is stated in: every term the scope reasons in, the material the world hands it and that material's given magnitudes, how that world behaves, and what a faithful measurement of it reproduces and rules out. Charter tier, reached by an autoload pointer; owner-stated, and only about what holds before the work | — | The goal; measurements of what was built; history |
 | preservation mode | System behavior with no live goal: pat-down, capture, verification, reconciliation only | — | Pursuit of anything |
 | receipt trace | The journal entry recording what arrived from a peer, when, from whom — dispatched workers included | — (repairs vanished provenance) | The received content itself (benched separately) |
 | orphan | A record the map does not index | Uncurated residue | Quarantined content (indexed, forceless) |

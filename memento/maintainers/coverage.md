@@ -6,16 +6,22 @@ Three documents stand behind this one. The settled design is `memento/ONTOLOGY.m
 
 ## What the build reached
 
-Every skill slice the plan names, at `memento/skills/`, beside the earlier `skill-creation`. Nothing else.
+Every skill slice the plan names, at `memento/skills/`, with `skill-creation` among them as the routine-creation slice. The shipped default schema at `memento/config/default.yaml`.
 
 These slices remain unbuilt, with the inventory items each was to carry:
 
 | Slice | Path | Items |
 |---|---|---|
-| Shipped default schema | `memento/config/default.yaml` | 2, 117, 119, 120, 127 |
 | Orientation hook at wake | `memento/hooks/`, `templates/orient.txt` | 29, 45, 56, 100, 126 |
-| Orientation hook after attenuation | `memento/hooks/`, `templates/attenuation.txt` | 15, 27, 98 |
 | Config parser | `memento/hooks/read-config.py` | Realizes schema-resolution's resolution rule |
+
+The orientation hook after attenuation is out of scope, not unbuilt. Attenuation fires at the owner's whim or the system's, never the agent's, so nothing detects it, resists it, or decides anything about it. Tracing it as an event kind is the whole available response, and `event-capture` carries that. `decisions.md`, 2026-09-17.
+
+Two skills are specified and unwritten. `decisions.md`, 2026-09-17, holds both.
+
+`/setup` explains the system to an owner new to both the concept and the implementation and sets up the configuration, sourcing from the owner what only an owner decides and settling the rest. It is the one skill that may read `ONTOLOGY.md`, and it must, which makes the ontology a shipped runtime dependency with a single reader rather than a maintainer document travelling with the plugin.
+
+`memento:init` points at `pat-down` and `span-closure` and instructs the reader to follow every skill reference to maximum depth. It carries no procedure of its own.
 
 The plan's wave 4 has not run: plugin-validator over the whole plugin, resolution of every named path, the prose-carriage audit over the full slice set. `memento/README.md` is current for the shipped skills.
 
@@ -27,13 +33,13 @@ Verified by grepping each shipped body for every sibling name.
 
 | Skill | Names in its body |
 |---|---|
-| authority-check | corpus-reconciliation, owner-ruling |
+| authority-check | corpus-reconciliation, owner-ruling, record-writing, skill-creation |
 | corpus-reconciliation | authority-check, event-capture, record-writing, schema-resolution |
 | event-capture | authority-check, record-writing, schema-resolution |
 | owner-ruling | authority-check, event-capture, record-writing |
 | pat-down | authority-check, event-capture, schema-resolution, staging-relay |
 | record-promotion | authority-check, record-writing, schema-resolution |
-| record-writing | authority-check, corpus-reconciliation, owner-ruling, record-promotion, schema-resolution |
+| record-writing | authority-check, corpus-reconciliation, event-capture, owner-ruling, record-promotion, schema-resolution |
 | schema-resolution | event-capture, record-promotion |
 | skill-creation | — |
 | span-closure | event-capture, record-writing, schema-resolution, staging-relay |
@@ -41,15 +47,17 @@ Verified by grepping each shipped body for every sibling name.
 
 `record-writing`'s frontmatter also names event-capture, record-promotion, staging-relay, span-closure, corpus-reconciliation, and owner-ruling. That list is a trigger enumeration of callers, not a dependency.
 
+`skill-creation` takes inbound references only. The ten may name it; it names none of them, and its row stays empty by ruling. `decisions.md`, 2026-09-17.
+
 The built graph departs from the plan's:
 
-The plan records schema-resolution and authority-check as leaves. Neither is. No shipped skill is a leaf.
+The plan records schema-resolution and authority-check as leaves. Neither is. `skill-creation` is the graph's only leaf.
 
-These pairs name each other: authority-check ↔ corpus-reconciliation, authority-check ↔ owner-ruling, corpus-reconciliation ↔ record-writing, owner-ruling ↔ record-writing, record-promotion ↔ record-writing, record-promotion ↔ schema-resolution, event-capture ↔ schema-resolution. The plan's graph is acyclic; the built graph is not. The plan's wave ordering no longer derives from it.
+These pairs name each other: authority-check ↔ corpus-reconciliation, authority-check ↔ owner-ruling, authority-check ↔ record-writing, corpus-reconciliation ↔ record-writing, event-capture ↔ record-writing, event-capture ↔ schema-resolution, owner-ruling ↔ record-writing, record-promotion ↔ record-writing, record-promotion ↔ schema-resolution. The plan's graph is acyclic; the built graph is not. The plan's wave ordering no longer derives from it.
 
-The plan gives record-writing one outbound edge. It has five, the most of any skill.
+The plan gives record-writing one outbound edge. It has the most of any skill.
 
-No skill names pat-down or span-closure. Both are entered by occasion alone.
+No skill names pat-down or span-closure. Both are entered by occasion alone. Each reaches every other skill but the other, so the pair is the minimal cover and no single entry point reaches the whole graph.
 
 ## Per-skill residue
 
@@ -59,7 +67,7 @@ Residue is what a skill ships with unclosed after its last compliance report and
 
 **event-capture.** A trace names its event in no stated form; a slug, a sentence, and an identifier each satisfy the instruction. The receipt trace's "from whom" does not settle the proximate deliverer against the originator. `<treat-the-working-text-as-lost>` requires arriving content written where it outlives the work, and `<write-the-receipt-trace>` forbids copying that content into the trace, while no other durable home is named. Its compliance residue is entirely corpus vocabulary.
 
-**record-promotion.** A newly set goal has no route from the bench: `<settle-the-move>` forbids skipping a tier, and only a claim and a command have a dossier gate. `<take-the-owners-word>`'s "grounds" is tied neither to `<check-the-ground>`'s ground nor to `<shape-the-goal>`'s rationale. Carrying a parent's constraints down to a subgoal states no form — copy or reference.
+**record-promotion.** A newly set goal has no route from the bench: `<settle-the-move>` forbids skipping a tier, no dossier gate admits a goal, and `<write-the-move>` keeps the goal off the dossier outright. `<take-the-owners-word>`'s "grounds" is tied neither to `<check-the-ground>`'s ground nor to `<shape-the-goal>`'s rationale. Carrying a parent's constraints down to a subgoal states no form — copy or reference.
 
 **staging-relay.** A posted directive has no stated medium or location. Rescheduling a tripwire reads as cancel-and-lay or as amend-in-place; supersession and the two declared end-modes go unreconciled. `<watch-no-running-process>` pairs its positive half with the prohibition of a different concern.
 
@@ -69,13 +77,13 @@ Residue is what a skill ships with unclosed after its last compliance report and
 
 **owner-ruling.** `<rule-on-a-routine>`'s channel precondition sits after `<carry-out-the-shape-given>`, which performs the act that precondition must precede; a linear read ratifies an online-sourced routine before reaching the refusal. "Send a refused ruling back to the owner for another shape" names no form for the request. "Who wrote it and when" has no referent for a scope, the one thing ruled on that nobody authored.
 
-**schema-resolution.** Its last compliance report's two violations — one sentence carrying two instructions, and a record-keeping instruction with no paired prohibition — were closed by an edit made after the report. A compliance audit of the shipped text found 1 violation: in the pointer definition at line 18, `home` appears at its first occurrence in the document with no definition; the only gloss for it arrives at line 34. The line-40 split and the missing-or-unreadable-target rule both checked clean. `home` belongs to `record-writing`, which owns homes; whether it needs a definition here or only a gloss sufficient to parse its sentence turns on the term-ownership ruling in `decisions.md`. Its shipped-default reference is recorded below. `orchestration_log/recon/2026-09-16/schema-resolution-shipped-compliance.md` holds the report.
+**schema-resolution.** Its last compliance report's two violations — one sentence carrying two instructions, and a record-keeping instruction with no paired prohibition — were closed by an edit made after the report. A compliance audit of the shipped text found 1 violation: in the pointer definition at line 18, `home` appears at its first occurrence in the document with no definition; the only gloss for it arrives at line 34. The line-40 split and the missing-or-unreadable-target rule both checked clean. `home` belongs to `record-writing`, which owns homes; whether it needs a definition here or only a gloss sufficient to parse its sentence turns on the term-ownership ruling in `decisions.md`. It names the shipped default as `config/default.yaml` "in this plugin", with no root, so no concrete path is derivable from the skill's own text. `orchestration_log/recon/2026-09-16/schema-resolution-shipped-compliance.md` holds the report.
 
-**record-writing.** The mark's `author class` field carries no gloss where every sibling field in the same enumeration carries one. The five tiers are named under one shared description, and nothing tells one from another. "A record that instructs later work" goes unsettled against descriptive content a later reader relies on. The supersession link is load-bearing for the superseded status and has no stated home, the mark's field list being closed by "never add a field." Nothing states when a pointer must be retargeted: only the target's retirement ends a pointer, and a superseded target is neither gone nor retired.
+**record-writing.** The five tiers are named under one shared description, and nothing tells one from another. "A record that instructs later work" goes unsettled against descriptive content a later reader relies on. The supersession link is load-bearing for the superseded status and has no stated home, the mark's field list being closed by "never add a field." `<write-the-pointer>` gives retargeting a method and no occasion, and names no end for a pointer at all.
 
-**authority-check.** Shipped with both violations of its last compliance report open: `return`, a dispatched worker's, is never defined, and `authorship` is used in `<classify-the-author>` before `<record-authorship-on-arrival>` defines it. "The operator this system serves" is neither defined nor tied to self. A peer is identified by the identity it arrived with while its record opens at dispatch, before anything arrives. An author identity has no stated stored form. For unknown-class content, whether to record the claimed sender label or none is unsettled. No rule says which author class may supply the evidence attached to a claim. A ground that "fails" is undefined. The enforcement grades cover neither a rule applied continuously nor a disposition of already-flagged content, and no rule is mapped to a grade. Quarantined content and unratified behaviors reach the owner by no stated route.
+**authority-check.** Shipped with both violations of its last compliance report open: `return`, a dispatched worker's, is never defined, and `authorship` is used in `<classify-the-author>` before `<record-authorship-on-arrival>` defines it. A compliance audit of the shipped text found two more, both one term per concept: the tag `<state-what-enforcement-holds>` first-uses `state` and the prose beneath substitutes `grade`; `operator` enters at line 19 as a second term for `self`, which line 21 then glosses as "the operator reading this", and recurs through the file. "The operator this system serves" is neither defined nor tied to self. A peer is identified by the identity it arrived with while its record opens at dispatch, before anything arrives. An author identity has no stated stored form. For unknown-class content, whether to record the claimed sender label or none is unsettled. No rule says which author class may supply the evidence attached to a claim. A ground that "fails" is undefined. The enforcement grades cover neither a rule applied continuously nor a disposition of already-flagged content, and no rule is mapped to one of the three. `orchestration_log/recon/2026-09-17/authority-check-standing-compliance.md` holds the report.
 
-Both pat-down and schema-resolution have now been independently audited against the shipped text. No skill in this plugin ships on unverified text.
+pat-down, schema-resolution, and authority-check have been independently audited against the shipped text, and the rename of `standing` to `force` in event-capture and span-closure was audited for force and scope. The correction-in-place, archive-pointer, and resolved-deferral edits to corpus-reconciliation, record-promotion, and record-writing are later than any report covering them.
 
 ## Corpus vocabulary
 
@@ -85,13 +93,11 @@ They form a third residue class beside a skill's own terms and a named sibling's
 
 ## Open for the owner
 
-Three grounds put content out of force, and a status derivation can read none of them. Content quarantined on any of the three reads as live.
+One ground puts content out of force and the status derivation reads none of it. `authority-check` ends a peer by irrelevance and lets the records about it retire, naming no actor that performs the retirement and none that records it, while `record-writing` reads retired from an owner-ruling decision or from a record retiring it. Peer records so ended read as live.
 
-A behavior supplied through an unratified channel, and a behavior supplied through an online channel, both require the supply channel recorded. `authority-check` establishes a channel without writing it, and `record-writing`'s mark field list is closed against a new field, so only `authority-check` can close either.
+A routine's standing is a separate axis from a record's status, so the unratified-channel and online-channel grounds were never status questions and are gone. `authority-check` owns standing, names the four supply channels, writes the established channel through `record-writing`, and derives standing from what is written. `decisions.md`, 2026-09-17.
 
-Peer records ended by irrelevance name no actor that performs the retirement and none that records it.
-
-Closing any of the three needs an owner decision the ontology does not settle: whether a routine's standing is a separate axis from a record's status. The ontology declares four statuses of records and lists routines as separate entities homed in no tier. `decisions.md`, 2026-09-17, holds the enumeration this came from.
+Two ontology items stand for the owner. `ground` names a goal parameter in §7 and what a directive cites in §4 and §13 — two concepts under one name. §11's third concern gives the charter's autoload closure as holding the goal and the condition statement, where §5 gives the charter the frame and the prime directives as well.
 
 ## The audit's detection gap
 
@@ -101,13 +107,15 @@ Closing any of the three needs an owner decision the ontology does not settle: w
 
 Close it by extending the audit's reading, not by moving the detection to the gate that the entry bypassed.
 
-## The missing shipped default
+## The shipped default schema
 
-`schema-resolution`'s `<stop-the-check-at-the-shipped-default>` resolves to a built-in default when a project supplies no configuration file, and `<resolve-the-schema-in-force>` names it as the schema at `config/default.yaml` in this plugin. No `config/` directory exists under `memento/`. The skill also names "this plugin" with no root, so no concrete path is derivable from the skill's own text.
+`memento/config/default.yaml` declares the record kinds across the five tiers, each with its home, its tier, and its verification depth, beside the event taxonomy, the verification depths, the kind form, and the provenance form. `schema-resolution`'s `<stop-the-check-at-the-shipped-default>` resolves through it.
 
-The ontology defines no shipped default: not its record kinds, not their homes, not the provenance form a configuration file's own check draws from it. The plan's config section specifies the fields and carries a worked example of the whole file.
+The kinds and their homes are the live downstream project's working set. The default succeeds the orchestration plugin's artifact contract, whose maintenance is deprecated.
 
-The plugin is incomplete until `memento/config/default.yaml` is authored. Authoring it needs owner decisions the ontology does not settle. `decisions.md`, 2026-09-17, holds why the reference was left standing rather than filled.
+The file carries no comments. Anything stating what a record admits takes one free-prose field, `admits`, carried by every kind and declared like any other field. `decisions.md`, 2026-09-17.
+
+The goal is not among the kinds. It is committed to `CLAUDE.md` inside the charter, written the way prime directives are, and `frame` holds what remains at `docs/ground-truth.md`. `decisions.md`, 2026-09-17.
 
 ## After changing a skill
 

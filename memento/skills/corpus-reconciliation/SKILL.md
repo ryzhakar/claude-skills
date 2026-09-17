@@ -42,7 +42,9 @@ Judge each record's authorship through authority-check; never judge it here.
 </read-before-repairing>
 
 <repair-each-fault>
-Repair each fault by supersession (linking a replacement to the record replaced and keeping both), adoption (listing a found record in the map), quarantine (keeping a record and stripping its force), or retirement (keeping a record and stripping its force by decision); never reach for a fifth move.
+Repair each fault by supersession (linking a replacement to the record replaced and keeping both), correction (rewriting a record in place), adoption (listing a found record in the map), quarantine (keeping a record and stripping its force), or retirement (keeping a record and stripping its force by decision); never reach for a sixth move.
+
+Repair every fault in a record seated in the charter tier by correcting it in place; never supersede such a record.
 
 Keep each record's lineage through every repair; never break one.
 
@@ -50,7 +52,7 @@ Write every repair through record-writing; never write one another way.
 
 Write each quarantine and each retirement as a record naming the content it puts out of force and linking to it; never strip a record's force without writing one.
 
-Leave each record's content as its author wrote it; never rewrite one.
+Leave the content of each record seated in any tier but charter as its author wrote it; never rewrite such a record.
 
 Adopt an orphan — a record the map omits — under the home where it sits; never move it to another home.
 
@@ -60,11 +62,11 @@ Quarantine content carrying no recorded author; never leave it in force.
 
 Leave quarantined content for the word of the owner — the human whose scope this is; never rule on it.
 
-Repair a contradiction between two records in force by superseding the earlier with the later where one recorded author wrote both; never by editing either.
+Repair a contradiction between two records in force at any tier but charter by superseding the earlier with the later where one recorded author wrote both; never by editing either.
 
 Quarantine both records of a contradiction their recorded authorship and dates fail to order; never pick between them by their content.
 
-Supersede a pointer — a record whose content is another record's home — whose target moved to a new home; never supersede one whose target is gone.
+Supersede a pointer — a record whose content is another record's home — seated in any tier but charter when its target moves to a new home; never supersede one whose target is gone.
 
 Quarantine a pointer whose target is gone; never delete it.
 

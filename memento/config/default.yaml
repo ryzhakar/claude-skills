@@ -1,0 +1,243 @@
+kinds:
+
+  charter:
+    home: CLAUDE.md
+    tier: charter
+    verification: owner-stated
+    admits: >
+      The project's governing file. Prime directives, each carrying its ground; the goal in
+      full, committed among them — its object, the completion evidence that will show the
+      object reached, its horizon, and the constraints bounding pursuit; the statement of
+      the principal's condition; and the pointers to the schema, to the map, and to every
+      record that loads with the charter. Holds no facts and no history.
+
+  frame:
+    home: docs/ground-truth.md
+    tier: charter
+    verification: owner-stated
+    admits: >
+      The fixed frame the goal is stated in: every term the project reasons in, defined
+      where it first appears; the material the world hands the project and that material's
+      given magnitudes; how that world behaves; and what a faithful measurement of it
+      reproduces and rules out. Nothing enters but an owner ruling on what holds before the
+      work. Refuses the goal, refuses any measurement of what was built, and refuses
+      history.
+
+  fact:
+    home: docs/capabilities.md
+    tier: dossier
+    verification: measured
+    admits: >
+      What the system is and does: durable, semantic descriptions of its parts, its
+      surface, its artifacts, and its measured operational facts, each assertion carrying
+      the date it was measured. Refuses decision narrative, refuses process, and refuses
+      any count with no measurement date.
+
+  directive:
+    home: docs/conventions.md
+    tier: dossier
+    verification: grounded
+    admits: >
+      Standing rules: what a reader must do, in force whenever their subject is touched.
+      Each rule states its own ground where the rule lives. Refuses statements of what the
+      system is.
+
+  deferral:
+    home: docs/user_deferred_items.md
+    tier: dossier
+    verification: owner-stated
+    admits: >
+      Work the owner has put off, in his own framing, each entry naming what it wants and
+      where to pick it up. Binds nothing until he calls for it. Owner-authored only. The
+      one kind destroyed rather than retired or superseded: a resolved entry is deleted
+      in the act that writes its resolution as a change.
+
+  baseline:
+    home: docs/working_set.md
+    tier: dossier
+    verification: owner-committed
+    admits: >
+      The state the project is expected to be in: one row per thing it currently tracks.
+      What is absent from it is not tracked. The difference between it and the state found
+      is the anomaly set.
+
+  map:
+    home: README.md
+    tier: dossier
+    verification: reconciled
+    admits: >
+      The index over the corpus: one row per record, carrying that record's home, its
+      kind, its tier, its status, its subjects, and the date it was last written. Rebuilt
+      at each audit from the records that exist. A record's own identity lives here and is
+      not restated inside the record.
+
+  schema:
+    home: .claude/memento.yaml
+    tier: dossier
+    verification: owner-stated
+    admits: >
+      The project's own declaration of this shape: the kinds it admits, each one's home
+      and tier, the events it writes down as they happen, the depth each kind is checked
+      to, and the forms a record's kind and provenance take. Reached by the charter's
+      schema pointer. Amended on the owner's word alone, and every amendment records what
+      it replaced.
+
+  change:
+    home: docs/architecture_log.md
+    tier: journal
+    verification: held-before-verified
+    admits: >
+      One dated, past-tense statement per change to the system's core: the shape held
+      before, the shape after, what forced the change, and which earlier results it
+      invalidates. Also admits the resolution of a deferral, written in the act that
+      deletes the deferral and carrying what the deferral said and the artifact that
+      carried it out. Entries stand unamended, oldest first; a later entry links back to
+      the one it supersedes.
+
+  trace:
+    home: docs/orchestration_log/history/{date}/events.md
+    tier: journal
+    verification: witnessed
+    admits: >
+      One entry per event, written into that span's dated file in the stretch of work the
+      event happened. Names the event and what happened to what is known. Never a standing
+      rule and never a settled conclusion.
+
+  failure:
+    home: docs/orchestration_log/history/{date}/failures.md
+    tier: journal
+    verification: witnessed
+    admits: >
+      One entry per failure diagnosed, written in the stretch of work it was diagnosed:
+      what happened, the mechanism behind it, and the correction. Held apart from the span
+      record.
+
+  digest:
+    home: docs/orchestration_log/history/{date}/session.md
+    tier: journal
+    verification: witnessed
+    admits: >
+      The span's own condensation of itself, written through the span and brought to final
+      form when the span closes: what the span was, what it produced, and where the rest
+      of it is written. Lossy by construction; no part of it is guaranteed.
+
+  report:
+    home: docs/orchestration_log/history/{date}/*.md
+    tier: journal
+    verification: witnessed
+    admits: >
+      A document one span froze and dated — a finding, a design, a brief, a
+      pre-registration. Written from the work itself and left unedited after. The durable
+      evidence a standing record cites.
+
+  scratch:
+    home: docs/orchestration_log/recon/{date}/
+    tier: bench
+    disposable: true
+    verification: none
+    admits: >
+      Claims under verification, drafts, tentative formulations, and every dispatched
+      worker's return at claim grade. Binds nothing. The one disposable home here, and
+      kept out of version tracking: anything at it may be rewritten, erased, or created at
+      any moment, and nothing durable points into it.
+
+  archived:
+    home: docs/orchestration_log/archive/
+    tier: archive
+    verification: none
+    admits: >
+      Records out of force and kept: superseded versions, retirements, quarantined
+      content, aged journal segments, and corpora received whole alongside the receipt
+      naming what arrived, when, and from whom. Records move in and never out.
+
+events:
+  decision: trace
+  discovery: trace
+  failure: failure
+  commitment: trace
+  delegation: trace
+  receipt: trace
+  attenuation: trace
+  span-event: trace
+  change: change
+
+verification_depths:
+  none: >
+    Stands by being written. No gate.
+  witnessed: >
+    Written from the event or the work itself, in the stretch of work it happened —
+    never reconstructed later from a record of it.
+  owner-stated: >
+    Stands on the owner's word, carrying his date and his framing.
+  owner-committed: >
+    The owner placed the entry, and the thing each entry names is confirmed to exist.
+  measured: >
+    The assertion is checked against source or against a measurement, and the entry
+    carries that measurement's date. A count with no date fails.
+  grounded: >
+    The entry states the fact, goal, or frame it rests on, in the entry itself. The mark's
+    `grounds` field is where it states it, and a mark naming no grounds fails this depth.
+    The depth demands; `grounds` answers. Not two names for one thing.
+  reconciled: >
+    Every entry names a home that exists, and every record that exists has an entry.
+  held-before-verified: >
+    Both halves, each read from saved artifacts or source. A statement of a change to the
+    system's core confirms the prior shape actually held — never from a plan and never
+    from a file of the same name — and shows the change moved what is computed or what is
+    runnable; for that statement tooling, interface surface, documentation, process, and
+    review outcomes never pass. A resolution of a deferral confirms the deferral stood
+    open, read from the deferral itself, and names the artifact that carried it out.
+
+kind_form:
+  by: >
+    The home the record sits at — one home per kind, one kind per home. No record carries
+    a kind field.
+  home_grammar: >
+    Every home is a path from the project root, matched over its whole length. A home
+    ending in a filename covers that one file; a home ending in `/` covers every path
+    beneath that directory, at any depth. Inside a home a placeholder is written in
+    braces: `{date}` stands for exactly one segment holding an ISO date, YYYY-MM-DD, and a
+    segment of any other shape does not match. `*` stands for any run of characters inside
+    a single segment and crosses no separator. The segment `{date}` takes is the span's
+    date, the one the record's mark carries.
+  resolution: >
+    An exact path before a directory pattern. A home ending in a literal filename takes
+    the path before a home ending in a wildcard, and both take it before a home that is a
+    bare directory. `{date}` settles nothing — it stands on both sides of the contest.
+  outside_any_home: No kind, and therefore not admitted.
+
+provenance_form:
+  written_as: Inline attribution in the record's own text.
+  fields:
+    author_class: >
+      The attributing word — "owner ruling" for the owner, "measured" or "verified" for
+      self, a tool or command name for the substrate, "reported by <name>" for a peer.
+      No attributing word means unknown.
+    author_identity: >
+      The actor the attributing word names: the owner, the model or agent, the tool, the
+      peer. Two fields, one or two tokens: an attributing word that names its own actor —
+      a tool or command name, "reported by <name>" — carries both, and otherwise the
+      identity follows it, as in "owner ruling, <owner>" or "measured by <agent>".
+    span: >
+      The date, which resolves to that span's record at
+      docs/orchestration_log/history/{date}/session.md.
+    date: An ISO date, YYYY-MM-DD, in the attribution.
+    verification_state: >
+      The name from `verification_depths` of the depth this record passed. Often carried
+      by the same word that gives the author class.
+    grounds: >
+      Records that instruct later work only: the path or commit SHA of the fact, goal, or
+      frame the instruction rests on. What the `grounded` depth demands:
+      `verification_state` names that depth, this field satisfies it.
+  example: >
+    A directive's mark reads `— owner ruling, <owner>, 2026-09-14, grounded on
+    CLAUDE.md@4f2a1c9`: the attributing word, the actor it does not name, the
+    date the span resolves from, the depth passed, the grounds. A measured fact's reads
+    `— measured by <agent>, 2026-09-14`: one word carries both the author class and the
+    verification state, and a fact rests on no grounds. Six fields, five tokens at most;
+    a field with nothing to carry is left out, never left empty.
+  pointer_durability: >
+    Every path a mark names is a committed path or a commit SHA. A mark naming a
+    disposable home — a home carrying `disposable: true`, and one home carries it —
+    carries no provenance. A home without that key persists: its records are committed,
+    and durable pointers may name them.

@@ -40,7 +40,7 @@ Tell one summary from another by the set it condensed and by the occasion that p
 
 Write the summary oneself; never have another write one in one's place.
 
-Grant every summary the full standing of one's own record, whatever occasion produced it; never attach an exception to one.
+Grant every summary the full force of one's own record, whatever occasion produced it; never attach an exception to one.
 
 Leave a summary's content unconstrained — no declared shape it has to match, no field of it guaranteed; never demand a named field of a summary.
 
