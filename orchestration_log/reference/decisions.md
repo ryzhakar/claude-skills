@@ -453,3 +453,97 @@ Evidence: authority-check shipped at 1691 with 2 compliance gaps unfixed; record
 
 `schema-resolution` resolves to a built-in default when a project supplies no configuration, and names `config/default.yaml` for it. No `config/` directory exists under `memento/`, and the ontology defines no shipped default anywhere — not its kinds, not their homes, not the provenance form. The skill's reference is correct as instruction and was deliberately left rather than filled: a schema's declared content is data the plugin ships, not text a skill carries, and writing values into the body would break the standard's rule that every sentence instructs or forbids. The plugin is therefore incomplete until that file is authored, and authoring it needs owner decisions the ontology does not settle. License: orchestrator call, deferred to the owner.
 Evidence: `memento/skills/schema-resolution/SKILL.md` `<stop-the-check-at-the-shipped-default>`; absence of `memento/config/`.
+
+## 2026-09-17 — memento's scope ends at awareness of a state, not at coping with it
+
+Attenuation fires at the owner's whim or the system's, never at the agent's, so no skill can detect it early, resist it, or decide anything about it. Naming it as an event kind that event-capture can trace is the whole available response and the plugin already does that. No condition slice, no degradation trigger, and attenuation stays in the ontology. The earlier reading — that an unoperationalized attenuation digest was an oversight — expected agency the agent does not have. License: owner ruling.
+Evidence: `memento/ONTOLOGY.md` attenuation event kind; `memento/maintainers/coverage.md` attenuation-digest entry, now superseded.
+
+## 2026-09-17 — A routine's standing is a separate axis from a record's status
+
+Records carry the four statuses; routines carry standing, and the two never collapse. The ontology already tables them apart with different columns, and record-writing's derivation forbids a fifth status. `authority-check` records a behaviour's supply channel as the fact standing derives from — the fact no rule recorded, which left content quarantined on three grounds reading as live. License: owner ruling.
+Evidence: `memento/ONTOLOGY.md` sections 3 and 6; `memento/skills/authority-check/SKILL.md`; `memento/skills/record-writing/SKILL.md` `<read-the-status>`.
+
+## 2026-09-17 — skill-creation is memento's routine-creation slice
+
+A skill is a routine under the ontology, so the skill that authors skills is the slice that creates routines. It belongs inside the plugin's graph rather than beside it as authoring tooling, and the plugin must reflect that with precise references rather than by implication. License: owner ruling, correcting an orchestrator call that had sorted it out of the dependency map.
+Evidence: `memento/skills/skill-creation/SKILL.md`; `orchestration_log/reference/user_deferred_items.md`, entry now resolved.
+
+## 2026-09-17 — The shipped default schema derives from orchestration's artifact map
+
+`config/default.yaml` declares the kinds, homes and tiers taken from the artifact contract the orchestration plugin maintains today. That plugin's artifact maintenance is deprecated and on its way out, so memento's built-in default is the successor to it and must carry what it carried. License: owner ruling.
+Evidence: `orchestration/skills/session-close/SKILL.md` Artifact Contract; `memento/skills/schema-resolution/SKILL.md`.
+
+## 2026-09-17 — skill-creation takes inbound references only
+
+The owner's words: "skill-creation should be atomic and independent, but the rest of the plugin itself is invited to rely on it. only inbound references, no outbound ones." The slice that authors routines names no sibling and depends on nothing, so every other slice can be built by it without circularity. The ten may name it freely. License: owner ruling.
+Evidence: `memento/skills/skill-creation/SKILL.md`; `memento/skills/authority-check/SKILL.md` inbound reference.
+
+## 2026-09-17 — The config carries no comments, and a record's role lives in one canonical field
+
+Nothing parses `config/default.yaml`, so an agent reads it as text and every comment instructs — unaudited, and silently discarded the day a parser is built. All comments leave the file. Anything explaining what a record is or must be takes one free-prose field, the same field name on every kind, declared like any other. License: owner ruling.
+Evidence: `memento/config/default.yaml`.
+
+## 2026-09-17 — The /setup skill is written to a fresh owner, from the owner's point of view
+
+memento gets a `/setup` skill explaining what the system is and setting up the config with moderate interaction. It is written for an owner new to both the concept and the implementation, who lacks the capacity to decide every particular. So it sources the preferences and decisions that genuinely need an owner, and settles everything else autonomously.
+
+Every explanation takes the owner's point of view as its reference, never the agent's. The system exists to cope with an inherent disability, and the agent presenting it is disabled in that precise manner — that is the skill's footing, not an aside.
+
+A migration path is envisioned, with a reconciliation following the process. No adversarial review loop: the skill ships from one writer.
+License: owner ruling.
+Evidence: `memento/config/default.yaml`; `memento/skills/` pending.
+
+## 2026-09-17 — /setup is the only skill that may read the ontology, and it must
+
+The ten runtime skills carry self-contained procedures and never read `ONTOLOGY.md`. `/setup` explains what the system is, which cannot be done from a procedure, so it reads the design and is alone in that. The permission and the obligation arrive together.
+
+This makes `memento/ONTOLOGY.md` a shipped runtime dependency with exactly one reader, rather than a maintainer document that happens to travel with the plugin. License: owner ruling.
+Evidence: `memento/ONTOLOGY.md`; `memento/skills/` pending.
+
+## 2026-09-17 — An entry-point skill points at pat-down and does nothing else
+
+memento gets a nanometer-thin skill whose whole content points at `pat-down` and `span-closure` and instructs the reader to follow every skill reference to maximum depth. It carries no procedure of its own. Its purpose is an intelligent load of the plugin, not a run of it.
+
+`pat-down` and `span-closure` are the graph's two in-degree-zero nodes, each reaching eight of the other nine and each the other's only blind spot, so the pair is the forced minimal cover and no single pointer reaches all ten. Naming both closes it.
+
+Loading is not running. Both are occasions — waking, and a foreseeable end — so a reader told to follow both to depth must read the closure of both and run only `pat-down`. Executing a wind-down with no span to close is the failure this distinction prevents.
+
+Named `init`, invoked as `memento:init`. The plugin namespace keeps it clear of the Claude Code built-in of the same name. License: owner ruling.
+Evidence: `memento/skills/pat-down/SKILL.md`; `orchestration_log/recon/2026-09-17/memento-map.md` reachability table.
+
+## 2026-09-17 — Correct important records in place; supersede everything else
+
+The owner's words: "the more important the piece of information is, the less noise is allowed to co-exist with it immediately. i rule 'deliberately and precisely correct in place' for anything important record-artifact wise, supersede everything else."
+
+Noise tolerance falls as importance rises, so the highest-value records carry no supersession apparatus beside them. The correction is deliberate and precise, never a casual overwrite. Everything below that line supersedes with unbroken lineage as `record-writing` already specifies. This narrows the never-overwrite rule rather than reversing it, and the tier a kind sits at is the operational reading of importance. License: owner ruling, resolving a contradiction between the live practice and memento's mechanics.
+Evidence: `memento/skills/record-writing/SKILL.md`; live ruling 2026-08-19 in the downstream project.
+
+## 2026-09-17 — Retired content moves to the archive and leaves a pointer at its old home
+
+A pointer is a record whose content is another record's home, so a citation from a frozen record resolves through it instead of breaking — which is what the live retire-in-place practice was protecting. The rule forbidding a copy at the old home stands: a pointer is not a copy. License: owner ruling, resolving a contradiction between the live practice and memento's mechanics.
+Evidence: `memento/skills/corpus-reconciliation/SKILL.md`; `memento/skills/record-writing/SKILL.md` `<write-the-pointer>`; live decision 2026-08-04 in the downstream project.
+
+## 2026-09-17 — A resolved deferral is deleted, and its resolution is written as a change
+
+The living file stays clean, as both the contract and the live practice already have it, and the journal gains an entry recording that the deferral resolved and how. Nothing is destroyed — the record of it moves down a tier rather than vanishing, so the never-destroy rule is satisfied by relocation rather than by retention. License: owner ruling, resolving a contradiction between the live practice and memento's mechanics.
+Evidence: `memento/config/default.yaml` kinds `deferral` and `change`; live practice in the downstream project.
+
+## 2026-09-17 — The goal is committed to CLAUDE.md and is not a record of its own
+
+The owner envisioned the goal committed to `CLAUDE.md`, written inside the charter the way prime directives already are, so it stops being a separately addressable record kind. A record is identified by the file it sits in, and two kinds cannot share one file, so the goal cannot both live in the charter's file and hold a kind of its own.
+
+`docs/ground-truth.md` therefore loses its declared kind. Whatever it retains after the goal moves out needs a kind of its own or the file goes away — a migration question `/setup` carries, not a schema question. License: owner ruling.
+Evidence: `memento/config/default.yaml` kinds `charter` and `goal`; `memento/ONTOLOGY.md` sections 5 and 7.
+
+## 2026-09-17 — A rule may be grounded in the problem's frame, ranked equal to a fact or the goal
+
+A directive cites what it rests on. The admitted grounds were a measured fact and the goal; the frame — how the problem works — now joins them at equal rank, neither privileged nor discounted. The live practice already did this: `docs/conventions.md` grounds its only-valid-split rule on `ground-truth.md`, which is the frame rather than a fact or the goal, so the model forbade what the project does. License: owner ruling.
+Evidence: `memento/ONTOLOGY.md` grounds relation and glossary; `memento/config/default.yaml` `verification_depths.grounded` and `provenance_form.fields.grounds`; `memento/skills/record-promotion/SKILL.md`.
+
+## 2026-09-17 — Questions to the owner carry no internal vocabulary and cite the owner's own files
+
+Two questions were put to the owner in the system's terms — tiers, grounds, parameter forms, ontology line numbers — and both came back unparsed. The same questions, rewritten to name a file the owner wrote and a rule the owner made, were answered immediately.
+
+The owner holds none of the internal model in mind and should not have to. A question earns an answer by pointing at something the owner already recognizes and asking what should happen to it. This binds every question `/setup` puts to a fresh owner, where the gap is wider still. License: measured verdict, two failures and two successes.
+Evidence: session transcript 2026-09-17.
