@@ -26,6 +26,13 @@ Write a trace — a dated note of one event, an event being a happening of a kin
 
 ---
 
+### [init](skills/init/SKILL.md)
+
+Read the two skills this system is entered by, follow every skill either one names to the end of the chain, and run the waking check. The start of a conversation, a project's governing file directing that a stretch of work opens here, "memento:init", "init", "start here", "orient", "load memento".
+
+
+---
+
 ### [owner-ruling](skills/owner-ruling/SKILL.md)
 
 Carry out a ruling — what the owner, the human whose project this is, rules about content in quarantine, the status that holds a record and strips its force; about a routine, a repeatable behavior the system may run; or about a scope, everything one project keeps under one owner: ratify it back into force, keep it as data that binds nothing, or retire it out of force and keep it. "review the quarantine", "rule on this", "ratify this", "should this routine run", "retire the scope", or the owner turning attention to anything held out of force.
@@ -57,6 +64,13 @@ Write one record — a written statement kept on a durable location, made to out
 ### [schema-resolution](skills/schema-resolution/SKILL.md)
 
 Establish the one schema in force: the shape a project declares for its records — the written statements it keeps. Before a record is written, read, promoted, or audited; when a record's place or shape is in question; "which schema", "where does this go", "what kinds exist", "does this conform", or any doubt about the declared shape.
+
+
+---
+
+### [setup](skills/setup/SKILL.md)
+
+Explain this memory system to the person whose project it is, place what that project already wrote into it, and write the configuration it runs on. First use in a project, "set up memento", "install memento", "configure memento", "what is this system", "start keeping memory for this project", or any request to explain or configure it.
 
 
 ---
