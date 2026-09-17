@@ -1,6 +1,6 @@
 # my-claude-skills
 
-20 skills · 9 agents across 9 plugins
+30 skills · 9 agents across 9 plugins
 
 ## Plugins
 
@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.0.0` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.3` | 2S |
-| [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.1.0` | 1S |
+| [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.2.0` | 11S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `4.2.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
@@ -46,13 +46,23 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Binds Claude's operating identity to constitutions, manifestos, and principle sets through identity construction — not theatrical oaths....
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-## [memento](memento/) `0.1.0`
+## [memento](memento/) `0.2.0`
 
 A memory and record-keeping system for agents without continuity across sessions.
 
 ### Skills
 
+- **[authority-check](memento/skills/authority-check/SKILL.md)** — Classify content by who authored it and by the channel that supplied it, apply the rank, and refuse what the rank refuses. "who wrote...
+- **[corpus-reconciliation](memento/skills/corpus-reconciliation/SKILL.md)** — Audit every record one project holds against the index over them, then repair each mismatch found. "audit the records", "reconcile the...
+- **[event-capture](memento/skills/event-capture/SKILL.md)** — Write a trace — a dated note of one event, an event being a happening of a kind schema-resolution names, fixed once written — into the...
+- **[owner-ruling](memento/skills/owner-ruling/SKILL.md)** — Carry out a ruling — what the owner, the human whose project this is, rules about content in quarantine, the status that holds a record...
+- **[pat-down](memento/skills/pat-down/SKILL.md)** — Re-derive what is true about a project from its written records, inheriting nothing. Session start, resumed or interrupted work, a...
+- **[record-promotion](memento/skills/record-promotion/SKILL.md)** — Move a record — a written statement kept past its making — up one tier, a storage class in a fixed order, through that tier's gate, the...
+- **[record-writing](memento/skills/record-writing/SKILL.md)** — Write one record — a written statement kept on a durable location, made to outlast the work that wrote it. "write this down", "record...
+- **[schema-resolution](memento/skills/schema-resolution/SKILL.md)** — Establish the one schema in force: the shape a project declares for its records — the written statements it keeps. Before a record is...
 - **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — text to be read and followed. "create a skill", "write a skill", "new skill", "add a skill", "make this repeatable", or...
+- **[span-closure](memento/skills/span-closure/SKILL.md)** — Close out a stretch of work — one continuous thread of narrative — flushing, summarizing, and auditing what it leaves behind. The end of...
+- **[staging-relay](memento/skills/staging-relay/SKILL.md)** — Pair every part of a task that outlives the work at hand with a record and a waking cause — what begins the later work — and bound every...
 ## [orchestration](orchestration/) `4.2.0`
 
 Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.
