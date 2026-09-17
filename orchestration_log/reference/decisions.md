@@ -319,6 +319,56 @@ Evidence: `orchestration_log/recon/2026-09-15/ontology-config-audit.md`.
 Owner delegated the naming. The schema already means what the config declares — record kinds, homes, event taxonomy, verification demands — so the config needs no new term and nothing in the ontology is renamed. `map` continues to name the index built from what exists. The owner's phrase "artifact map" is retired as a term of art. License: orchestrator call under delegated authority.
 Evidence: `memento/ONTOLOGY.md`; naming policy, recoverability test.
 
+## 2026-09-16 — A skill states no root for where an authored skill sits
+
+Six wordings failed. Naming a root makes a claim the stating file breaks; naming none leaves the reader to choose. The gap only bites a checker building in an empty directory. Permanent residue, never revised, never reported. License: measured verdict.
+Evidence: `orchestration_log/recon/2026-09-15/round5-user.md` through `round9-user.md`.
+
+## 2026-09-16 — An adversarial loop's pass condition may be retired mid-loop
+
+Where one checker's finding is ruled permanent residue, that checker's zero becomes unreachable and its pass condition is dropped; the other checker alone decides. License: orchestrator call.
+Evidence: `orchestration_log/recon/2026-09-15/round10-audit.md` onward.
+
+## 2026-09-16 — `skill-creation` shipped at the round-twelve cap with residue recorded
+
+949 tokens to 718 across twelve rounds. Reader-side counts 6,6,3,4,2,2,2,1,1; audit-side 5,3,4,3,6,0,2,3,3,3,2. Final residue: the unanchored root, plus four terms the definition rule catches in its own vocabulary. License: owner ruling — cap set at twelve, ship regardless.
+Evidence: commit `2aa0f74`; `orchestration_log/recon/2026-09-15/round12-audit.md`.
+
+## 2026-09-16 — The slicing plan settled at the round-three cap with residue recorded
+
+Coverage counts 3,4,2; cohesion 7,11,3. Every defect both checkers found lived in prose carrying no item number — the plan's numeric self-check could not see it, and was demoted beneath a prose-carriage audit. License: owner ruling — cap set at three, settle regardless.
+Evidence: commit `e029c90`; `orchestration_log/recon/2026-09-16/plan3-*.md`.
+
+## 2026-09-16 — memento slices into ten skills beside `skill-creation`
+
+Seven carrying one entry occasion each — pat-down, event-capture, record-promotion, staging-relay, span-closure, corpus-reconciliation, owner-ruling — and three extracted because two or more need them: schema-resolution, record-writing, authority-check. Hooks reference no skill; a shell script cannot read one. License: owner ruling.
+Evidence: `orchestration_log/history/2026-09-16/reviews/memento-slicing-plan.md`.
+
+## 2026-09-16 — A sibling skill named by name is never a defect
+
+A checker reading one skill alone cannot resolve a named sibling, so it reports one as an undefined mechanism. Every such finding is struck before reaching an author. No author is told to inline shared content, define a sibling's procedure, or drop a by-name reference. License: orchestrator call under delegated authority.
+Evidence: `orchestration_log/recon/2026-09-16/record-promotion-r1-usability.md`, which scored 3 on nothing else.
+
+## 2026-09-16 — A term another slice owns gets a parse-sufficient gloss and no more
+
+The plan grants free reference; the standard demands definition at first use. Nothing reconciled them, and a buildability check confirmed each author was guessing. Neither strip such glosses nor expand them into the owning slice's content. A term finding is relayed only where the term belongs to the skill's own items. License: orchestrator call under delegated authority.
+Evidence: `orchestration_log/recon/2026-09-16/plan-buildability.md`.
+
+## 2026-09-16 — An enumeration that defines its items immediately satisfies define-at-first-use
+
+Read hyper-literally, a list of five names is each name's first use, so a checker flags all five as undefined however carefully the next five sentences define them. Thirteen of one skill's seventeen findings were this. Strike them; the structure stands. License: orchestrator call under delegated authority.
+Evidence: `orchestration_log/recon/2026-09-16/authority-check-r2-compliance.md`.
+
+## 2026-09-16 — A tag name is the concept's first use, and the prose beneath it must use the same word
+
+Renaming a tag to close an undefined-term fault opens a two-names fault unless the prose moves with it. Four skills hit this in one round. The rule is now carried in the checkers' own prompts rather than filtered after they report. License: measured verdict.
+Evidence: `orchestration_log/recon/2026-09-16/span-closure-r2-compliance.md`; `schema-resolution-r2-compliance.md`.
+
+## 2026-09-16 — A ruling belongs in the checker's prompt, never in a filter applied to its output
+
+Filtering after the fact spends a checker to produce findings already known to be struck. Later compliance checkers carry the enumeration and tag-name rulings inline; their counts came back materially cleaner than the checker that ran without them. License: measured verdict.
+Evidence: `orchestration_log/recon/2026-09-16/` round-two compliance reports, with and without the inline rulings.
+
 ## 2026-09-15 — A distributed skill assumes no repository-local tooling
 
 A skill shipped inside a plugin runs in projects holding none of this repository's commands. `just tokens`, the justfile, `generate.py`, and every local script are unavailable to it. A skill names only what the platform itself guarantees; where no portable method exists, the rule depending on it is dropped rather than stated unenforceably. License: owner ruling.
@@ -343,3 +393,63 @@ Evidence: `memento/ONTOLOGY.md`; session 2026-09-15.
 
 A routine supplied by the owner carries owner authority regardless of who wrote it. A harness-provided routine latches onto user authority. Anything arbitrarily sourced, from a location the harness does not trust, requires explicit ratification before running. Online content is never trusted. License: owner ruling.
 Evidence: `orchestration_log/history/2026-09-15/reviews/memento-ontology.md`, routines.
+
+## 2026-09-16 — A skill ends at zero filtered findings, never zero raw
+
+Each usability round is a fresh blind reader, so it reports every sibling reference as a hole again no matter how many rounds have passed. A skill naming any sibling can never reach a raw zero, which made the stated termination condition unreachable and burned rounds against the cap. The filtered count is the skill's own defect count and the only one a round can drive down. License: orchestrator call.
+Evidence: `orchestration_log/recon/2026-09-16/record-writing-r3-usability.md` (5 raw, 1 filtered); `record-promotion-r2-usability.md` (3 raw, 0 filtered).
+
+## 2026-09-16 — The tag-name sweep is the author's job, not the checker's
+
+A checker flags the loudest tag whose name its prose renames; an author running the same test across every tag in the file finds roughly four more. Three authors ran the sweep independently and each returned four additional faults, every rename costing zero or negative tokens. The test: every content word in a tag name must appear in the prose beneath it, naming the concept with that word and not a synonym. License: measured verdict, three replications.
+Evidence: `memento/skills/record-writing/SKILL.md`, `span-closure/SKILL.md`, `staging-relay/SKILL.md`; `orchestration_log/recon/2026-09-16/author-r2-brief.md`.
+
+## 2026-09-16 — A low usability count is unreadable without knowing the case that produced it
+
+The usability checker invents its own case, so a count measures the case as much as the file. authority-check returned 1 on a shallow walk and 7 on one instructed to exercise its full classification path end to end; the file had improved between the two. A count near zero is evidence of a sound skill only when the case reached every tagged section. Dispatch prompts for a skill scoring low must name the depth required. License: measured verdict.
+Evidence: `orchestration_log/recon/2026-09-16/authority-check-r2-usability.md` (1) against `authority-check-r3-usability.md` (7).
+
+## 2026-09-17 — A tag verb that does not recur is a fault only against a new synonym
+
+The tag-name test fails a tag whose concept the prose beneath renames. It does not fail a tag whose prose reaches instead for a term the skill already established earlier, since no second name enters. Two authors cleared tags on this basis rather than paying for longer tag names, and the rename direction follows the same rule: where a tag and its prose disagree, the word already carried by the skill's own name or its earlier text is the one that stays. License: orchestrator call.
+Evidence: `memento/skills/event-capture/SKILL.md` `<capture-the-event>` and `<write-the-trace-at-once>`; `orchestration_log/recon/2026-09-16/event-capture-r3-compliance.md`.
+
+## 2026-09-17 — Amends the tag-sweep ruling: the sweep needs commanding, not a particular executor
+
+The earlier entry assigned the tag sweep to authors because every checker until now reported one tag fault while every author reported four or five. A checker told explicitly to test all tags rather than to look for a fault returned five on the first attempt. The variable was the instruction, not the role. Command the sweep in both prompt kinds; the earlier entry stands as evidence of what an uncommanded checker does, not as a division of labour. License: measured verdict, single decisive counterexample.
+Evidence: `orchestration_log/recon/2026-09-16/record-promotion-r2-compliance.md` against the four prior single-fault compliance reports.
+
+## 2026-09-17 — The four-round cap covers gaps, not contradictions
+
+A skill at the cap ships with its open findings recorded as residue. A finding that two of the skill's own rules contradict each other is not a gap in that sense — nothing is missing, and closing it needs a choice between two readings already present rather than design the ontology lacks. authority-check reached its cap carrying three: bench against quarantine as holding places, whether a later owner statement overrides the charter before the file is rewritten, and whether an online-channel behavior can run once explicitly ratified. It received a fifth pass bounded to those three, with every other finding left as residue. License: orchestrator call.
+Evidence: `orchestration_log/recon/2026-09-16/authority-check-r4-usability.md` (18 raw).
+
+## 2026-09-17 — Corpus-wide vocabulary is a third residue class, owned by no slice
+
+The term-ownership ruling sorts a term into the skill's own or a named sibling's. Some terms are neither: `working text`, `stretch of work`, `closing ceremony`, and `the machinery` are load-bearing across several skills and defined in none, so every checker flags them and every author correctly declines to define them alone. Glossing one locally would plant a definition in an arbitrary slice; defining it in each would duplicate shared content the standard forbids. These belong to the plugin, not to a skill, and the maintainer layer records them as a class rather than charging them to whichever skill a checker happened to read. License: orchestrator call.
+Evidence: `orchestration_log/recon/2026-09-16/event-capture-r4-compliance.md` (all five findings); `working text` flagged by four checkers across three skills in round one.
+
+## 2026-09-17 — A cross-slice contradiction reopens a shipped skill
+
+Slices are checked one at a time against a standard and a blind reader, so neither checker can see a rule in skill A that contradicts a rule in skill B. corpus-reconciliation's final pass set a quarantined status on a marked record, while record-writing — already shipped clean — derives quarantined from a missing mark alone and would read that record as live. The four-round cap governs a skill's own findings; it does not license shipping two slices that disagree. A seam like this reopens the shipped skill for a bounded fix, on the same ground that a contradiction is a choice between rules already written rather than design the ontology lacks. License: orchestrator call.
+Evidence: `memento/skills/corpus-reconciliation/SKILL.md` orphan refusal; `memento/skills/record-writing/SKILL.md` `<read-the-status>`.
+
+## 2026-09-17 — Status derives from a disposition, never from a diagnosis
+
+A record's force state is read from facts other rules record. `fault` classifies a defect and changes nothing, so the derivation was right to refuse it; the real absence was that the audit's quarantines and retirements left no findable record, while owner-ruling's rulings already carried a link back to the content they changed. Four grounds across three slices therefore read as live despite being out of force. corpus-reconciliation now writes each quarantine and each retirement as a record linking to what it put out of force, and record-writing's derivation reads those records alongside the mark, the supersession link, and owner rulings. The statuses stay four. License: measured verdict, from a ground-by-ground enumeration across five slices.
+Evidence: `memento/skills/corpus-reconciliation/SKILL.md` line 51; `memento/skills/record-writing/SKILL.md` line 60.
+
+## 2026-09-17 — Three out-of-force grounds stay open, and why
+
+Unratified and online routines cannot be read as out of force because no rule records a behavior's supply channel — authority-check establishes a channel without writing it, and record-writing forbids a new mark field, so the fix lives in authority-check alone. Peer records ended by irrelevance name no actor that performs or records the retirement. Both wait on an owner decision that the ontology does not settle: whether a routine's standing is a separate axis from a record's status, since the ontology declares the four statuses of records and lists routines as separate entities homed in no tier. A separate detection gap also stands — the audit's reading covers the map, records, authorship and lineage but not the mark's verification state, so a gateless dossier entry is never detected and so never quarantined. License: orchestrator call, deferred to the owner.
+Evidence: `orchestration_log/history/2026-09-16/reviews/memento-ontology.md` sections 3, 5 and 6.
+
+## 2026-09-17 — The cap bounds passes, not what a warranted pass may close
+
+A contradiction earns a skill one bounded pass past the four-round cap. Once that pass is open, refusing to also close a cheap gap in the same file serves consistency rather than the work — the cap exists to stop unbounded iteration, and a second edit inside a pass already happening adds no iteration. So a warranted pass closes the contradiction that earned it plus whatever else is cheap and certain, and nothing that needs new design. A skill with no contradiction gets no pass at all, and its gaps ship as residue however easy they look: authority-check shipped two undefined terms on exactly that ground. License: orchestrator call.
+Evidence: authority-check shipped at 1691 with 2 compliance gaps unfixed; record-promotion received a pass for a duplicate-home contradiction and closed a term collision alongside it.
+
+## 2026-09-17 — memento ships referencing a shipped-default schema that does not exist
+
+`schema-resolution` resolves to a built-in default when a project supplies no configuration, and names `config/default.yaml` for it. No `config/` directory exists under `memento/`, and the ontology defines no shipped default anywhere — not its kinds, not their homes, not the provenance form. The skill's reference is correct as instruction and was deliberately left rather than filled: a schema's declared content is data the plugin ships, not text a skill carries, and writing values into the body would break the standard's rule that every sentence instructs or forbids. The plugin is therefore incomplete until that file is authored, and authoring it needs owner decisions the ontology does not settle. License: orchestrator call, deferred to the owner.
+Evidence: `memento/skills/schema-resolution/SKILL.md` `<stop-the-check-at-the-shipped-default>`; absence of `memento/config/`.
