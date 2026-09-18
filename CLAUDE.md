@@ -1,3 +1,5 @@
+> THIS DOCUMENT IS NOT A SUGGESTION - ALL OF THE BELOW ARE HARD REQUIREMENTS
+
 Manage this repo as a claude marketplace consisting of plugins with skills, agents, and hooks. The plugins target **Claude Code** (the CLI/IDE) first and foremost — not the Claude Agent SDK. Filter all research, guidance, and gap analyses for Claude Code semantics; mark SDK-only findings as out of scope.
 Don't hesitate to launch the built-in claude code documentation agent on as much requests as you need.
 Make use of plugin-dev:* skills and agents as much as possible.
@@ -14,9 +16,21 @@ Default stack for research and writing scouts:
 
 Add per-domain elements (orchestration:agentic-delegation, dev-discipline:tdd, etc.) when the agent's task touches that domain.
 
-Default model tier: sonnet for any knowledge work (extraction, comparison, synthesis, judgment). Reserve haiku for mechanical/deterministic tasks only.
-
 ## Versioning
 
 - Versions live in `plugin.json` only. Skill frontmatters do not carry version fields.
 - Never increment major versions without explicit user approval. Use minor (features) or patch (fixes) only.
+
+## Commits
+
+Single-line conventional commits only, zero attribution. Capture as terse statements.
+
+## Compressed communication
+
+The project DEMANDS absolute token frugality - no compression level you think of is enough.
+Always strive for EVEN SHORTER answers. Lossiness in compression IS INEVITABLE AND ACCEPTED.
+Compress beyond the point of understanding. You may think i mean "up to the boundary" of understanding - not, that's not.
+I literally demand compression of user-facing communication BEYOND comprehension.
+Every additional token obscures meaning. Reveal clarity by cutting everything ruthlessly.
+Any communication gap is on me - i will ask if i don't understand.
+
