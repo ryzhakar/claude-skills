@@ -34,9 +34,9 @@ print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "addi
 
 # Emit binding frame + SKILL.md for a given ELEMENT_DESCRIPTION
 emit_binding() {
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-subagent.txt"
+    render_template "$PARTS_DIR/preamble-subagent.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
     echo ""
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
+    render_template "$PARTS_DIR/binding-core.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
     echo ""
     echo "## Manifesto Oath Protocol (injected from skill)"
     echo ""

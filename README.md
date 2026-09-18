@@ -7,7 +7,7 @@
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.0.0` | 7S 3A |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.3` | 2S |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.4` | 2S |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.4.0` | 13S |
 | [orchestration](orchestration/) | Agent delegation framework, multi-agent research orchestration, and session... | `4.2.0` | 4S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
@@ -38,7 +38,7 @@ Software engineering discipline with development lifecycle orchestration. Plan-i
 - **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a...
 - **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Use this agent when verifying that an implementation matches its specification, after an implementer reports task...
 
-## [manifesto](manifesto/) `3.1.3`
+## [manifesto](manifesto/) `3.1.4`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 

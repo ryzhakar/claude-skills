@@ -53,7 +53,7 @@ Each element in any list is one of:
 ```yaml
 - name: first-principles
   purpose: reasoning methodology
-  source: /tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/first-principles.md
+  source: .claude/manifesto-repo/LLM_MANIFESTOS/manifestos/first-principles.md
 ```
 
 ---
@@ -64,7 +64,7 @@ Each element in any list is one of:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `manifesto_dir` | string (path) | no | `/tmp/claude-manifesto-repo/LLM_MANIFESTOS` | Override the default manifesto repository directory. All hooks use this path for Tier 1 resolution. Valid only in dict-form; ignored in flat list form. |
+| `manifesto_dir` | string (path) | no | `<project_dir>/.claude/manifesto-repo/LLM_MANIFESTOS` | Override the default manifesto repository directory. All hooks use this path for Tier 1 resolution. Valid only in dict-form; ignored in flat list form. |
 
 ### Element fields
 
@@ -134,7 +134,7 @@ Footers are inlined in the shell scripts, not extracted to files.
 
 ## Repository management
 
-Hooks read manifesto files from `manifesto_dir` but do not clone or pull the repository automatically. The `ensure_repo()` function in `hooks/ensure-repo.sh` is available for on-demand setup. Source it and call `ensure_repo` before any operation that requires the repo to exist.
+SessionStart and PostCompact call `ensure_repo()` from `hooks/ensure-repo.sh`, cloning the manifesto repo to `manifesto_dir` on first use and pulling on later sessions. SubagentStart and UserPromptSubmit read whatever `ensure_repo()` last left in place and never clone or pull themselves, keeping their tighter timeouts network-free. `ensure_repo()` drops a self-ignoring `.gitignore` (`*`) next to the clone so the project's own git history never picks it up.
 
 ---
 

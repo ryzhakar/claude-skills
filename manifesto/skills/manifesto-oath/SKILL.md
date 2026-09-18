@@ -37,7 +37,7 @@ If the element has an explicit URL, repository path, or local file path, use tha
 
 For LOOSE NAMES — "first principles", "decomplect", "the Rich Hickey one" — execute tiered resolution in strict order. Stop at the first match.
 
-**Tier 1: Default manifesto repo (PRIMARY).** Search `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/` — file names, headings, content. Purpose-built manifesto documents live here.
+**Tier 1: Default manifesto repo (PRIMARY).** Search `.claude/manifesto-repo/LLM_MANIFESTOS/manifestos/` (project-relative) — file names, headings, content. Purpose-built manifesto documents live here.
 
 **Tier 2: Session-accessible skills.** If Tier 1 found nothing, search installed/accessible skills by name.
 
@@ -114,7 +114,7 @@ Recognize "revoke," "cancel," "end operating mode," "disable manifesto" as revoc
 
 <example>
 Constitutional elements loaded:
-- First-principles manifesto (v1.0.1): loaded from `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/first-principles.md`, full read complete
+- First-principles manifesto (v1.0.1): loaded from `.claude/manifesto-repo/LLM_MANIFESTOS/manifestos/first-principles.md`, full read complete
 
 Constraint commitments:
 

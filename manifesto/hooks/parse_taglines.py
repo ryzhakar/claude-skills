@@ -6,6 +6,9 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mini_yaml import safe_load
+
 
 def load_frontmatter(path):
     """Return the YAML frontmatter dict from a markdown file, or None."""
@@ -15,8 +18,7 @@ def load_frontmatter(path):
         if not content.startswith("---"):
             return None
         end = content.index("---", 3)
-        import yaml
-        fm = yaml.safe_load(content[3:end])
+        fm = safe_load(content[3:end])
         return fm if isinstance(fm, dict) else None
     except Exception:
         return None

@@ -17,6 +17,8 @@ if $YOU_EMPTY; then
     exit 0
 fi
 
+ensure_repo "$MANIFESTO_DIR"
+
 # PostCompact requires hookSpecificOutput JSON — plain text goes to debug log only.
 emit_json() {
     python3 -c '
@@ -58,9 +60,9 @@ export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
 SKILL_MD="$SCRIPT_DIR/../skills/manifesto-oath/SKILL.md"
 {
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/preamble-compact.txt"
+    render_template "$PARTS_DIR/preamble-compact.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
     echo ""
-    envsubst '${ELEMENT_DESCRIPTION} ${MANIFESTO_DIR} ${REBIND_NOTE} ${PLUGINS_CACHE_DIR}' < "$PARTS_DIR/binding-core.txt"
+    render_template "$PARTS_DIR/binding-core.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
     echo ""
     echo "## Manifesto Oath Protocol (injected from skill)"
     echo ""
