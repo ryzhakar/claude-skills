@@ -17,6 +17,11 @@ return channels — which live in the orchestration skills; core-shape changes
   refactor, doc, test, chore, scope naming the plugin. The version bump ships in the same commit as
   the change it describes, so a version always points at its content. Governs every commit.
 
+- **Atomic means one irreducible scope per commit, never a bundle.** A plugin's own files (skills,
+  agents, hooks, `plugin.json`) and `orchestration_log/reference/*` are separate scopes even when one
+  task changed both — split into separate commits. Governs every commit touching more than one
+  plugin or crossing plugin/`orchestration_log` boundaries.
+
 - **Every positive directive pairs with an explicit prohibition.** A skill that says "use X" without
   saying "never use Y" leaves a gap a loosely-prompted agent fills with its own invention. Governs
   skill and agent authorship; format (Hard Rules, "You do / You do NOT", Iron Law) is the author's
