@@ -9,7 +9,7 @@ Make use of plugin-dev:* skills and agents as much as possible.
 Every agent prompt must open with a constitution-binding preamble before the task body. List the relevant constitution elements by source path or URL. Instruct the agent to load each one completely from source, run the manifesto-oath binding protocol (deconstruct → map convergence/tension → activate operating mode), then proceed to the task. Subagents do not inherit the orchestrator's binding; they rebind from source on every dispatch.
 
 Default stack for research and writing scouts:
-- First Principles ("break the mold") — search `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/manifestos/`
+- First Principles ("break the mold") — search `.claude/manifesto-repo/LLM_MANIFESTOS/manifestos/`
 - Strunk SPR v3 — `https://raw.githubusercontent.com/ryzhakar/LLM_MANIFESTOS/refs/heads/main/instructions/strunk_spr_v3_complete.xml` (fetch via Bash curl; WebFetch refuses verbatim reproduction)
 
 Add per-domain elements (orchestration:agentic-delegation, dev-discipline:tdd, etc.) when the agent's task touches that domain.

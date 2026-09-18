@@ -690,9 +690,19 @@ CONFIG="${CLAUDE_PROJECT_DIR}/.config.yaml"
 ```
 
 **Template-based context output:**
+`envsubst` (GNU gettext) is not guaranteed installed on the host — a fresh sandbox without it turns
+every call into a hook crash. Substitute with python3 (stdlib-only) instead, restricting the
+allowed names so any other `${...}` in the template stays literal:
 ```bash
 export AGENT_TYPE LAST_MESSAGE
-envsubst '${AGENT_TYPE} ${LAST_MESSAGE}' < "$SCRIPT_DIR/templates/mandate.txt"
+python3 -c '
+import os, re, sys
+allowed = {"AGENT_TYPE", "LAST_MESSAGE"}
+text = open(sys.argv[1]).read()
+def repl(m):
+    return os.environ.get(m.group(1), "") if m.group(1) in allowed else m.group(0)
+sys.stdout.write(re.sub(r"\$\{(\w+)\}", repl, text))
+' "$SCRIPT_DIR/templates/mandate.txt"
 ```
 
 **Daemon architecture (complex rule systems):**
@@ -848,11 +858,21 @@ CONFIG="${CLAUDE_PROJECT_DIR}/.config.yaml"
 
 ### Template Output
 
-Extract prompt text to `hooks/templates/*.txt` for modularity. Use `envsubst` for variable substitution.
+Extract prompt text to `hooks/templates/*.txt` for modularity. Substitute variables with python3
+(stdlib-only), not `envsubst` — GNU gettext is not guaranteed installed, and its absence crashes
+the hook with no clear stderr under `set -euo pipefail`. Restrict the allowed names so any other
+`${...}` in the template stays literal, matching envsubst's variable-list argument:
 
 ```bash
 export AGENT_TYPE LAST_MESSAGE
-envsubst '${AGENT_TYPE} ${LAST_MESSAGE}' < "$SCRIPT_DIR/templates/mandate.txt"
+python3 -c '
+import os, re, sys
+allowed = {"AGENT_TYPE", "LAST_MESSAGE"}
+text = open(sys.argv[1]).read()
+def repl(m):
+    return os.environ.get(m.group(1), "") if m.group(1) in allowed else m.group(0)
+sys.stdout.write(re.sub(r"\$\{(\w+)\}", repl, text))
+' "$SCRIPT_DIR/templates/mandate.txt"
 ```
 
 ### Agent Lifecycle Chain

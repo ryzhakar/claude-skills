@@ -39,8 +39,14 @@ Hooks: three SubagentStop hooks, matching `implementer`, `spec-reviewer`, and
 Skills: `manifesto-oath` (identity construction from loaded constitution elements; tiered name
 resolution), `manifesto-writing`.
 Hooks: SessionStart, PostCompact, SubagentStart, and UserPromptSubmit (tagline drift reminder).
-Hook scripts compose `templates/parts/binding-core.txt` with a per-event preamble; `ensure-repo.sh`
-fetches the manifesto repository on demand; `parse_taglines.py` reads manifesto frontmatter.
+Hook scripts compose `templates/parts/binding-core.txt` with a per-event preamble. SessionStart and
+PostCompact call `ensure-repo.sh`'s `ensure_repo()`, cloning the manifesto repo to
+`<project>/.claude/manifesto-repo/LLM_MANIFESTOS` on first use and pulling on later sessions;
+SubagentStart and UserPromptSubmit read that clone but never fetch it themselves. `parse_taglines.py`
+reads manifesto frontmatter. Neither `envsubst` nor PyYAML is a dependency: `ensure-repo.sh`'s
+`render_template()` and `parse_config.py`/`mini_yaml.py` replace them with python3-stdlib-only
+equivalents (measured 2026-09-18, after both were found absent in a fresh sandbox and crashing every
+manifesto hook silently).
 Config schema for `.manifestos.yaml`: `manifesto/SCHEMA.md`.
 
 **qa-automation** — the Playwright test lifecycle.
@@ -95,7 +101,8 @@ Two standalone manuals sit beside the living files and belong to no ontology slo
 - `agents-reference.md`: 2,790 lines, 11 sections and 3 appendices, extracted from 78 Claude Code
   documentation pages across 9 topic clusters. 298 citations, of which 197 resolve to deep links —
   81% of the 242 that carry a quote. Measured 2026-04-20.
-- `hooks-reference.md`: 893 lines. Measured 2026-04-16.
+- `hooks-reference.md`: 913 lines. Measured 2026-09-18 (envsubst examples replaced with the
+  python3 stand-in after the fresh-sandbox incident).
 
 ## Known limitations
 

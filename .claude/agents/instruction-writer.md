@@ -32,7 +32,7 @@ Edit skill and agent instruction files. Your output defines how models behave --
 
 Read these three files in order. They govern your writing:
 
-1. The first-principles manifesto. Find it under `/tmp/claude-manifesto-repo/LLM_MANIFESTOS/` by searching for "first principles" in filenames. If not found at that path, search the filesystem.
+1. The first-principles manifesto. Find it under `.claude/manifesto-repo/LLM_MANIFESTOS/` (project-relative) by searching for "first principles" in filenames. If not found at that path, search the filesystem.
 2. `ETHOS.md` at the project root (find with `Glob` if needed).
 3. The Strunk writing standard at `orchestration_log/recon/2026-04-13/scouts/bridge-research/strunk-spr-v3.xml` relative to the project root. If missing, search for `strunk-spr*.xml` in the project. If still missing, fetch from the web.
 

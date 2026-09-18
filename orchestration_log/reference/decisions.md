@@ -569,3 +569,38 @@ Evidence: `memento/skills/setup/SKILL.md`.
 
 `setup` reaches the shipped default through `${CLAUDE_PLUGIN_ROOT}`. `schema-resolution` names the same location as "in this plugin", which resolves for no reader and is recorded as residue. The variable is the form; the prose is the defect. License: orchestrator call.
 Evidence: `memento/skills/setup/SKILL.md`; `memento/skills/schema-resolution/SKILL.md`; `memento/maintainers/coverage.md`.
+
+## 2026-09-18 — envsubst and PyYAML were unwarranted assumptions; both are gone
+
+A fresh sandbox crashed every manifesto hook and the orchestration ARRIVE hook: `envsubst` (used by
+`session-arrive.sh`, `session-start.sh`, `post-compact.sh`, `subagent-start.sh`, and the three
+dev-discipline SubagentStop hooks) and PyYAML (used by `ensure-repo.sh`'s `detect_manifestos()` via
+`import yaml`) are both third-party binaries this repo never installs and never checks for, and the
+YAML failure was masked by a `2>/dev/null` under `set -euo pipefail` that turned a plain
+`ModuleNotFoundError` into an opaque "No stderr output" hook error. `render_template()` (python3
+stdlib, `re.sub` on `${VAR}`) — or an inline equivalent where a plugin has no shared helper file —
+replaces every `envsubst` call; `mini_yaml.py` (a block-style YAML subset parser covering exactly
+what `.manifestos.yaml` and manifesto frontmatter use) replaces every `import yaml`. Every plugin now
+depends on nothing beyond bash, git, and a stock python3. The general hooks reference still
+prescribed `envsubst` as the pattern for template output, which would have steered a future hook
+author into reintroducing the same crash; it now shows the python3 stand-in instead. License:
+orchestrator call.
+Evidence: `manifesto/hooks/mini_yaml.py`; `manifesto/hooks/parse_config.py`; `manifesto/hooks/ensure-repo.sh`;
+`orchestration/hooks/session-arrive.sh`; `dev-discipline/hooks/implementer-stop.sh`,
+`spec-reviewer-stop.sh`, `code-quality-reviewer-stop.sh`; `orchestration_log/reference/hooks-reference.md`.
+
+## 2026-09-18 — The manifesto clone moves from `/tmp` to the project, and `ensure_repo` finally runs
+
+`ensure_repo()` existed since the manifesto plugin's first version and was never called from any hook
+— every environment, not just this fresh sandbox, relied on an agent having cloned
+`/tmp/claude-manifesto-repo` by hand per `CLAUDE.md`'s Agent dispatch section. It is now wired into
+SessionStart and PostCompact, which already carry 30s timeouts and a status message, and left out of
+SubagentStart and UserPromptSubmit, whose 5-10s timeouts should not absorb a `git pull`'s network
+latency on every prompt or every dispatch. The clone target also moves from `/tmp/claude-manifesto-repo`
+to `<project_dir>/.claude/manifesto-repo/LLM_MANIFESTOS`, project-local rather than machine-global, so
+it survives independently per project and is never shared or clobbered across sandboxes. `ensure_repo()`
+drops a self-ignoring `.gitignore` (`*`) beside the clone so no consuming project's git history ever
+picks it up. Every doc reference to the old path — `CLAUDE.md`, `manifesto/SCHEMA.md`,
+`manifesto-oath/SKILL.md`, `.claude/agents/instruction-writer.md`, `conventions.md` — is updated to
+match. License: owner ruling.
+Evidence: `manifesto/hooks/ensure-repo.sh`; `manifesto/hooks/session-start.sh`; `manifesto/hooks/post-compact.sh`.

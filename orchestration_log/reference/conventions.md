@@ -60,9 +60,10 @@ description (`capabilities.md`).
   pass scales past a hundred citations without loading the corpus. Governs every citation-rewrite
   wave.
 
-- **Binding preambles name a fallback source.** The `/tmp` manifesto clone is often absent when an
-  agent starts, so every preamble pairs the local path with the raw GitHub URL as a required step.
-  Governs every agent dispatch preamble.
+- **Binding preambles name a fallback source.** The project-local manifesto clone at
+  `.claude/manifesto-repo/` can still be absent — a fresh dispatch outside any hooked session, a
+  clone that failed offline — so every preamble pairs the local path with the raw GitHub URL as a
+  required step. Governs every agent dispatch preamble.
 
 - **This repo's constitution stack lives in `.manifestos.yaml`, grouped form.** `you:` binds the
   orchestrator and `subagents:` binds by agent type; a flat list at root binds the orchestrator only.
