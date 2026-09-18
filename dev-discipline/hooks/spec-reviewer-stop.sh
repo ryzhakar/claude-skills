@@ -20,4 +20,12 @@ AGENT_TYPE=$(echo "$INPUT" | python3 -c 'import sys,json; print(json.loads(sys.s
 LAST_MESSAGE=$(echo "$INPUT" | python3 -c 'import sys,json; msg=json.loads(sys.stdin.read()).get("last_assistant_message", ""); print(msg[:500])' 2>/dev/null || echo "")
 
 export AGENT_TYPE LAST_MESSAGE
-envsubst '${AGENT_TYPE} ${LAST_MESSAGE}' < "$SCRIPT_DIR/templates/quality-review-mandate.txt"
+# Dependency-free stand-in for envsubst, which is not guaranteed installed.
+python3 -c '
+import os, re, sys
+allowed = {"AGENT_TYPE", "LAST_MESSAGE"}
+text = open(sys.argv[1]).read()
+def repl(m):
+    return os.environ.get(m.group(1), "") if m.group(1) in allowed else m.group(0)
+sys.stdout.write(re.sub(r"\$\{(\w+)\}", repl, text))
+' "$SCRIPT_DIR/templates/quality-review-mandate.txt"
