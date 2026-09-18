@@ -298,3 +298,21 @@ WHY:           a plugin's hooks belong with the plugin whose domain they serve; 
 INVALIDATES:   `orchestration/hooks/` as a path (directory removed); orchestration's own SessionStart
                and PostCompact hook registration
 SOURCE:        this migration
+
+## 2026-09-18 — The PostCompact hook is dropped; SessionStart absorbs its matcher
+KIND:          runnable
+FROM → TO:     two hooks, SessionStart (`startup|resume`) and PostCompact (`*`), both emitting plain
+               stdout → one SessionStart hook, matcher `startup|resume|compact`, PostCompact removed
+WHY:           PostCompact's `hookSpecificOutput.additionalContext` fails schema validation outright
+               — "Invalid input"; the schema accepts only `PreToolUse`, `UserPromptSubmit`,
+               `PostToolUse` — and PostCompact has no plain-stdout channel either, confirmed via
+               github.com/anthropics/claude-code/issues/46191 (closed not-planned). SessionStart's
+               `compact` matcher has a parallel, separately-reproduced bug for the JSON form
+               (issues/28305, closed not-planned); plain stdout, already in use, is undocumented for
+               `compact` specifically but carries no matcher carve-out in the docs and is the only
+               channel left
+INVALIDATES:   the "SessionStart and PostCompact hooks inject context" design pattern this repo's
+               own `hooks-reference.md` recommended; any hook config pairing SessionStart with a
+               PostCompact hook for context injection
+SOURCE:        this migration; github.com/anthropics/claude-code/issues/46191,
+               github.com/anthropics/claude-code/issues/28305

@@ -28,10 +28,14 @@ pointer), `session-close` (retired, pointer). No hooks.
 **memento** — memory and record-keeping for agents without continuity across sessions. Thirteen
 skills (entry point `init`, orientation `pat-down`, closure `span-closure`, plus ten supporting
 skills — full inventory not yet carried in this file).
-Hooks: SessionStart on `startup|resume` and PostCompact on `*` (moved from `orchestration`
-2026-09-18), both running `session-start.sh`, which renders `templates/orientation-reminder.txt` — a
-pointer to `memento:init` — when `CLAUDE.md` exists. The script tests that one condition and has no
-other branch.
+Hooks: one SessionStart hook, matcher `startup|resume|compact` (moved from `orchestration`
+2026-09-18; PostCompact dropped the same day — its `additionalContext` is schema-rejected outright,
+confirmed via github.com/anthropics/claude-code/issues/46191, closed not-planned; SessionStart's
+`compact` matcher has a parallel confirmed bug for the JSON form, issues/28305, also closed
+not-planned, so plain stdout is the only viable channel and carries no documented matcher
+carve-out). Runs `session-start.sh`, which renders `templates/orientation-reminder.txt` — a pointer
+to `memento:init` — when `CLAUDE.md` exists. The script tests that one condition and has no other
+branch.
 
 **dev-discipline** — the software-development extension of delegation.
 Skills: `dev-orchestration` (Plan→Implement→Review→Fix loop), `defensive-planning`,

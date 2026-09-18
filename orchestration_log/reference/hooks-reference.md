@@ -403,7 +403,7 @@ Does not fire in non-interactive (`-p`) mode. Use PreToolUse for automated decis
 }
 ```
 
-**Unresolved:** Issue [#46191](https://github.com/anthropics/claude-code/issues/46191) requests `additionalContext` support for PostCompact, conflicting with docs showing it working. Verify empirically before relying on it.
+**Confirmed broken, not merely unresolved:** issue [#46191](https://github.com/anthropics/claude-code/issues/46191) (closed not-planned) shows `hookSpecificOutput` with `hookEventName: "PostCompact"` fails schema validation outright — "Hook JSON output validation failed: Invalid input." The schema accepts only `PreToolUse`, `UserPromptSubmit`, `PostToolUse`. Plain stdout is not a substitute either: PostCompact is absent from the plain-stdout exception list (see Stdout Parsing Rules). No context-injection channel exists for PostCompact. Measured 2026-09-18.
 
 #### WorktreeCreate
 
@@ -433,7 +433,7 @@ Print worktree path to stdout as plain text.
 | `PreToolUse` | YES | YES | Bypass for Task/Agent (#26923, #44534); bypass in `-p` (#36071); bypass with `allowedTools: *` (#36071); `allow` regression (#36059); `deny` ignored for MCP (#33106); `ask` overrides deny (#39344); `updatedInput` ignored for Agent (#39814); all hooks disabled in subagents (#43612) |
 | `PostToolUse` | NO (feedback only) | YES | `tool_response.stderr` always empty (#44601); additionalContext dropped for MCP (#24788); does not fire for Skill tool (#43630) |
 | `SessionStart` | NO | YES | `systemMessage` regression (#41285, #47828); `compact` matcher additionalContext not injected (#28305); Desktop re-fires on tab switch (#39958); HTTP hooks not supported (#30170) |
-| `PostCompact` | NO | Uncertain (#46191) | No context size/content in payload (#44308) |
+| `PostCompact` | NO | NO — confirmed broken, schema-rejected (#46191) | No context size/content in payload (#44308) |
 | `SubagentStart` | NO | YES | `agent_type` may be missing (#44307); silent skip for background agents (#44075); no task prompt in payload (#32016) |
 | `StopFailure` | N/A (ignored) | N/A | Output and exit code both ignored |
 | `SessionEnd` | — | — | Agent-type hooks silently ignored; command hooks work (#40010) |
@@ -838,12 +838,14 @@ Same class of bugs as prompt hooks for blocking events (issues #26474, #39184: "
 
 ### Context Injection (One-Time)
 
-SessionStart and PostCompact hooks inject context that persists until compaction. These run once per session — make them thorough.
+A single SessionStart hook, matcher `startup|resume|compact`, injects context via plain stdout —
+the confirmed-working channel — at session start, resume, and after compaction. Do not add a
+PostCompact hook for this: its `additionalContext` is schema-rejected outright (see PostCompact
+above), so it cannot inject context by any channel.
 
 ```json
 {
-  "SessionStart": [{ "matcher": "startup|resume", "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/inject-context.sh" }] }],
-  "PostCompact": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/re-inject-context.sh" }] }]
+  "SessionStart": [{ "matcher": "startup|resume|compact", "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/inject-context.sh" }] }]
 }
 ```
 
