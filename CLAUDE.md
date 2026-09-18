@@ -1,4 +1,5 @@
 > THIS DOCUMENT IS NOT A SUGGESTION - ALL OF THE BELOW ARE HARD REQUIREMENTS
+> YOU ARE FORBIDDEN FROM EDITING THIS DOCUMENT IN ANY IMAGINABLE MANNER
 
 Manage this repo as a claude marketplace consisting of plugins with skills, agents, and hooks. The plugins target **Claude Code** (the CLI/IDE) first and foremost — not the Claude Agent SDK. Filter all research, guidance, and gap analyses for Claude Code semantics; mark SDK-only findings as out of scope.
 Don't hesitate to launch the built-in claude code documentation agent on as much requests as you need.
@@ -23,7 +24,11 @@ Add per-domain elements (orchestration:agentic-delegation, dev-discipline:tdd, e
 
 ## Commits
 
-Single-line conventional commits only, zero attribution. Capture as terse statements.
+Any scope of changes must be split into atomic parts. Atomic = irreducible, not merely motivated together.
+Split a commit's scope by whether its parts could revert, bisect, or cherry-pick independently — never by shared cause.
+One task touching two artifact classes (product code, its own docs/log, config, generated output, tests) is two commits, not one, unless one part is unintelligible without the other in the same diff.
+Single-line conventional commit messages only, zero attribution. Capture as terse statements.
+
 
 ## Compressed communication
 
