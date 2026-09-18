@@ -1,9 +1,9 @@
 {
   "name": "orchestration",
-  "version": "4.2.1",
-  "description": "Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.",
+  "version": "4.3.1",
+  "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, govern quality, and cope with discontinuous existence.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": ["orchestration", "delegation", "agents", "research", "parallel", "swarm", "session", "lifecycle"]
+  "keywords": ["orchestration", "delegation", "agents", "research", "parallel", "swarm"]
 }

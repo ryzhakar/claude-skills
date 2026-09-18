@@ -4,28 +4,34 @@
 **Holds:** what the system is and does — module inventory, command surface, artifact layout, domain
 vocabulary, known limitations, and measured operational facts, each measured fact carrying its
 measurement date.
-**Does not hold:** decision narratives (`decisions.md`); status snapshots — test counts, lint
-counts, build metrics — regenerate these by command; interface specifications — signatures,
-parameter lists, flag examples — read these from source; session or process content (`history/`).
-**Convention:** where a fact here has a history worth knowing, the pointer is one line — "decided
-YYYY-MM-DD, see `decisions.md`" — never a restatement of the reasoning.
+**Does not hold:** core-shape change narratives (`architecture_log.md`); status snapshots — test
+counts, lint counts, build metrics — regenerate these by command; interface specifications —
+signatures, parameter lists, flag examples — read these from source; session or process content
+(`history/`).
+**Convention:** where a fact here has a history worth knowing, the pointer is one line — "changed
+YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Eight plugins, each a top-level directory. `.claude-plugin/plugin.json` inside a plugin carries its
+Nine plugins, each a top-level directory. `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
-**orchestration** — agent delegation and the session lifecycle.
-Skills: `agentic-delegation` (decompose, launch, verify, assemble; owns the orchestrator identity,
-the ARRIVE/WORK/LEAVE frame, and the session-memory exception boundary), `research-tree`
-(breadth-first survey then depth-first verification across a knowledge surface), `session-checkpoint`
-(decision flush plus in-flight state dump), `session-close` (the LEAVE protocol).
-Hooks: SessionStart on `startup|resume` and PostCompact on `*`, both running `session-arrive.sh`,
-which renders `templates/arrive-context.txt` when `orchestration_log/reference/` exists. The script
-tests that one condition and has no other branch (measured 2026-09-15).
-Script: `skills/session-close/scripts/extract_metrics.py` parses session JSONL into token, agent, and
-tool-call totals.
+**orchestration** — agent delegation and discontinuous-existence coping mechanisms. Memory,
+record continuity, and the orientation hooks moved to `memento` 2026-09-18; `session-checkpoint` and
+`session-close` are retired, thin pointers to `memento:event-capture` and `memento:span-closure`.
+Skills: `agentic-delegation` (decompose, launch, verify, assemble; owns the orchestrator identity
+and the liveness/monitoring mechanics for a discontinuous entity), `research-tree` (breadth-first
+survey then depth-first verification across a knowledge surface), `session-checkpoint` (retired,
+pointer), `session-close` (retired, pointer). No hooks.
+
+**memento** — memory and record-keeping for agents without continuity across sessions. Thirteen
+skills (entry point `init`, orientation `pat-down`, closure `span-closure`, plus ten supporting
+skills — full inventory not yet carried in this file).
+Hooks: SessionStart on `startup|resume` and PostCompact on `*` (moved from `orchestration`
+2026-09-18), both running `session-start.sh`, which renders `templates/orientation-reminder.txt` — a
+pointer to `memento:init` — when `CLAUDE.md` exists. The script tests that one condition and has no
+other branch.
 
 **dev-discipline** — the software-development extension of delegation.
 Skills: `dev-orchestration` (Plan→Implement→Review→Fix loop), `defensive-planning`,
@@ -81,7 +87,7 @@ plus a changes report).
 
 | Path | Contents | Tracking |
 |---|---|---|
-| `reference/` | the five living files plus two standalone manuals | tracked |
+| `reference/` | the five living files (`decisions.md` retired, replaced by `architecture_log.md`) plus two standalone manuals | tracked |
 | `history/${DATE}/` | `session.md`, `failures.md`, `reviews/`, `cost.md` | tracked, except `cost.md` |
 | `recon/${DATE}/` | agent reports, `leave-verification.md`, telemetry | gitignored |
 

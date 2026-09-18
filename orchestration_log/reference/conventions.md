@@ -5,8 +5,8 @@
 anti-patterns, methodology, tooling rules — each as a kernel: the rule, a one-line why, the scope
 it governs.
 **Does not hold:** agent-harness and orchestration mechanics — dispatch, model tiers, worktrees,
-return channels — which live in the orchestration skills; decisions (`decisions.md`); system
-description (`capabilities.md`).
+return channels — which live in the orchestration skills; core-shape changes
+(`architecture_log.md`); system description (`capabilities.md`).
 **Convention:** one bullet per rule. Name the files, commands, or directories the rule governs.
 
 - **Versions live in `plugin.json` only.** One file per plugin is the source of truth, so skill and

@@ -3,8 +3,8 @@
 **Mutability:** changes on owner override only, written in the turn the override lands.
 **Holds:** the problem this project solves — task definition, success criterion, data sources,
 evaluation protocol, and the constraints the owner has fixed.
-**Does not hold:** what the system currently is (`capabilities.md`), why a choice was made
-(`decisions.md`), how to work here (`conventions.md`).
+**Does not hold:** what the system currently is (`capabilities.md`), how its core changed
+(`architecture_log.md`), how to work here (`conventions.md`).
 **Convention:** facts only, no recommendations. Every claim here is one the owner set or confirmed.
 
 ## The task

@@ -1,8 +1,8 @@
 # orchestration
 
-Agent delegation framework, multi-agent research orchestration, and session lifecycle. Decompose work across model tiers, manage parallel swarms, govern quality, and persist session state.
+Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, govern quality, and cope with discontinuous existence.
 
-`orchestration` `delegation` `agents` `research` `parallel` `swarm` `session` `lifecycle` 
+`orchestration` `delegation` `agents` `research` `parallel` `swarm` 
 ## Skills
 
 ### [agentic-delegation](skills/agentic-delegation/SKILL.md)
@@ -32,7 +32,7 @@ Triggers: "research an ecosystem", "survey the landscape", "evaluate options for
 
 ### [session-checkpoint](skills/session-checkpoint/SKILL.md)
 
-Flushes decisions not yet written and brings the session record current. Two functions, nothing else: append any decision made this session that is missing from orchestration_log/reference/decisions.md, and append to orchestration_log/history/${DATE}/session.md what has happened since its last write — phases completed, work in flight, and current direction.
+Retired. Mid-session record continuity is memento's domain — see memento:event-capture.
 Triggers: "checkpoint", "save session state", "capture progress", "session-checkpoint", "snapshot the session", "save context".
 
 
@@ -40,10 +40,9 @@ Triggers: "checkpoint", "save session state", "capture progress", "session-check
 
 ### [session-close](skills/session-close/SKILL.md)
 
-Runs the LEAVE protocol: verify memory completeness, then commit. Six ordered steps — verify the .gitignore patterns, finalize orchestration_log/history/${DATE}/failures.md, dispatch a verification sweep across the five living files, dispose every finding by direct write, finalize orchestration_log/history/${DATE}/session.md, commit orchestration_log/. Optional telemetry follows: session metrics, verbatim /cost into gitignored cost.md, orphan-script sweep.
-Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "session-close". Invoked ONLY when the user explicitly requests session close.
+Retired. Session closure is memento's domain — see memento:span-closure.
+Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "session-close".
 
 
-**Scripts:** [`extract_metrics.py`](skills/session-close/scripts/extract_metrics.py)
 ---
 

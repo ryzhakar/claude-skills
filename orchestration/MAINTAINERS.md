@@ -87,7 +87,7 @@ These invariants apply to ALL orchestration skills in this plugin.
 
 Any analysis beyond reading a status code is itself work that must be re-delegated to agents, preferably in parallel.
 
-**Carve-out — session memory.** The orchestrator's direct file access is bounded by the session-memory exception defined in `skills/agentic-delegation/SKILL.md`, opening section. Everything outside that boundary is delegated.
+**No carve-out.** Memory and record continuity are `memento`'s domain, not this plugin's. The orchestrator's file-touch prohibition holds without exception here.
 
 ### Communication Model
 
@@ -145,11 +145,5 @@ When creating a new domain extension:
 
 ## Hooks
 
-The orchestration plugin has two ARRIVE hooks that inject the five-file read order into context. Both use the same script and gate on `orchestration_log/reference/` existence — invisible when unconfigured.
-
-| Hook | Matcher | Purpose |
-|------|---------|---------|
-| SessionStart | `startup\|resume` | Injects the read order — `ground-truth.md`, `user_deferred_items.md`, the `decisions.md` tail, `capabilities.md`, `conventions.md` — at session start or resume |
-| PostCompact | `*` | Same injection after compaction |
-
-The read order itself lives in `hooks/templates/arrive-context.txt`; agentic-delegation's `<manage_the_session>` owns its content.
+None. The orientation-reminder hooks (SessionStart, PostCompact) that used to live here moved to
+the `memento` plugin, which owns memory and record continuity end to end.

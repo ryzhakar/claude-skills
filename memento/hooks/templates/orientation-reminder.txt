@@ -1,0 +1,4 @@
+Run memento:init now — it resolves the entry chain (pat-down, span-closure) and executes the
+waking check.
+
+Answer repo state with git, never from a document: git log --oneline -20 and git status --short.

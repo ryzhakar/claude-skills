@@ -67,7 +67,8 @@ Second-round rules:
 
 ### Session Persistence
 
-For multi-session research, the parent's ARRIVE/WORK/LEAVE lifecycle applies. The `reference/` layer holds research-specific conventions and findings inventory; `recon/` holds raw scouting data (gitignored).
+For multi-session research, `memento` governs continuity. `recon/` holds raw scouting data
+(gitignored, disposable); durable findings inventory is a memento dossier record.
 
 ## The Tier System
 

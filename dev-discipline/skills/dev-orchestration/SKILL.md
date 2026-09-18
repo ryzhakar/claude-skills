@@ -213,7 +213,7 @@ One logical change per commit. Fix commits reference what they fix. No history r
 Run the test suite and type checker after every implementer completion — first dispatch or continuation. Agent self-reports are unreliable for cross-module integration — an agent may report DONE while its changes break tests in modules it did not touch.
 
 **Test marker audit — bilateral rules.**
-- The orchestrator MUST audit test markers during ARRIVE and before each verification. Any marker that excludes tests from default runs (`@pytest.mark.slow`, `@pytest.mark.skip`, custom markers) is a blind spot. The orchestrator MUST know what the default run excludes.
+- The orchestrator MUST audit test markers at session start and before each verification. Any marker that excludes tests from default runs (`@pytest.mark.slow`, `@pytest.mark.skip`, custom markers) is a blind spot. The orchestrator MUST know what the default run excludes.
 - The orchestrator MUST NOT report "all tests pass" when markers exclude tests from the default run. A test suite that silently excludes tests reports false confidence.
 
 The orchestrator dispatches each review stage after the previous one completes: spec review after implementer, quality review after spec-reviewer, merge decision after code-quality-reviewer. Three SubagentStop hooks (matchers: `implementer`, `spec-reviewer`, `code-quality-reviewer`) inject reminders if the orchestrator misses a dispatch — backstop, not driver. The spec verdict evaluation lives inside code-quality-reviewer, not at the orchestrator's spec→quality boundary.
