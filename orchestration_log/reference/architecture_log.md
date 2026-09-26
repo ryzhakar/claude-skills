@@ -316,3 +316,31 @@ INVALIDATES:   the "SessionStart and PostCompact hooks inject context" design pa
                PostCompact hook for context injection
 SOURCE:        this migration; github.com/anthropics/claude-code/issues/46191,
                github.com/anthropics/claude-code/issues/28305
+
+## 2026-09-27 — Discontinuous existence leaves orchestration for agent-conduct:check-back
+KIND:          runnable
+FROM → TO:     `agentic-delegation` carried `<understand_discontinuous_existence>`, `<ensure_liveness>`,
+               and `<manage_long_processes>` — liveness framed as supervising dispatched agents, with
+               safety-net crons and size checks → the material becomes `agent-conduct:check-back`,
+               whose subject is the agent itself: before ending a turn that leaves anything pending,
+               arrange the next wake; on waking, look. It carries no policy for managing other
+               agents. `agentic-delegation` keeps one `<check_back_on_pending_work>` tag naming it and
+               a rule that every launch prompt lives in a file. A Stop hook reads the documented
+               `background_tasks` and `session_crons` inputs and continues the turn when work is
+               pending with no wake set; a resume-only SessionStart hook names what the old session
+               left running
+WHY:           owner ruling — continuing to exist is about the agent, not about agents; every agent
+               under orchestration handled slow helpers by judgement
+INVALIDATES:   the three removed `agentic-delegation` tags; `TaskOutput` progress checks (deprecated);
+               "agents cannot launch other agents" (subagents nest three deep)
+SOURCE:        https://code.claude.com/docs/en/hooks.md#stop-input
+
+## 2026-09-27 — Plugins declare dependencies on each other
+KIND:          runnable
+FROM → TO:     no plugin declared a dependency; a skill naming another plugin's skill failed silently
+               when that plugin was absent → `plugin.json` `dependencies`: orchestration → memento,
+               agent-conduct; dev-discipline → orchestration; qa-automation → orchestration. A missing
+               or disabled dependency disables the dependent
+WHY:           owner ruling, once the platform supported it
+INVALIDATES:   installing orchestration, dev-discipline, or qa-automation alone
+SOURCE:        https://code.claude.com/docs/en/plugins/dependencies.md
