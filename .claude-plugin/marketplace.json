@@ -107,7 +107,7 @@
       "name": "agent-conduct",
       "source": "./agent-conduct/",
       "description": "Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "ryzhakar"
       },
