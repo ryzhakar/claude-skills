@@ -1,6 +1,6 @@
 # orchestration
 
-Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, govern quality, and cope with discontinuous existence.
+Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
 
 `orchestration` `delegation` `agents` `research` `parallel` `swarm` 
 ## Skills

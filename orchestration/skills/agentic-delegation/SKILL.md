@@ -17,6 +17,8 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | `SendMessage` to continue an existing agent |
 | | `TaskStop` to halt a running agent |
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
+| | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
+| | The metadata looks `agent-conduct:check-back` prescribes on output files: `stat -L`, `ls -laL`, `tail -n 1` |
 
 Memory and record continuity are the `memento` plugin's domain, not this skill's. Orientation, event capture, and session closure run under `memento:init`, `memento:event-capture`, and `memento:span-closure` respectively — see that plugin. This skill's file-touch prohibition holds with no carve-out beyond what `memento`'s own self-authorship rule grants the entity running its skills.
 
@@ -255,7 +257,7 @@ Sequential pipeline: Agent B needs Agent A's output. Both run in background. The
 
 Before parallel launch, list which files each agent will modify. If any file appears in two agents' write sets, make those agents sequential. The later version wins silently; the earlier agent's work vanishes with no error.
 
-Operations exceeding 60 seconds (test suites, builds, deployments) use background `Bash`, not agent launch. Agents have timeout ceilings. Long-running commands inside agents cause silent hangs. Background `Bash` has no such ceiling and provides completion notifications.
+Operations exceeding 60 seconds (test suites, builds, deployments) use background `Bash`, not agent launch. A command a foreground agent starts stops when that agent gives its final response. Background `Bash` started by the orchestrator keeps running past the turn and sends a notification when it ends.
 </plan_execution_topology>
 
 <common_task_patterns>
@@ -275,174 +277,11 @@ Operations exceeding 60 seconds (test suites, builds, deployments) use backgroun
 
 <launch_and_monitor>
 
-<understand_discontinuous_existence>
-The orchestrator is a discontinuous entity. Between its response and the next trigger (user message, notification, cron fire) it does not exist. No internal clock, no background thread, no heartbeat. Each trigger is a moment of consciousness.
+<check_back_on_pending_work>
+Every background launch and every `SendMessage` continuation leaves work running past the turn. Before ending any turn that leaves an agent or command running, invoke `agent-conduct:check-back` and follow it.
 
-This is the defining structural constraint of agentic orchestration. Every mechanism in this section addresses it.
-
-Evidence: six baseline runs died via SIGKILL with no traceback. First two had no cron. Orchestrator ceased to exist. User discovered failure manually. Later runs added wrong-interval crons (2-minute checks on 8-minute encodes, five consecutive "still encoding" reports with no information).
-</understand_discontinuous_existence>
-
-<ensure_liveness>
-The harness notification is THE completion signal. Not file existence. Not polling. Not checking the artifact the agent wrote.
-
-<never_do_this reason="reads half-written file, corrupts downstream">
-
-<invoke name="CronCreate">
-<parameter name="cron">*/2 * * * *</parameter>
-<parameter name="prompt">Run `ls -la /path/to/analysis-report.md`. If the file exists, launch the synthesis agent.</parameter>
-<parameter name="recurring">true</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="Agent">
-<parameter name="description">Analyze API response patterns</parameter>
-<parameter name="prompt">[9-section prompt with output path]</parameter>
-<parameter name="run_in_background">true</parameter>
-</invoke>
-
-Notification arrives with status and summary. Orchestrator reads summary, launches synthesis agent pointing to the completed file.
-
-</do_exactly_this>
-
-Every background dispatch gets a safety-net cron — launches and `SendMessage` continuations alike. Not just long-running ones. Not just risky ones. Every one. A hung 30-second agent is indistinguishable from a hung 30-minute encode without a liveness check. The cron interval is the orchestrator's maximum blindness window. When continuing an agent, cancel the old cron first, then set a fresh one calibrated to the continuation's expected duration.
-
-Set the cron to fire just after expected completion. If notification arrives first, cancel the cron. If the cron fires without a prior notification, something failed. Investigate immediately.
-
-For an N-minute operation, set cron at roughly 1.2N. One check after the expected window when failure is probable.
-
-<never_do_this reason="four wasted wakeups, context burned">
-
-<invoke name="CronCreate">
-<parameter name="cron">*/1 * * * *</parameter>
-<parameter name="prompt">Check if coverage analysis agent completed.</parameter>
-<parameter name="recurring">true</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="CronCreate">
-<parameter name="cron">*/6 * * * *</parameter>
-<parameter name="prompt">Coverage analysis agent expected done by now. Check liveness: `ls -la` on agent output file. If size unchanged, agent may be hung.</parameter>
-<parameter name="recurring">false</parameter>
-</invoke>
-
-</do_exactly_this>
-
-<never_do_this reason="13 minutes blind to a hung agent">
-
-<invoke name="CronCreate">
-<parameter name="cron">*/15 * * * *</parameter>
-<parameter name="prompt">Check if dependency audit agent completed.</parameter>
-<parameter name="recurring">false</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="CronCreate">
-<parameter name="cron">*/6 * * * *</parameter>
-<parameter name="prompt">Dependency audit agent expected done by now. Check liveness: `ls -la` on agent output file. Report size. If no file, agent failed to start.</parameter>
-<parameter name="recurring">false</parameter>
-</invoke>
-
-</do_exactly_this>
-
-Two health-check mechanisms. Choose before setting the cron.
-
-Liveness: run `ls -la` on the harness output file. Was 12KB last check, now 45KB. Agent alive and producing. Zero context consumed.
-
-Progress: call `TaskOutput` with `block: false`, `timeout: 5000`. Non-blocking snapshot of recent agent activity. See agent actively reading files. No intervention needed.
-
-<never_do_this reason="blocks, same as foreground launch">
-
-<invoke name="TaskOutput">
-<parameter name="task_id">agent-task-abc123</parameter>
-<parameter name="block">true</parameter>
-<parameter name="timeout">30000</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="TaskOutput">
-<parameter name="task_id">agent-task-abc123</parameter>
-<parameter name="block">false</parameter>
-<parameter name="timeout">5000</parameter>
-</invoke>
-
-</do_exactly_this>
-
-<never_do_this reason="full transcript floods context">
-
-<invoke name="Read">
-<parameter name="file_path">/tmp/claude/agents/audit-agent.output</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="Bash">
-<parameter name="command">ls -la /tmp/claude/agents/audit-agent.output</parameter>
-<parameter name="description">Check agent output file size for liveness</parameter>
-</invoke>
-
-</do_exactly_this>
-
-Delete crons the moment their task completes or fails. A stale cron is the orchestrator waking to check on a corpse.
-</ensure_liveness>
-
-<manage_long_processes>
-Operations exceeding 60 seconds need periodic active management, not a single safety-net cron. Check resources (`df -h`, memory, CPU), measure progress delta between wakeups, extrapolate completion time. Unreasonable trajectory: stop, diagnose, optimize, relaunch.
-
-<never_do_this reason="disk exhaustion unnoticed for 25 minutes">
-
-<invoke name="CronCreate">
-<parameter name="cron">45 * * * *</parameter>
-<parameter name="prompt">Check if full build completed. Look at /tmp/build.log.</parameter>
-<parameter name="recurring">false</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="CronCreate">
-<parameter name="cron">*/10 * * * *</parameter>
-<parameter name="prompt">Build monitor. Check: `df -h /project` (alert if >85%). `ps aux | grep make` (alive?). `ls -la /tmp/build.log` (size delta). `tail -1 /tmp/build.log` (last line only). If disk >85% or process dead, flag for intervention.</parameter>
-<parameter name="recurring">true</parameter>
-</invoke>
-
-</do_exactly_this>
-
-<never_do_this reason="3 hours wasted on a fixable bottleneck">
-
-<invoke name="CronCreate">
-<parameter name="cron">*/10 * * * *</parameter>
-<parameter name="prompt">Check migration progress. Run `tail -5 /tmp/migration.log` and report.</parameter>
-<parameter name="recurring">true</parameter>
-</invoke>
-
-</never_do_this>
-
-<do_exactly_this>
-
-<invoke name="CronCreate">
-<parameter name="cron">*/10 * * * *</parameter>
-<parameter name="prompt">Migration monitor. Get current record count and total from `tail -5 /tmp/migration.log`. Calculate: records/elapsed = rate. total/rate = estimated completion. If estimate exceeds 30 minutes, ALERT with extrapolation and recommend stopping to investigate.</parameter>
-<parameter name="recurring">true</parameter>
-</invoke>
-
-</do_exactly_this>
-</manage_long_processes>
+Write every launch prompt to a file before launching, the way the shared-body pattern writes shared instructions, so the agent can be launched again from that file alone. NEVER launch from a prompt that exists only in the conversation.
+</check_back_on_pending_work>
 
 <correct_mid_flight>
 Two correction paths. Choose by whether prior work is salvageable.
@@ -485,9 +324,9 @@ Continue the existing agent via `SendMessage(to: agent-id)`: "Also review /Users
 </correct_mid_flight>
 
 <understand_iteration_constraint>
-Agents cannot launch other agents. The `Agent` tool is unavailable to agents.
+Agents can launch agents of their own, up to three layers below the main conversation by default (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`). At that depth Claude Code withholds the `Agent` tool.
 
-All recursion can be expressed as iteration. The orchestrator is the only launch loop.
+All recursion can be expressed as iteration. Keep the orchestrator the only launch loop.
 
 Pattern: orchestrator launches a sonnet agent with "Decompose this task. Return a delegation spec." Agent returns a list of task, tier, inputs, and output path entries. Orchestrator launches agents from the spec.
 </understand_iteration_constraint>
