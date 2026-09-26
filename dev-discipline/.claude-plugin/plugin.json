@@ -1,9 +1,10 @@
 {
   "name": "dev-discipline",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": ["tdd", "debugging", "planning", "code-review", "testing", "triage", "architecture", "refactoring", "orchestration", "lifecycle", "worktree"]
+  "keywords": ["tdd", "debugging", "planning", "code-review", "testing", "triage", "architecture", "refactoring", "orchestration", "lifecycle", "worktree"],
+  "dependencies": ["orchestration"]
 }
