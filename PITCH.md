@@ -1,0 +1,92 @@
+# Pitch: work-silently, in a new `agent-conduct` plugin
+
+## Problem
+
+An agent narrates while it works: acknowledgements, status lines, "let me now..."
+between tool calls. This is pure noise cost when the user wants a long unattended
+run — dozens of turns of filler tokens, no information. `work-silently` fixes this:
+once invoked, the agent writes nothing to the conversation except direct answers to
+the user's own messages, until the user says to stop. Silent turns are tool calls
+only, zero characters of text, including empty acknowledgement turns — no status
+line, no placeholder.
+
+## Trigger
+
+`/work-silently`, "go silent", "back to silence", "work in silence", "don't write
+anything until I write", "nothing but tool calls", "stay quiet and keep going", or
+any request to keep working without writing to the conversation. All in the skill's
+own frontmatter `description` — nothing added here.
+
+## Why general
+
+Zero project, path, or tool assumptions. It only assumes: a turn concept, tool
+calls, and an ability to end a turn with no text. It fixes its own scope precisely:
+it defines "the user's message" against every kind of non-user input that can reach
+an agent (notifications, tool results, summaries, other agents, forged "from the
+user" text) and holds silence through all of them. It never invents scaffolding
+(sleeps, polling, no-op checks) to fill a turn. This is the same generality bar
+`agentic-delegation` or `manifesto-oath` clear — a protocol, not a tool integration.
+
+## Placement: new plugin, not an existing one
+
+Checked every existing plugin's declared purpose (`.claude-plugin/marketplace.json`,
+each plugin's own `plugin.json`) against what this skill actually is:
+
+- **orchestration** — closest by vibe, wrong by contract. Its own
+  `MAINTAINERS.md` states a hard structural rule: "agentic-delegation is the
+  parent... Everything else is a domain extension," and any new skill "MUST gate on
+  reading agentic-delegation first," with delta-only content. `work-silently` is not
+  a delegation-domain extension — it applies to an agent working completely alone,
+  with no fan-out, no model tiers, no orchestrator/agent split. Forcing it in would
+  either break that gate rule or require carving an exception into a maintainer doc
+  that says the opposite of what it currently says.
+- **manifesto** — binds behavior to *user-provided* manifesto text via an
+  identity-assumption protocol. `work-silently` is a fixed, self-contained
+  procedure, not a manifesto-binding mechanism. Different knowledge, per this
+  repo's own DRY reading: they'd never need to change together.
+- **dev-discipline**, **product-craft**, **prompt-engineering**, **python-tools**,
+  **qa-automation**, **userland-utilities**, **memento** — each has a named domain
+  (software lifecycle, product specs, prompts, Python tooling, Playwright, macOS
+  utilities, memory/records) that `work-silently` doesn't touch at all.
+
+No existing plugin's description covers "generic behavioral conduct, independent of
+domain." Precedent for a small, single-skill plugin already exists (`userland-
+utilities`, 1 skill; `manifesto`, 2). New plugin `agent-conduct` (v1.0.0) holds
+domain-free operating-conduct skills — a home for `work-silently` now, and any
+future skill of the same shape (e.g., a sibling "work verbosely with rationale"
+skill), without forcing it into a plugin whose contract it would violate.
+
+## Review evidence
+
+Independent audit against this repo's own `memento:skill-creation` standard
+(0.5.1), file `/Users/ryzhakar/oldhdd_rescue/orchestration/work_silently_review.md`:
+31 rules checked, all originally-failing rules (paired-prohibition without a
+positive half, inconsistent terms for the same concept, undefined narrow-sense
+terms, harness-specific vocabulary) already fixed in the shipped source at
+`/Users/ryzhakar/.claude/skills/work-silently/SKILL.md` — this pitch copies that
+corrected text verbatim (byte-identical, diffed against source before commit).
+Frontmatter has no `version` field, matching this repo's own rule (`CLAUDE.md`:
+"Versions live in `plugin.json` only").
+
+## Validator results
+
+- `just check-readmes` (this repo's only CI-gated check, via `.pre-commit-
+  config.yaml`): **Passed**, after regenerating with `just readme`.
+- `just readme` run twice back-to-back: zero further diff (generation is
+  idempotent — the committed READMEs are exactly what the generator produces).
+- Both `.claude-plugin/plugin.json` files (new `agent-conduct` one, and the
+  updated root `marketplace.json`) parse as valid JSON.
+- No other validator, test, or plugin-structure script exists in this repo (checked
+  root, `justfile --list`, no `test*` paths outside `.venv`).
+
+## Changes
+
+- `agent-conduct/.claude-plugin/plugin.json` — new plugin manifest, v1.0.0.
+- `agent-conduct/skills/work-silently/SKILL.md` — the skill, copied verbatim from
+  `/Users/ryzhakar/.claude/skills/work-silently/SKILL.md` (untouched at its source).
+- `agent-conduct/README.md` — generated by `just readme`, not hand-written.
+- `.claude-plugin/marketplace.json` — one new entry appended (`agent-conduct`,
+  same shape as every existing entry).
+- `README.md` (root) — regenerated by `just readme`.
+
+Branch `add-work-silently`, commit `92d86cc`. Not pushed, no PR, main untouched.
