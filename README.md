@@ -1,12 +1,12 @@
 # my-claude-skills
 
-33 skills · 9 agents across 10 plugins
+34 skills · 9 agents across 10 plugins
 
 ## Plugins
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.1.0` | 1S |
+| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.2.0` | 2S |
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.0.2` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.4` | 2S |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
@@ -19,12 +19,13 @@
 
 ---
 
-## [agent-conduct](agent-conduct/) `1.1.0`
+## [agent-conduct](agent-conduct/) `1.2.0`
 
 Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.
 
 ### Skills
 
+- **[check-back](agent-conduct/skills/check-back/SKILL.md)** — Before ending a turn that leaves a run pending, set the agent's own next wake, and on waking look at what was pending. "check back",...
 - **[work-silently](agent-conduct/skills/work-silently/SKILL.md)** — Keep working while writing nothing to the conversation, except answers to the user's own messages, until the user says to stop....
 ## [dev-discipline](dev-discipline/) `2.0.2`
 

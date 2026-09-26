@@ -1,5 +1,5 @@
 {
-  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists",
+  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while background work runs with no wake set, and after a resume names the work the old session left running",
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +8,27 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/check-back.py resume",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/check-back.py stop",
             "timeout": 10
           }
         ]
