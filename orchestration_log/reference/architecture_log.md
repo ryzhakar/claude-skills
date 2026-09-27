@@ -344,3 +344,16 @@ FROM → TO:     no plugin declared a dependency; a skill naming another plugin'
 WHY:           owner ruling, once the platform supported it
 INVALIDATES:   installing orchestration, dev-discipline, or qa-automation alone
 SOURCE:        https://code.claude.com/docs/en/plugins/dependencies.md
+
+## 2026-09-27 — orchestration is untied from memento
+KIND:          runnable
+FROM → TO:     orchestration declared a dependency on memento and named its skills in
+               `agentic-delegation`, `research-tree`, `MAINTAINERS.md`, and two retired stubs,
+               `session-close` and `session-checkpoint`, whose only content redirected to memento →
+               every mention removed, both stubs deleted, `dependencies` reduced to `["agent-conduct"]`.
+               orchestration installs and runs without memento
+WHY:           owner ruling — the dependency was never intended; it came from references left by the
+               2026-09-18 continuity migration
+INVALIDATES:   `orchestration:session-close`, `orchestration:session-checkpoint`; the orchestration →
+               memento edge in the 2026-09-27 dependency entry
+SOURCE:        this change
