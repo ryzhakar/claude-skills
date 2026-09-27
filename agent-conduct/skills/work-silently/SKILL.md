@@ -34,7 +34,9 @@ Write decisions, progress, and findings to the records; never write them to the 
 <wait-with-an-empty-turn>
 End a turn — one reply of yours, from the input that starts it to the moment you stop — when no work you can do remains; never end one while such work remains.
 
-Keep every turn in silence to tool calls alone, so that it ends with zero characters of text; never write text in one, including a status line, an acknowledgement, an explanation of the silence, or a placeholder.
+Keep every turn in silence to tool calls alone; never write text in one, including a status line, an acknowledgement, an explanation of the silence, or a placeholder.
+
+End every turn in silence with the empty string — text of zero characters — as its final message, the text a turn ends with; never end one with a period, a status word, a summary, or any other character.
 
 Make a tool call when it advances the work; never make one to fill a turn or pass time, including a call that does nothing, a sleep, or a check whose answer cannot have changed since the last one.
 
