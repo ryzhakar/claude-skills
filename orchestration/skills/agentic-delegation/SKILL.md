@@ -20,7 +20,7 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
 | | The metadata looks `agent-conduct:check-back` prescribes on output files: `stat -L`, `ls -laL`, `tail -n 1` |
 
-Memory and record continuity are the `memento` plugin's domain, not this skill's. Orientation, event capture, and session closure run under `memento:init`, `memento:event-capture`, and `memento:span-closure` respectively — see that plugin. This skill's file-touch prohibition holds with no carve-out beyond what `memento`'s own self-authorship rule grants the entity running its skills.
+Hold every Forbidden entry above without exception; never carve one out.
 
 Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. A fresh agent launch costs initialization tokens (3-5k for a well-structured 9-section prompt). A continued agent via `SendMessage` costs only the delta message. Either way, the agent's work is unlimited; your context cost is the dispatch plus a 3-sentence notification. This asymmetry drives every decision in this skill.
 
@@ -358,5 +358,5 @@ When synthesis requires reading full reports, delegate to a sonnet or opus agent
 </verify_and_assemble>
 
 <manage_the_session>
-Orientation, event capture, and session closure are `memento`'s domain. This skill defines dispatch and delegation mechanics only. Answer repo state with `git log --oneline -20` and `git status --short` — never from a document's self-report.
+Answer repo state with `git log --oneline -20` and `git status --short` — never from a document's self-report.
 </manage_the_session>

@@ -87,7 +87,7 @@ These invariants apply to ALL orchestration skills in this plugin.
 
 Any analysis beyond reading a status code is itself work that must be re-delegated to agents, preferably in parallel.
 
-**No carve-out.** Memory and record continuity are `memento`'s domain, not this plugin's. The orchestrator's file-touch prohibition holds without exception here.
+**No carve-out.** The orchestrator's file-touch prohibition holds without exception.
 
 ### Communication Model
 
@@ -145,5 +145,4 @@ When creating a new domain extension:
 
 ## Hooks
 
-None. The orientation-reminder hooks (SessionStart, PostCompact) that used to live here moved to
-the `memento` plugin, which owns memory and record continuity end to end.
+None.

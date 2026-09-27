@@ -30,19 +30,3 @@ Triggers: "research an ecosystem", "survey the landscape", "evaluate options for
 **Examples:** [`awesome-leptos-session.md`](skills/research-tree/examples/awesome-leptos-session.md)
 ---
 
-### [session-checkpoint](skills/session-checkpoint/SKILL.md)
-
-Retired. Mid-session record continuity is memento's domain — see memento:event-capture.
-Triggers: "checkpoint", "save session state", "capture progress", "session-checkpoint", "snapshot the session", "save context".
-
-
----
-
-### [session-close](skills/session-close/SKILL.md)
-
-Retired. Session closure is memento's domain — see memento:span-closure.
-Triggers: "close the session", "do session paperwork", "write the session record", "execute the LEAVE protocol", "wrap up the session", "session-close".
-
-
----
-

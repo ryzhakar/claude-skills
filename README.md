@@ -1,6 +1,6 @@
 # my-claude-skills
 
-34 skills · 9 agents across 10 plugins
+32 skills · 9 agents across 10 plugins
 
 ## Plugins
 
@@ -10,7 +10,7 @@
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.1.0` | 7S 3A |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.4` | 2S |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
-| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `4.4.0` | 4S |
+| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `4.5.0` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -74,7 +74,7 @@ A memory and record-keeping system for agents without continuity across sessions
 - **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — text to be read and followed. "create a skill", "write a skill", "new skill", "add a skill", "make this repeatable", or...
 - **[span-closure](memento/skills/span-closure/SKILL.md)** — Close out a stretch of work — one continuous thread of narrative — flushing, summarizing, and auditing what it leaves behind. The end of...
 - **[staging-relay](memento/skills/staging-relay/SKILL.md)** — Pair every part of a task that outlives the work at hand with a record and a waking cause — what begins the later work — and bound every...
-## [orchestration](orchestration/) `4.4.0`
+## [orchestration](orchestration/) `4.5.0`
 
 Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
 
@@ -83,8 +83,6 @@ Agent delegation framework and multi-agent research orchestration. Decompose wor
 - **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Agents are cheap, context is expensive — decompose aggressively, delegate...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
-- **[session-checkpoint](orchestration/skills/session-checkpoint/SKILL.md)** — Retired. Mid-session record continuity is memento's domain — see memento:event-capture. Triggers: "checkpoint", "save session state",...
-- **[session-close](orchestration/skills/session-close/SKILL.md)** — Retired. Session closure is memento's domain — see memento:span-closure. Triggers: "close the session", "do session paperwork", "write...
 ## [product-craft](product-craft/) `1.1.0`
 
 Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.

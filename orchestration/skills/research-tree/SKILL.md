@@ -67,8 +67,7 @@ Second-round rules:
 
 ### Session Persistence
 
-For multi-session research, `memento` governs continuity. `recon/` holds raw scouting data
-(gitignored, disposable); durable findings inventory is a memento dossier record.
+`recon/` holds raw scouting data (gitignored, disposable).
 
 ## The Tier System
 
