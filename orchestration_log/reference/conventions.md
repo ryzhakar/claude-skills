@@ -48,9 +48,11 @@ return channels — which live in the orchestration skills; core-shape changes
   escape hatch the orchestrator can decline to parse; branching belongs in the receiving agent.
   Governs `*/hooks/templates/*.txt`.
 
-- **Each orchestrator skill carries one inline `## Artifact Contract` table.** Paths drift silently
-  when they scatter across agent bodies, and a single greppable table is the canonical map. Governs
-  multi-skill plugins: `orchestration`, `dev-discipline`, `qa-automation`.
+- **Each orchestrator skill carries one artifact-path tag.** Paths drift silently when they scatter
+  across agent bodies, and a single greppable tag — `<fix-the-artifact-paths>` in `dev-orchestration`,
+  prose and inline backticks inside, as `memento:skill-creation` admits nothing else in a tag — is the
+  canonical map. Governs multi-skill plugins: `orchestration`, `dev-discipline`, `qa-automation`;
+  `qa-orchestration` still carries the older table form.
 
 - **`just` is the measurement and generation surface.** `just tokens FILE` counts tokens,
   `just readme` regenerates every README after any frontmatter or plugin-metadata change, and
