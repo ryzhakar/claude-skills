@@ -6,19 +6,19 @@ description: >
   or any request for a plan another agent will execute.
 ---
 
-<assume-the-implementer-cuts-corners>
-Write every line for an implementer — the agent that will execute the plan — who will read an ambiguity as permission and a passing test as completion; never write a line that trusts it.
+<write-for-the-implementer>
+Write every line so that no ambiguity grants the implementer — the agent that will execute the plan — permission and no passing test stands for completion; never write a line that trusts the implementer.
 
 Pick one answer for every choice the work holds; never write `decide whether`, `either`, `or`, `if needed`, or `consider` in the plan's prose, where quoted code is exempt.
-</assume-the-implementer-cuts-corners>
+</write-for-the-implementer>
 
-<map-the-files-and-contracts>
+<list-the-files-and-contracts>
 List every file the work creates or changes, each with the one responsibility it holds; never leave a file for the implementer to discover.
 
-Fix for each unit — one outermost interface, the surface callers of the unit use, and the one to three files behind it — the contract: the interface's signature with typed parameters and return, a docstring of one sentence on one line, and the behaviors a test proves through the interface, and for an interface that is a data type its fields with their types; never fix a signature beneath the outermost interface, since the implementer designs those through `tdd`.
+List for each unit — one outermost interface, the surface callers of the unit use, and the one to three files behind it — the contract: the interface's signature with typed parameters and return, a docstring of one sentence on one line, the behaviors a test proves through the interface, and for an interface that is a data type its fields with their types; never fix a signature beneath the outermost interface, which the implementer designs through `tdd`.
 
 Order the units so each unit's contract exists before a unit that calls it; never order a caller before its callee.
-</map-the-files-and-contracts>
+</list-the-files-and-contracts>
 
 <write-each-unit>
 Write each unit as: the contract, the files, the steps — each an action on a named file, the verification gates — each a command and the exact output it requires, and the scope boundary — what the unit does not touch; never write a unit missing one of the five.
@@ -37,33 +37,39 @@ Write a gate that runs the interface on an input from each behavior in the contr
 </write-the-gates>
 
 <forbid-the-patterns>
-List under a heading `Forbidden patterns` each construction the implementer will reach for and the plan refuses, such as a default empty list, a `pass` body, a `TODO`, an `at least one of` validation standing for a required field, a comment; never leave a tempting shortcut unnamed.
+List under a heading `Forbidden patterns` each shortcut — a construction that satisfies a gate without doing the work — the implementer will reach for and the plan forbids, such as a default empty list, a `pass` body, a `TODO`, an `at least one of` validation standing for a required field, a comment; never leave a tempting shortcut unnamed.
 
-Write each forbidden pattern as the code it bans; never write it as a principle.
+Write each forbidden pattern as the code it forbids; never write it as a principle.
 </forbid-the-patterns>
 
 <define-done>
 Write under a heading `Definition of done` a numbered list of binary checks — each passes or fails with no judgement and cites the gate that proves it; never write a check that reads `ensure`, `verify`, or `appropriate`.
 </define-done>
 
-<review-the-plan>
-Point each requirement of the task to the unit that implements it, in a list under a heading `Requirement coverage`, and list there every requirement no unit covers; never ship a gap.
-
-Scan the plan outside `Forbidden patterns` for `TBD`, `TODO`, `later`, `similar`, `appropriate`, a step with neither code nor signature, and a type or function name no unit declared, and fix each; never ship one.
-
-Check that every name a later unit uses matches the signature an earlier unit declared; never ship a mismatch.
-</review-the-plan>
-
 <write-a-correction-plan>
-Write a correction plan — a plan written after a review found the implementation short — in the same form as an implementation plan, with three additions; never write one as a list of complaints.
+Write a correction plan — a plan written after a review found the implementation short — in the same form as an implementation plan, with the three additions below; never write one as a list of complaints.
 
 Name under a heading `Failure modes observed` each shortcut the implementer took, with the evidence from the code; never name a hypothetical one.
 
-Forbid each escape hatch the implementer used, as the code it used, beside the patterns the implementation plan already forbids; never omit one it used.
+Forbid each shortcut the implementer used, as the code it used, beside the patterns the implementation plan already forbids; never omit one it used.
 
 Add a gate that catches each defect the previous gates passed; never reuse a gate that passed a broken result unchanged.
 </write-a-correction-plan>
 
+<review-the-plan>
+Point each requirement of the task to the unit that implements it, in a list under a heading `Requirement coverage`; never leave a requirement unpointed.
+
+List under that heading every requirement no unit covers; never ship a gap.
+
+Scan the plan outside `Forbidden patterns` for `TBD`, `TODO`, `later`, `similar`, `appropriate`, a step with neither code nor signature, and a type or function name no unit declared; never skip a term of the scan.
+
+Fix each hit of the scan; never ship one.
+
+Check that every name a later unit uses matches the signature an earlier unit declared; never ship a mismatch.
+</review-the-plan>
+
 <write-the-plan-to-disk>
-Write the plan to the path the caller supplied, or to `docs/plans/<slug>.md` with `<slug>` the task name in lowercase hyphenated words when none was supplied, and return that path; never return the plan as conversation text.
+Write the plan to the path the caller supplied, or to `docs/plans/<slug>.md` with `<slug>` the task name in lowercase hyphenated words when none was supplied; never return the plan as conversation text.
+
+Return that path as the result; never return more.
 </write-the-plan-to-disk>
