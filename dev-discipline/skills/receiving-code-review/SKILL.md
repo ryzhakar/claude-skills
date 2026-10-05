@@ -9,11 +9,11 @@ description: >
 <read-everything-first>
 Read all the feedback before acting on any item; never start on the first item while later ones are unread.
 
-Restate each item as the change it asks for, in one sentence in the reply to the user; never restate it as agreement or thanks.
+Restate each item as the change it asks for, in one sentence in the first message to the user; never restate it as agreement or thanks.
 </read-everything-first>
 
 <verify-each-item>
-Verify each item against the code: whether the problem exists, whether the suggested change breaks existing behavior, why the current code is as it is, and whether the suggestion holds on every target platform and version; never implement an item unverified.
+Verify each item against the code: whether the problem exists, whether the item's change breaks existing behavior, why the current code is as it is, and whether the change holds on every target platform and version; never implement an item unverified.
 
 Search the codebase for callers of a feature a reviewer asks to extend; never extend a feature without the search.
 
@@ -27,23 +27,25 @@ Ask the user about all the unclear items at once — as a dispatched agent, by r
 
 State what cannot be verified and what would verify it when verification is impossible here; never leave an unverifiable item unstated.
 
-Hold an unverifiable item alone; never proceed on it.
+Hold an unverifiable item alone, unless it is also unclear; never proceed on it.
 </clarify-before-implementing>
 
 <push-back-with-evidence>
-Push back on an item whose change breaks existing behavior, that lacks the codebase's context, that builds what nothing uses, or that is wrong for this stack — with the test, the code, or the fact that shows it; never push back with preference.
-
 Hand an item that contradicts an architectural decision the user stated in the session or recorded in `CLAUDE.md` to the user before pushing back on it or changing that item; never settle such a conflict with the reviewer alone.
 
-Correct a wrong pushback in one sentence naming what was checked and what it showed; never defend the pushback.
+Push back on an item whose change breaks existing behavior, that lacks the codebase's context, that builds what nothing uses, or that is wrong for this stack — with the test, the code, or the fact that shows it; never push back with preference.
+
+Correct a wrong pushback in one sentence naming what was verified and what it showed; never defend the pushback.
 
 Implement the item after the correction; never leave a corrected item unimplemented.
 </push-back-with-evidence>
 
 <implement-one-at-a-time>
-Implement the items in order: those fixing a crash, data loss, or a security hole, then the simple ones — typos, imports, names, then the complex ones — logic and structure; never implement in the order they were written.
+Implement the items in order: those fixing a crash, data loss, or a security hole, then the simple ones — typos, imports, names, then the complex ones — logic, structure, tests; never implement in the order they were written.
 
-Implement one item and run the tests before the next; never batch items between test runs.
+Implement one item at a time; never implement two before a test run.
+
+Run the tests after each item; never start the next item before the run.
 
 Fix the item or the test when a test fails; never move to the next item on a failing run.
 </implement-one-at-a-time>
