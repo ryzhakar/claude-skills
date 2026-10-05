@@ -1,63 +1,31 @@
 #!/usr/bin/env bash
-# Bisection script to find which test creates unwanted files/state
-# Usage: ./find-polluter.sh <file_or_dir_to_check> <test_pattern>
-# Example: ./find-polluter.sh '.git' 'src/**/*.test.ts'
+set -euo pipefail
 
-set -e
-
-if [ $# -ne 2 ]; then
-  echo "Usage: $0 <file_to_check> <test_pattern>"
-  echo "Example: $0 '.git' 'src/**/*.test.ts'"
+usage() {
+  echo "usage: $0 <pollution-path> <test-command> <test-file>..." >&2
+  echo "example: $0 .git 'uv run pytest' tests/test_*.py" >&2
   exit 1
+}
+
+[ $# -ge 3 ] || usage
+
+pollution_path="$1"
+test_command="$2"
+shift 2
+
+if [ -e "$pollution_path" ]; then
+  echo "pollution exists before any test: $pollution_path" >&2
+  exit 2
 fi
 
-POLLUTION_CHECK="$1"
-TEST_PATTERN="$2"
-
-echo "🔍 Searching for test that creates: $POLLUTION_CHECK"
-echo "Test pattern: $TEST_PATTERN"
-echo ""
-
-# Get list of test files
-TEST_FILES=$(find . -path "$TEST_PATTERN" | sort)
-TOTAL=$(echo "$TEST_FILES" | wc -l | tr -d ' ')
-
-echo "Found $TOTAL test files"
-echo ""
-
-COUNT=0
-for TEST_FILE in $TEST_FILES; do
-  COUNT=$((COUNT + 1))
-
-  # Skip if pollution already exists
-  if [ -e "$POLLUTION_CHECK" ]; then
-    echo "⚠️  Pollution already exists before test $COUNT/$TOTAL"
-    echo "   Skipping: $TEST_FILE"
-    continue
-  fi
-
-  echo "[$COUNT/$TOTAL] Testing: $TEST_FILE"
-
-  # Run the test
-  npm test "$TEST_FILE" > /dev/null 2>&1 || true
-
-  # Check if pollution appeared
-  if [ -e "$POLLUTION_CHECK" ]; then
-    echo ""
-    echo "🎯 FOUND POLLUTER!"
-    echo "   Test: $TEST_FILE"
-    echo "   Created: $POLLUTION_CHECK"
-    echo ""
-    echo "Pollution details:"
-    ls -la "$POLLUTION_CHECK"
-    echo ""
-    echo "To investigate:"
-    echo "  npm test $TEST_FILE    # Run just this test"
-    echo "  cat $TEST_FILE         # Review test code"
+for test_file in "$@"; do
+  echo "testing: $test_file"
+  $test_command "$test_file" > /dev/null 2>&1 || true
+  if [ -e "$pollution_path" ]; then
+    echo "polluter: $test_file"
+    echo "created: $pollution_path"
+    ls -la "$pollution_path"
     exit 1
   fi
 done
-
-echo ""
-echo "✅ No polluter found - all tests clean!"
-exit 0
+echo "no polluter among $# test files"
