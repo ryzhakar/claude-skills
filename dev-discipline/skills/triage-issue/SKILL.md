@@ -16,34 +16,36 @@ Ask one question, `What problem are you seeing?`, when the request names no prob
 Run the investigation of `systematic-debugging` — reproduce and read, trace to the source, compare with working code, test one hypothesis — up to its fix step; never change product code during triage.
 
 Find where the bug surfaces, which code path carries it, why that path produces the wrong result, and what other code shares the same pattern; never stop at the first of the four.
+
+Write the hypotheses tested and why reproduction failed as the investigation's result when the bug cannot be reproduced; never withhold a partial diagnosis.
 </investigate-the-cause>
 
 <classify-the-issue>
 Classify the issue as a regression — it worked before, a missing feature — it was never built, or a design flaw — it works as written and is written wrong; never leave it unclassified.
 
 State the scope — one module, an integration between modules, or a systemic pattern — the smallest change that fixes the cause, and the outermost interfaces the fix touches; never state a fix wider than the cause.
+
+Split the issue into one issue per cause when the investigation finds several independent causes; never merge two causes into one issue.
 </classify-the-issue>
 
 <plan-the-fix>
-Write the fix plan as an ordered sequence of red-green cycles in the shape `tdd` prescribes: each cycle names one test through the unit's outermost interface and the least change that passes it; never write all tests before any change.
+Write the fix plan as an ordered sequence of red-green cycles in the shape `tdd` prescribes, each cycle naming one test through the unit's outermost interface and the least change that passes it; never write all tests before any change.
 
 Describe each test as the behavior a caller observes; never describe it by a file path, a line number, or a private function.
 
 Add one refactor step after the last cycle when cleanup is needed; never put a refactor between cycles.
+
+Name `improve-architecture` as the fix when the cause is a design flaw that needs a new module boundary; never plan such a flaw as a sequence of fixes.
 </plan-the-fix>
 
 <write-the-issue>
-Write the issue document to the project's issue directory — `issues/`, `docs/issues/`, or the directory the project already uses — with four sections: `Problem` (actual behavior, expected behavior, reproduction), `Root cause` (the path, the mechanism, the contributors), `Fix plan` (the cycles), and `Acceptance criteria` (the cause is fixed, the new tests pass, the existing tests pass, adjacent behavior holds); never return the document as conversation text.
+Write one issue document per issue to the project's issue directory — `issues/`, `docs/issues/`, or the directory the project already uses, created as `docs/issues/` when none exists — named `<slug>.md` with `<slug>` the issue's title in lowercase hyphenated words; never return a document as conversation text.
 
-Describe modules, behaviors, and contracts in the document; never describe file paths or line numbers, so a refactor leaves it true.
+Give each document a title and four sections: `Problem` — actual behavior, expected behavior, reproduction; `Root cause` — the classification, where the bug surfaces, the code path, why the path fails, the other code sharing the pattern; `Fix plan` — the scope, the smallest change, the outermost interfaces touched, the cycles, the refactor step; `Acceptance criteria` — the cause is fixed, the new tests pass, the existing tests pass, the behavior of the other code sharing the pattern holds; never leave a section out.
 
-Print the document's path and the root cause in one sentence; never print more.
+Cite each sibling document — another issue from the same investigation — by its title in each document; never leave a sibling uncited.
+
+Describe modules, behaviors, and contracts in the document; never describe file paths or line numbers.
+
+Print each document's path, then its root cause in one sentence; never print more.
 </write-the-issue>
-
-<handle-the-exceptions>
-Write the document with the hypotheses tested and why reproduction failed when the bug cannot be reproduced; never withhold a partial diagnosis.
-
-Write one document per independent cause when the investigation finds several, each naming the others; never merge two causes into one document.
-
-Name `improve-architecture` in the document when the cause is a design flaw that needs a new module boundary; never plan a design change as a sequence of fixes.
-</handle-the-exceptions>
