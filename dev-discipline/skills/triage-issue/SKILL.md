@@ -7,7 +7,7 @@ description: >
 ---
 
 <take-the-problem-statement>
-Take the problem — what the reporter sees and what they expected — from the request; never start without one.
+Take the problem — what the reporter sees and, when stated, what they expected — from the request; never start without one.
 
 Ask one question, `What problem are you seeing?`, when the request names no problem; never ask a second question.
 </take-the-problem-statement>
@@ -15,17 +15,17 @@ Ask one question, `What problem are you seeing?`, when the request names no prob
 <investigate-the-cause>
 Run the investigation of `systematic-debugging` — reproduce and read, trace to the source, compare with working code, test one hypothesis — up to its fix step; never change product code during triage.
 
-Find where the bug surfaces, which code path carries it, why that path produces the wrong result, and what other code shares the same pattern; never stop at the first of the four.
+Find where the bug surfaces, which code path carries it, why that path produces the wrong result, and what other code shares the same pattern — the faulty construct behind the cause; never stop at the first of the four.
 
-Write the hypotheses tested and why reproduction failed as the investigation's result when the bug cannot be reproduced; never withhold a partial diagnosis.
+Write the hypotheses tested and why reproduction failed in the `Root cause` section of the issue document when the bug cannot be reproduced; never withhold a partial diagnosis.
 </investigate-the-cause>
 
 <classify-the-issue>
-Classify the issue as a regression — it worked before, a missing feature — it was never built, or a design flaw — it works as written and is written wrong; never leave it unclassified.
+Split the issue into one issue per cause when the investigation finds several independent causes — causes that each need their own fix; never merge two such causes into one issue.
 
-State the scope — one module, an integration between modules, or a systemic pattern — the smallest change that fixes the cause, and the outermost interfaces the fix touches; never state a fix wider than the cause.
+Classify each issue as a regression — it worked before, a missing feature — it was never built, or a design flaw — it works as written and is written wrong; never leave one unclassified.
 
-Split the issue into one issue per cause when the investigation finds several independent causes; never merge two causes into one issue.
+State for each issue the scope — one module, an integration between modules, or a systemic pattern — the smallest change that fixes the cause, and the outermost interfaces the fix touches; never state a fix wider than the cause.
 </classify-the-issue>
 
 <plan-the-fix>
@@ -43,7 +43,9 @@ Write one issue document per issue to the project's issue directory — `issues/
 
 Give each document a title and four sections: `Problem` — actual behavior, expected behavior, reproduction; `Root cause` — the classification, where the bug surfaces, the code path, why the path fails, the other code sharing the pattern; `Fix plan` — the scope, the smallest change, the outermost interfaces touched, the cycles, the refactor step; `Acceptance criteria` — the cause is fixed, the new tests pass, the existing tests pass, the behavior of the other code sharing the pattern holds; never leave a section out.
 
-Cite each sibling document — another issue from the same investigation — by its title in each document; never leave a sibling uncited.
+Write `none` beside any item an issue cannot fill, the classification included, and for a design flaw handed to `improve-architecture` write its name in `Fix plan` in place of the cycles and the RFC's acceptance in `Acceptance criteria`; never leave an item blank.
+
+Cite each sibling document — another issue from the same investigation — by its title in the `Root cause` section of each document; never leave a sibling uncited.
 
 Describe modules, behaviors, and contracts in the document; never describe file paths or line numbers.
 
