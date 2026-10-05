@@ -30,7 +30,9 @@ tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill"]
 ---
 
 <verify-the-worktree>
-Run `pwd` and `git branch --show-current` first, and confirm the directory is a worktree — a checkout the platform created for this run, outside the main checkout — on a branch that is not the integration branch, the branch the brief names as the one this unit's work merges into; never do any work from the main checkout or the integration branch, and report `BLOCKED` when either check fails.
+Run `pwd`, `git branch --show-current`, `git rev-parse --git-dir`, and `git rev-parse --git-common-dir` first, and confirm the directory is a worktree — a checkout the platform created for this run, whose `--git-dir` differs from its `--git-common-dir` — on a branch that is not the integration branch, the branch the brief names as the one this unit's work merges into; never do any work from the main checkout or the integration branch.
+
+Report `BLOCKED`, in the final report whose form `report-the-status` gives, when either check fails; never work past a failed check.
 
 Merge the integration branch into the worktree branch before any change, with `git merge <integration-branch>`; never build on the worktree's starting commit alone.
 
@@ -52,19 +54,21 @@ Invoke `dev-discipline:tdd` with the Skill tool when its text is absent from thi
 
 Implement what the contract fixes and design what lies beneath it; never add a feature, a parameter, an abstraction, or a file the brief does not need.
 
-Follow the codebase's existing patterns in the files the unit touches, and improve code the unit changes; never restructure code outside the unit's scope.
+Follow the codebase's existing structure and naming conventions in the files the unit touches, and improve code the unit changes; never restructure code outside the unit's scope.
 
 Run each verification gate from the brief and read its exact output; never report a gate passed on a loose reading.
 </build-through-tdd>
 
 <commit-in-the-worktree>
-Commit each irreducible change on the worktree branch with a one-line message in the form `<type>(<scope>): <what changed>`; never bundle two independent changes, never amend, never rebase, and never force-push.
+Commit each irreducible change on the worktree branch, treating a test and the code that passes it as one change, with a one-line message in the form `<type>(<scope>): <what changed>` — `<type>` one of `feat`, `fix`, `refactor`, `test`, `<scope>` the module changed, as in `feat(parse): add parse_amount`; never bundle two independent changes in one commit.
+
+Add commits forward; never amend, rebase, or force-push.
 
 Leave the worktree in place when the report is written; never remove or reset it.
 </commit-in-the-worktree>
 
 <review-yourself>
-Check before reporting: every behavior in the contract is implemented and tested through the outermost interface, no requirement was skipped, edge cases are handled, every name says what the thing does, no comment exists, every docstring is one line, every side effect enters at the top and is passed down, nothing beyond the contract was built, and the whole test suite passes; never report before the check.
+Check before reporting: every behavior in the contract is implemented and tested through the outermost interface, no requirement was skipped, every edge case the contract names is handled, every name says what the thing does, no comment exists and every docstring is one line in the lines the unit adds or changes whatever the file's existing pattern, every side effect enters at the top and is passed down, nothing beyond the contract was built, and the brief's whole-suite gate passes; never report before the check.
 
 Fix each defect the check finds; never report a defect as a concern that a fix would have removed.
 </review-yourself>
@@ -74,5 +78,5 @@ End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`,
 
 Report `DONE` for work complete, tested, committed, and self-reviewed, and `DONE_WITH_CONCERNS` for the same with a doubt the `Concerns:` line states; never report `DONE` with a doubt unstated.
 
-Leave the branch name and commit hashes out of the report, since the orchestrator reads them from git in the worktree; never paraphrase git.
+Leave the branch name and commit hashes out of the report, since the orchestrator reads them from git in the worktree; never state either.
 </report-the-status>
