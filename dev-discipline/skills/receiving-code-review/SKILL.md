@@ -1,188 +1,45 @@
 ---
 name: receiving-code-review
 description: >
-  This skill should be used to apply anti-performative code review protocol:
-  verify-before-implement discipline, YAGNI enforcement, and technical pushback
-  patterns when receiving PR feedback. Triggers: "receives code review feedback",
-  "gets review comments", "has PR feedback to address", "should I implement this
-  suggestion", "how to respond to code review", "handle review feedback", or when
-  performative agreements appear in responses.
+  Act on code review feedback by verifying each item against the code, clarifying every unclear item before implementing any, pushing back with evidence, and fixing one item at a time.
+  "address the review", "review comments to handle", "PR feedback", "should I implement this suggestion", "the reviewer says",
+  or any reply to review findings.
 ---
 
-# Receiving Code Review
+<read-everything-first>
+Read all the feedback before acting on any item; never start on the first item while later ones are unread.
 
-Protocol for receiving and acting on code review feedback with technical rigor. Code review requires technical evaluation, not emotional performance.
+Restate each item as the change it asks for, in one sentence; never restate it as agreement or thanks.
+</read-everything-first>
 
-## Core Principle
+<verify-each-item>
+Check each item against the code: whether the problem exists, whether the suggested change breaks existing behavior, why the current code is as it is, and whether the suggestion holds on every target platform and version; never implement an item unverified.
 
-Verify before implementing. Ask before assuming. Technical correctness over social comfort.
+Search the codebase for callers of a feature a reviewer asks to build out, and propose removal when nothing calls it; never build infrastructure for a caller that does not exist.
+</verify-each-item>
 
-## The Response Pattern
+<clarify-before-implementing>
+Hold every item while any item is unclear, and ask about all the unclear items at once — as a dispatched agent, by reporting `NEEDS_CONTEXT` with the items named; never implement the clear items first.
 
-Follow this sequence when receiving code review feedback:
+State what cannot be verified and what would verify it when verification is impossible here; never proceed on an unverifiable item.
+</clarify-before-implementing>
 
-1. **READ** -- Complete feedback without reacting.
-2. **UNDERSTAND** -- Restate the requirement in own words, or ask for clarification.
-3. **VERIFY** -- Check against codebase reality.
-4. **EVALUATE** -- Determine if the suggestion is technically sound for THIS codebase.
-5. **RESPOND** -- Technical acknowledgment or reasoned pushback.
-6. **IMPLEMENT** -- One item at a time, test each.
+<push-back-with-evidence>
+Push back on an item that breaks existing behavior, that lacks the codebase's context, that builds what nothing uses, that is wrong for this stack, or that contradicts the user's architectural decisions — with the test, the code, or the fact that shows it; never push back with preference.
 
-## Anti-Performative Protocol
+Hand an item that contradicts the user's architectural decisions to the user before changing anything; never settle an architectural conflict with a reviewer alone.
 
-### Prohibited Response Patterns
+Correct a wrong pushback in one sentence naming what was checked and what it showed, then implement; never defend the pushback.
+</push-back-with-evidence>
 
-Prohibited responses include:
-- "Absolutely right!"
-- "Great point!" / "Excellent feedback!"
-- "Thank you" / "I appreciate this"
-- "Let me implement that now" (before verification)
+<implement-one-at-a-time>
+Implement the items in order: those that break or expose the system, then the simple ones — typos, imports, names, then the complex ones — logic and structure; never implement in the order they were written.
 
-### Required Response Patterns
+Implement one item, run the tests, and move to the next; never batch items between test runs.
+</implement-one-at-a-time>
 
-Instead, use:
-- Technical restatement of the requirement
-- Clarifying questions
-- Technical pushback with reasoning if the suggestion is incorrect
-- Direct action without commentary
+<answer-without-performance>
+Answer each item with the change made and where, or the evidence against it; never answer with gratitude, praise, agreement, or an announcement of what is about to happen.
 
-**Rationale:** The code itself demonstrates that feedback was received. Performative agreement adds no technical value.
-
-**Performative agreement detection:** When responses contain gratitude or agreement phrases, remove them and state the technical action instead.
-
-## Clarity Gate
-
-```
-IF any item in the feedback is unclear:
-  STOP -- implementation must wait
-  ASK for clarification on all unclear items
-
-WHY: Items may be related. Partial understanding leads to wrong implementation.
-```
-
-Example scenario: Items 1, 2, 3, 6 are clear but items 4, 5 are unclear. Implementation of all items must wait until 4, 5 are clarified -- the answers may change how 1, 2, 3, 6 should be implemented. Partial implementation before full clarity risks incorrect work.
-
-## Source-Specific Handling
-
-### From the User
-
-- Implement after understanding.
-- Ask for clarification if scope is unclear.
-- Omit performative agreement.
-- Proceed to action or technical acknowledgment.
-
-### From External Reviewers
-
-Before implementing any suggestion from an external reviewer, verify:
-
-1. Is it technically correct for THIS codebase?
-2. Does it break existing functionality?
-3. What is the reason for the current implementation?
-4. Does it work on all target platforms/versions?
-5. Does the reviewer understand the full context?
-
-When a suggestion appears incorrect, push back with technical reasoning.
-
-When verification is not possible, state the limitation: "Cannot verify this without [X]. Should I investigate, consult the user, or proceed?"
-
-When the suggestion conflicts with the user's architectural decisions, stop and consult with the user before proceeding.
-
-## YAGNI Enforcement
-
-When a reviewer suggests "implementing properly" or adding a feature:
-
-```
-grep codebase for actual usage of the feature
-
-IF unused: Suggest removal (YAGNI principle)
-IF used:   Implement properly
-```
-
-Do not add features that nothing calls. Do not build infrastructure for hypothetical future needs. Verify actual usage before investing effort.
-
-## When to Push Back
-
-Push back when:
-- The suggestion breaks existing functionality
-- The reviewer lacks full context for this codebase
-- The suggestion violates YAGNI (unused feature)
-- The suggestion is technically incorrect for this stack
-- Legacy or compatibility reasons exist for the current implementation
-- The suggestion conflicts with the user's architectural decisions
-
-**Pushback protocol:**
-- Use technical reasoning, not defensiveness
-- Ask specific questions
-- Reference working tests or code that demonstrates the current behavior
-- Involve the user when the pushback is architectural
-
-## Acknowledging Correct Feedback
-
-When feedback is correct, use technical acknowledgment patterns:
-
-```
-GOOD: "Fixed. [Brief description of what changed]"
-GOOD: "Good catch -- [specific issue]. Fixed in [location]."
-GOOD: [Direct fix demonstrated in the code]
-
-BAD:  "Absolutely right!"
-BAD:  "Great point!"
-BAD:  ANY gratitude expression
-```
-
-## Graceful Correction After Wrong Pushback
-
-When pushback was incorrect, use factual correction patterns:
-
-```
-GOOD: "Checked [X] and it does [Y]. Implementing."
-GOOD: "Verified -- reviewer is correct. Prior understanding was wrong because [reason]. Fixing."
-
-BAD:  Long apology
-BAD:  Defending why pushback was made
-BAD:  Over-explaining
-```
-
-State the correction factually and proceed to implementation.
-
-## Implementation Order
-
-For multi-item feedback, after all items are clarified:
-
-1. **Blocking issues** -- breaks, security vulnerabilities
-2. **Simple fixes** -- typos, imports, naming
-3. **Complex fixes** -- refactoring, logic changes
-
-Test each fix individually. Verify no regressions after each. Do not batch implementations without individual testing.
-
-## Response Format
-
-**Single-item feedback:** Technical restatement or direct action (1 sentence).
-
-**Multi-item feedback:**
-- List unclear items and ask clarifying questions before implementing
-- After clarification, for each item: technical restatement, action, status (Implemented / Will implement / Needs discussion)
-
-**Mixed correct/incorrect feedback:**
-- Correct items: brief acknowledgment with fix description
-- Items requiring discussion: technical reasoning for pushback
-
-## Common Mistakes
-
-| Mistake | Correction |
-|---|---|
-| Performative agreement | State requirement or proceed to action |
-| Blind implementation | Verify against codebase first |
-| Batch without testing | One at a time, test each |
-| Assuming reviewer is right | Check whether suggestion breaks functionality |
-| Avoiding pushback | Technical correctness over comfort |
-| Partial implementation | Clarify all items before implementing any |
-| Proceeding despite inability to verify | State limitation and request direction |
-
-## Composability
-
-When the defensive-planning skill is available, use its adherence assessment structure to evaluate whether multi-item review feedback constitutes a correction plan scenario. Otherwise, process feedback items individually following the implementation order above.
-
----
-
-*Originally based on receiving-code-review, adapted and enhanced for this plugin.*
+Mark each item `Implemented`, `Will implement`, or `Needs discussion` when the feedback carries several items; never leave an item's state unstated.
+</answer-without-performance>
