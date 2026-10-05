@@ -1,50 +1,41 @@
 # dev-discipline
 
-Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.
+Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, outermost-test-first signature-first TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, worktree-isolated implementation agents, and a review chain enforced by hooks.
 
 `tdd` `debugging` `planning` `code-review` `testing` `triage` `architecture` `refactoring` `orchestration` `lifecycle` `worktree` 
 ## Skills
 
 ### [defensive-planning](skills/defensive-planning/SKILL.md)
 
-Write implementation plans, assessments, and corrections for implementers who may cut corners. Use when: creating implementation plans, reviewing implementations for adherence, writing correction plans after failures, or when the implementer may choose appearing done over being done. Produces prescriptive documents with verification gates, forbidden patterns, and zero escape hatches.
+Write an implementation plan, or a correction plan after a failed review, that leaves the implementer no decision, no option, and no unverifiable step. "write an implementation plan", "plan the implementation", "write the plan for the implementer", "correction plan", "the implementer cut corners", or any request for a plan another agent will execute.
 
 
 ---
 
 ### [dev-orchestration](skills/dev-orchestration/SKILL.md)
 
-Extension of agentic-delegation for software development.
-Adds the Plan→Implement→Review→Fix loop, TDD gates,
-status-driven branching, and debugging escalation.
-
-Prerequisite: agentic-delegation (orchestration plugin — must be read first).
-Same-plugin agents: implementer, spec-reviewer, code-quality-reviewer.
-
-Triggers: "implement a feature end-to-end", "execute an implementation plan",
-"build this with agents", "orchestrate development", "run the dev loop",
-"implement using subagents", "dispatch implementers", "coordinate implementation and review".
+Drive the plan, implement, review, fix, and integrate loop over software work through the implementer, spec-reviewer, and code-quality-reviewer agents, as an extension of agentic-delegation. "implement a feature end-to-end", "execute an implementation plan", "build this with agents", "orchestrate development", "run the dev loop", "implement using subagents", "dispatch implementers", "coordinate implementation and review", or any coding task an orchestrator delegates.
 
 
 ---
 
 ### [improve-architecture](skills/improve-architecture/SKILL.md)
 
-Explores codebases for architectural friction, discovers module-deepening opportunities, and proposes refactors through multi-design exploration. Triggers: "improve architecture", "find refactoring opportunities", "deepen shallow modules", "reduce coupling", "simplify module structure", mentions of architectural friction or module boundaries. Writes refactor RFC as a report file.
+Find architectural friction in a codebase, explore several designs for a deeper module in parallel, and write a refactor RFC recommending one. "improve the architecture", "find refactoring opportunities", "deepen shallow modules", "reduce coupling", "simplify the module structure", "this module is hard to navigate", or any mention of architectural friction or module boundaries.
 
 
 ---
 
 ### [receiving-code-review](skills/receiving-code-review/SKILL.md)
 
-This skill should be used to apply anti-performative code review protocol: verify-before-implement discipline, YAGNI enforcement, and technical pushback patterns when receiving PR feedback. Triggers: "receives code review feedback", "gets review comments", "has PR feedback to address", "should I implement this suggestion", "how to respond to code review", "handle review feedback", or when performative agreements appear in responses.
+Act on code review feedback by verifying each item against the code, clarifying every unclear item before implementing any, pushing back with evidence, and fixing one item at a time. "address the review", "review comments to handle", "PR feedback", "should I implement this suggestion", "the reviewer says", or any reply to review findings.
 
 
 ---
 
 ### [systematic-debugging](skills/systematic-debugging/SKILL.md)
 
-Mandatory 4-phase root cause protocol for bugs, test failures, errors, or unexpected behavior. Prevents random fixes and symptom patching. Apply BEFORE proposing any fix, especially when multiple attempts have failed or time pressure tempts guessing.
+Find the root cause of a bug, a test failure, an error, or an unexpected behavior before changing any code, then fix the cause once. "debug this", "why does this fail", "the test is failing", "find the root cause", "this keeps breaking", "the fix didn't work", a build or integration failure, or any fix attempt that follows a failed one.
 
 
 **Scripts:** [`find-polluter.sh`](skills/systematic-debugging/scripts/find-polluter.sh)
@@ -52,14 +43,14 @@ Mandatory 4-phase root cause protocol for bugs, test failures, errors, or unexpe
 
 ### [tdd](skills/tdd/SKILL.md)
 
-This skill should be used when the user asks to "implement using TDD", "write tests first", "use test-driven development", "red-green-refactor", "write a failing test", "add test coverage with TDD", "what makes a good test", or when code review reveals implementation-coupled tests. Provides the philosophy, workflow, and technique of test-driven development including good/bad test patterns, mocking strategy, interface design for testability, and refactoring discipline.
+Build code by writing the outermost failing test first, designing the signatures beneath it before any body, and refactoring once green. "tdd", "write tests first", "test-driven development", "red-green-refactor", "implement using tdd", "write a failing test", "design the signatures", "outside in", or any request to write code that carries behavior.
 
 
 ---
 
 ### [triage-issue](skills/triage-issue/SKILL.md)
 
-Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writes issue documents. Triggers: bug reports, "this is broken", "triage an issue", "investigate a bug", "find the root cause", "file an issue for this bug", autonomous problem diagnosis.
+Diagnose a reported bug to its root cause and write an issue document carrying a test-first fix plan, without fixing the code. "triage this", "this is broken", "investigate a bug", "find the root cause and file it", "write up this bug", "file an issue", or any bug report that asks for a diagnosis rather than a fix.
 
 
 ---
@@ -68,18 +59,18 @@ Autonomously diagnoses bugs, traces root causes, designs TDD fix plans, and writ
 
 ### [code-quality-reviewer](agents/code-quality-reviewer.md)
 
-Use this agent when reviewing code quality after spec compliance has been verified, when completing a feature and needing a quality audit, or before merging code that should meet production standards. Examples:
+Use this agent to review code quality after spec compliance has been verified, to audit a completed feature, or before merging code that must meet production standards. Examples:
 
 <example>
-Context: Spec-reviewer has approved the implementation and now code quality needs to be checked.
+Context: The spec-reviewer has passed the implementation and the code quality needs checking.
 user: "Spec looks good. Now review the code quality."
-assistant: "I'll use the code-quality-reviewer agent for the quality audit."
+assistant: "I'll launch the code-quality-reviewer agent for the quality audit."
 </example>
 
 <example>
-Context: User completed a feature and wants a quality check before creating a PR.
+Context: A feature is complete and needs a quality check before a PR.
 user: "Review the quality of my changes before I create a PR"
-assistant: "I'll use the code-quality-reviewer agent to review the changes."
+assistant: "I'll launch the code-quality-reviewer agent to review the changes."
 </example>
 
 
@@ -89,49 +80,49 @@ assistant: "I'll use the code-quality-reviewer agent to review the changes."
 
 ### [implementer](agents/implementer.md)
 
-Use this agent when dispatching a subagent to implement a single task from an implementation plan, execute a well-specified coding task, or carry out a TDD cycle on a defined unit of work. Examples:
+Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a TDD cycle on a defined unit of work, inside its own git worktree. Examples:
 
 <example>
-Context: User has an implementation plan with 5 tasks. Task 1 specifies TDD for authentication middleware.
-user: "Execute task 1 from the implementation plan"
-assistant: "I'll use the implementer agent to execute this task with TDD."
+Context: An implementation plan has five units. Unit 1 fixes the outermost contract of an authentication middleware.
+user: "Execute unit 1 from the implementation plan"
+assistant: "I'll launch the implementer agent for unit 1."
 </example>
 
 <example>
-Context: Sequential task execution. Task 3 specifies database migration with table structure and rollback test.
-user: "Continue to task 3"
-assistant: "I'll use the implementer agent for Task 3."
+Context: Sequential units. Unit 3 specifies a database migration with its table structure and rollback test.
+user: "Continue to unit 3"
+assistant: "I'll launch the implementer agent for unit 3."
 </example>
 
 <example>
-Context: Implementer returned NEEDS_CONTEXT. User provides the missing schema definition.
-user: "Here's the schema definition from schema.sql. Re-dispatch the implementer."
-assistant: "I'll use the implementer agent with the schema context."
+Context: The implementer returned NEEDS_CONTEXT naming a missing schema definition.
+user: "Here's the schema definition from schema.sql. Continue the implementer."
+assistant: "I'll continue the implementer with the schema context."
 </example>
 
 
-**Model:** `inherit` · **Tools:** Read, Write, Edit, Bash, Grep, Glob
+**Model:** `inherit` · **Tools:** Read, Write, Edit, Bash, Grep, Glob, Skill
 
 ---
 
 ### [spec-reviewer](agents/spec-reviewer.md)
 
-Use this agent when verifying that an implementation matches its specification, after an implementer reports task completion, or when checking for spec drift between requirements and code. Examples:
+Use this agent to verify that an implementation matches its specification, after an implementer reports a unit complete, or to check for drift between requirements and code. Examples:
 
 <example>
-Context: An implementer agent has completed a task and reported DONE.
+Context: An implementer agent has completed a unit and reported DONE.
 user: "Review the implementation against the spec"
-assistant: "I'll use the spec-reviewer agent to verify compliance."
+assistant: "I'll launch the spec-reviewer agent to verify compliance."
 </example>
 
 <example>
-Context: User wants to verify a feature matches its original requirements before merging.
+Context: A feature must match its original requirements before merging.
 user: "Check if the auth implementation matches the requirements doc"
-assistant: "I'll use the spec-reviewer agent to compare code to requirements."
+assistant: "I'll launch the spec-reviewer agent to compare the code to the requirements."
 </example>
 
 
-**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob
+**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob, Bash
 
 ---
 
