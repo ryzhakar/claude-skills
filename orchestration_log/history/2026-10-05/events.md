@@ -19,3 +19,8 @@
 - discovery: `skills:` frontmatter injects full skill content at subagent start; plugin skills are addressed as `plugin:skill`; the implementer can preload `dev-discipline:tdd`.
 - discovery: `just tokens` cannot fetch the cl100k ranks here (blob host refused by proxy); exact counts obtained through the npm `tiktoken` wasm encoder, verified against the repo's recorded 718 for `skill-creation`.
 - commitment: on GO, execute `reviews/dev-discipline-iteration-plan.md` end to end with no further question; push after every commit.
+- decision (owner): GO given 2026-10-05 ~23:12 UTC without the word `3.0.0`; version lands at 2.2.0; execution of plan §7 began at once.
+- decision: every draft commits and pushes the moment it is written, before its checker round, with checker fixes landing as later commits — nothing unpushed survives the environment.
+- decision: `review-chain.py` dispatches on `hook_event_name` from stdin, so all five hook entries run one command with no mode argument.
+- discovery: `find-polluter.sh` exited 1 before any test under `set -e` because its guard function ended on a false `&&` list; rewritten with `if`, exercised on three stub tests, generalized to take the test command and files.
+- change: dev-discipline hook layer — three SubagentStop scripts injecting mandates into the stopping subagent → one tested script recording pending stages and continuing the orchestrator's `Stop` with the mandate; `just hooks-test` green at 12 tests.
