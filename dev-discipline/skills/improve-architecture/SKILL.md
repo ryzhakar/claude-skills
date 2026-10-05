@@ -9,27 +9,41 @@ description: >
 <explore-for-friction>
 Explore the codebase as a developer new to it, reading the code behind each concept the task touches; never grep for keywords alone.
 
-Note each friction: bouncing — understanding one concept takes many small files; a shallow interface — a module whose public surface is nearly as complex as its internals; testability extraction — pure functions pulled out for tests while bugs live in the integration; tight coupling — modules sharing types or co-owning a concept; a test gap — a module untested or tested through elaborate mocks; never note a friction without the files that show it.
+Note each friction — a place where understanding breaks down — with the files that show it; never note a friction without its files.
+
+Count as frictions: bouncing — understanding one concept takes many small files; a shallow interface — a module whose public surface is nearly as complex as its internals; testability extraction — pure functions pulled out for tests while bugs live in the integration; tight coupling — modules sharing types or co-owning a concept; a test gap — a module untested or tested through elaborate mocks; never count a style complaint as a friction.
 </explore-for-friction>
 
 <rank-the-candidates>
-Write each deepening candidate — a cluster of modules that could hide behind one smaller interface — with the modules involved, the coupling signal, and the tests a boundary test would replace; never describe a module by its file path alone.
+Write each deepening candidate — a cluster of modules that could hide behind one smaller interface — with the modules involved, the coupling signal — the shared types, call patterns, or co-owned concept that tie them — and the existing tests a boundary test — a test through the cluster's new interface — would replace; never write a candidate missing one of the three.
 
-Rank the candidates by how much complexity each hides behind how small an interface, and take the first; never ask which to explore.
+Describe each module by its responsibility; never describe one by its file path alone.
+
+Rank the candidates by the count of modules and concepts each hides divided by the count of public entry points it leaves; never rank by taste.
+
+Take the first-ranked candidate; never ask which to explore.
 </rank-the-candidates>
 
 <classify-the-dependencies>
-Classify each dependency of the candidate: in-process when it involves no I/O — merge and unit-test directly; local-substitutable when a local stand-in exists — test against the stand-in at the boundary; a port when the remote service is this project's own — define a port of domain operations and inject an adapter; external when the remote service is foreign — mock at the boundary and contract-test the real client; never mock deeper than the immediate boundary.
+Classify each dependency of the candidate by the first class that matches, in this order: in-process when it involves no I/O; a port when the remote service is built and deployed from this repository; local-substitutable when a local stand-in for the service exists; external otherwise; never leave a dependency unclassified.
+
+Handle each dependency by its class: fold an in-process dependency into the deepened module, leaving any copy other modules import in place, and unit-test it directly; define for a port a set of domain operations and inject an adapter — the code that carries those operations to the service; test a local-substitutable dependency against its stand-in at the boundary; mock an external dependency at the boundary and contract-test the real client; never handle a dependency outside its class's way.
+
+Mock at the immediate boundary; never mock deeper than it.
 </classify-the-dependencies>
 
 <frame-the-constraints>
-Write the constraints any new interface has to satisfy, the dependencies the module relies on, and a rough sketch of a call site that makes the constraints concrete; never present the sketch as a proposal.
+Write the design brief — the text every design agent receives — with the constraints any new interface has to satisfy, the dependencies with their classes, the complexity to hide, the file paths, and a rough sketch of a call site; never write a brief missing one of the five.
+
+Label the sketch illustrative in the brief; never let a design agent read it as a proposal.
 </frame-the-constraints>
 
 <explore-designs-in-parallel>
-Launch three or more agents through `agentic-delegation`, each with the same brief — the file paths, the coupling details, the dependency classes, the complexity to hide — and one distinct constraint: the smallest interface, one to three entry points; the widest flexibility, many uses and extension points; the trivial common case, the most frequent caller's call reduced to one line; a ports-and-adapters shape when a cross-boundary dependency exists; never give two agents the same constraint.
+Launch three or more agents through `agentic-delegation`, each with the same design brief and one distinct constraint: the smallest interface, one to three entry points; the widest flexibility, many uses and extension points; the trivial common case, the most frequent caller's call reduced to one line; a ports-and-adapters shape when a cross-boundary dependency exists; never give two agents the same constraint.
 
-Require from each agent the interface signature, a usage example, what complexity it hides, how it handles each dependency, and where the design breaks down; never accept a design missing one of the five.
+Require from each agent the interface signature, a usage example, the complexity it hides, the handling of each dependency, and where the design breaks down; never accept a design missing one of the five.
+
+Continue an agent whose design misses one of the five until all five are present; never fill a missing part in its place.
 </explore-designs-in-parallel>
 
 <compare-and-recommend>
@@ -39,13 +53,11 @@ Recommend one design, or a hybrid of named parts, with the reason; never present
 </compare-and-recommend>
 
 <write-the-rfc>
-Write the RFC to the project's RFC directory — `docs/rfcs/`, `rfcs/`, or the directory the project already uses — with five sections: `Problem` (the friction, the integration risk in the seams, the cost to navigation, testing, and maintenance), `Proposed interface` (signature, usage example, hidden complexity), `Dependency strategy` (the class of each dependency and its handling), `Testing strategy` (new boundary tests, old tests to delete, stand-ins or adapters needed), and `Implementation recommendations` (what the module owns, hides, and exposes, how callers migrate, which boundary to draw first); never return the RFC as conversation text.
+Write the RFC to the project's RFC directory — `docs/rfcs/`, `rfcs/`, or the directory the project already uses, created as `docs/rfcs/` when none exists — named like the RFCs already there, else `<slug>.md` with `<slug>` the module's name in lowercase hyphenated words; never return the RFC as conversation text.
 
-Describe modules by responsibility and behavior throughout; never describe one by its current file layout.
+Give the RFC five sections: `Problem` — the frictions with their files as evidence, the integration risk in the seams, the joints where the shallow modules meet, and the cost to navigation, testing, and maintenance; `Proposed interface` — the comparison, the recommendation with its reason, the signature, a usage example, the hidden complexity; `Dependency strategy` — each dependency's class and handling; `Testing strategy` — the boundary tests to write, the old tests they replace and the deletion of those, the stand-ins or adapters needed; `Implementation recommendations` — what the module owns, hides, and exposes, how callers migrate, which boundary to draw first; never leave a section out.
+
+Describe modules by responsibility and behavior outside `Problem`; never describe one by its current file layout there.
 
 Print the RFC's path; never print its content.
 </write-the-rfc>
-
-<replace-the-tests>
-Write new tests at the deepened module's boundary asserting observable outcomes, and delete the old tests on the shallow modules they supersede; never keep both.
-</replace-the-tests>
