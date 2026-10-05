@@ -22,6 +22,8 @@ Rulings:
 4. For an agent definition, you are that agent reading its own brief at dispatch; the orchestrator's brief to you contains what the file says it contains and nothing else.
 5. For a hook template, you are the orchestrator reading it at the end of a turn; report every point where you cannot tell what single action it demands.
 
+6. A file under the skill's own directory, such as its `scripts/`, is inside the skill; treat it as available and report nothing about the pointer.
+
 Output path: given at dispatch, under `orchestration_log/recon/2026-10-05/checks/`.
 
 Scope boundaries: do not read any other file in the repository, any other draft, or any checker's report; do not judge the procedure's merit; do not propose structure beyond the smallest change per finding.

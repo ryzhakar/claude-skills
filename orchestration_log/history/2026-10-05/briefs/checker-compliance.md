@@ -25,6 +25,8 @@ Rulings:
 7. For an agent definition, judge the body by `<write-the-body>` and `<write-the-instructions>` only; judge the frontmatter against these fields alone: name, description, model, effort, maxTurns, tools, disallowedTools, skills, memory, background, isolation, color.
 8. For a hook template, report any condition, enumeration, or rationale; a template is one unconditional command in prose.
 
+9. A file under the skill's own directory, such as its `scripts/`, is inside the skill; a pointer to it is not a fetch outside and not a finding.
+
 Output path: given at dispatch, under `orchestration_log/recon/2026-10-05/checks/`.
 
 Report format: as the task's headings prescribe; line one is the integer; nothing after `## Tag sweep` but the lines it calls for.

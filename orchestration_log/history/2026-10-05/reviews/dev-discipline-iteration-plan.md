@@ -39,6 +39,7 @@ Rulings a checker applies before reporting a finding:
 6. The artifact contract is prose inside a tag; a checker does not report the absence of a table.
 7. Agent bodies are judged by the instruction rules of `<write-the-instructions>` and `<write-the-body>`, not by `<open-the-skill>`; agent frontmatter is judged against the platform field list in §6.
 8. A hook template is one unconditional command in prose; a checker reports any condition, enumeration, or rationale in it.
+9. A file under the skill's own directory, such as its `scripts/`, is inside the skill; a pointer to it is not a fetch outside.
 
 ## 4. Cross-cutting design decisions
 
