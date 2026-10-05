@@ -1,199 +1,105 @@
 ---
 name: tdd
 description: >
-  This skill should be used when the user asks to "implement using TDD", "write tests first",
-  "use test-driven development", "red-green-refactor", "write a failing test", "add test coverage
-  with TDD", "what makes a good test", or when code review reveals implementation-coupled tests.
-  Provides the philosophy, workflow, and technique of test-driven development including good/bad
-  test patterns, mocking strategy, interface design for testability, and refactoring discipline.
+  Build code by writing the outermost failing test first, designing the signatures beneath it before any body, and refactoring once green.
+  "tdd", "write tests first", "test-driven development", "red-green-refactor", "implement using tdd",
+  "write a failing test", "design the signatures", "outside in", or any request to write code that carries behavior.
 ---
 
-# Test-Driven Development
+<find-the-outermost-interface>
+Name the outermost interface — the function, command, endpoint, or module surface that callers of the unit, the code being built, use — before writing a test; never start from a helper inside the unit.
 
-Philosophy and technique for building software through the red-green-refactor cycle. Tests verify behavior through public interfaces, not implementation details.
+Draw the barrier — the line between the outermost interface and everything beneath it — around the whole unit a caller sees; never draw it around a part of the unit.
 
-## Core Principle
+Count as foreign a call into a library, a service, a runtime, or another team's module; never count a call into the unit's own code as foreign.
+</find-the-outermost-interface>
 
-Tests describe WHAT the system does, not HOW it does it. A good test reads like a specification. Code can change entirely; tests should not break unless behavior changes.
+<write-one-failing-test>
+Write one test proving one behavior through the outermost interface; never write a second test before the first passes.
 
-**The litmus test:** Rename an internal function. If tests break but behavior has not changed, those tests were testing implementation, not behavior.
+Run the test and read its failure; never continue from a test that passes before any code exists or fails for a reason other than the missing behavior.
 
-## Anti-Pattern: Horizontal Slicing
+Name the test for what the caller gets, in the caller's words; never name it for how the code achieves it.
+</write-one-failing-test>
 
-DO NOT write all tests first, then all implementation. This produces tests that verify what you imagined, not what the code does.
+<pretend-call-the-missing-functions>
+Write the body of the outermost interface as a sequence of painfully obvious steps, each step a pretend call — a call to a function that does not exist yet; never write a step that does two things.
 
-```
-WRONG (horizontal):
-  RED:   test1, test2, test3, test4, test5
-  GREEN: impl1, impl2, impl3, impl4, impl5
+Name each pretend call for what it does and returns, as its best caller would want to read it; never name one for how it works.
 
-RIGHT (vertical):
-  RED->GREEN: test1->impl1
-  RED->GREEN: test2->impl2
-  RED->GREEN: test3->impl3
-```
+Shape each pretend call's arguments and return as the call site — the line that calls it — wants them; never shape them as the body beneath will find convenient.
+</pretend-call-the-missing-functions>
 
-Horizontal slicing makes tests ignore real changes -- they fail when behavior is fine and pass when behavior breaks. Each test should respond to what was learned from implementing the previous one.
+<declare-the-signatures>
+Declare each pretend-called function with its full signature — name, typed parameters, typed return — and a stub body, which is `...`, a `todo`, or a no-op; never fill a body in this step.
 
-## Workflow
+Spend most of the unit's design effort on signatures; never spend it on bodies.
 
-### Phase 1: Planning
+Type each parameter and return as precisely as the caller's need requires and no more strictly; never accept a type the caller has to unwrap or convert before use.
 
-Before writing code:
+Give each function one docstring of one sentence on one line stating what it does; never give it a second line.
 
-1. Confirm with the user what interface changes are needed.
-2. Confirm which behaviors to test and their priority.
-3. Identify opportunities for deep modules: can I reduce methods? Simplify parameters? Hide more complexity inside?
-4. Design interfaces for testability: accept dependencies (not create them), return results (not side effects), small surface area (fewer methods = fewer tests).
-5. List behaviors to test (not implementation steps).
-6. Get user approval on the plan.
+Keep every fact a caller or a later maintainer needs in the signature and the docstring; never keep one in a comment or an external document.
+</declare-the-signatures>
 
-You cannot test everything. Test core business logic and code with conditional branches. Skip trivial getters and boilerplate.
+<recurse-to-the-leaves>
+Treat each declared function as the next outermost interface and repeat the pretend calls and the declarations inside it; never skip a level.
 
-### Phase 2: Tracer Bullet
+Stop recursing at a body that is a foreign call or a single primitive operation — arithmetic, a lookup, a literal construction; never stop above one.
+</recurse-to-the-leaves>
 
-Write ONE test that confirms ONE thing about the system:
+<pass-side-effects-down>
+Initialize every side effect — the clock, a random source, the file system, the network, a database, the process environment, a subprocess — at the outermost level; never construct one inside a lower function.
 
-```
-RED:   Write test for first behavior -> test fails
-GREEN: Write minimal code to pass -> test passes
-```
+Pass each side effect down as a parameter to every function that needs it; never let a function reach for one it was not handed.
 
-This proves the path works end-to-end before committing to the full test suite.
+Keep every function beneath the outermost level pure — its result a function of its arguments and nothing else — where pragmatically possible; never let a pure function gain a side effect to save a parameter.
+</pass-side-effects-down>
 
-### Phase 3: Incremental Loop
+<fill-bodies-to-green>
+Fill each stub body with the least code that passes the test; never write code the current test does not demand.
 
-For each remaining behavior:
+Run the test after each body; never fill a second body on a failing run without reading why it fails.
 
-```
-RED:   Write next test -> fails
-GREEN: Minimal code to pass -> passes
-```
+Reach green — every test passing — before any refactor; never refactor on red — a failing test.
+</fill-bodies-to-green>
 
-Rules:
-- One test at a time.
-- Only enough code to pass the current test.
-- Do not anticipate future tests.
-- Keep tests focused on observable behavior.
+<refactor-with-hindsight>
+Rename, split, merge, and move once green, using everything the finished call stack taught about the problem; never keep a name or a boundary the finished code has outgrown.
 
-### Phase 4: Refactor
+Deepen each module — hide more behind fewer entry points; never widen an interface to expose a helper.
 
-After all tests pass, look for refactor candidates:
+Move each piece of knowledge that two places hold into one place; never merge two pieces of code that merely look alike.
 
-- **Duplication** -- extract function/class
-- **Long methods** -- break into private helpers (keep tests on public interface)
-- **Shallow modules** -- combine or deepen
-- **Feature envy** -- move logic to where data lives
-- **Primitive obsession** -- introduce value objects
-- **Existing code** the new code reveals as problematic
+Run every test after each refactor step; never batch refactor steps between runs.
+</refactor-with-hindsight>
 
-- Extract duplication.
-- Deepen modules (move complexity behind simple interfaces).
-- Apply SOLID principles where natural.
-- Consider what new code reveals about existing code.
-- Run tests after each refactor step.
+<let-the-code-speak>
+Carry every explanation in names, signatures, docstrings, and structure; never write a comment.
 
-**Never refactor while RED.** Get to GREEN.
+Treat a comment found in the unit as a defect and rewrite the code until the comment has nothing left to say; never leave one standing.
 
-## Per-Cycle Checklist
+Name every literal that carries meaning — a bare number or string in logic — as a constant whose name states the meaning; never leave such a literal bare.
 
-Before committing each red-green cycle:
+Name a function for the one thing it does; never join two things with `and` in a name.
+</let-the-code-speak>
 
-- [ ] Test describes behavior, not implementation
-- [ ] Test uses public interface only
-- [ ] Test survives internal refactoring
-- [ ] Code is minimal for this test
-- [ ] Features are necessary, not speculative
+<keep-tests-at-the-barrier>
+Test through the outermost interface; never test a function beneath the barrier outside the one case below.
 
-## Good Tests vs Bad Tests
+Mock foreign calls alone, by passing a stand-in for the side effect at the barrier; never mock the unit's own functions.
 
-**Good tests** are integration-style: they exercise real code paths through public APIs. They describe what the system does. They survive refactors because they do not care about internal structure.
+Test a function beneath the barrier when its behavior cannot be reached from the barrier within reason, and test it with property-based tests — tests that generate many inputs against a stated property, such as `hypothesis` in Python; never test one with hand-picked examples alone.
 
-**Bad tests** are coupled to implementation: they mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface).
+Pin a behavior — assert an exact current value or sequence as it stands — where the behavior is unconventional and no signature, type, or name can hold it; never pin a value a type could forbid.
+</keep-tests-at-the-barrier>
 
-**Good test (behavior through interface):**
-```typescript
-test("user can checkout with valid cart", async () => {
-  const cart = createCart();
-  cart.add(product);
-  const result = await checkout(cart, paymentMethod);
-  expect(result.status).toBe("confirmed");
-});
-```
+<add-the-next-test>
+Write the next test for the next behavior after the last reached green, and repeat every step above for it; never write all tests before any body.
 
-**Bad test (implementation coupling):**
-```typescript
-// BAD: mocks internal collaborator
-test("checkout calls paymentService.process", async () => {
-  const mockPayment = jest.mock(paymentService);
-  await checkout(cart, payment);
-  expect(mockPayment.process).toHaveBeenCalledWith(cart.total);
-});
-```
+Let each test answer what building the last one taught; never write a test from a list drawn up before any code existed.
+</add-the-next-test>
 
-**Bad test (bypasses interface):**
-```typescript
-// BAD: queries database directly instead of using interface
-test("createUser saves to database", async () => {
-  await createUser({ name: "Alice" });
-  const row = await db.query("SELECT * FROM users WHERE name = ?", ["Alice"]);
-});
-
-// GOOD: verifies through interface
-test("createUser makes user retrievable", async () => {
-  const user = await createUser({ name: "Alice" });
-  const retrieved = await getUser(user.id);
-  expect(retrieved.name).toBe("Alice");
-});
-```
-
-Red flags indicating implementation coupling:
-- Mocking internal collaborators
-- Testing private methods
-- Asserting on call counts or call order
-- Breaking when refactoring without behavior change
-- Describing HOW in test name, not WHAT
-- Verifying through external means instead of interface
-
-## Mocking Strategy
-
-Mock at system boundaries only.
-
-**Mock:**
-- External APIs (payment, email, third-party services)
-- Databases (sometimes -- prefer test database)
-- Time and randomness
-- File system (sometimes)
-
-**Do not mock:**
-- Own classes or modules
-- Internal collaborators
-- Anything under direct control
-
-**Designing for mockability at system boundaries:**
-
-1. **Dependency injection** -- pass dependencies in, do not create them internally:
-   ```typescript
-   // Testable: mock paymentClient
-   function processPayment(order, paymentClient) { return paymentClient.charge(order.total); }
-   // Hard to test: internal construction
-   function processPayment(order) { const client = new StripeClient(process.env.STRIPE_KEY); ... }
-   ```
-
-2. **SDK-style interfaces** -- specific functions per operation, not one generic fetcher:
-   ```typescript
-   // GOOD: each mock returns one shape, no conditional logic in test setup
-   const api = { getUser: (id) => fetch(`/users/${id}`), createOrder: (data) => ... };
-   // BAD: mock requires conditional logic
-   const api = { fetch: (endpoint, options) => fetch(endpoint, options) };
-   ```
-
-## Composability
-
-If the agentic-delegation skill is available, apply its decomposition patterns to break features into independently testable units. Otherwise, find the smallest testable behavior, implement it, move to the next.
-
-If the defensive-planning skill is available, use its TDD micro-task structure for plan granularity.
-
----
-
-*Originally based on tdd, adapted and enhanced for this plugin.*
+<verify-the-unit>
+Read the finished unit against every instruction above and run every test; never report the unit done on a failing run or a standing comment.
+</verify-the-unit>
