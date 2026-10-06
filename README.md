@@ -12,7 +12,7 @@
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
-| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.0` | 2S |
+| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -100,7 +100,7 @@ A memory and record-keeping system for agents without continuity across sessions
 - **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — text to be read and followed. "create a skill", "write a skill", "new skill", "add a skill", "make this repeatable", or...
 - **[span-closure](memento/skills/span-closure/SKILL.md)** — Close out a stretch of work — one continuous thread of narrative — flushing, summarizing, and auditing what it leaves behind. The end of...
 - **[staging-relay](memento/skills/staging-relay/SKILL.md)** — Pair every part of a task that outlives the work at hand with a record and a waking cause — what begins the later work — and bound every...
-## [orchestration](orchestration/) `5.0.0`
+## [orchestration](orchestration/) `5.0.1`
 
 Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
 

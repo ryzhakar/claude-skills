@@ -79,7 +79,7 @@ assistant: "I'll launch the spec-capturer agent to close the gaps with you and w
 </example>
 
 
-**Model:** `inherit` · **Tools:** Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill, WebFetch, WebSearch
+**Model:** `inherit` · **Tools:** Read, Write, Edit, Grep, Glob, Bash, AskUserQuestion, Skill, SendMessage, WebFetch, WebSearch
 
 ---
 
