@@ -49,9 +49,9 @@ return channels — which live in the orchestration skills; core-shape changes
   Governs `*/hooks/templates/*.txt`.
 
 - **Each orchestrator skill carries one artifact-path tag.** Paths drift silently when they scatter
-  across agent bodies, and a single greppable tag — `<fix-the-artifact-paths>` in `dev-orchestration`,
+  across agent bodies, and a single greppable tag — `<fix-the-artifact-paths>` in `dev-cycle`,
   prose and inline backticks inside, as `memento:skill-creation` admits nothing else in a tag — is the
-  canonical map. Governs multi-skill plugins: `orchestration`, `dev-discipline`, `qa-automation`;
+  canonical map. Governs multi-skill plugins: `orchestration`, `dev-cycle`, `dev-cycle-lite`, `qa-automation`;
   `qa-orchestration` still carries the older table form.
 
 - **`just` is the measurement and generation surface.** `just tokens FILE` counts tokens,
