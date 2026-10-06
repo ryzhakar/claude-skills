@@ -38,6 +38,28 @@
       "license": "MIT"
     },
     {
+      "name": "dev-cycle",
+      "source": "./dev-cycle/",
+      "description": "Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, spec and code-quality reviewers, and a review chain enforced by hooks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "dev-cycle-lite",
+      "source": "./dev-cycle-lite/",
+      "description": "Cost-tiered development cycle over dev-cycle: an opus prescriber writes prescriptions that leave no decision, a sonnet suborchestrator runs the loop and both reviews, disposable haiku executors follow the prescription literally. No hooks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
       "name": "prompt-engineering",
       "source": "./prompt-engineering/",
       "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
@@ -114,5 +136,6 @@
       "repository": "https://github.com/ryzhakar/claude-skills",
       "license": "MIT"
     }
-  ]
+  ],
+  "description": "Plugins for Claude Code: orchestration, development cycles, memory, manifestos, and tooling."
 }
