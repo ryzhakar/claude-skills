@@ -16,8 +16,6 @@ Ask one question, `What problem are you seeing?`, when the request names no prob
 Run the investigation of `systematic-debugging` — reproduce and read, trace to the source, compare with working code, test one hypothesis — up to its fix step; never change product code during triage.
 
 Find where the bug surfaces, which code path carries it, why that path produces the wrong result, and what other code shares the same pattern — the faulty construct behind the cause; never stop at the first of the four.
-
-Write the hypotheses tested and why reproduction failed in the `Root cause` section of the issue document when the bug cannot be reproduced; never withhold a partial diagnosis.
 </investigate-the-cause>
 
 <classify-the-issue>
@@ -41,9 +39,15 @@ Name `improve-architecture` as the fix when the cause is a design flaw that need
 <write-the-issue>
 Write one issue document per issue to the project's issue directory — `issues/`, `docs/issues/`, or the directory the project already uses, created as `docs/issues/` when none exists — named `<slug>.md` with `<slug>` the issue's title in lowercase hyphenated words; never return a document as conversation text.
 
-Give each document a title and four sections: `Problem` — actual behavior, expected behavior, reproduction; `Root cause` — the classification, where the bug surfaces, the code path, why the path fails, the other code sharing the pattern; `Fix plan` — the scope, the smallest change, the outermost interfaces touched, the cycles, the refactor step; `Acceptance criteria` — the cause is fixed, the new tests pass, the existing tests pass, the behavior of the other code sharing the pattern holds; never leave a section out.
+Give each document a title and four sections: `Problem` — actual behavior, expected behavior, reproduction; `Root cause` — the classification, where the bug surfaces, the code path, why the path fails, the other code sharing the pattern; `Fix plan` — the scope, the smallest change, the outermost interfaces touched, the cycles, the refactor step; `Acceptance criteria` — the cause is fixed, the new tests pass, the existing tests pass, the behavior of the other code sharing the pattern is unchanged by the fix; never leave a section out.
 
-Write `none` beside any item an issue cannot fill, the classification included, and for a design flaw handed to `improve-architecture` write its name in `Fix plan` in place of the cycles and the RFC's acceptance in `Acceptance criteria`; never leave an item blank.
+Write the hypotheses tested and why reproduction failed in the `Root cause` section when the bug cannot be reproduced; never withhold a partial diagnosis.
+
+Write `none` beside any item an issue cannot fill, the classification included; never leave an item blank.
+
+Write `improve-architecture` in `Fix plan` in place of the cycles for a design flaw handed to it; never write cycles for such a flaw.
+
+Add the acceptance of the RFC — the proposal `improve-architecture` writes — as a further item in `Acceptance criteria` for such a flaw; never leave its acceptance out.
 
 Cite each sibling document — another issue from the same investigation — by its title in the `Root cause` section of each document; never leave a sibling uncited.
 
