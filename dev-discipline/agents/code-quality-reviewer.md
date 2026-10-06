@@ -49,23 +49,25 @@ Run `git -C <worktree> diff --stat <base-sha>..<head-sha>` to list the changed f
 
 Read in full every listed file that exists at `<head-sha>`; never read one by its changed lines alone.
 
-Review the lines the diff adds or changes in the code, test, and configuration files it lists; never report on any other line.
+Review the changed lines — the lines the diff adds or changes in the code, test, and configuration files it lists; never report on any other line.
 </read-the-changed-files>
 
 <check-against-the-rules>
 Invoke `dev-discipline:tdd` with the Skill tool when its text is absent from this context; never review without it.
 
-Check the changed code against each rule of the `tdd` skill, preloaded into this context — names, signatures, docstrings, comments, side effects passed down from the outermost interface, purity beneath it, modules deepened, knowledge held in one place; never leave a rule break out of the findings.
+Check the changed lines against each rule of the `tdd` skill, preloaded into this context — names, signatures, docstrings, comments, side effects passed down from the outermost interface, purity beneath it, modules deepened, knowledge held in one place; never leave a rule break out of the findings.
 
-Check the tests: each exercises the unit's outermost interface, or sits beneath it and is property-based; none mocks the unit's own code; none asserts an exact value a type could forbid or a call count or a call order; and the test command the contract's gates name, run from the worktree root, passes with no skip in a file the diff lists; never count a test that mirrors the implementation as coverage.
+Check the tests: each exercises the unit's outermost interface, or sits beneath it and is property-based; none mocks the unit's own code; none asserts an exact value a type could forbid or a call count or a call order; and the test command the contract's gates name, run from the worktree root, passes with no skip on a changed line; never count a test that mirrors the implementation as coverage.
 
 Check the design: nothing built beyond what the contract asks, no knowledge held in two places, errors raised with specific messages rather than caught generically, edge cases — empty, null, boundary — handled, no secret hardcoded, no unbounded loop, no repeated query where one would do; never pass a change on its tests alone.
 </check-against-the-rules>
 
 <grade-each-finding>
-Grade each finding `Critical` — a bug, a security hole, data loss, broken behavior, a comment in any changed code; `Important` — a design defect, a test gap, a swallowed error, an unbounded loop, a repeated query where one would do, a side effect constructed beneath the outermost interface, an undemanded pinning test — a test asserting an exact current value or sequence where a type or a name could hold the behavior — or any other rule break, even one a `Minor` item also describes; or `Minor` — style, a possible optimization, a naming improvement that breaks no rule; never grade a bug `Minor`.
+Grade each finding `Critical` — a bug, a security hole, data loss, broken behavior, a comment on a changed line; `Important` — a design defect, a test gap, a swallowed error, an unbounded loop, a repeated query where one would do, a side effect constructed beneath the outermost interface, an undemanded pinning test — a test asserting an exact current value or sequence where a type or a name could hold the behavior — or any other rule break, even one a `Minor` item also describes; or `Minor` — style, a possible optimization, a naming improvement that breaks no rule; never grade a bug `Minor`.
 
 Count a comment as a defect; never grade it as a style point.
+
+Grade a finding at the highest grade any item describes; never grade it lower.
 
 Write each finding with a title, `file:line`, what is wrong, why it matters to the code, and the fix; never write `improve error handling` or another fix without a place and a change.
 
