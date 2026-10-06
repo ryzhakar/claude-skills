@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   echo "usage: $0 <pollution-path> <test-command> <test-file>..." >&2
   echo "example: $0 .git 'uv run pytest' tests/test_*.py" >&2
-  exit 1
+  exit 64
 }
 
 [ $# -ge 3 ] || usage
@@ -19,8 +19,8 @@ if [ -e "$pollution_path" ]; then
 fi
 
 for test_file in "$@"; do
-  echo "testing: $test_file"
-  $test_command "$test_file" > /dev/null 2>&1 || true
+  if $test_command "$test_file" > /dev/null 2>&1; then rc=0; else rc=$?; fi
+  echo "testing: $test_file (exit $rc)"
   if [ -e "$pollution_path" ]; then
     echo "polluter: $test_file"
     echo "created: $pollution_path"
