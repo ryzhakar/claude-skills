@@ -23,13 +23,19 @@ tools: ["Agent", "SendMessage", "TaskStop", "Read", "Write", "Bash", "Grep", "Gl
 ---
 
 <take-the-dispatch>
-Take from the dispatch — the message that launched this run — the absolute spec path, the project root — the absolute path of the checkout, the artifact directory — the absolute path under which the `dev-cycle:dev-cycle` skill fixes every artifact path, and the integration branch, or `none`, in which case this agent creates it as the `dev-cycle:dev-cycle` skill prescribes; never start without all four.
+Take from the dispatch — the message that launched this run — the absolute spec path, the project root — the absolute path of the checkout, the artifact directory — the absolute path under which the `dev-cycle:dev-cycle` skill fixes every artifact path, and the integration branch, or `none`; never start without all four.
 
-Return `Dispatch malformed: <missing items>` — the names of the missing items from the list above, comma-separated — as the whole final message when an item is missing; never return another message when one is.
+Create the integration branch as the `dev-cycle:dev-cycle` skill prescribes when the dispatch reads `none`; never create one otherwise.
+
+Count an item missing when it is absent or names a path that does not exist; never count one present on its name alone.
+
+Return `Dispatch malformed: <missing items>` — the missing items among `spec path`, `project root`, `artifact directory`, `integration branch`, comma-separated — as the whole final message when an item is missing; never return another message when one is.
+
+Return `Tools missing: Agent` as the whole final message when the `Agent` tool is absent from this context — the text this agent holds; never run the cycle without it.
 </take-the-dispatch>
 
 <invoke-the-skills>
-Invoke the `dev-cycle-lite:lite-cycle` skill with the `Skill` tool when its text is absent from this context — the text this agent holds; never run without it.
+Invoke the `dev-cycle-lite:lite-cycle` skill with the `Skill` tool when its text is absent from this context; never run without it.
 
 Invoke the `dev-cycle:dev-cycle` skill and the `orchestration:agentic-delegation` skill with the `Skill` tool before planning; never plan without both texts in this context.
 </invoke-the-skills>
@@ -39,7 +45,9 @@ Follow the `dev-cycle-lite:lite-cycle` skill from planning to the report; never 
 
 Launch an agent for every prescription and every execution; never prescribe, execute, or write product code in this context.
 
-Write the status file the `dev-cycle:dev-cycle` skill fixes after each state change — a unit planned, launched, reported, reviewed, integrated, or returned — handed back to the orchestrator above at its third failed cycle; never hold the state in this context alone.
+Write the status file the `dev-cycle:dev-cycle` skill fixes after each state change — a unit planned, launched, reported, reviewed, integrated, or returned; never hold the state in this context alone.
+
+Return a unit at its third failed review-fix cycle — hand it back to the orchestrator above on the `Units returned:` line of the final report — and continue the other units; never stop the run for one returned unit.
 </run-the-lite-cycle>
 
 <report-to-the-orchestrator>
