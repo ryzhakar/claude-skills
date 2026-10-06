@@ -27,7 +27,9 @@ Write each unit as: the contract, the files, the steps — each an action on a n
 
 State every step as an action on a named file — the signature it adds to the file declaring the interface, the behavior each test it adds proves, the behaviors a file behind the outermost interface satisfies, or the exact lines an edit to existing code removes and adds; never write `similar to`, `as above`, `TBD`, `TODO`, or `add appropriate handling`.
 
-Name every type and function a later unit uses exactly as an earlier unit declared it; never introduce a type or function name that the plan, the project, or its libraries did not declare.
+Name every type and function a later unit uses exactly as an earlier unit declared it; never rename one between units.
+
+Use type and function names the plan, the project, or its libraries declare; never introduce one none of them declares.
 </write-each-unit>
 
 <write-the-gates>
@@ -51,9 +53,9 @@ Write under a heading `Definition of done` a numbered list of binary checks — 
 <write-a-correction-plan>
 Write a correction plan — a plan written after a review found the implementation of an executed plan, whose path the caller supplies, short — in the same form as an implementation plan, with the three additions below; never write one as a list of complaints.
 
-Name under a heading `Failure modes observed` each shortcut the caller's review report names, with the code it cites as evidence; never name a hypothetical one.
+Name under a heading `Failure modes observed` each failure mode — a shortcut the caller's review report names — with the code it cites as evidence; never name a hypothetical one.
 
-Forbid each shortcut the implementer used, as the code it used, beside the patterns the executed plan already forbids; never omit one it used.
+Forbid each failure mode, as the code the implementer used, beside the patterns the executed plan already forbids; never omit one.
 
 Add a gate that catches each failure mode the executed plan's gates passed; never reuse a gate that passed a broken result unchanged.
 </write-a-correction-plan>
