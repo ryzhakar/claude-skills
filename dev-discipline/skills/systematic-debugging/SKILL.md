@@ -7,7 +7,7 @@ description: >
 ---
 
 <investigate-before-fixing>
-Finish the investigation — the steps through `test-one-hypothesis` below — before changing any product code, apart from a log line that instruments a boundary and the smallest change that tests a hypothesis or a difference, each reverted before the fix; never change code to see what happens.
+Finish the investigation — the steps through `test-one-hypothesis` below — before changing any product code, apart from a log line that instruments a boundary — records what enters and leaves a component — and the smallest change that tests a hypothesis or a difference, each reverted before the fix; never change code to see what happens.
 
 Apply the whole procedure to every failure, including one that looks simple and one found under time pressure; never skip it for size or urgency.
 </investigate-before-fixing>
@@ -19,7 +19,7 @@ Reproduce the failure with exact steps and confirm it recurs; never investigate 
 
 Gather logs, timestamps, and environment state while the failure resists reproduction; never guess at a failure that will not recur.
 
-List every change since the last known good state — commits, dependencies, configuration, environment; never assume the failing code is where the change was.
+List every change since the last known good state — commits, dependencies, configuration, environment; never leave a change unlisted.
 </reproduce-and-read>
 
 <trace-to-the-source>
@@ -51,19 +51,21 @@ Write `I do not understand why X` and keep investigating when the mechanism is u
 </test-one-hypothesis>
 
 <fix-the-root-cause>
-Write a failing test that reproduces the bug through the unit's outermost interface, as `tdd` prescribes, before the fix; never fix without one.
+Write a failing test that reproduces the failure through the unit's outermost interface, as `tdd` prescribes, before the fix; never fix without one.
 
-Make one change addressing the cause, with the layer checks below as part of it; never bundle a refactor or a second fix with it.
-
-Run the new test and the whole suite; never call the bug fixed on the new test alone.
+Add a check at each layer the bad data crossed — rejection at the entry point, a precondition in the business logic, a guard on the operation the bad data would damage that is active where the damage is possible, such as a write outside a temporary directory during tests, and a log of the arguments before that operation; never add the check at one layer alone.
 
 Fix a timing failure by waiting on the condition the test needs, bounded by a timeout that fails with the condition's name; never fix one with a guessed duration.
 
-Add a check at each layer the bad data crossed — rejection at the entry point, a precondition in the business logic, a guard on the operation the bad data would damage that is active where the damage is possible, such as a write outside a temporary directory during tests, and a log of the arguments before that operation; never add the check at one layer alone.
+Make one change addressing the cause, with the layer checks as part of it; never bundle a refactor or a second fix with it.
+
+Run the new test and the whole suite; never call the failure fixed on the new test alone.
 </fix-the-root-cause>
 
 <stop-at-three-failed-fixes>
-Count the fix attempts on this failure, including those made before this investigation began, and return to `reproduce-and-read` with the new evidence after a failed one; never retry a fix unchanged.
+Count the fix attempts on this failure, including those made before this investigation began; never lose the count.
+
+Return to `reproduce-and-read` with the new evidence after a failed fix; never retry a fix unchanged.
 
 Stop after the third failed fix and report the architecture as the cause, citing each fix that revealed new coupling, needed a large refactor, or created a symptom elsewhere; never attempt a fourth fix on the same architecture.
 </stop-at-three-failed-fixes>
