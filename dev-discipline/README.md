@@ -59,7 +59,7 @@ Diagnose a reported bug to its root cause and write an issue document carrying a
 
 ### [code-quality-reviewer](agents/code-quality-reviewer.md)
 
-Review the quality of a unit's changed code against the tdd skill's rules and write a report file whose Ready to merge line gates the merge. Use it after the spec-reviewer has passed a unit, to audit a completed feature, or before merging code that must meet production standards. Examples:
+Review the quality of a unit's changed code against the tdd skill's rules and the design checks below, and write a report file whose Ready to merge line gates the merge. Use it after the spec-reviewer has passed a unit, to audit a completed feature, or before merging code that must meet production standards. Examples:
 
 <example>
 Context: The spec-reviewer has passed the implementation and the code quality needs checking.
