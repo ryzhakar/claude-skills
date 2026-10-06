@@ -23,7 +23,7 @@ Split the issue into one issue per cause when the investigation finds several in
 
 Classify each issue as a regression — it worked before, a missing feature — it was not built, or a design flaw — it works as written and is written wrong; never leave one unclassified.
 
-State for each issue the scope — one module, an integration between modules, or a systemic pattern — the smallest change that fixes the cause, and the outermost interfaces the fix touches; never state a fix wider than the cause.
+State for each issue the scope — one module, an integration between modules, or a systemic pattern — the smallest change that fixes the cause, and the outermost interfaces — the functions or endpoints that callers outside the changed module use — the fix touches; never state a fix wider than the cause.
 </classify-the-issue>
 
 <plan-the-fix>
@@ -43,7 +43,7 @@ Give each document a title and four sections: `Problem` — actual behavior, exp
 
 Write the hypotheses tested and why reproduction failed in the `Root cause` section when the bug cannot be reproduced; never withhold a partial diagnosis.
 
-Write `none` beside any item an issue cannot fill, the classification included; never leave an item blank.
+Write `none` beside any item an issue cannot fill; never leave an item blank.
 
 Write `improve-architecture` in `Fix plan` in place of the cycles for a design flaw handed to it; never write cycles for such a flaw.
 
