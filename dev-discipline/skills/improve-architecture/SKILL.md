@@ -27,7 +27,15 @@ Take the first-ranked candidate; never ask which to explore.
 <classify-the-dependencies>
 Classify each dependency of the candidate — each module of this repository and each remote service the cluster's code calls from outside itself, a module that does I/O counting as the remote service it reaches — by the first class that matches, in this order: in-process when it involves no I/O — no reading or writing outside the process; a port when the remote service is built and deployed from this repository; local-substitutable when the repository already holds or runs a local stand-in for the service, such as a fake, an emulator, or a container of the service itself; external otherwise; never leave a dependency unclassified.
 
-State in the design brief — the text every design agent receives — how each dependency is handled, by class: move an in-process dependency into the deepened module, keeping the original where other modules still import it, and unit-test it directly; define for a port a set of domain operations — operations named in the business's own terms — and inject an adapter — the code that carries those operations to the service; test a local-substitutable dependency against its stand-in at the boundary — the edge where the deepened module meets that dependency; mock an external dependency at the boundary and contract-test the real client; never handle a dependency outside its class's way.
+State in the design brief — the text every design agent receives — how each dependency is handled, by its class; never leave a dependency's handling unstated.
+
+Move an in-process dependency into the deepened module, keeping the original where other modules still import it, and unit-test it directly; never leave it outside the module.
+
+Define for a port a set of domain operations — operations named in the business's own terms — and inject an adapter — the code that carries those operations to the service; never let the module call the service directly.
+
+Test a local-substitutable dependency against its stand-in at the boundary — the edge where the deepened module meets that dependency; never test it against the real service.
+
+Mock — replace with a stand-in that answers as scripted — an external dependency at the boundary, and contract-test — run the real client against the service's documented contract — in a separate test; never let the module's tests reach the external service.
 
 Mock at the boundary; never mock inside it.
 </classify-the-dependencies>
