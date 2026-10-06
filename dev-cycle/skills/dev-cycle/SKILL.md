@@ -10,13 +10,15 @@ description: >
 <read-the-parent-first>
 Read the `agentic-delegation` skill whole before any step below; never run this skill without it.
 
+Follow the `agentic-delegation` skill except where a sentence below replaces one of its rules — the orchestrator's writes of the plan, the prompt files, and the status file; its reads of the spec file and of verdict lines; a tier assigned by risk; the fixed final messages of this plugin's agents in place of a summary; the reviewers' reading of the spec verdict; never carve another exception.
+
 Treat every action verb in the request as an order to launch agents, planning excepted; never write, read, run, or debug code in the orchestrator's — this agent's — own context.
 </read-the-parent-first>
 
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer`, or the noun of the task below that launches it: `marker-lister`, `classifier`, `fetcher`, `diagnoser`, `investigator`, `hypothesis-lister`, `integrator`, `suite-runner`, `compatibility-checker`, `reviewer-${concern}`, `test-classifier` — `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer`, or the noun of the task below that launches it: `marker-lister`, `classifier`, `fetcher`, `diagnoser`, `investigator`, `hypothesis-lister`, `integrator`, `suite-runner`, `compatibility-checker`, `reviewer-${concern}`, `test-classifier` — `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names, the executor's report of the `lite-cycle` skill excepted; each prescription — a brief the `prescriber` of dev-cycle-lite writes for an `executor` — at `briefs/prescriber-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Launch each noun-named role as a general-purpose `Agent` on sonnet from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
@@ -30,9 +32,11 @@ Write the status file after each state change with one row per unit and these co
 </write-the-status-file>
 
 <capture-the-spec>
-Launch the `spec-capturer` agent when the request names no spec file — a specification file the user names — as a background `Agent` launch — telling the user in one line to open the running agent and answer its questions there — or, when the user asks for it, as a sibling session the user starts in the project root with `claude --agent dev-cycle:spec-capturer` and hands the request to; never interview the user in the orchestrator's own context.
+Launch the `spec-capturer` agent when the request names no spec file — a specification file the user names — as a background `Agent` launch — telling the user in one line to open the running agent and answer its questions there — or, when the user asks for it, as a sibling session the user starts in the project root with `claude --agent dev-cycle:spec-capturer` and hands the request, the project root, and the spec path to; never interview the user in the orchestrator's own context.
 
-Pass it the request text, the project root, and the spec path — `docs/specs/${slug}.md`, or `${dir}/${slug}.md` when the project already holds a spec directory `${dir}`; never pass it a plan or a unit.
+Pass it the request text, the project root, and the spec path — the project root joined with `docs/specs/${slug}.md`, or with `${dir}/${slug}.md` when the project already holds a spec directory `${dir}`; never pass it a plan or a unit.
+
+Relaunch the capturer with the items it names when its final message begins `Dispatch malformed:`; never relaunch it without them.
 
 Take `Spec: <path>` as the capturer's accepted return — its final message, or the `SendMessage` the sibling session sends to this session; never act on an end of the capturer's run that returns another text.
 
@@ -41,12 +45,20 @@ Leave an end of the capturer's run that returns another text to the user, who is
 Read the spec file whole before planning; never plan from the request while this task's spec file exists.
 </capture-the-spec>
 
+<dispatch-the-lite-cycle>
+Launch the `suborchestrator` of dev-cycle-lite in the background, when the user marks the run lite, with the absolute spec path, the project root, the artifact directory — `orchestration_log/recon/${DATE}/` under the project root — and the integration branch or `none`; never run `plan-the-units` and the stages below for a lite run.
+
+Read its report's `Status:`, `Integration branch:`, `Units integrated:`, `Units returned:`, and `Status file:` lines; never read another line.
+
+Return each unit on `Units returned:` to the user with its prescription and verdict paths; never re-run it yourself.
+</dispatch-the-lite-cycle>
+
 <plan-the-units>
-Decompose the spec yourself into units — each one outermost interface, the function or endpoint callers outside the unit use, and the one to three files behind it, independently testable, two to ten minutes of implementer work — and write the plan to its path; never decompose from the request.
+Decompose the spec yourself into units — each one outermost interface, the function or endpoint callers outside the unit use, and the zero to three files behind it, not counting the declaring file or the tests, independently testable, two to ten minutes of implementer work — and write the plan to its path; never decompose from the request.
 
 Name each unit in the plan in lowercase hyphenated words; never leave one unnamed.
 
-Fix in the plan, for each unit, the outermost contract — the interface's name, its typed parameters, its typed return, and the behaviors callers observe — and the gates — the commands whose exit codes prove the unit done; never fix a signature beneath the contract.
+Fix in the plan, for each unit, the outermost contract — the interface's name, its typed parameters, its typed return, and the behaviors callers observe — and the gates — the commands, each with the exact output it requires, that prove the unit done, the whole-suite run with the excluded test markers included among them; never fix a signature beneath the contract.
 
 List in the plan, for each unit, the files it reads and the files it may touch — its scope boundary; never leave either list out.
 
@@ -70,7 +82,7 @@ Launch an implementer after the plan is on disk; never before.
 
 Write each implementer's prompt to its prompt file with seven parts — the unit's contract and gates copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
 
-Launch `implementer` in the background from its prompt file's path; never launch it in the foreground.
+Launch `implementer` in the background with its prompt file's text as the launch text; never launch it in the foreground.
 
 Launch `implementer` on the tier the plan assigns the unit; never launch it on haiku.
 
@@ -122,7 +134,7 @@ Treat the report that follows a `FAIL` spec verdict as superseded by the re-revi
 
 Continue the implementer with the report file's path, naming `Critical` and `Important` as the findings to fix, on `With fixes` or `No` after a `PASS` spec verdict; never inline the findings.
 
-Continue the same `code-quality-reviewer` after the fix with the new range and a fresh report path; never launch a fresh reviewer for a re-review while the first's agent id is held.
+Continue the same `code-quality-reviewer` after the fix with the new range, the fresh spec verdict path, and a fresh report path; never launch a fresh reviewer for a re-review while the first's agent id is held.
 
 Count every finding a reviewer writes in scope, whenever the code it names was introduced, fixing `Critical` and `Important` and noting the rest in the status file; never dismiss a finding as pre-existing.
 </launch-the-quality-review>
