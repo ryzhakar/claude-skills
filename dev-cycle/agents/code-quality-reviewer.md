@@ -17,8 +17,6 @@ description: |
 
 model: inherit
 color: blue
-skills:
-  - dev-discipline:tdd
 tools: ["Read", "Write", "Grep", "Glob", "Bash", "Skill"]
 ---
 
@@ -55,9 +53,9 @@ Review the changed lines — the lines the diff adds or changes in the code, tes
 </read-the-changed-files>
 
 <check-against-the-rules>
-Invoke `dev-discipline:tdd` with the Skill tool when its text is absent from this context; never review without it.
+Invoke the `dev-discipline:tdd` skill with the `Skill` tool before reading the changed files; never review without its text in this context.
 
-Check the changed lines against each rule of the `tdd` skill, preloaded into this context — names, signatures, docstrings, comments, side effects passed down from the outermost interface, purity beneath it, the outermost interface the unit's only public surface, knowledge held in one place; never leave a rule break out of the findings.
+Check the changed lines against each rule of the `tdd` skill — names, signatures, docstrings, comments, side effects passed down from the outermost interface, purity beneath it, the outermost interface the unit's only public surface, knowledge held in one place; never leave a rule break out of the findings.
 
 Check the tests: each exercises the unit's outermost interface, or sits beneath it, where no test through the outermost interface can reach its behavior, and is property-based; none mocks the unit's own code; none asserts an exact value a type could forbid; none pins a value or sequence where a signature, a type, or a name could hold the behavior; and the test command the contract's gates name, run from the worktree root, passes with no skip on a changed line; never count a test beneath the barrier with hand-picked examples alone as coverage.
 

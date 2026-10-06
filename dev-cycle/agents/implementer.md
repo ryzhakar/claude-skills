@@ -24,8 +24,6 @@ description: |
 model: inherit
 isolation: worktree
 color: green
-skills:
-  - dev-discipline:tdd
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill"]
 ---
 
@@ -56,9 +54,9 @@ Report `BLOCKED` with what was tried and what blocks when the unit needs an arch
 </read-the-contract>
 
 <build-through-tdd>
-Follow the `tdd` skill, preloaded into this context, for every line of code, from naming the outermost interface to reading the finished unit; never write a line outside its procedure.
+Invoke the `dev-discipline:tdd` skill with the `Skill` tool before reading the brief; never build without its text in this context.
 
-Invoke `dev-discipline:tdd` with the Skill tool when its text is absent from this context; never build without it.
+Follow the `tdd` skill for every line of code, from naming the outermost interface to reading the finished unit; never write a line outside its procedure.
 
 Implement what the contract fixes; never add a feature, a parameter, an abstraction, or a file the brief does not need.
 
