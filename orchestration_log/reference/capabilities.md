@@ -51,12 +51,12 @@ the integration branch first, reports `NEEDS_CONTEXT` or `BLOCKED` instead of as
 `spec-reviewer` (Bash included), `code-quality-reviewer` (checks `tdd`'s rules).
 Hooks: one script, `hooks/review-chain.py`, behind five entries — three `SubagentStop` matchers
 `^(dev-discipline:)?implementer$`, `^(dev-discipline:)?spec-reviewer$`,
-`^(dev-discipline:)?code-quality-reviewer$`, which record a pending stage; `PostToolUse` on `^Agent$`,
-which retires the stage the launched agent satisfies and injects the mandate for a foreground
-completion; and `Stop`, which continues the orchestrator's turn with the pending stage's mandate from
+`^(dev-discipline:)?code-quality-reviewer$`, which record a pending stage; `PostToolUse` on `^(Agent|SendMessage)$`,
+which retires the stage a launched or continued agent satisfies and injects the mandate for a foreground
+completion; an implementer stop opens a stage only on `Status: DONE`; and `Stop`, which continues the orchestrator's turn with the pending stage's mandate from
 `hooks/templates/` up to three times, once for a merge decision. State under
 `${CLAUDE_PLUGIN_DATA}/review-chain/<session>.json`, pruned after 7 days. Tests: `just hooks-test`
-(12, measured 2026-10-05). Review artifacts live under `orchestration_log/recon/${DATE}/` — plans,
+(20, measured 2026-10-06). Review artifacts live under `orchestration_log/recon/${DATE}/` — plans,
 prompts, reviews, `dev-status.md`.
 
 **manifesto** — constitution binding.

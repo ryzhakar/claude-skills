@@ -377,6 +377,20 @@ INVALIDATES:   `hooks/implementer-stop.sh`, `hooks/spec-reviewer-stop.sh`,
                parent; the bare `implementer` matcher form for plugin agents
 SOURCE:        https://code.claude.com/docs/en/hooks.md#subagentstop; this change
 
+## 2026-10-06 — The review chain gates on `Status: DONE` and recognizes `SendMessage` continuations
+KIND:          runnable
+FROM → TO:     every implementer stop opened a spec-review stage, and only an `Agent` launch retired a
+               stage → an implementer stop opens the stage on `Status: DONE` alone; the script keeps an
+               agent-id → kind map from stops and launches, and `PostToolUse` on `SendMessage` to a
+               known id retires the stage that agent satisfies; the mandates say "send to the reviewer —
+               a launch for a first review, a continuation for a re-review"
+WHY:           `dev-orchestration` routes `NEEDS_CONTEXT` and `BLOCKED` away from review and continues
+               the same reviewer for re-reviews through `SendMessage`, so the old chain nagged for a
+               launch the skill forbids and demanded review of a blocked unit (seam check 2026-10-06)
+INVALIDATES:   the `^Agent$` matcher form; the "launch now" wording of the three mandate templates;
+               the list-shaped state file
+SOURCE:        `orchestration_log/recon/2026-10-06/checks/seam-hooks.md`; this change
+
 ## 2026-10-05 — The implementer preloads `tdd` and merges the integration branch; path re-rooting leaves the agents
 KIND:          runnable
 FROM → TO:     the implementer, spec-reviewer, and code-quality-reviewer each carried a path re-rooting
