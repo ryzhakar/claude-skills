@@ -16,7 +16,7 @@ Twenty-one author–checker rounds ran across the eleven files, two blind checke
 
 ## Residue
 
-- Token ceilings: seven files closed above their plan ceiling (total 13707 against 12840 planned, 22041 baseline); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded.
-- Round-4 reports for tdd, defensive-planning, improve-architecture, triage-issue, receiving-code-review, code-quality-reviewer, and round-3 for spec-reviewer and systematic-debugging, round-2 usability for implementer and dev-orchestration, were in flight at the checkpoint; findings that arrive are applied and pushed, nothing new launches.
+- Token ceilings: eight files closed above their plan ceiling (total 14011 against 12840 planned, 22041 baseline — a 36% cut); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded. Under ceiling: dev-orchestration, systematic-debugging, the templates.
+- Every checker report that landed is applied and pushed; the plan's four-round cap closes each file where it stands. One report, tdd usability round 4, was still running at 08:19 UTC on 2026-10-06 and lands as a final commit. Two round-2 usability reports (tdd, systematic-debugging) died on the 429 and stay `PENDING`, superseded by round 3.
 - The cross-file contradiction pass and the independent verifier agent did not run; the orchestrator ran the mechanical checks itself (hook tests, validator, README check, hygiene greps, token counts).
 - The empty-string ending of `work-silently` loops in this harness; `check-back` needs a reset-aligned, environment-independent wake on a quota death. Both recorded in failures.md for their plugins.
