@@ -265,7 +265,7 @@ Operations exceeding 60 seconds (test suites, builds, deployments) use backgroun
 | Task type | Decomposition | Tiers | Assembly |
 |-----------|--------------|-------|----------|
 | Research / ecosystem survey | By entity or registry. See `research-tree` skill. | haiku: mechanical fetches. sonnet: category surveys, evaluation. | sonnet or opus synthesizes (map-reduce). |
-| Implementation | By entity or concern. See `dev-orchestration` skill. | sonnet implements and reviews. haiku runs build/test/lint, reports exit codes. | sonnet interprets test output. |
+| Implementation | By entity or concern. See `dev-cycle` skill. | sonnet implements and reviews. haiku runs build/test/lint, reports exit codes. | sonnet interprets test output. |
 | Audit / review | By CONCERN, not by target. Compliance agent reads all targets for compliance; quality agent reads all targets for quality. | sonnet runs every audit. | sonnet or opus synthesizes into prioritized review. |
 | Investigation | Speculative parallel: 3 sonnet agents, each a different hypothesis. | sonnet investigates and implements. haiku runs reproduction commands. | Evidence determines which hypothesis wins. |
 | Documentation / writing | By phase: gather facts, assemble, verify claims, format. | sonnet gathers and assembles. haiku formats final output. | sonnet verifies claims against sources. |
