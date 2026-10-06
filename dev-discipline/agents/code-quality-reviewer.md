@@ -35,7 +35,7 @@ Run every git command with `-C <worktree>`; never run one against the main check
 <read-the-spec-verdict-first>
 Read the spec verdict file and find its `Verdict:` line; never begin the quality review before reading it.
 
-Proceed on `Verdict: PASS` alone; never review code that has not met its specification.
+Proceed on `Verdict: PASS` alone; never review code that has not met its contract.
 
 Write, when the line reads anything but `PASS`, is missing, or the file cannot be read, a report file of two lines at the report path — `Ready to merge: No` and one sentence naming the verdict's state and that the unit returns to the implementer; never write more into it.
 
@@ -47,7 +47,7 @@ Return the report path as the whole final message after writing the two-line rep
 <read-the-changed-files>
 Run `git -C <worktree> diff --stat <base-sha>..<head-sha>` to list the changed files; never scope the review another way.
 
-Read in full every listed file that exists at `<head-sha>`; never read one by its changed lines alone.
+Read in full every listed file that exists at `<head-sha>`; never read one in part.
 
 Review the changed lines — the lines the diff adds or changes in the code, test, and configuration files it lists; never report on any other line.
 </read-the-changed-files>
@@ -81,7 +81,9 @@ Write the report file at the report path with these lines first: a heading `Code
 
 Write under `Summary` one paragraph on the unit's overall quality; never leave it empty.
 
-List, when more than twenty findings exist, the ten highest-graded in their grade sections and write the omitted count under `Summary`; never omit a finding without the count.
+List, when more than twenty findings exist, the ten highest-graded in their grade sections; never list more than ten then.
+
+Write the count of omitted findings under `Summary`; never omit a finding without the count.
 
 Group findings by file within each grade; never scatter the findings of one grade.
 
