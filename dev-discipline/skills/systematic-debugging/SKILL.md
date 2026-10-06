@@ -27,7 +27,7 @@ Trace backward from the line that raised the error through each caller or writer
 
 Instrument each component boundary in a multi-component system — log what enters and what leaves each component — and run once to see which boundary the data crosses wrong; never guess the failing component.
 
-Bisect test pollution — state one test leaves behind that fails another — with `scripts/find-polluter.sh <pollution-path> <test-command> <test-files...>` from this skill's directory, which runs the tests one at a time and stops at the first that creates the path; never read every test by eye to find it.
+Bisect test pollution — state one test leaves behind that fails another — with `scripts/find-polluter.sh <pollution-path> <test-command> <test-files...>` by its path under this skill's directory, run from the project root, which runs the tests one at a time and stops at the first that creates the path; never read every test by eye to find it.
 
 Wrap the test command so it creates a file when the leftover state is not a file; never pass the script a state it cannot see.
 </trace-to-the-source>
@@ -60,6 +60,8 @@ Write a failing test that reproduces the failure through the unit's outermost in
 Add a check at each layer the bad data crossed — rejection at the entry point, a precondition in the business logic, a guard on the operation the bad data would damage that is active where the damage is possible, such as a write outside a temporary directory during tests, and a log of the arguments before that operation; never add the check at one layer alone.
 
 Fix a timing failure by waiting on the condition the test needs, bounded by a timeout that fails with the condition's name; never fix one with a guessed duration.
+
+Wait a fixed interval only after the condition that triggers the wait has fired, naming in the test the documented latency the interval covers; never wait a fixed interval in place of the condition.
 
 Make one change addressing the cause, with the layer checks as part of it; never bundle a refactor or a second fix with it.
 
