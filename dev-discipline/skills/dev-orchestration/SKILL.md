@@ -15,7 +15,7 @@ Treat every action verb in the request — implement, build, fix, refactor, test
 <fix-the-artifact-paths>
 Write every artifact under `orchestration_log/recon/${DATE}/`, where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each launch prompt at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name, `${unit}` the name the plan gives the unit — one outermost interface and the one to three files behind it — or `all` for a whole-task launch, and `-2`, `-3` appended to a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each launch prompt at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name, `${unit}` the name the plan gives the unit — one outermost interface and the one to three files behind it — or `all` for a whole-task launch, and `-2`, `-3` appended to a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each other agent's report at `reports/${agent}-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Take the implementer's worktree — the checkout the platform creates for an `implementer` run, on its own branch — from the `Worktree:` line of its report; never take a worktree path from anywhere else.
 
@@ -27,7 +27,7 @@ Launch an agent under `defensive-planning` to decompose the task into units — 
 
 Require the plan to fix each unit's outermost contract and gates and to leave every signature beneath the contract to the implementer, who designs it through `tdd`; never accept a plan that fixes an inner signature.
 
-Create the integration branch — the branch every unit's work merges into — from the current branch with `git branch`; never let a unit merge anywhere else.
+Create the integration branch — the branch every unit's work merges into — from the current branch with `git switch -c` in the project root, and leave it checked out there; never let a unit merge anywhere else.
 
 Name the integration branch once in the status file; never let two units name different integration branches.
 
@@ -41,7 +41,7 @@ Name the excluded set in the status file; never report `all tests pass` while a 
 </plan-the-units>
 
 <launch-the-implementer>
-Write each implementer's prompt to its prompt file with six parts — the unit's contract and gates copied from the plan, the integration branch, every input path relative to the repository root, the scope boundary, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
+Write each implementer's prompt to its prompt file with six parts — the unit's contract and gates copied from the plan, the integration branch, every input path — a source file the unit reads — relative to the repository root, which the implementer resolves inside its worktree, the scope boundary, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
 
 Launch `implementer` in the background; never launch it in the foreground.
 
@@ -65,7 +65,7 @@ Read the `Status:` line of the implementer's report and route on it alone: `DONE
 
 Continue the same implementer through `SendMessage` with the delta alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and a changed verification command — when its approach is sound and its worktree stands; never resend the contract it already holds.
 
-Launch a fresh implementer when the approach is wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
+Launch a fresh implementer when a diagnosis agent names the approach wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
 Route a diagnosed block: a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a stronger model; a unit too large launches fresh on decomposed sub-units; a plan defect returns to `plan-the-units` and the user; an unknown cause launches investigation agents, one hypothesis each, and continues the one that finds the cause with `propose a minimal fix`; never relaunch a blocked implementer with unchanged inputs.
 </route-on-status>
@@ -93,7 +93,7 @@ Continue the implementer with the report file's path, naming `Critical` and `Imp
 
 Continue the same `code-quality-reviewer` after the fix with the new range and a fresh report path; never launch a fresh reviewer for a re-review while the first stands.
 
-Own every finding a reviewer writes, whenever the code it names was introduced; never dismiss a finding as pre-existing.
+Count every finding a reviewer writes in scope, whenever the code it names was introduced; never dismiss a finding as pre-existing.
 </launch-the-quality-review>
 
 <decide-the-merge>
@@ -119,7 +119,7 @@ Surface to the user, with the evidence gathered, when three hypotheses fail; nev
 </launch-the-debugging-round>
 
 <integrate-the-units>
-Launch an integration agent for each unit that passed both reviews, one unit at a time, in the project root checkout with the integration branch checked out, to merge the unit's worktree branch into the integration branch, run the whole test suite, and report the result; never merge in the orchestrator's own context.
+Launch an integration agent for each unit that passed both reviews, one unit at a time, in the project root checkout with the integration branch checked out, to merge the unit's worktree branch into the integration branch, run the whole test suite with every excluded marker included, and report the result; never merge in the orchestrator's own context.
 
 Launch, after every unit is integrated, one agent to run the whole suite and one to check interface compatibility between units — types, signatures, data contracts — and end-to-end behavior against the original request; never call the task done on unit tests alone.
 
@@ -129,7 +129,7 @@ Continue the implementer of each unit a failing agent names with the path of tha
 </integrate-the-units>
 
 <classify-the-tests>
-Launch an agent, after the whole-suite agent in `integrate-the-units` reports a pass, to classify each test as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, `tautological` — asserts a default equals its own copy or a library's guarantee, or `missing` — a behavior with no test; never skip a test.
+Launch an agent, after the whole-suite agent in `integrate-the-units` reports a pass, to classify each test the units added or changed as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, `tautological` — asserts a default equals its own copy or a library's guarantee, or `missing` — a behavior with no test; never skip a test.
 
 Continue the owning unit's implementer to delete each `tautological` test and write each `missing` one; never leave either class standing.
 
