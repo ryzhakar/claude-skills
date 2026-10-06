@@ -1,23 +1,9 @@
 # dev-discipline
 
-Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, outermost-test-first signature-first TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, worktree-isolated implementation agents, and a review chain enforced by hooks.
+Software engineering discipline skills, agent-agnostic: outermost-test-first signature-first TDD, systematic debugging, bug triage, architecture improvement, and receiving code review. Used ad hoc or by dev-cycle.
 
-`tdd` `debugging` `planning` `code-review` `testing` `triage` `architecture` `refactoring` `orchestration` `lifecycle` `worktree` 
+`tdd` `debugging` `code-review` `testing` `triage` `architecture` `refactoring` 
 ## Skills
-
-### [defensive-planning](skills/defensive-planning/SKILL.md)
-
-Write an implementation plan, or a correction plan after a failed review, that leaves the implementer — the agent that will execute the plan — no decision, no option, and no unverifiable step. "write an implementation plan", "plan the implementation", "write the plan for the implementer", "correction plan", "the implementer cut corners", or any request for a plan another agent will execute.
-
-
----
-
-### [dev-orchestration](skills/dev-orchestration/SKILL.md)
-
-Drive the plan, implement, review, fix, and integrate loop over software work through the implementer, spec-reviewer, and code-quality-reviewer agents, as an extension of agentic-delegation. "implement a feature end-to-end", "execute an implementation plan", "build this with agents", "orchestrate development", "run the dev loop", "implement using subagents", "dispatch implementers", "coordinate implementation and review", or any coding task an orchestrator delegates.
-
-
----
 
 ### [improve-architecture](skills/improve-architecture/SKILL.md)
 
@@ -52,77 +38,6 @@ Build code by writing one failing test through the surface its callers use befor
 
 Diagnose a reported bug to its root cause and write an issue document carrying a test-first fix plan, without fixing the code. "triage this", "this is broken", "investigate a bug", "find the root cause and file it", "write up this bug", "file an issue", or any bug report that asks for a diagnosis rather than a fix.
 
-
----
-
-## Agents
-
-### [code-quality-reviewer](agents/code-quality-reviewer.md)
-
-Review the quality of a unit's changed code against the tdd skill's rules and the design checks below, and write a report file whose Ready to merge line gates the merge. Use it after the spec-reviewer has passed a unit, to audit a completed feature, or before merging code that must meet production standards. Examples:
-
-<example>
-Context: The spec-reviewer has passed the implementation and the code quality needs checking.
-user: "Spec looks good. Now review the code quality."
-assistant: "I'll launch the code-quality-reviewer agent for the quality audit."
-</example>
-
-<example>
-Context: A feature is complete and needs a quality check before a PR.
-user: "Review the quality of my changes before I create a PR"
-assistant: "I'll launch the code-quality-reviewer agent to review the changes."
-</example>
-
-
-**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob, Bash, Skill
-
----
-
-### [implementer](agents/implementer.md)
-
-Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a TDD cycle on a defined unit of work, inside its own git worktree. Examples:
-
-<example>
-Context: An implementation plan has five units. Unit 1 fixes the outermost contract of an authentication middleware.
-user: "Execute unit 1 from the implementation plan"
-assistant: "I'll launch the implementer agent for unit 1."
-</example>
-
-<example>
-Context: Sequential units. Unit 3 specifies a database migration with its table structure and rollback test.
-user: "Continue to unit 3"
-assistant: "I'll launch the implementer agent for unit 3."
-</example>
-
-<example>
-Context: The implementer returned NEEDS_CONTEXT naming a missing schema definition.
-user: "Here's the schema definition from schema.sql. Continue the implementer."
-assistant: "I'll continue the implementer with the schema context."
-</example>
-
-
-**Model:** `inherit` · **Tools:** Read, Write, Edit, Bash, Grep, Glob, Skill
-
----
-
-### [spec-reviewer](agents/spec-reviewer.md)
-
-Verify that an implementation in a worktree matches its specification and write a verdict file reading PASS or FAIL. Use it after an implementer reports a unit complete, or when requirements and code may have drifted. Examples:
-
-<example>
-Context: An implementer agent has completed a unit and reported DONE.
-user: "Review the implementation against the spec"
-assistant: "I'll launch the spec-reviewer agent to verify compliance."
-</example>
-
-<example>
-Context: A feature must match its original requirements before merging.
-user: "Check if the auth implementation matches the requirements doc"
-assistant: "I'll launch the spec-reviewer agent to compare the code to the requirements."
-</example>
-
-
-**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob, Bash, Skill
 
 ---
 

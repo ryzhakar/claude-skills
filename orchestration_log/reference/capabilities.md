@@ -13,11 +13,11 @@ YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Nine plugins, each a top-level directory. `.claude-plugin/plugin.json` inside a plugin carries its
+Eleven plugins, each a top-level directory (counted 2026-10-06). `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
-**orchestration** — agent delegation and discontinuous-existence coping mechanisms. Memory,
+**orchestration** — agent delegation and discontinuous-existence coping mechanisms (5.0.1, 2026-10-06: `agentic-delegation` points at `dev-cycle`). Memory,
 record continuity, and the orientation hooks moved to `memento` 2026-09-18; `session-checkpoint` and
 `session-close` are retired, thin pointers to `memento:event-capture` and `memento:span-closure`.
 Skills: `agentic-delegation` (decompose, launch, verify, assemble; owns the orchestrator identity
@@ -37,31 +37,45 @@ carve-out). Runs `session-start.sh`, which renders `templates/orientation-remind
 to `memento:init` — when `CLAUDE.md` exists. The script tests that one condition and has no other
 branch.
 
-**dev-discipline** — the software-development extension of delegation, rewritten 2026-10-05 under
-`memento:skill-creation` (XML imperative tags, prose and inline backticks inside tags).
-Skills: `dev-orchestration` (plan→implement→review→fix→integrate loop over the three agents, delta-only
-against `agentic-delegation`), `defensive-planning` (plans and correction plans fixing each unit's
-outermost contract and gates), `tdd` (outermost failing test first, pretend calls, signatures with stub
-bodies, recursion to the leaves, side effects passed down from the top, no comments, one-line
-docstrings, refactor after green, tests held at the barrier, property tests below it),
-`systematic-debugging` (with `scripts/find-polluter.sh <pollution-path> <test-command> <files...>`),
-`triage-issue`, `improve-architecture`, `receiving-code-review`.
-Entry points (measured 2026-10-06 from descriptions): every skill carries user trigger phrases; four are
-also launched from other skills — `tdd` by `implementer`, `code-quality-reviewer`, `systematic-debugging`,
-`triage-issue`; `systematic-debugging` by `dev-orchestration`, `triage-issue`; `defensive-planning` by
-`dev-orchestration`; `improve-architecture` by `triage-issue`. `spec-reviewer` carries `Skill` (changed 2026-10-06).
-Agents: `implementer` (`isolation: worktree`, preloads `dev-discipline:tdd` through `skills:`, merges
-the integration branch first, reports `NEEDS_CONTEXT` or `BLOCKED` instead of asking),
-`spec-reviewer` (Bash included), `code-quality-reviewer` (checks `tdd`'s rules).
-Hooks: one script, `hooks/review-chain.py`, behind five entries — three `SubagentStop` matchers
-`^(dev-discipline:)?implementer$`, `^(dev-discipline:)?spec-reviewer$`,
-`^(dev-discipline:)?code-quality-reviewer$`, which record a pending stage; `PostToolUse` on `^(Agent|SendMessage)$`,
-which retires the stage a launched or continued agent satisfies and injects the mandate for a foreground
-completion; an implementer stop opens a stage only on `Status: DONE`; and `Stop`, which continues the orchestrator's turn with the pending stage's mandate from
-`hooks/templates/` up to three times, once for a merge decision. State under
-`${CLAUDE_PLUGIN_DATA}/review-chain/<session>.json`, pruned after 7 days. Tests: `just hooks-test`
-(20, measured 2026-10-06). Review artifacts live under `orchestration_log/recon/${DATE}/` — plans,
-prompts, reviews, `dev-status.md`.
+**dev-discipline** — agent-agnostic software-engineering skills, 3.0.0 (split 2026-10-06, see
+`architecture_log.md`): `tdd` (outermost failing test first, pretend calls, signatures with stub bodies,
+recursion to the leaves, side effects passed down from the top, no comments, one-line docstrings, refactor
+after green, tests held at the barrier, property tests below it), `systematic-debugging` (with
+`scripts/find-polluter.sh <pollution-path> <test-command> <files...>`), `triage-issue`,
+`improve-architecture`, `receiving-code-review`. No agents, no hooks, no dependencies. Every skill carries
+user trigger phrases; `tdd` is also loaded by dev-cycle's implementer and code-quality-reviewer and by
+lite-cycle's suborchestrator through the `Skill` tool, `systematic-debugging` by `dev-cycle` and
+`triage-issue`, `improve-architecture` by `triage-issue`.
+
+**dev-cycle** — the development loop over dev-discipline, orchestration, and product-craft, 1.0.0
+(created 2026-10-06). Skill `dev-cycle`: `specify → plan → implement → review → integrate`, delta-only
+against `agentic-delegation`; the orchestrator plans the units itself (requirements, gates, dependency order,
+files, tier by risk) and writes plan, status file, and prompt files; every code-changing continuation
+returns the unit to the spec review and re-integration. Agents: `spec-capturer` (interviews the user
+through `AskUserQuestion` by `product-craft:spec-chef`, one spec file, returns `Spec: <path>`; provisioned
+as a background launch the user enters or as a sibling `claude --agent dev-cycle:spec-capturer` session),
+`implementer` (`isolation: worktree`, loads `dev-discipline:tdd` through the `Skill` tool — a cross-plugin
+`skills:` preload does not land, measured 2026-10-06 — merges the integration branch first, reports
+`NEEDS_CONTEXT` or `BLOCKED` instead of asking), `spec-reviewer` (Bash, Skill), `code-quality-reviewer`
+(checks `tdd`'s rules). Hooks: one script, `hooks/review-chain.py`, behind five entries — three
+`SubagentStop` matchers `^(dev-cycle:)?implementer$`, `^(dev-cycle:)?spec-reviewer$`,
+`^(dev-cycle:)?code-quality-reviewer$`, which record a pending stage; `PostToolUse` on
+`^(Agent|SendMessage)$`, which retires the stage a launched or continued agent satisfies and injects the
+mandate for a foreground completion; an implementer stop opens a stage only on `Status: DONE`; and
+`Stop`, which continues the orchestrator's turn with the pending stage's mandate from `hooks/templates/`
+up to three times, once for a merge decision. State under `${CLAUDE_PLUGIN_DATA}/review-chain/<session>.json`,
+pruned after 7 days; a reviewer stop whose message begins `Dispatch malformed:` opens no stage. Tests: `just hooks-test`
+(21, measured 2026-10-06). Artifacts under `orchestration_log/recon/${DATE}/`; the spec under `docs/specs/`. A run
+the user marks lite dispatches dev-cycle-lite's `suborchestrator` from `dispatch-the-lite-cycle` in place of the stages below it.
+
+**dev-cycle-lite** — the cost-tiered cycle over dev-cycle and dev-discipline, 1.0.0 (created
+2026-10-06), no hooks. Skills: `prescriptive-planning` (the former `defensive-planning`, now fixing every
+signature beneath the outermost interface), `lite-cycle` (delta over `dev-cycle` from `plan-the-units`
+on: every unit on haiku, an opus prescription per unit, the suborchestrator reviews each unit itself,
+re-prescription after a failed review, escalation at the third failed cycle). Agents: `prescriber`
+(`model: opus`, preloads `dev-cycle-lite:prescriptive-planning`), `suborchestrator` (`model: sonnet`,
+holds `Agent`, runs `lite-cycle` at depth 1, reviews each unit itself), `executor` (`model: haiku`, `isolation: worktree`,
+disposable, executes the prescription's exact text, matches gates as Python `re` patterns, reports `DONE` or `BLOCKED`).
 
 **manifesto** — constitution binding.
 Skills: `manifesto-oath` (identity construction from loaded constitution elements; tiered name

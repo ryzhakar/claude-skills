@@ -406,3 +406,31 @@ INVALIDATES:   the "Absolute paths in a dispatch prompt defeat `isolation: workt
                `capabilities.md`; any brief that passes main-checkout absolute paths expecting re-rooting
 SOURCE:        https://code.claude.com/docs/en/worktrees.md#how-claude-code-enforces-isolation;
                https://code.claude.com/docs/en/sub-agents.md#preload-skills-into-subagents
+
+## 2026-10-06 — dev-discipline splits into dev-discipline 3.0.0, dev-cycle 1.0.0, and dev-cycle-lite 1.0.0
+BEFORE:        one plugin, dev-discipline 2.2.0, holding seven skills, three agents, and the review-chain
+               hooks; `dev-orchestration` launched a `defensive-planning` agent to plan units; no spec stage
+AFTER:         dev-discipline keeps the five agent-agnostic skills and nothing else; dev-cycle holds the
+               loop skill (`specify → plan → implement → review → integrate`, the orchestrator planning
+               units itself), `spec-capturer`, the three moved agents, and the hooks under the
+               `dev-cycle:` prefix; dev-cycle-lite holds `prescriptive-planning` (the moved
+               `defensive-planning`, now fixing every signature), `lite-cycle`, `prescriber` (opus),
+               `suborchestrator` (sonnet), `executor` (haiku); every move is a git rename
+WHY:           the owner's PR #2 review: planning the orchestration is the orchestrator's work, the
+               agentic implementer and the prescription-following executor are different dynamics, and
+               the loop needs an owner-interviewing spec stage
+INVALIDATES:   `dev-discipline:dev-orchestration`, `dev-discipline:defensive-planning`, the
+               `dev-discipline:*` agent names and hook matchers; the `orchestration` dependency of
+               dev-discipline; the `skills: [dev-discipline:tdd]` preload of the moved agents
+SOURCE:        `orchestration_log/history/2026-10-06/reviews/dev-cycle-restructure-plan.md`; PR #3; this change
+
+## 2026-10-06 — dev-cycle agents load `dev-discipline:tdd` through the `Skill` tool, not `skills:`
+BEFORE:        `implementer` and `code-quality-reviewer` declared `skills: [dev-discipline:tdd]`, with the
+               `Skill` invoke as a fallback when the text was absent
+AFTER:         no `skills:` block; both agents invoke the skill with the `Skill` tool as their first step
+WHY:           headless probes (`claude -p --plugin-dir`, sonnet, 2026-10-06): a same-plugin preload lands,
+               a cross-plugin preload — qualified or bare — does not
+INVALIDATES:   the `architecture_log.md` entry of 2026-10-05 stating the full `tdd` procedure is in the
+               implementer's context at start; the `skills:` form for any cross-plugin preload in this
+               marketplace
+SOURCE:        `orchestration_log/recon/2026-10-06/preload-probe/`; this change

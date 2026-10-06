@@ -1,16 +1,18 @@
 # my-claude-skills
 
-32 skills · 10 agents across 10 plugins
+33 skills · 14 agents across 12 plugins
 
 ## Plugins
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
 | [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.2.1` | 2S |
-| [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.2.0` | 7S 3A |
+| [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
+| [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
+| [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
-| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.0` | 2S |
+| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -27,26 +29,46 @@ Domain-free skills governing how an agent conducts itself while working, indepen
 
 - **[check-back](agent-conduct/skills/check-back/SKILL.md)** — Before ending a turn that leaves a run pending, set the agent's own next wake, and on waking look at what was pending. "check back",...
 - **[work-silently](agent-conduct/skills/work-silently/SKILL.md)** — Keep working while writing nothing to the conversation, except answers to the user's own messages, until the user says to stop....
-## [dev-discipline](dev-discipline/) `2.2.0`
+## [dev-cycle](dev-cycle/) `1.0.0`
 
-Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, outermost-test-first signature-first TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, worktree-isolated implementation agents, and a review chain enforced by hooks.
+Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, spec and code-quality reviewers, and a review chain enforced by hooks.
 
 ### Skills
 
-- **[defensive-planning](dev-discipline/skills/defensive-planning/SKILL.md)** — Write an implementation plan, or a correction plan after a failed review, that leaves the implementer — the agent that will execute the...
-- **[dev-orchestration](dev-discipline/skills/dev-orchestration/SKILL.md)** — Drive the plan, implement, review, fix, and integrate loop over software work through the implementer, spec-reviewer, and...
+- **[dev-cycle](dev-cycle/skills/dev-cycle/SKILL.md)** — Drive the specify, plan, implement, review, and integrate loop over software work through the spec-capturer, implementer, spec-reviewer,...
+### Agents
+
+- **[code-quality-reviewer](dev-cycle/agents/code-quality-reviewer.md)** (`inherit`) — Review the quality of a unit's changed code against the tdd skill's rules and the design checks below, and write a...
+- **[implementer](dev-cycle/agents/implementer.md)** (`inherit`) — Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a...
+- **[spec-capturer](dev-cycle/agents/spec-capturer.md)** (`inherit`) — Interview the owner through the AskUserQuestion tool, by the spec-chef skill's protocol, and turn a request into one...
+- **[spec-reviewer](dev-cycle/agents/spec-reviewer.md)** (`inherit`) — Verify that an implementation in a worktree matches its specification and write a verdict file reading PASS or FAIL....
+
+## [dev-cycle-lite](dev-cycle-lite/) `1.0.0`
+
+Cost-tiered development cycle over dev-cycle: an opus prescriber writes prescriptions that leave no decision, a sonnet suborchestrator runs the loop and both reviews, disposable haiku executors follow the prescription literally. No hooks.
+
+### Skills
+
+- **[lite-cycle](dev-cycle-lite/skills/lite-cycle/SKILL.md)** — Run the dev-cycle loop over one spec at the lowest cost tier — an opus prescriber writes a prescription per unit, disposable haiku...
+- **[prescriptive-planning](dev-cycle-lite/skills/prescriptive-planning/SKILL.md)** — Write a prescription — an implementation prescription, or a correction prescription after a failed review — that leaves the executor —...
+### Agents
+
+- **[executor](dev-cycle-lite/agents/executor.md)** (`haiku`) — Execute one prescription — a plan fixing every file, signature, test, and command — literally, inside its own git...
+- **[prescriber](dev-cycle-lite/agents/prescriber.md)** (`opus`) — Write a prescription — an implementation plan leaving the executor no decision, no option, and no signature — for...
+- **[suborchestrator](dev-cycle-lite/agents/suborchestrator.md)** (`sonnet`) — Run the lite cycle — plan, prescribe, execute, review, integrate — over one spec as a sonnet agent beneath the main...
+
+## [dev-discipline](dev-discipline/) `3.0.0`
+
+Software engineering discipline skills, agent-agnostic: outermost-test-first signature-first TDD, systematic debugging, bug triage, architecture improvement, and receiving code review. Used ad hoc or by dev-cycle.
+
+### Skills
+
 - **[improve-architecture](dev-discipline/skills/improve-architecture/SKILL.md)** — Find architectural friction — places where understanding a codebase breaks down — explore in parallel several designs for a deepened...
 - **[receiving-code-review](dev-discipline/skills/receiving-code-review/SKILL.md)** — Act on code review feedback — each item being one change a reviewer asks for, so a comment asking for two changes holds two items — by...
 - **[systematic-debugging](dev-discipline/skills/systematic-debugging/SKILL.md)** — Find the root cause of a bug, a test failure, an error, or an unexpected behavior before changing any code, then fix the cause once....
   Scripts: [`find-polluter.sh`](dev-discipline/skills/systematic-debugging/scripts/find-polluter.sh)
 - **[tdd](dev-discipline/skills/tdd/SKILL.md)** — Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface...
 - **[triage-issue](dev-discipline/skills/triage-issue/SKILL.md)** — Diagnose a reported bug to its root cause and write an issue document carrying a test-first fix plan, without fixing the code. "triage...
-### Agents
-
-- **[code-quality-reviewer](dev-discipline/agents/code-quality-reviewer.md)** (`inherit`) — Review the quality of a unit's changed code against the tdd skill's rules and the design checks below, and write a...
-- **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a...
-- **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Verify that an implementation in a worktree matches its specification and write a verdict file reading PASS or FAIL....
-
 ## [manifesto](manifesto/) `3.2.0`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
@@ -78,7 +100,7 @@ A memory and record-keeping system for agents without continuity across sessions
 - **[skill-creation](memento/skills/skill-creation/SKILL.md)** — Create a skill — text to be read and followed. "create a skill", "write a skill", "new skill", "add a skill", "make this repeatable", or...
 - **[span-closure](memento/skills/span-closure/SKILL.md)** — Close out a stretch of work — one continuous thread of narrative — flushing, summarizing, and auditing what it leaves behind. The end of...
 - **[staging-relay](memento/skills/staging-relay/SKILL.md)** — Pair every part of a task that outlives the work at hand with a record and a waking cause — what begins the later work — and bound every...
-## [orchestration](orchestration/) `5.0.0`
+## [orchestration](orchestration/) `5.0.1`
 
 Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
 

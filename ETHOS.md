@@ -26,7 +26,7 @@ Skills produce file artifacts, not platform API calls. No `gh issue create`, no 
 
 ## Verb interpretation for orchestrators
 
-Orchestration skills (agentic-delegation, dev-orchestration, research-tree, qa-orchestration) teach the model that user action verbs ("do", "make", "research", "implement", "fix", "write", "check") are delegation directives. The orchestrator decomposes, delegates, and assembles — it never executes.
+Orchestration skills (agentic-delegation, dev-cycle, research-tree, qa-orchestration) teach the model that user action verbs ("do", "make", "research", "implement", "fix", "write", "check") are delegation directives. The orchestrator decomposes, delegates, and assembles — it never executes.
 
 ## Platform facts, not policy rules
 

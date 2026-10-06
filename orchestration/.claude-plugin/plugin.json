@@ -1,6 +1,6 @@
 {
   "name": "orchestration",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",
   "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
