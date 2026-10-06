@@ -40,7 +40,7 @@ assistant: "I'll launch the code-quality-reviewer agent to review the changes."
 Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a TDD cycle on a defined unit of work, inside its own git worktree. Examples:
 
 <example>
-Context: An implementation plan has five units. Unit 1 fixes the outermost contract of an authentication middleware.
+Context: An implementation plan has five units. Unit 1 assigns the requirements of an authentication middleware.
 user: "Execute unit 1 from the implementation plan"
 assistant: "I'll launch the implementer agent for unit 1."
 </example>
