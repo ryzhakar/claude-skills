@@ -7,7 +7,7 @@ Development cycle orchestration: specify, plan, implement, review, integrate. A 
 
 ### [dev-cycle](skills/dev-cycle/SKILL.md)
 
-Drive the specify, plan, implement, review, and integrate loop over software work through the spec-capturer, implementer, spec-reviewer, and code-quality-reviewer agents, as an extension of agentic-delegation. "specify and implement", "implement a feature end-to-end", "build this with agents", "orchestrate development", "run the dev cycle", "implement using subagents", "dispatch implementers", "coordinate implementation and review", or any coding task an orchestrator delegates.
+Drive the specify, plan, implement, review, and integrate loop over software work through the spec-capturer, implementer, spec-reviewer, and code-quality-reviewer agents, as an extension of agentic-delegation. "specify and implement", "implement a feature end-to-end", "build this with agents", "orchestrate development", "run the dev cycle", "implement using subagents", "dispatch implementers", "coordinate implementation and review", "fix this", "refactor this", "test this", or any coding task an orchestrator delegates.
 
 
 ---

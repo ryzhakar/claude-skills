@@ -14,7 +14,7 @@ Run the dev-cycle loop over one spec at the lowest cost tier — an opus prescri
 
 ### [prescriptive-planning](skills/prescriptive-planning/SKILL.md)
 
-Write a prescription — an implementation plan, or a correction plan after a failed review — that leaves the executor — the agent that will execute it — no decision, no option, no signature to invent, and no unverifiable step. "write a prescription", "prescribe the implementation", "write the plan for the executor", "correction prescription", "the executor cut corners", or any request for a plan a disposable agent will execute literally.
+Write a prescription — an implementation plan, or a correction plan after a failed review — that leaves the executor — the agent that will execute it — no decision, no option, no signature to invent, and no unverifiable step. "write a prescription", "prescribe the implementation", "write the plan for the executor", "correction prescription", "the executor cut corners", or any request for a plan the executor will execute literally.
 
 
 ---
