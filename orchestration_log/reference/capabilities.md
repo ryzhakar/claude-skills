@@ -46,6 +46,10 @@ bodies, recursion to the leaves, side effects passed down from the top, no comme
 docstrings, refactor after green, tests held at the barrier, property tests below it),
 `systematic-debugging` (with `scripts/find-polluter.sh <pollution-path> <test-command> <files...>`),
 `triage-issue`, `improve-architecture`, `receiving-code-review`.
+Entry points (measured 2026-10-06 from descriptions): every skill carries user trigger phrases; four are
+also launched from other skills — `tdd` by `implementer`, `code-quality-reviewer`, `systematic-debugging`,
+`triage-issue`; `systematic-debugging` by `dev-orchestration`, `triage-issue`; `defensive-planning` by
+`dev-orchestration`; `improve-architecture` by `triage-issue`. `spec-reviewer` carries `Skill` (changed 2026-10-06).
 Agents: `implementer` (`isolation: worktree`, preloads `dev-discipline:tdd` through `skills:`, merges
 the integration branch first, reports `NEEDS_CONTEXT` or `BLOCKED` instead of asking),
 `spec-reviewer` (Bash included), `code-quality-reviewer` (checks `tdd`'s rules).
