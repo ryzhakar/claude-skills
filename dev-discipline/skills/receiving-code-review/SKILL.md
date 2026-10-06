@@ -9,11 +9,11 @@ description: >
 <read-everything-first>
 Read all the feedback before acting on any item; never start on the first item while later ones are unread.
 
-Restate each item as the change it asks for, in one sentence in the first message to the user; never restate it as agreement or thanks.
+Restate each clear item as the change it asks for, and quote each unclear item as written, in one sentence each in the first message to the user; never restate an item as agreement or thanks.
 </read-everything-first>
 
 <verify-each-item>
-Verify each item against the code: whether the problem exists, whether the item's change breaks existing behavior, why the current code is as it is, and whether the change holds on every platform and version the project declares as supported in its configuration or exercises in its continuous integration; never implement an item unverified.
+Verify each item against the code: whether the problem exists, whether the item's change breaks existing behavior, why the current code is as it is, and whether the change holds on every operating system and language-runtime version the project declares as supported in its configuration or exercises in its continuous integration, a platform that cannot run here counting as unverifiable; never implement an item unverified.
 
 Search the codebase for callers — code outside the tests that calls the feature today — of a feature a reviewer asks to extend; never extend a feature without the search.
 
@@ -53,5 +53,5 @@ Fix the item or the test when a test fails; never move to the next item on a fai
 <answer-without-performance>
 Answer each item, in the reply to the user, with the change made and where, the evidence against it, or what holds it; never answer with gratitude, praise, agreement, or an announcement of what is about to happen.
 
-Mark each item `Implemented`, or `Needs discussion` — pushed back, unverifiable, or handed to the user — when the feedback carries several items; never leave an item's state unstated.
+Mark each item `Implemented`, `Held` — unclear, or clear and waiting on an unclear item — or `Needs discussion` — pushed back, unverifiable, or handed to the user — when the feedback carries several items; never leave an item's state unstated.
 </answer-without-performance>
