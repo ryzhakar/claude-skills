@@ -43,7 +43,7 @@ Find the root cause of a bug, a test failure, an error, or an unexpected behavio
 
 ### [tdd](skills/tdd/SKILL.md)
 
-Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface before filling them, and cleaning up once every test passes. "tdd", "write tests first", "test-driven development", "red-green-refactor", "implement using tdd", "write a failing test", "design the signatures", "outside in", or any request to write code that carries behavior.
+Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface before filling them, and refactoring once every test passes. "tdd", "write tests first", "test-driven development", "red-green-refactor", "implement using tdd", "write a failing test", "design the signatures", "outside in", or any request to write code that carries behavior.
 
 
 ---
