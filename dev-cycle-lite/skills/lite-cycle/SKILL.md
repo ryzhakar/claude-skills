@@ -32,7 +32,7 @@ Write the status file at the path the `dev-cycle` skill fixes after planning and
 </take-the-spec>
 
 <prescribe-each-unit>
-Launch `prescriber` once per unit, in the background, on opus — the strongest model tier — with the spec path, the unit's requirements and gates copied from the plan, the unit's input paths, and the prescription path — `briefs/prescriber-${unit}.md` under the artifact directory the `dev-cycle` skill fixes, `${unit}` the unit's name in the plan; never launch it with another item.
+Launch `prescriber` once per unit, in the background, on opus — the strongest model tier — with the spec path, the unit's requirements and gates copied from the plan, the unit's input paths, and the prescription path — `briefs/prescriber-${unit}.md` under the artifact directory, `${unit}` the unit's name in the plan; never launch it with another item.
 
 Hold the executor launch until the prescription is on disk; never launch an executor without one.
 </prescribe-each-unit>
@@ -42,7 +42,7 @@ Launch `executor` in the background, on haiku, with the prescription path and th
 
 Discard an executor after its report; never continue one through `SendMessage`.
 
-Write an executor report carrying `Status: BLOCKED` to `reports/executor-${unit}.md` under the artifact directory; never leave one in the conversation alone.
+Write an executor report carrying `Status: BLOCKED` to `reports/executor-${unit}.md` under the artifact directory, in the form `executor` defines with no `Result:` line; never leave one in the conversation alone.
 
 Relaunch a prescriber or an executor with the items it names when its final message begins `Dispatch malformed:`; never relaunch one without them.
 </launch-the-executor>
