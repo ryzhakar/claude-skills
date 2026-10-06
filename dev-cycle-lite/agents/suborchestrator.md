@@ -21,6 +21,7 @@ skills:
   - dev-cycle-lite:lite-cycle
 tools: ["Agent", "SendMessage", "TaskStop", "Read", "Write", "Bash", "Grep", "Glob", "Skill"]
 ---
+
 <take-the-dispatch>
 Take from the dispatch — the message that launched this run — the absolute spec path, the project root — the absolute path of the checkout, the artifact directory — the absolute path under which the `dev-cycle:dev-cycle` skill fixes every artifact path, and the integration branch, or `none`, in which case this agent creates it as the `dev-cycle:dev-cycle` skill prescribes; never start without all four.
 

@@ -20,6 +20,7 @@ color: magenta
 permissionMode: acceptEdits
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "AskUserQuestion", "Skill", "WebFetch", "WebSearch"]
 ---
+
 <take-the-dispatch>
 Take from the dispatch — the message that launched this run — the request — the owner's words for the work, the owner being the human who asked for it and answers `AskUserQuestion`, the project root — the absolute path of the checkout, against which every relative path in the request resolves, and the spec path — the absolute path of the one file to write; never start without all three.
 
