@@ -46,17 +46,21 @@ Read the spec file whole before planning; never plan from the request while this
 </capture-the-spec>
 
 <plan-the-units>
-Decompose the spec yourself into units — each one outermost interface, the function or endpoint callers outside the unit use, and the zero to three files behind it, not counting the declaring file or the tests, independently testable, two to ten minutes of implementer work — and write the plan to its path; never decompose from the request.
+Decompose the spec yourself into units — each one function or endpoint callers outside the unit will use, which the implementer names and designs, and the zero to three files behind it, not counting the declaring file or the tests, independently testable, two to ten minutes of implementer work — and write the plan to its path; never decompose from the request.
+
+Decide every dispatch — what launches, when, on which tier — by wall-time and token spend; never by the order of the scope.
+
+Cut dependencies between units while decomposing — give shared code its own unit launched first, or let two units duplicate it and the integration agent dedupe; never leave a dependency a cut could remove.
 
 Name each unit in the plan in lowercase hyphenated words; never leave one unnamed.
 
-Fix in the plan, for each unit, the outermost contract — the interface's name, its typed parameters, its typed return, and the behaviors callers observe — and the gates — the commands, each with the exact output it requires, that prove the unit done, the whole-suite run with the excluded test markers included among them; never fix a signature beneath the contract.
+Assign each unit, in the plan, its requirements — the spec's sentences it implements — and its gates — the commands, each with the exact output it requires, that prove the unit done, the whole-suite run with the excluded test markers included among them; never fix an interface name or a signature in the plan.
 
 List in the plan, for each unit, the files it reads and the files it may touch — its scope boundary; never leave either list out.
 
-Launch two units that may touch one file one after the other; never in parallel.
+Treat two units that may touch one file as the integration agent's merge; never serialize them for it.
 
-Order the units by dependency — a callee before its caller; never order a caller first.
+Order the units by data dependency alone — a unit after the units whose code it calls; never by the scope's order.
 
 Assign each unit a tier by its risk — sonnet by default, opus where the unit's failure voids other units or its reasoning runs deep; never assign a unit to haiku.
 
@@ -72,13 +76,15 @@ Name the excluded set in the status file; never leave it unnamed there.
 <launch-the-implementer>
 Launch an implementer after the plan is on disk; never before.
 
-Write each implementer's prompt to its prompt file with seven parts — the unit's contract and gates copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
+Write each implementer's prompt to its prompt file with seven parts — the unit's requirements and gates copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
 
 Launch `implementer` in the background with its prompt file's text as the launch text; never launch it in the foreground.
 
 Launch `implementer` on the tier the plan assigns the unit; never launch it on haiku.
 
-Launch units with no dependency between them in parallel; never launch independent units one after another.
+Launch, in one turn, every unit whose dependencies are integrated; never hold one for a later turn.
+
+Run independent units as parallel lanes; never as one sequential lane through the scope.
 
 Rely on the agent's own frontmatter for the worktree; never create, enter, or name a worktree for it.
 
@@ -96,7 +102,9 @@ Treat a reported worktree path that is not a directory containing `.git` as a `B
 <route-on-status>
 Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its contract, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
 
-Continue the same implementer through `SendMessage` with the delta alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound and its worktree stands; never resend the contract it already holds.
+Continue the same implementer through `SendMessage` with the delta alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound; never resend the requirements it already holds.
+
+Recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — and continue the implementer with the recreated path; never launch fresh for a missing worktree.
 
 Launch a fresh implementer when the diagnosis agent names the approach wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
@@ -108,7 +116,7 @@ Return a unit to `launch-the-spec-review` after every implementer continuation t
 <launch-the-spec-review>
 Launch the spec review on the notification that ends an implementer's run with `Status: DONE`, or with `DONE_WITH_CONCERNS` classified as observations alone; never wait for a hook — a command the platform runs at a lifecycle event — to demand it.
 
-Launch `spec-reviewer` with the unit's contract, the implementer's report, the worktree path, the branch, the base SHA, and the verdict path to write; never launch it without one of the six.
+Launch `spec-reviewer` with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the worktree path, the branch, the base SHA, and the verdict path to write; never launch it without one of the six.
 
 Relaunch a reviewer with the items it names when its final message begins `Dispatch malformed:`; never relaunch one without the items it names.
 
@@ -118,7 +126,7 @@ Continue the same spec-reviewer after the fix with the new diff range `BASE..new
 </launch-the-spec-review>
 
 <launch-the-quality-review>
-Launch `code-quality-reviewer` after a spec review ending `Verdict: PASS`, with the unit's contract, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, and the report path to write; never launch it without one of the six.
+Launch `code-quality-reviewer` after a spec review ending `Verdict: PASS`, with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, and the report path to write; never launch it without one of the six.
 
 Read the `Ready to merge:` line and the finding headings from the report file; never read the findings' bodies.
 
@@ -140,17 +148,17 @@ Launch a caller after its callee has passed both reviews and been integrated; ne
 <stop-the-review-fix-cycles-at-three>
 Count the review-fix cycles — a `FAIL` verdict or an open finding followed by an implementer continuation — per unit; never leave the count out of the status file.
 
-Stop when the third cycle's re-review fails; never enter a fourth with the same model, the same contract, and the same decomposition.
+Stop when the third cycle's re-review fails; never enter a fourth with the same model, the same requirements, and the same decomposition.
 
 Run `launch-the-debugging-round` before any structural change; never change structure on a guess.
 
-Launch a diagnosis agent with the round's finding to name one structural change — launch fresh on a stronger model, return the unit's contract to `plan-the-units` for the user to clarify, or split the unit; never name the change in the orchestrator's context.
+Launch a diagnosis agent with the round's finding to name one structural change — launch fresh on a stronger model, return the unit's requirements to `plan-the-units` for the user to clarify, or split the unit; never name the change in the orchestrator's context.
 
 Make the named change before the next cycle; never enter the next cycle unchanged.
 </stop-the-review-fix-cycles-at-three>
 
 <launch-the-debugging-round>
-Launch agents under the `systematic-debugging` skill when a failure has no clear cause — tests fail for an unclear reason, behavior contradicts the contract while the code looks right, a fix breaks something elsewhere, or a third review-fix cycle failed — before any structural change; never let an implementer guess at a fix.
+Launch agents under the `systematic-debugging` skill when a failure has no clear cause — tests fail for an unclear reason, behavior contradicts the requirements while the code looks right, a fix breaks something elsewhere, or a third review-fix cycle failed — before any structural change; never let an implementer guess at a fix.
 
 Launch one agent to list up to three hypotheses; never list them in the orchestrator's context.
 
@@ -172,6 +180,16 @@ Continue the implementer of each unit an agent ending `Result: FAIL` names with 
 
 Launch the whole-suite agent again after every continuation this tag or `classify-the-tests` starts; never count an earlier pass for a changed branch.
 </integrate-the-units>
+
+<review-the-integrated-branch>
+Launch `spec-reviewer` over the whole integrated diff — the project root checkout as the worktree path, the integration branch, the branch point as the base SHA — with every requirement of the spec, after the whole-suite agent reports a pass; never call the task done without this review.
+
+Launch `code-quality-reviewer` on its `Verdict: PASS` over the same range; never skip it.
+
+Launch an implementer on `all`, which merges the integration branch first, with the verdict path, the report path, and every finding the status file noted as deferred from the unit cycles; never leave a noted finding standing.
+
+Re-run both reviews on its result and integrate it as `integrate-the-units` prescribes; never integrate it unreviewed.
+</review-the-integrated-branch>
 
 <classify-the-tests>
 Launch an agent, after the whole-suite agent reports a pass, to classify each test the units added or changed as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, or `tautological` — asserts a default equals its own copy or a library's guarantee, and each contract behavior with no test as `missing`; never skip a test or a behavior.
