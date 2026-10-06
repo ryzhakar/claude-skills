@@ -357,3 +357,52 @@ WHY:           owner ruling — the dependency was never intended; it came from 
 INVALIDATES:   `orchestration:session-close`, `orchestration:session-checkpoint`; the orchestration →
                memento edge in the 2026-09-27 dependency entry
 SOURCE:        this change
+
+## 2026-10-05 — dev-discipline's review-chain mandates move from SubagentStop injection to recorded state and a Stop hook
+KIND:          runnable
+FROM → TO:     three `SubagentStop` scripts, one per review-chain agent, each printing a mandate as
+               `hookSpecificOutput.additionalContext` → one script, `hooks/review-chain.py`, behind
+               three anchored `SubagentStop` matchers that record a pending stage, a `PostToolUse` hook
+               on `Agent` that retires the stage the launched agent satisfies and injects for a
+               foreground completion, and a main-session `Stop` hook that continues the orchestrator's
+               turn with the pending stage's mandate, three times at most, once for a merge decision
+WHY:           hooks.md states that SubagentStop output keeps the subagent running and names
+               `PostToolUse` on `Agent` as the parent-injection path, so every mandate the old scripts
+               printed landed in the implementer or reviewer and never in the orchestrator; the plugin
+               agent type is the plugin-scoped `dev-discipline:implementer`, which the bare matchers
+               matched by substring alone
+INVALIDATES:   `hooks/implementer-stop.sh`, `hooks/spec-reviewer-stop.sh`,
+               `hooks/code-quality-reviewer-stop.sh`; the "Agent Lifecycle Chain" pattern in
+               `hooks-reference.md` that recommends `additionalContext` from SubagentStop to drive the
+               parent; the bare `implementer` matcher form for plugin agents
+SOURCE:        https://code.claude.com/docs/en/hooks.md#subagentstop; this change
+
+## 2026-10-06 — The review chain gates on `Status: DONE` and recognizes `SendMessage` continuations
+KIND:          runnable
+FROM → TO:     every implementer stop opened a spec-review stage, and only an `Agent` launch retired a
+               stage → an implementer stop opens the stage on `Status: DONE` alone; the script keeps an
+               agent-id → kind map from stops and launches, and `PostToolUse` on `SendMessage` to a
+               known id retires the stage that agent satisfies; the mandates say "send to the reviewer —
+               a launch for a first review, a continuation for a re-review"
+WHY:           `dev-orchestration` routes `NEEDS_CONTEXT` and `BLOCKED` away from review and continues
+               the same reviewer for re-reviews through `SendMessage`, so the old chain nagged for a
+               launch the skill forbids and demanded review of a blocked unit (seam check 2026-10-06)
+INVALIDATES:   the `^Agent$` matcher form; the "launch now" wording of the three mandate templates;
+               the list-shaped state file
+SOURCE:        `orchestration_log/recon/2026-10-06/checks/seam-hooks.md`; this change
+
+## 2026-10-05 — The implementer preloads `tdd` and merges the integration branch; path re-rooting leaves the agents
+KIND:          runnable
+FROM → TO:     the implementer, spec-reviewer, and code-quality-reviewer each carried a path re-rooting
+               protocol against absolute paths escaping the worktree, and the implementer built from the
+               worktree's starting commit → the implementer declares `skills: [dev-discipline:tdd]`, so
+               the full procedure is in its context at start, and runs `git merge <integration-branch>`
+               first; no agent re-roots paths; the reviewers read the worktree by absolute path with
+               `git -C`
+WHY:           Claude Code ≥2.1.203 refuses edits and commands resolving to the main checkout from an
+               isolated subagent, closing the hazard the protocol guarded; subagent worktrees branch from
+               the default branch, so a unit built on unmerged work needs the merge
+INVALIDATES:   the "Absolute paths in a dispatch prompt defeat `isolation: worktree` silently" row of
+               `capabilities.md`; any brief that passes main-checkout absolute paths expecting re-rooting
+SOURCE:        https://code.claude.com/docs/en/worktrees.md#how-claude-code-enforces-isolation;
+               https://code.claude.com/docs/en/sub-agents.md#preload-skills-into-subagents

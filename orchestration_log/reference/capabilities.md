@@ -37,13 +37,31 @@ carve-out). Runs `session-start.sh`, which renders `templates/orientation-remind
 to `memento:init` — when `CLAUDE.md` exists. The script tests that one condition and has no other
 branch.
 
-**dev-discipline** — the software-development extension of delegation.
-Skills: `dev-orchestration` (Plan→Implement→Review→Fix loop), `defensive-planning`,
-`systematic-debugging`, `tdd`, `triage-issue`, `improve-architecture`, `receiving-code-review`.
-Agents: `implementer` (runs in worktree isolation), `spec-reviewer`, `code-quality-reviewer`.
-Hooks: three SubagentStop hooks, matching `implementer`, `spec-reviewer`, and
-`code-quality-reviewer`, each injecting a single unconditional next-dispatch mandate from
-`hooks/templates/`.
+**dev-discipline** — the software-development extension of delegation, rewritten 2026-10-05 under
+`memento:skill-creation` (XML imperative tags, prose and inline backticks inside tags).
+Skills: `dev-orchestration` (plan→implement→review→fix→integrate loop over the three agents, delta-only
+against `agentic-delegation`), `defensive-planning` (plans and correction plans fixing each unit's
+outermost contract and gates), `tdd` (outermost failing test first, pretend calls, signatures with stub
+bodies, recursion to the leaves, side effects passed down from the top, no comments, one-line
+docstrings, refactor after green, tests held at the barrier, property tests below it),
+`systematic-debugging` (with `scripts/find-polluter.sh <pollution-path> <test-command> <files...>`),
+`triage-issue`, `improve-architecture`, `receiving-code-review`.
+Entry points (measured 2026-10-06 from descriptions): every skill carries user trigger phrases; four are
+also launched from other skills — `tdd` by `implementer`, `code-quality-reviewer`, `systematic-debugging`,
+`triage-issue`; `systematic-debugging` by `dev-orchestration`, `triage-issue`; `defensive-planning` by
+`dev-orchestration`; `improve-architecture` by `triage-issue`. `spec-reviewer` carries `Skill` (changed 2026-10-06).
+Agents: `implementer` (`isolation: worktree`, preloads `dev-discipline:tdd` through `skills:`, merges
+the integration branch first, reports `NEEDS_CONTEXT` or `BLOCKED` instead of asking),
+`spec-reviewer` (Bash included), `code-quality-reviewer` (checks `tdd`'s rules).
+Hooks: one script, `hooks/review-chain.py`, behind five entries — three `SubagentStop` matchers
+`^(dev-discipline:)?implementer$`, `^(dev-discipline:)?spec-reviewer$`,
+`^(dev-discipline:)?code-quality-reviewer$`, which record a pending stage; `PostToolUse` on `^(Agent|SendMessage)$`,
+which retires the stage a launched or continued agent satisfies and injects the mandate for a foreground
+completion; an implementer stop opens a stage only on `Status: DONE`; and `Stop`, which continues the orchestrator's turn with the pending stage's mandate from
+`hooks/templates/` up to three times, once for a merge decision. State under
+`${CLAUDE_PLUGIN_DATA}/review-chain/<session>.json`, pruned after 7 days. Tests: `just hooks-test`
+(20, measured 2026-10-06). Review artifacts live under `orchestration_log/recon/${DATE}/` — plans,
+prompts, reviews, `dev-status.md`.
 
 **manifesto** — constitution binding.
 Skills: `manifesto-oath` (identity construction from loaded constitution elements; tiered name
@@ -80,7 +98,8 @@ plus a changes report).
 ## Repo tooling
 
 - `justfile` — `just tokens FILE` measures tokens with tiktoken `cl100k_base`; `just readme`
-  regenerates every README from frontmatter; `just check-readmes` fails on a stale README.
+  regenerates every README from frontmatter; `just check-readmes` fails on a stale README;
+  `just hooks-test` runs the dev-discipline hook tests.
 - `generate.py` with `templates/marketplace.md` and `templates/plugin.md` renders the root and
   per-plugin READMEs from skill, agent, and hook metadata.
 - `.claude/agents/instruction-writer.md` — project-local agent that edits skill definitions, agent
@@ -123,10 +142,15 @@ Two standalone manuals sit beside the living files and belong to no ontology slo
 - Whether `CLAUDE.md` loads into a subagent launched through the Claude Code CLI's Agent tool is
   unresolved — the CLI and SDK sources disagree, and neither settles it. Filed as MD-19 in
   `agents-reference.md` Appendix A (Moderate band).
-- Absolute paths in a dispatch prompt defeat `isolation: worktree` silently. `Edit` and `Write`
-  resolve absolute paths against the main working tree, so an agent's changes land outside its
-  worktree while the worktree stays empty. The three dev-discipline review-chain agents re-root
-  marketplace-prefixed paths defensively; no other agent type does.
+- `SubagentStop` hook output — `additionalContext` or `decision: block` — reaches the stopping
+  subagent and keeps it running; it never reaches the orchestrator. Parent-side injection goes
+  through `PostToolUse` on the `Agent` tool, or a main-session `Stop` hook reading recorded state, which
+  is how dev-discipline's review chain works since 2026-10-05. The platform refuses, from a
+  worktree-isolated subagent, every edit and command that resolves to the main checkout (Claude Code
+  ≥2.1.203), so no agent re-roots paths any more. Measured against hooks.md and worktrees.md 2026-10-05.
+- A subagent worktree branches from the repository's default branch unless `worktree.baseRef` is
+  `"head"`; dev-discipline's implementer merges the integration branch named in its brief before any
+  change. Measured 2026-10-05.
 - `manifesto-oath` names the default manifesto repository path literally in its Tier 1 text. A
   project that sets `manifesto_dir` receives the override in hook output but not in the skill body.
   Observed 2026-06-24, unchanged 2026-08-08.

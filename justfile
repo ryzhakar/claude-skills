@@ -9,3 +9,7 @@ check-readmes: readme
 # Count tokens in a file using tiktoken (cl100k_base encoding)
 tokens *FILES:
     uv run --with tiktoken python3 -c "import tiktoken,sys; enc=tiktoken.get_encoding('cl100k_base'); [print(f'{len(enc.encode(open(f).read())):>6}  {f}') for f in sys.argv[1:]]" {{FILES}}
+
+# Run the dev-discipline hook tests
+hooks-test:
+    uv run --with pytest pytest -q dev-discipline/hooks/tests

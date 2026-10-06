@@ -879,14 +879,16 @@ sys.stdout.write(re.sub(r"\$\{(\w+)\}", repl, text))
 
 ### Agent Lifecycle Chain
 
-Chain SubagentStop hooks to enforce sequential agent dispatch. Each fires when a specific agent type stops and injects a mandate for the next agent.
+SubagentStop output — `hookSpecificOutput.additionalContext` or `decision: "block"` with `reason` — reaches the stopping subagent and keeps it running; it never reaches the parent. To drive the parent after a subagent returns, inject through `PostToolUse` on the `Agent` tool (foreground completions, `tool_response.status` `completed`) or record state in SubagentStop and read it from a main-session `Stop` hook (background completions). Plugin subagents report the plugin-scoped `agent_type`, such as `dev-discipline:implementer`; anchor matchers as `^dev-discipline:implementer$`.
 
 ```
-implementer stops → hook injects spec-review mandate
-spec-reviewer stops → hook injects quality-review mandate
+implementer stops      → SubagentStop records a pending spec-review stage (on Status: DONE alone) and the agent id → kind
+orchestrator launches  → PostToolUse on Agent retires the stage the launched agent satisfies
+orchestrator continues → PostToolUse on SendMessage retires the stage the known recipient satisfies
+orchestrator's turn ends → Stop hook continues it with the pending stage's mandate
 ```
 
-Implemented via `hookSpecificOutput.additionalContext` in SubagentStop, or via `decision: "block"` with `reason` to force the next task.
+Reference implementation: `dev-discipline/hooks/review-chain.py`, tested by `just hooks-test`. Corrected 2026-10-05 against hooks.md, extended 2026-10-06 to continuations; see `architecture_log.md`.
 
 ### Re-Entry Guard
 

@@ -1,33 +1,56 @@
 {
-  "description": "Dev-discipline lifecycle hooks: review chain enforcement after implementer, spec-reviewer, and code-quality-reviewer completion",
+  "description": "Dev-discipline review chain: each implementer, spec-reviewer, and code-quality-reviewer stop opens a pending stage; launching the next agent retires it; the orchestrator's turn continues with the stage's mandate while it is pending",
   "hooks": {
     "SubagentStop": [
       {
-        "matcher": "implementer",
+        "matcher": "^(dev-discipline:)?implementer$",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/implementer-stop.sh",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/review-chain.py\"",
             "timeout": 10
           }
         ]
       },
       {
-        "matcher": "spec-reviewer",
+        "matcher": "^(dev-discipline:)?spec-reviewer$",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/spec-reviewer-stop.sh",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/review-chain.py\"",
             "timeout": 10
           }
         ]
       },
       {
-        "matcher": "code-quality-reviewer",
+        "matcher": "^(dev-discipline:)?code-quality-reviewer$",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/code-quality-reviewer-stop.sh",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/review-chain.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Agent|SendMessage)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/review-chain.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/review-chain.py\"",
             "timeout": 10
           }
         ]

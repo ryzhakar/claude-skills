@@ -1,5 +1,1 @@
-QUALITY REVIEW MANDATE — Spec-reviewer agent (${AGENT_TYPE}) has stopped.
-
-You MUST now dispatch the code-quality-reviewer agent. Provide it with the spec-reviewer's A3 verdict file path (extract from the spec-reviewer's return text — see the summary above) and the implementer's worktree path. The code-quality-reviewer reads A3 itself and short-circuits on a FAIL spec verdict; you do not evaluate the verdict at this boundary.
-
-Do NOT proceed to other implementation units, integration, or user-facing responses until the code-quality-reviewer has returned.
+Send the unit whose spec review just stopped to the dev-discipline code-quality-reviewer now — a launch for a first review, a SendMessage continuation of the reviewer that reviewed it before for a re-review — passing it the unit's contract, the worktree path, the branch, the BASE..HEAD range derived from git in that worktree, the spec verdict file the spec-reviewer returned, and the report path under orchestration_log/recon/${DATE}/reviews/.

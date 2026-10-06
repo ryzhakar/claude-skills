@@ -29,8 +29,8 @@
     {
       "name": "dev-discipline",
       "source": "./dev-discipline/",
-      "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, and worktree-isolated implementation agents.",
-      "version": "2.1.0",
+      "description": "Software engineering discipline with development lifecycle orchestration. Plan-implement-review-fix loop, outermost-test-first signature-first TDD, defensive planning, systematic debugging, code review, bug triage, architecture improvement, worktree-isolated implementation agents, and a review chain enforced by hooks.",
+      "version": "2.2.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -52,7 +52,7 @@
       "name": "manifesto",
       "source": "./manifesto/",
       "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.",
-      "version": "3.1.4",
+      "version": "3.2.0",
       "author": {
         "name": "ryzhakar"
       },
