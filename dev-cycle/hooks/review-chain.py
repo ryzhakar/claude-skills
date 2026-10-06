@@ -113,7 +113,12 @@ def text_of(content):
     return ""
 
 
+MALFORMED = re.compile(r"^\s*Dispatch malformed:")
+
+
 def stop_opens_a_stage(kind, message):
+    if MALFORMED.search(message):
+        return False
     return kind != "implementer" or DONE_STATUS.search(message) is not None
 
 

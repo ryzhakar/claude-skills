@@ -1,1 +1,1 @@
-Read the Ready to merge line of the quality report the code-quality-reviewer just returned and record the merge decision for that unit in the status file now, as integrate or continue the implementer.
+Read the Ready to merge line of the quality report the code-quality-reviewer just returned and, when the spec verdict was PASS, record the merge decision for that unit in the status file now, as integrate or continue the implementer; record nothing for a report that followed a FAIL spec verdict, which the implementer continuation supersedes.
