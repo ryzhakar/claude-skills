@@ -1,7 +1,7 @@
 ---
 name: tdd
 description: >
-  Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface before filling them, and cleaning up once every test passes.
+  Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface before filling them, and refactoring once every test passes.
   "tdd", "write tests first", "test-driven development", "red-green-refactor", "implement using tdd",
   "write a failing test", "design the signatures", "outside in", or any request to write code that carries behavior.
 ---
@@ -11,7 +11,7 @@ Name the outermost interface — the function, command, endpoint, or module surf
 
 Draw the barrier — the line between the outermost interface and everything beneath it — around the whole unit a caller sees; never draw it around a part of the unit.
 
-Take as the outermost interface of a command or an endpoint its entry function — the function that the program entry point, outside the unit, calls with the parsed input and the side effects; never take the parsing or the transport as the interface.
+Take as the outermost interface of a command or an endpoint its entry function — the function that the program entry point, outside the unit, calls with the parsed input and the side effects — the clock, a random source, the file system, the network, a database, the process environment, a subprocess; never take the parsing or the transport as the interface.
 
 Count as foreign a call into a library, a service, a runtime, or another team's module; never count a call into the unit's own code as foreign.
 </name-the-outermost-interface>
@@ -53,7 +53,7 @@ Stop recursing at a body that is a foreign call or a single primitive operation 
 </recurse-to-the-leaves>
 
 <pass-side-effects-down>
-Initialize every side effect — the clock, a random source, the file system, the network, a database, the process environment, a subprocess — at the composition root, the program entry point or the test that calls the outermost interface; never construct one in the outermost interface or beneath it.
+Initialize every side effect at the composition root, the program entry point or the test that calls the outermost interface; never construct one in the outermost interface or beneath it.
 
 Pass each side effect as a parameter into the outermost interface and down to every function beneath the barrier that needs it; never let a function reach for one it was not handed.
 
