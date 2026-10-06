@@ -1,5 +1,7 @@
 # Session 2026-10-05 → 2026-10-06
 
+Status: complete, 2026-10-06 13:25 UTC; every commit pushed; heartbeat Routine disabled at delivery.
+
 Opened on `claude/dev-discipline-iteration-yby2xn` to iterate dev-discipline under `memento:skill-creation`, the orchestrator writing every instruction change itself, agents checking blind. GO came 23:12 UTC on 2026-10-05; the owner withdrew with a checkpoint ruling at 07:55 UTC on 2026-10-06.
 
 ## What shipped (2.2.0, every commit pushed)
@@ -16,7 +18,7 @@ Twenty-one author–checker rounds ran across the eleven files, two blind checke
 
 ## Residue
 
-- Token ceilings: eight files closed above their plan ceiling (total 14011 against 12840 planned, 22041 baseline — a 36% cut); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded. Under ceiling: dev-orchestration, systematic-debugging, the templates.
-- Every checker report that landed is applied and pushed; the plan's four-round cap closes each file where it stands. One report, tdd usability round 4, was still running at 08:19 UTC on 2026-10-06 and lands as a final commit. Two round-2 usability reports (tdd, systematic-debugging) died on the 429 and stay `PENDING`, superseded by round 3.
+- Token ceilings: eight files closed above their plan ceiling (total 14076 against 12840 planned, 22041 baseline — a 36% cut); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded. Under ceiling: dev-orchestration, systematic-debugging, the templates.
+- Every checker report that landed is applied and pushed; the plan's four-round cap closes each file where it stands. The last report, tdd usability round 4, landed at 13:25 UTC on 2026-10-06 with 6 findings, all applied. Two round-2 usability reports (tdd, systematic-debugging) died on the 429 and stay `PENDING`, superseded by round 3.
 - The cross-file contradiction pass and the independent verifier agent did not run; the orchestrator ran the mechanical checks itself (hook tests, validator, README check, hygiene greps, token counts).
 - The empty-string ending of `work-silently` loops in this harness; `check-back` needs a reset-aligned, environment-independent wake on a quota death. Both recorded in failures.md for their plugins.
