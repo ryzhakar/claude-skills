@@ -7,14 +7,14 @@ Cost-tiered development cycle over dev-cycle: an opus prescriber writes prescrip
 
 ### [lite-cycle](skills/lite-cycle/SKILL.md)
 
-Run the dev-cycle loop over one spec at the lowest cost tier — an opus prescriber writes a prescription per unit, disposable haiku executors follow it literally, and the suborchestrator running this skill reviews each unit itself and integrates. "run the lite cycle", "implement this cheaply", "implement with haiku executors", "prescribe and execute", or any dev-cycle run the owner marks lite.
+Run the dev-cycle loop over one spec at the lowest cost tier — an opus prescriber writes a prescription per unit, disposable haiku executors follow it literally, and the suborchestrator running this skill reviews each unit itself and integrates. "run the lite cycle", "implement this cheaply", "implement with haiku executors", "prescribe and execute", or any dev-cycle run the user marks lite in the dispatch.
 
 
 ---
 
 ### [prescriptive-planning](skills/prescriptive-planning/SKILL.md)
 
-Write a prescription — an implementation plan, or a correction plan after a failed review, that leaves the executor — the agent that will execute it — no decision, no option, no signature, and no unverifiable step. "write a prescription", "prescribe the implementation", "write the plan for the executor", "correction plan", "the executor cut corners", or any request for a plan a disposable agent will execute literally.
+Write a prescription — an implementation plan, or a correction plan after a failed review — that leaves the executor — the agent that will execute it — no decision, no option, no signature to invent, and no unverifiable step. "write a prescription", "prescribe the implementation", "write the plan for the executor", "correction prescription", "the executor cut corners", or any request for a plan a disposable agent will execute literally.
 
 
 ---
