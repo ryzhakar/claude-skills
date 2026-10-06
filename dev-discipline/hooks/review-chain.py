@@ -27,6 +27,8 @@ MANDATE_TEMPLATE = {
     "merge-decision": "merge-mandate.txt",
 }
 STAGES_INJECTED_ONCE = {"merge-decision"}
+DONE_STATUS = re.compile(r"Status:\s*DONE\b")
+EMPTY_STATE = {"pending": [], "agents": {}}
 
 
 def agent_kind(agent_type):
@@ -42,12 +44,14 @@ def state_path(session_id):
     return Path(data_dir) / "review-chain" / f"{safe_session}.json"
 
 
-def load_pending(path):
+def load_state(path):
     try:
-        pending = json.loads(path.read_text())
+        state = json.loads(path.read_text())
     except (OSError, ValueError):
-        return []
-    return pending if isinstance(pending, list) else []
+        return json.loads(json.dumps(EMPTY_STATE))
+    if not isinstance(state, dict) or not isinstance(state.get("pending"), list) or not isinstance(state.get("agents"), dict):
+        return json.loads(json.dumps(EMPTY_STATE))
+    return state
 
 
 def prune_expired(directory):
@@ -60,12 +64,12 @@ def prune_expired(directory):
             pass
 
 
-def save_pending(path, pending):
+def save_state(path, state):
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         prune_expired(path.parent)
-        if pending:
-            path.write_text(json.dumps(pending))
+        if state["pending"] or state["agents"]:
+            path.write_text(json.dumps(state))
         elif path.exists():
             path.unlink()
     except OSError:
@@ -109,34 +113,61 @@ def text_of(content):
     return ""
 
 
-def on_subagent_stop(data, pending):
+def stop_opens_a_stage(kind, message):
+    return kind != "implementer" or DONE_STATUS.search(message) is not None
+
+
+def on_subagent_stop(data, state):
     kind = agent_kind(data.get("agent_type") or "")
     if kind is None:
         return None
-    open_stage(pending, STAGE_OPENED_BY_STOP[kind], data.get("agent_id") or "unknown", data.get("last_assistant_message") or "")
+    agent_id = data.get("agent_id") or "unknown"
+    message = data.get("last_assistant_message") or ""
+    state["agents"][agent_id] = kind
+    if stop_opens_a_stage(kind, message):
+        open_stage(state["pending"], STAGE_OPENED_BY_STOP[kind], agent_id, message)
     return None
 
 
-def on_post_tool_use(data, pending):
-    if data.get("tool_name") != "Agent":
-        return None
-    tool_input = data.get("tool_input") or {}
-    tool_response = data.get("tool_response") or {}
+def on_agent_tool(tool_input, tool_response, state):
     kind = agent_kind(tool_input.get("subagent_type") or "")
     if kind is None:
         return None
+    agent_id = tool_response.get("agentId") or "unknown"
     status = tool_response.get("status")
+    state["agents"][agent_id] = kind
     if status == "async_launched":
-        retire_stage(pending, STAGE_SATISFIED_BY_LAUNCH[kind])
+        retire_stage(state["pending"], STAGE_SATISFIED_BY_LAUNCH[kind])
         return None
     if status == "completed":
+        message = text_of(tool_response.get("content"))
+        if not stop_opens_a_stage(kind, message):
+            return None
         stage = STAGE_OPENED_BY_STOP[kind]
-        open_stage(pending, stage, tool_response.get("agentId") or "unknown", text_of(tool_response.get("content")))
-        return hook_output("PostToolUse", mandate_for(stage, pending[-1]))
+        open_stage(state["pending"], stage, agent_id, message)
+        return hook_output("PostToolUse", mandate_for(stage, state["pending"][-1]))
     return None
 
 
-def on_stop(data, pending):
+def on_send_message(tool_input, state):
+    kind = state["agents"].get(tool_input.get("to") or "")
+    if kind is not None:
+        retire_stage(state["pending"], STAGE_SATISFIED_BY_LAUNCH[kind])
+    return None
+
+
+def on_post_tool_use(data, state):
+    tool_input = data.get("tool_input") or {}
+    tool_response = data.get("tool_response") or {}
+    if data.get("tool_name") == "Agent":
+        return on_agent_tool(tool_input, tool_response, state)
+    if data.get("tool_name") == "SendMessage":
+        return on_send_message(tool_input, state)
+    return None
+
+
+def on_stop(data, state):
+    pending = state["pending"]
     if not pending:
         return None
     record = pending[0]
@@ -169,9 +200,9 @@ def main():
     path = state_path(data.get("session_id"))
     if handler is None or path is None:
         return
-    pending = load_pending(path)
-    output = handler(data, pending)
-    save_pending(path, pending)
+    state = load_state(path)
+    output = handler(data, state)
+    save_state(path, state)
     if output is not None:
         json.dump(output, sys.stdout)
 
