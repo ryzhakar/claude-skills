@@ -1,23 +1,23 @@
 ---
-name: defensive-planning
+name: prescriptive-planning
 description: >
-  Write an implementation plan, or a correction plan after a failed review, that leaves the implementer — the agent that will execute the plan — no decision, no option, and no unverifiable step.
-  "write an implementation plan", "plan the implementation", "write the plan for the implementer", "correction plan", "the implementer cut corners",
-  or any request for a plan another agent will execute.
+  Write a prescription — an implementation plan, or a correction plan after a failed review, that leaves the executor — the agent that will execute it — no decision, no option, no signature, and no unverifiable step.
+  "write a prescription", "prescribe the implementation", "write the plan for the executor", "correction plan", "the executor cut corners",
+  or any request for a plan a disposable agent will execute literally.
 ---
 
-<write-for-the-implementer>
-Write every line so that no ambiguity grants the implementer permission and no passing test stands for completion; never write a line that trusts the implementer.
+<write-for-the-executor>
+Write every line so that no ambiguity grants the executor permission and no passing test stands for completion; never write a line that trusts the executor.
 
 Pick one answer for every choice the work holds; never write `decide whether`, `either`, `or`, `if needed`, or `consider` in the plan's prose, where quoted code is exempt.
-</write-for-the-implementer>
+</write-for-the-executor>
 
 <list-the-files-and-contracts>
-List every file the work creates or changes, each with the one responsibility it holds; never leave a file for the implementer to discover.
+List every file the work creates or changes, each with the one responsibility it holds; never leave a file for the executor to discover.
 
 List for each unit — one outermost interface, the surface callers of the unit use, and the zero to three files behind it, not counting the file that declares the interface or the tests — the contract: the interface's signature with typed parameters and return, a docstring of one sentence on one line, the behaviors a test proves through the interface, and for an interface that is a data type its fields with their types; never leave a unit without its contract.
 
-Leave, as the one exception to the rules above, every signature beneath the outermost interface to the implementer, who designs it through the `tdd` skill; never fix one in the plan.
+Fix every signature beneath the outermost interface — name, typed parameters, typed return, one-line docstring — in the plan; never leave one to the executor.
 
 Order the units so each unit's contract exists before a unit that calls it; never order a caller before its callee.
 </list-the-files-and-contracts>
@@ -35,13 +35,13 @@ Use type and function names the plan, the project, or its libraries declare; nev
 <write-the-gates>
 Write each verification gate as a command and the exact output it requires, with a pattern for any part that varies such as a run time, as in `grep -n "= \[\]" src/schemas/*.py` requiring zero matches; never write a gate as a checkbox or an adjective.
 
-Write a gate for the test run requiring its summary line to show every test passed and none skipped; never write a gate the implementer can satisfy by reading the output loosely.
+Write a gate for the test run requiring its summary line to show every test passed and none skipped; never write a gate the executor can satisfy by reading the output loosely.
 
 Write a gate that runs the interface on an input from each behavior in the contract and requires the exact return value or response; never let a passing run stand for a correct result.
 </write-the-gates>
 
 <forbid-the-patterns>
-List under a heading `Forbidden patterns` each shortcut — a construction that satisfies a gate without doing the work — the implementer will reach for and the plan forbids, such as a default empty list, a `pass` body, a `TODO`, an `at least one of` validation standing for a required field, a comment; never leave a tempting shortcut unnamed.
+List under a heading `Forbidden patterns` each shortcut — a construction that satisfies a gate without doing the work — the executor will reach for and the plan forbids, such as a default empty list, a `pass` body, a `TODO`, an `at least one of` validation standing for a required field, a comment; never leave a tempting shortcut unnamed.
 
 Write each forbidden pattern as the code it forbids; never write it as a principle.
 </forbid-the-patterns>
@@ -55,7 +55,7 @@ Write a correction plan — a plan written after a review found the implementati
 
 Name under a heading `Failure modes observed` each failure mode — a shortcut the caller's review report names — with the code it cites as evidence; never name a hypothetical one.
 
-Forbid each failure mode, as the code the implementer used, beside the patterns the executed plan already forbids; never omit one.
+Forbid each failure mode, as the code the executor used, beside the patterns the executed plan already forbids; never omit one.
 
 Add a gate that catches each failure mode the executed plan's gates passed; never reuse a gate that passed a broken result unchanged.
 </write-a-correction-plan>
