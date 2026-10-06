@@ -10,7 +10,7 @@ HERE = Path(__file__).resolve().parent
 STATE_TTL_SECONDS = 7 * 24 * 3600
 CONTINUATIONS_PER_STAGE = 3
 MESSAGE_HEAD_CHARS = 300
-PLUGIN_PREFIX = "dev-discipline:"
+PLUGIN_PREFIX = "dev-cycle:"
 STAGE_OPENED_BY_STOP = {
     "implementer": "spec-review",
     "spec-reviewer": "quality-review",

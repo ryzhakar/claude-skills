@@ -1,9 +1,9 @@
 {
-  "description": "Dev-discipline review chain: each implementer, spec-reviewer, and code-quality-reviewer stop opens a pending stage; launching the next agent retires it; the orchestrator's turn continues with the stage's mandate while it is pending",
+  "description": "Dev-cycle review chain: each implementer, spec-reviewer, and code-quality-reviewer stop opens a pending stage; launching the next agent retires it; the orchestrator's turn continues with the stage's mandate while it is pending",
   "hooks": {
     "SubagentStop": [
       {
-        "matcher": "^(dev-discipline:)?implementer$",
+        "matcher": "^(dev-cycle:)?implementer$",
         "hooks": [
           {
             "type": "command",
@@ -13,7 +13,7 @@
         ]
       },
       {
-        "matcher": "^(dev-discipline:)?spec-reviewer$",
+        "matcher": "^(dev-cycle:)?spec-reviewer$",
         "hooks": [
           {
             "type": "command",
@@ -23,7 +23,7 @@
         ]
       },
       {
-        "matcher": "^(dev-discipline:)?code-quality-reviewer$",
+        "matcher": "^(dev-cycle:)?code-quality-reviewer$",
         "hooks": [
           {
             "type": "command",
