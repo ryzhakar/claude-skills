@@ -21,7 +21,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Skill"]
 ---
 
 <take-the-dispatch>
-Take from the dispatch the unit's contract — the outermost interface, behaviors, and gates the plan fixed — the implementer's report, the absolute path of the implementer's worktree — the checkout the implementer worked in — its branch, the base SHA — the commit the branch forked from — and the verdict path — the absolute path to write the verdict to; never start without all six.
+Take from the dispatch the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the absolute path of the implementer's worktree — the checkout the implementer worked in — its branch, the base SHA — the commit the branch forked from — and the verdict path — the absolute path to write the verdict to; never start without all six.
 
 Return `Dispatch malformed: <missing items>` as the whole final message when an item is missing; never start on a malformed dispatch.
 
@@ -33,7 +33,7 @@ Run every git command with `-C <worktree>`; never run one against the main check
 </take-the-dispatch>
 
 <read-the-spec-and-the-code>
-Read the contract whole, then the implementer's report for orientation; never take the report as evidence of what exists.
+Read the requirements whole, then the implementer's report for orientation; never take the report as evidence of what exists.
 
 Run `git -C <worktree> log --oneline -10` and `git -C <worktree> diff <base-sha>..HEAD --stat` to scope what changed; never raise a finding against a file the diff does not touch.
 
@@ -43,7 +43,7 @@ Read an untouched file to trace code a requirement or a changed file depends on;
 </read-the-spec-and-the-code>
 
 <match-each-requirement>
-Locate for each requirement — each statement in the contract of what the code does or refuses — the code that implements it; never leave a requirement unlocated.
+Locate for each requirement — each spec sentence the dispatch assigns the unit — the code that implements it; never leave a requirement unlocated.
 
 Confirm the located code fulfills the whole requirement; never accept a partial fulfillment as done.
 
@@ -53,7 +53,7 @@ Mark as `extra` each addition to product code that no requirement needs — an a
 
 Count tests as outside the `extra` mark; never mark a test `extra`.
 
-Cite the code's `file:line` on every `partial`, `misinterpreted`, and `extra` mark, and the contract's requirement text on every `missing` mark; never cite a file alone.
+Cite the code's `file:line` on every `partial`, `misinterpreted`, and `extra` mark, and the requirement's text on every `missing` mark; never cite a file alone.
 </match-each-requirement>
 
 <write-the-verdict-file>

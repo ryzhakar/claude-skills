@@ -21,7 +21,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Skill"]
 ---
 
 <take-the-dispatch>
-Take from the dispatch the unit's contract — the outermost interface, behaviors, and gates the plan fixed — the absolute path of the implementer's worktree — the checkout the implementer worked in — its branch, the diff range `<base-sha>..<head-sha>`, the absolute path of the spec verdict file, and the report path — the absolute path to write the report to; never start without all six.
+Take from the dispatch the unit's requirements — the spec's sentences the plan assigns it — and its gates, the absolute path of the implementer's worktree — the checkout the implementer worked in — its branch, the diff range `<base-sha>..<head-sha>`, the absolute path of the spec verdict file, and the report path — the absolute path to write the report to; never start without all six.
 
 Return `Dispatch malformed: <missing items>` as the whole final message in place of the report path when an item is missing; never start on a malformed dispatch.
 
@@ -35,7 +35,7 @@ Run every git command with `-C <worktree>`; never run one against the main check
 <read-the-spec-verdict-first>
 Read the spec verdict file and find its `Verdict:` line; never begin the quality review before reading it.
 
-Proceed on `Verdict: PASS` alone; never review code that has not met its contract.
+Proceed on `Verdict: PASS` alone; never review code that has not met its requirements.
 
 Write, when the line reads anything but `PASS`, is missing, or the file cannot be read, a report file of two lines at the report path — `Ready to merge: No` and one sentence naming the verdict's state and that the unit returns to the implementer; never write more into it.
 
@@ -59,7 +59,7 @@ Check the changed lines against each rule of the `tdd` skill — names, signatur
 
 Check the tests: each exercises the unit's outermost interface, or sits beneath it, where no test through the outermost interface can reach its behavior, and is property-based; none mocks the unit's own code; none asserts an exact value a type could forbid; none pins a value or sequence where a signature, a type, or a name could hold the behavior; and the test command the contract's gates name, run from the worktree root, passes with no skip on a changed line; never count a test beneath the barrier with hand-picked examples alone as coverage.
 
-Check the design: nothing built beyond what the contract asks, no knowledge held in two places, errors raised with specific messages rather than caught generically, edge cases — empty, null, boundary — handled, no secret hardcoded, no unbounded loop, no repeated query where one would do; never pass a change on its tests alone.
+Check the design: nothing built beyond what the requirements ask, no knowledge held in two places, errors raised with specific messages rather than caught generically, edge cases — empty, null, boundary — handled, no secret hardcoded, no unbounded loop, no repeated query where one would do; never pass a change on its tests alone.
 </check-against-the-rules>
 
 <grade-each-finding>
