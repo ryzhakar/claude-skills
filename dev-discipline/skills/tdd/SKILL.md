@@ -1,13 +1,13 @@
 ---
 name: tdd
 description: >
-  Build code by writing the outermost failing test first, designing the signatures beneath it before any body, and refactoring once green.
+  Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface before filling them, and cleaning up once every test passes.
   "tdd", "write tests first", "test-driven development", "red-green-refactor", "implement using tdd",
   "write a failing test", "design the signatures", "outside in", or any request to write code that carries behavior.
 ---
 
 <name-the-outermost-interface>
-Name the outermost interface — the function, command, endpoint, or module surface that callers of the unit, the code being built, use — before writing a test; never start from a helper inside the unit.
+Name the outermost interface — the function, command, endpoint, or module surface that callers of the unit, the code being built, use — before writing a test; never start from a function beneath it.
 
 Draw the barrier — the line between the outermost interface and everything beneath it — around the whole unit a caller sees; never draw it around a part of the unit.
 
@@ -49,9 +49,9 @@ Stop recursing at a body that is a foreign call or a single primitive operation 
 </recurse-to-the-leaves>
 
 <pass-side-effects-down>
-Initialize every side effect — the clock, a random source, the file system, the network, a database, the process environment, a subprocess — at the composition root, the program entry point or the test that calls the outermost interface, and pass each into the outermost interface as a parameter; never construct one inside the unit.
+Initialize every side effect — the clock, a random source, the file system, the network, a database, the process environment, a subprocess — at the composition root, the program entry point or the test that calls the outermost interface; never construct one inside the unit.
 
-Pass each side effect down as a parameter to every function beneath the barrier that needs it; never let a function reach for one it was not handed.
+Pass each side effect as a parameter into the outermost interface and down to every function beneath the barrier that needs it; never let a function reach for one it was not handed.
 
 Keep every function beneath the barrier pure — its result a function of its arguments and nothing else; never let one gain a side effect to save a parameter.
 </pass-side-effects-down>
@@ -69,7 +69,7 @@ Reach green — every test passing — before any refactor; never refactor on re
 <refactor-with-hindsight>
 Rename, split, merge, and move once green, using everything the filled functions taught about the problem; never keep a name or a boundary the finished code has outgrown.
 
-Deepen each module — hide more behind fewer entry points; never widen an interface to expose a helper.
+Deepen each module — hide more behind fewer entry points; never widen an interface to expose a function beneath the barrier.
 
 Move each piece of knowledge that two places hold into one place; never leave one piece of knowledge in two places.
 
