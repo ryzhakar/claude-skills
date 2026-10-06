@@ -11,6 +11,14 @@ Read the `dev-cycle` skill and the `agentic-delegation` skill whole before any s
 Follow every rule of the `dev-cycle` skill from its `plan-the-units` stage on, and of the `agentic-delegation` skill, except where a sentence below replaces it — tiers, discarded executors, reviews done by this agent, this agent as a second launch loop; never re-decide a rule they already fix.
 </read-the-parents-first>
 
+<dispatch-the-suborchestrator>
+Launch, when this skill runs in the main session rather than in `suborchestrator`, the `suborchestrator` agent in the background with the absolute spec path, the project root, the artifact directory — `orchestration_log/recon/${DATE}/` under the project root — and the integration branch or `none`; never run the stages below in the main session.
+
+Read its report's `Status:`, `Integration branch:`, `Units integrated:`, `Units returned:`, and `Status file:` lines; never read another line.
+
+Return each unit on `Units returned:` to the user with its prescription and verdict paths; never re-run it in the main session.
+</dispatch-the-suborchestrator>
+
 <take-the-spec>
 Take from the dispatch — the message that launched this run — the absolute spec path, the project root, the artifact directory, and the integration branch or `none`; never take one from elsewhere.
 
