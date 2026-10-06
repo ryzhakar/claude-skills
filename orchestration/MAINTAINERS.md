@@ -12,7 +12,7 @@ agentic-delegation          <-- root (the universal framework)
 
 agentic-delegation is the parent. Everything else is a domain extension. This is not a flat collection of independent skills.
 
-**dev-orchestration moved to the dev-discipline plugin in v3.0.0.** It lives with its agents (implementer, spec-reviewer, code-quality-reviewer) and hooks. The cross-plugin prerequisite on agentic-delegation remains — dev-orchestration gates on reading this plugin's parent skill first.
+**dev-orchestration moved to the dev-discipline plugin in v3.0.0 and became `dev-cycle` in the dev-cycle plugin on 2026-10-06.** It lives with its agents (spec-capturer, implementer, spec-reviewer, code-quality-reviewer) and hooks. The cross-plugin prerequisite on agentic-delegation remains — dev-cycle gates on reading this plugin's parent skill first.
 
 ## The Hard Prerequisite Rule
 
@@ -20,7 +20,7 @@ Domain extensions MUST gate on the parent.
 
 When research-tree is loaded, the model MUST read agentic-delegation's SKILL.md first. Not optional. Not "if available." A hard gate. The parent establishes the economics, the model ladder, the decomposition patterns, the prompt anatomy, the execution patterns, and the quality governance. Domain skills assume all of this is already internalized.
 
-Cross-plugin domain extensions (dev-orchestration in dev-discipline) follow the same rule — they gate on reading agentic-delegation before proceeding. The gate is a content dependency, not a packaging dependency.
+Cross-plugin domain extensions (dev-cycle in the dev-cycle plugin) follow the same rule — they gate on reading agentic-delegation before proceeding. The gate is a content dependency, not a packaging dependency.
 
 ## Composition Principles
 
@@ -40,7 +40,7 @@ Silent divergence is a bug.
 
 Domain skills contain ONLY what the parent does not cover:
 - research-tree adds: tiered research structure, need-driven organization, re-research protocols.
-- dev-orchestration (now in dev-discipline) adds: the Plan-Implement-Review-Fix loop, status-driven branching, TDD gates, debugging escalation, multi-unit integration.
+- dev-cycle (the dev-cycle plugin) adds: the Plan-Implement-Review-Fix loop, status-driven branching, TDD gates, debugging escalation, multi-unit integration.
 
 If the parent already defines a pattern (speculative-parallel, fan-out-by-concern, map-reduce, prompt anatomy), the domain skill references it. It does not restate it. Not even as a summary.
 
@@ -58,7 +58,7 @@ Always direct references. No "if available" guards. No fallback branches.
 
 ### External Plugins (e.g., dev-discipline)
 
-dev-orchestration now lives in dev-discipline alongside its agents. No cross-plugin agent references needed for that skill.
+dev-cycle lives in the dev-cycle plugin alongside its agents. No cross-plugin agent references needed for that skill.
 
 For other cross-plugin references (e.g., a future domain extension that needs agents from another plugin), the pattern remains:
 
@@ -109,7 +109,7 @@ agentic-delegation defines general quality patterns: re-launch (don't debug), co
 ### Domain Subsumption
 
 Domain skills may define more structured quality gates that subsume the parent's general patterns for that domain:
-- dev-orchestration's two-stage review (now in dev-discipline, with hook-enforced review chain) subsumes the parent's general patterns for dev work.
+- dev-cycle's two-stage review (in the dev-cycle plugin, with hook-enforced review chain) subsumes the parent's general patterns for dev work.
 - research-tree's tiered re-research with fresh-eyes isolation subsumes the parent's contradiction resolution for research work.
 
 The parent's patterns remain authoritative for any orchestration context not covered by a domain skill's specific gates.
