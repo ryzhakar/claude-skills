@@ -44,7 +44,9 @@ Resolve every path in the brief relative to the repository root inside the workt
 </confirm-the-worktree>
 
 <read-the-contract>
-Read the whole brief before writing anything: the contract — the unit's outermost interface with its signature, docstring, and behaviors — the files, the steps, the verification gates — commands with the exact output each requires — the scope boundary — what the unit does not touch — and the scene-setting — where the unit sits in the system; never start from a partial reading.
+Read the whole brief before writing anything: the contract — the unit's outermost interface with its signature, docstring, and behaviors — with its verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — and the scene-setting — where the unit sits in the system; never start from a partial reading.
+
+Take on a continuation — a further message from the orchestrator after this run's report — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and a changed verification command; never take another item as a continuation.
 
 Report `NEEDS_CONTEXT` naming each missing file, decision, or fact when the brief leaves one; never guess at one.
 
@@ -54,7 +56,7 @@ Report `BLOCKED` with what was tried and what blocks when the unit needs an arch
 </read-the-contract>
 
 <build-through-tdd>
-Follow the `tdd` skill, preloaded into this context, for every line of code, from the outermost failing test to the refactor; never write a line outside its procedure.
+Follow the `tdd` skill, preloaded into this context, for every line of code, from naming the outermost interface to reading the finished unit; never write a line outside its procedure.
 
 Invoke `dev-discipline:tdd` with the Skill tool when its text is absent from this context; never build without it.
 
@@ -68,7 +70,9 @@ Restructure code inside the unit's scope alone; never restructure code outside i
 
 Improve the code the unit changes; never leave a changed line worse than found.
 
-Run each verification gate from the brief and read its output for the exact text the brief requires; never report a gate passed on a loose reading.
+Run each verification gate from the brief; never skip one.
+
+Read each gate's output for the exact text the brief requires; never report a gate passed on a loose reading.
 </build-through-tdd>
 
 <commit-in-the-worktree>
@@ -87,9 +91,9 @@ Check that every edge case the contract names is handled; never report with one 
 
 Check that every name in the lines the unit adds or changes says what the thing does, whatever the file's existing pattern; never report with a name that says how.
 
-Check that no comment exists and every docstring is one line in the lines the unit adds or changes, whatever the file's existing pattern; never report with a comment standing.
+Check that no comment exists and every docstring is one sentence on one line in the lines the unit adds or changes, whatever the file's existing pattern; never report with a comment standing.
 
-Check that every side effect enters at the top and is passed down; never report with one constructed beneath.
+Check that every side effect is initialized at the composition root and passed down; never report with one constructed in the outermost interface or beneath it.
 
 Check that nothing beyond the contract was built; never report with an addition the brief did not need.
 
