@@ -20,11 +20,11 @@
 | product-craft, orchestration | — | unchanged | untouched |
 
 ## Step 0 — recon (one live test, one doc check)
-- Cross-plugin `skills:` preload: an agent in dev-cycle preloading `dev-discipline:tdd`. Fallback stays in bodies: invoke with the `Skill` tool when absent.
+- Cross-plugin `skills:` preload: an agent in dev-cycle preloading `dev-discipline:tdd`, through a headless `claude -p --plugin-dir` run here if this environment authenticates, else handed to the owner as a local one-liner. Fallback stays in bodies either way: invoke with the `Skill` tool when absent.
 - `claude --agent <plugin>:<agent>` syntax and sibling messaging: confirm from docs; record as platform facts in the loop skill.
 
 ## Step 1 — dev-discipline 3.0.0
-Delete `skills/dev-orchestration`, `skills/defensive-planning`, `agents/`, `hooks/`. Drop the `orchestration` dependency. Keep `tdd`, `systematic-debugging`, `triage-issue`, `improve-architecture`, `receiving-code-review` untouched. Rewrite description and keywords. justfile `hooks-test` path moves with the hooks.
+Move, never delete: `git mv` each of `skills/dev-orchestration` → `dev-cycle/skills/dev-cycle`, `skills/defensive-planning` → `dev-cycle-lite/skills/prescriptive-planning`, `agents/*` → `dev-cycle/agents/`, `hooks/` → `dev-cycle/hooks/`, each move its own commit with no edit, so git reads a 100% rename; edits follow in later commits. Drop the `orchestration` dependency. Keep `tdd`, `systematic-debugging`, `triage-issue`, `improve-architecture`, `receiving-code-review` untouched. Rewrite description and keywords. justfile `hooks-test` path moves with the hooks.
 
 ## Step 2 — dev-cycle 1.0.0 (deps: dev-discipline, orchestration, product-craft)
 Skill `dev-cycle` — one loop: `specify → plan → implement → review → integrate`.
@@ -39,10 +39,10 @@ Hooks: `review-chain.py`, templates, 20 tests moved; matchers `^(dev-cycle:)?imp
 ## Step 3 — dev-cycle-lite 1.0.0 (deps: dev-cycle, dev-discipline; no hooks)
 Skills:
 - `prescriptive-planning` — `defensive-planning` moved whole: no decision, no option, no unverifiable step, every signature fixed.
-- `lite-cycle` — the administrator's loop as a delta over `dev-cycle`: planner launch, executor launch per unit, both reviews, integrate; no spec stage of its own (reuses dev-cycle's).
+- `lite-cycle` — the suborchestrator's loop as a delta over `dev-cycle`: planner launch, executor launch per unit, both reviews, integrate; no spec stage of its own (reuses dev-cycle's).
 Agents:
-- `lite-planner` — `model: opus`, preloads `prescriptive-planning`; spec or unit contract in, prescription out.
-- `administrator` — `model: sonnet`, holds `Agent`; suborchestrator running `lite-cycle` at depth 1; launches executors, runs or launches both reviews, integrates.
+- `prescriber` — `model: opus`, preloads `prescriptive-planning`; spec or unit contract in, prescription out.
+- `suborchestrator` — `model: sonnet`, holds `Agent`; runs `lite-cycle` at depth 1; launches executors, runs or launches both reviews, integrates. The one orchestrating agent below the main session.
 - `executor` — `model: haiku`, `isolation: worktree`, disposable; follows the prescription literally; reports `DONE` or `BLOCKED`, never designs.
 
 ## Step 4 — records
