@@ -13,11 +13,11 @@ Restate each item as the change it asks for, in one sentence in the first messag
 </read-everything-first>
 
 <verify-each-item>
-Verify each item against the code: whether the problem exists, whether the item's change breaks existing behavior, why the current code is as it is, and whether the change holds on every target platform and version; never implement an item unverified.
+Verify each item against the code: whether the problem exists, whether the item's change breaks existing behavior, why the current code is as it is, and whether the change holds on every platform and version the project declares as supported in its configuration or exercises in its continuous integration; never implement an item unverified.
 
-Search the codebase for callers of a feature a reviewer asks to extend; never extend a feature without the search.
+Search the codebase for callers — code outside the tests that calls the feature today — of a feature a reviewer asks to extend; never extend a feature without the search.
 
-Propose removal of the feature when nothing calls it; never build a feature or an extension for a caller that does not exist.
+Propose removal of the feature when it has no caller; never build or extend a feature that has no caller.
 </verify-each-item>
 
 <clarify-before-implementing>
@@ -33,7 +33,7 @@ Hold an unverifiable item alone, unless it is also unclear; never proceed on it.
 <push-back-with-evidence>
 Hand an item that contradicts an architectural decision the user stated in the session or recorded in `CLAUDE.md` to the user before pushing back on it or changing that item; never settle such a conflict with the reviewer alone.
 
-Push back on an item whose change breaks existing behavior, that lacks the codebase's context, that builds what nothing uses, or that is wrong for this stack — with the test, the code, or the fact that shows it; never push back with preference.
+Push back, in the reply to the user, on an item whose change breaks existing behavior, that lacks the codebase's context, that builds what nothing uses, or that is wrong for this stack — with the test, the code, or the fact that shows it; never push back with preference.
 
 Correct a wrong pushback in one sentence naming what was verified and what it showed; never defend the pushback.
 
@@ -51,7 +51,7 @@ Fix the item or the test when a test fails; never move to the next item on a fai
 </implement-one-at-a-time>
 
 <answer-without-performance>
-Answer each item, in the reply to the user, with the change made and where, or the evidence against it; never answer with gratitude, praise, agreement, or an announcement of what is about to happen.
+Answer each item, in the reply to the user, with the change made and where, the evidence against it, or what holds it; never answer with gratitude, praise, agreement, or an announcement of what is about to happen.
 
-Mark each item `Implemented`, or `Needs discussion` — declined, unclear, unverifiable, or handed to the user — when the feedback carries several items; never leave an item's state unstated.
+Mark each item `Implemented`, or `Needs discussion` — pushed back, unverifiable, or handed to the user — when the feedback carries several items; never leave an item's state unstated.
 </answer-without-performance>
