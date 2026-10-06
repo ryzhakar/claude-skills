@@ -1,7 +1,7 @@
 ---
 name: improve-architecture
 description: >
-  Find architectural friction in a codebase, explore several designs for a deeper module in parallel, and write a refactor RFC recommending one.
+  Find architectural friction — places where understanding a codebase breaks down — explore in parallel several designs for a deepened module — one hiding more implementation behind a smaller interface — and write an RFC — a proposal document — recommending one.
   "improve the architecture", "find refactoring opportunities", "deepen shallow modules", "reduce coupling", "simplify the module structure",
   "this module is hard to navigate", or any mention of architectural friction or module boundaries.
 ---
@@ -11,7 +11,7 @@ Explore the codebase as a developer new to it, reading the code behind each conc
 
 Note each friction — a place where understanding breaks down — with the files that show it; never note a friction without its files.
 
-Count as frictions: bouncing — understanding one concept takes many small files; a shallow interface — a module, a file or directory that outside code reaches through one public surface, whose surface is nearly as complex as its internals; testability extraction — pure functions pulled out for tests while bugs live in the integration; tight coupling — modules sharing types or co-owning a concept; a test gap — a module untested or tested through elaborate mocks; never count a style complaint as a friction.
+Count as frictions: bouncing — understanding one concept takes many small files; a shallow module — a module, a file or directory that outside code reaches through one interface, whose interface is nearly as complex as its internals; testability extraction — pure functions pulled out for tests while bugs live in the integration; tight coupling — modules sharing types or co-owning a concept; a test gap — a module untested or tested through elaborate mocks; never count a style complaint as a friction.
 </explore-for-friction>
 
 <rank-the-candidates>
@@ -19,15 +19,15 @@ Write each deepening candidate — a cluster of modules that could hide behind o
 
 Describe each module by its responsibility; never describe one by its file path alone.
 
-Rank the candidates by the count of modules and concepts each hides divided by the count of public entry points that code outside the cluster calls today; never rank by taste.
+Rank the candidates by the count of modules each hides divided by the count of public entry points that production code outside the cluster calls today; never rank by taste.
 
 Take the first-ranked candidate; never ask which to explore.
 </rank-the-candidates>
 
 <classify-the-dependencies>
-Classify each dependency of the candidate by the first class that matches, in this order: in-process when it involves no I/O; a port when the remote service is built and deployed from this repository; local-substitutable when a local stand-in for the service exists; external otherwise; never leave a dependency unclassified.
+Classify each dependency of the candidate — each module of this repository and each remote service the cluster's code calls from outside itself — by the first class that matches, in this order: in-process when it involves no I/O — no reading or writing outside the process; a port when the remote service is built and deployed from this repository; local-substitutable when the repository already holds or runs a local stand-in for the service, such as a fake, an emulator, or a container of the service itself; external otherwise; never leave a dependency unclassified.
 
-State in the design brief how each dependency is handled, by class: move an in-process dependency into the deepened module, keeping the original where other modules still import it, and unit-test it directly; define for a port a set of domain operations and inject an adapter — the code that carries those operations to the service; test a local-substitutable dependency against its stand-in at the boundary — the edge where the deepened module meets that dependency; mock an external dependency at the boundary and contract-test the real client; never handle a dependency outside its class's way.
+State in the design brief how each dependency is handled, by class: move an in-process dependency into the deepened module, keeping the original where other modules still import it, and unit-test it directly; define for a port a set of domain operations — operations named in the business's own terms — and inject an adapter — the code that carries those operations to the service; test a local-substitutable dependency against its stand-in at the boundary — the edge where the deepened module meets that dependency; mock an external dependency at the boundary and contract-test the real client; never handle a dependency outside its class's way.
 
 Mock at the boundary; never mock inside it.
 </classify-the-dependencies>
