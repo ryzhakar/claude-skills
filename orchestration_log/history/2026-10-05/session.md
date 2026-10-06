@@ -1,6 +1,6 @@
 # Session 2026-10-05 → 2026-10-06
 
-Status: complete, 2026-10-06 13:25 UTC; every commit pushed; heartbeat Routine disabled at delivery.
+Status: complete, 2026-10-06 14:35 UTC after a seam round; every commit pushed; heartbeat Routine disabled at delivery.
 
 Opened on `claude/dev-discipline-iteration-yby2xn` to iterate dev-discipline under `memento:skill-creation`, the orchestrator writing every instruction change itself, agents checking blind. GO came 23:12 UTC on 2026-10-05; the owner withdrew with a checkpoint ruling at 07:55 UTC on 2026-10-06.
 
@@ -18,7 +18,11 @@ Twenty-one author–checker rounds ran across the eleven files, two blind checke
 
 ## Residue
 
-- Token ceilings: eight files closed above their plan ceiling (total 14076 against 12840 planned, 22041 baseline — a 36% cut); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded. Under ceiling: dev-orchestration, systematic-debugging, the templates.
+- Token ceilings: eight files closed above their plan ceiling (total 14442 against 12840 planned, 22041 baseline — a 34% cut); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded. Under ceiling: dev-orchestration, systematic-debugging, the templates.
 - Every checker report that landed is applied and pushed; the plan's four-round cap closes each file where it stands. The last report, tdd usability round 4, landed at 13:25 UTC on 2026-10-06 with 6 findings, all applied. Two round-2 usability reports (tdd, systematic-debugging) died on the 429 and stay `PENDING`, superseded by round 3.
-- The cross-file contradiction pass and the independent verifier agent did not run; the orchestrator ran the mechanical checks itself (hook tests, validator, README check, hygiene greps, token counts).
+- The cross-file pass ran on 2026-10-06 as five seam checkers (49 findings, all applied or ruled); the independent verifier from `briefs/verifier.md` never ran — the orchestrator ran the mechanical checks itself (hook tests, validator, README check, hygiene greps, token counts).
+- Four files closed below the four-round cap at the owner's checkpoint: spec-reviewer and systematic-debugging at round 3, implementer and dev-orchestration at round 2; the seam round re-read all four.
+- The justfile `hooks-test` recipe landed as its own commit rather than inside the hooks commit.
+- Plan deviations recorded in events.md rather than amended into the plan: dispatch on `hook_event_name`, `skills:` preload for the reviewer, tag orders, no mandate path in the artifact tag, three tags folded into sentences.
+- The hook chain's `SendMessage` recognition keys on agent ids; a continuation addressed by agent name retires nothing and the Stop mandate repeats up to three times.
 - The empty-string ending of `work-silently` loops in this harness; `check-back` needs a reset-aligned, environment-independent wake on a quota death. Both recorded in failures.md for their plugins.
