@@ -33,7 +33,7 @@ Hold an unverifiable item alone, unless it is also unclear; never proceed on it.
 <push-back-with-evidence>
 Hand an item that contradicts an architectural decision the user stated in the session or recorded in `CLAUDE.md` to the user before pushing back on it or changing that item; never settle such a conflict with the reviewer alone.
 
-Push back, in the reply to the user, on an item whose change breaks existing behavior, that lacks the codebase's context, that builds what nothing uses, or that is wrong for this stack — with the test, the code, or the fact that shows it; never push back with preference.
+Push back, in the reply to the user, on an item whose change breaks existing behavior, that lacks the codebase's context, that builds what has no caller, or that is wrong for this stack — with the test, the code, or the fact that shows it; never push back with preference.
 
 Correct a wrong pushback in one sentence naming what was verified and what it showed; never defend the pushback.
 
