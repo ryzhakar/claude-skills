@@ -69,3 +69,5 @@
 - delegation (2026-10-06 ~18:40 UTC): fourteen blind r2 checkers over the same seven files, prompts `recon/2026-10-06/prompts/*-r2.md`, ids in `agents.md` there.
 - discovery (2026-10-06 ~19:05 UTC): r2 counts (compliance/usability) — dev-cycle 7/21, spec-capturer 4/5, lite-cycle 4/9, prescriptive-planning 4/17, prescriber 1/9, executor 3/9, suborchestrator 2/3; every finding applied, none struck; r3 prompts staged.
 - delegation (2026-10-06 ~19:10 UTC): fourteen blind r3 checkers over the seven files; seam-round prompt staged at `recon/2026-10-06/prompts/seam-cycle.md` for launch after r3 lands.
+- discovery (2026-10-06 ~19:40 UTC): r3 counts (compliance/usability) — dev-cycle 4/21, spec-capturer 3/4, lite-cycle 3/8, prescriptive-planning 5/15, prescriber 2/7, executor 2/5, suborchestrator 2/4; every finding applied.
+- decision (2026-10-06): per-file rounds close at r3 — compliance counts are single-digit on every file and the usability checkers now invent fresh cases each round at a steady count; the seam round runs next over the three-layer chain.
