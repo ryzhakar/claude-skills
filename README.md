@@ -1,6 +1,6 @@
 # my-claude-skills
 
-32 skills · 9 agents across 10 plugins
+32 skills · 10 agents across 10 plugins
 
 ## Plugins
 
@@ -8,7 +8,7 @@
 |--------|-------------|---------|------------|
 | [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.2.1` | 2S |
 | [dev-discipline](dev-discipline/) | Software engineering discipline with development lifecycle orchestration.... | `2.2.0` | 7S 3A |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.1.4` | 2S |
+| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
 | [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.0` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
@@ -47,7 +47,7 @@ Software engineering discipline with development lifecycle orchestration. Plan-i
 - **[implementer](dev-discipline/agents/implementer.md)** (`inherit`) — Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a...
 - **[spec-reviewer](dev-discipline/agents/spec-reviewer.md)** (`inherit`) — Verify that an implementation in a worktree matches its specification and write a verdict file reading PASS or FAIL....
 
-## [manifesto](manifesto/) `3.1.4`
+## [manifesto](manifesto/) `3.2.0`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
 
@@ -55,6 +55,10 @@ Create concentrated manifesto declarations and bind Claude behavior to user-prov
 
 - **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Binds Claude's operating identity to constitutions, manifestos, and principle sets through identity construction — not theatrical oaths....
 - **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
+### Agents
+
+- **[maximalist-reviewer](manifesto/agents/maximalist-reviewer.md)** (`inherit`) — Review a set of files against one manifesto at the manifesto's strongest literal reading, with no allowance for...
+
 ## [memento](memento/) `0.5.1`
 
 A memory and record-keeping system for agents without continuity across sessions.
