@@ -18,11 +18,11 @@ Treat every action verb in the request as an order to launch agents, planning ex
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names, the executor's report of the `lite-cycle` skill excepted; each prescription — a brief the `prescriber` of dev-cycle-lite writes for an `executor` — at `briefs/prescriber-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; the status file at `dev-status.md`; never let an agent choose a path.
 
 Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on sonnet, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
-Take the implementer's worktree from the `Worktree:` line of its report; never take a worktree path from anywhere else.
+Take the implementer's worktree from the `Worktree:` line of its report and its branch from the `Branch:` line; never take either from anywhere else.
 
 Take each verdict from its file — the `Verdict:` line of a spec verdict, the `Ready to merge:` line of a quality report, read from the path set at launch once the notification — the message the platform sends when a background agent ends — arrives; never take a verdict from a final message.
 </fix-the-artifact-paths>
@@ -93,18 +93,18 @@ Run `pwd` before every shell command and every launch; never skip the check.
 Return to the project root with `cd` when `pwd` shows another directory; never run a command or a launch from a drifted directory.
 </launch-the-implementer>
 
-<derive-branch-and-shas-from-git>
-Derive after each implementer report, with `W` the reported worktree and `I` the integration branch: the branch with `git -C "$W" branch --show-current`, the head with `git -C "$W" rev-parse HEAD`, and the base with `git -C "$W" merge-base HEAD "$I"`; never parse a branch or a SHA — a commit's hash — from return text.
+<derive-the-shas-from-git>
+Derive after each implementer report, from the project root, with `B` the reported branch and `I` the integration branch: the head with `git rev-parse "$B"` and the base with `git merge-base "$B" "$I"`; never parse a SHA — a commit's hash — from return text.
 
-Treat a reported worktree path that is not a directory containing `.git` as a `BLOCKED` report; never treat one as a worktree.
-</derive-branch-and-shas-from-git>
+Treat a report whose `Branch:` line names no branch `git branch --list` shows as a `BLOCKED` report; never query git for a branch the implementer did not report.
+</derive-the-shas-from-git>
 
 <route-on-status>
 Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its requirements, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
 
 Continue the same implementer through `SendMessage` with the delta alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound; never resend the requirements it already holds.
 
-Recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — and continue the implementer with the recreated path; never launch fresh for a missing worktree.
+Recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — before any review or continuation of its unit, and continue the implementer with the recreated path; never launch fresh for a missing worktree.
 
 Launch a fresh implementer when the diagnosis agent names the approach wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
