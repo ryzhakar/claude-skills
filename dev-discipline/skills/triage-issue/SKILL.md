@@ -13,7 +13,7 @@ Ask one question, `What problem are you seeing?`, when the request names no prob
 </take-the-problem-statement>
 
 <investigate-the-cause>
-Run the investigation of `systematic-debugging` — reproduce and read, trace to the source, compare with working code, test one hypothesis — up to its fix step; never change product code during triage.
+Run the investigation of the `systematic-debugging` skill — reproduce and read, trace to the source, compare with working code, test one hypothesis — up to its fix step; never change product code during triage.
 
 Find where the bug surfaces, which code path carries it, why that path produces the wrong result, and what other code shares the same pattern — the faulty construct behind the cause; never stop at the first of the four.
 </investigate-the-cause>
@@ -27,9 +27,9 @@ State for each issue the scope — one module, an integration between modules, o
 </classify-the-issue>
 
 <plan-the-fix>
-Name `improve-architecture` as the fix when the cause is a design flaw that needs a new module boundary; never plan such a flaw as a sequence of fixes.
+Name the `improve-architecture` skill as the fix when the cause is a design flaw that needs a new module boundary; never plan such a flaw as a sequence of fixes.
 
-Write the fix plan as an ordered sequence of red-green cycles in the shape `tdd` prescribes, each cycle naming one test through the unit's outermost interface and the least change that passes it; never write all tests before any change.
+Write the fix plan as an ordered sequence of red-green cycles in the shape the `tdd` skill prescribes, each cycle naming one test through the unit's outermost interface and the least change that passes it; never write all tests before any change.
 
 Describe each test as the behavior a caller observes; never describe it by a file path, a line number, or a private function.
 
@@ -45,9 +45,9 @@ Write the hypotheses tested and why reproduction failed in the `Root cause` sect
 
 Write `none` beside any item an issue cannot fill; never leave an item blank.
 
-Write `improve-architecture` in `Fix plan` in place of the cycles for a design flaw handed to it; never write cycles for such a flaw.
+Write the `improve-architecture` skill in `Fix plan` in place of the cycles for a design flaw handed to it; never write cycles for such a flaw.
 
-Add the acceptance of the RFC — the proposal `improve-architecture` writes — as a further item in `Acceptance criteria` for such a flaw; never leave its acceptance out.
+Add the acceptance of the RFC — the proposal the `improve-architecture` skill writes — as a further item in `Acceptance criteria` for such a flaw; never leave its acceptance out.
 
 Cite each sibling document — another issue from the same investigation — by its title in the `Root cause` section of each document; never leave a sibling uncited.
 

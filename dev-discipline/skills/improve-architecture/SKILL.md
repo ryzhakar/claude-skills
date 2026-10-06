@@ -47,7 +47,7 @@ Label the sketch illustrative in the brief; never let a design agent read it as 
 </write-the-design-brief>
 
 <explore-designs-in-parallel>
-Launch three or more agents through `agentic-delegation`, each with the same design brief and one distinct constraint: the smallest interface, one to three entry points; the widest flexibility, many uses and extension points; the trivial common case, the most frequent caller's call reduced to one line; a ports-and-adapters shape when a dependency of any class but in-process exists; never give two agents the same distinct constraint.
+Launch three or more agents through the `agentic-delegation` skill, each with the same design brief and one distinct constraint: the smallest interface, one to three entry points; the widest flexibility, many uses and extension points; the trivial common case, the most frequent caller's call reduced to one line; a ports-and-adapters shape when a dependency of any class but in-process exists; never give two agents the same distinct constraint.
 
 Require from each agent the interface signature, a usage example, the complexity it hides, the handling of each dependency, and where the design breaks down; never accept a design missing one of the five.
 

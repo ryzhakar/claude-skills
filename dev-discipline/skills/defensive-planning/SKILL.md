@@ -17,7 +17,7 @@ List every file the work creates or changes, each with the one responsibility it
 
 List for each unit — one outermost interface, the surface callers of the unit use, and the zero to three files behind it, not counting the file that declares the interface or the tests — the contract: the interface's signature with typed parameters and return, a docstring of one sentence on one line, the behaviors a test proves through the interface, and for an interface that is a data type its fields with their types; never leave a unit without its contract.
 
-Leave, as the one exception to the rules above, every signature beneath the outermost interface to the implementer, who designs it through `tdd`; never fix one in the plan.
+Leave, as the one exception to the rules above, every signature beneath the outermost interface to the implementer, who designs it through the `tdd` skill; never fix one in the plan.
 
 Order the units so each unit's contract exists before a unit that calls it; never order a caller before its callee.
 </list-the-files-and-contracts>

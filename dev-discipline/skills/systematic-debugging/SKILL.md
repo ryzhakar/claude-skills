@@ -49,13 +49,13 @@ Revert the testing change once it has confirmed or refuted the hypothesis; never
 
 Form a new hypothesis when the test refutes the first; never add a fix on top of a refuted one.
 
-Investigate several hypotheses in parallel, one agent per hypothesis, through `agentic-delegation`; never let one agent hold two.
+Investigate several hypotheses in parallel, one agent per hypothesis, through the `agentic-delegation` skill; never let one agent hold two.
 
 Write `I do not understand why X` and keep investigating when the mechanism is unclear; never propose a fix for a mechanism not yet understood.
 </test-one-hypothesis>
 
 <fix-the-root-cause>
-Write a failing test that reproduces the failure through the unit's outermost interface, as `tdd` prescribes, before the fix; never fix without one.
+Write a failing test that reproduces the failure through the unit's outermost interface, as the `tdd` skill prescribes, before the fix; never fix without one.
 
 Add a check at each layer the bad data crossed — rejection at the entry point, a precondition in the business logic, a guard on the operation the bad data would damage that is active where the damage is possible, such as a write outside a temporary directory during tests, and a log of the arguments before that operation; never add the check at one layer alone.
 

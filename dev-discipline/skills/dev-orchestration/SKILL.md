@@ -23,9 +23,9 @@ Take each verdict from its file — the `Verdict:` line of a spec verdict, the `
 </fix-the-artifact-paths>
 
 <plan-the-units>
-Launch an agent under `defensive-planning` to decompose the task into units — each independently testable, two to ten minutes of implementer work — and write the plan to its path; never launch an implementer without a plan on disk.
+Launch an agent under the `defensive-planning` skill to decompose the task into units — each independently testable, two to ten minutes of implementer work — and write the plan to its path; never launch an implementer without a plan on disk.
 
-Require the plan to fix each unit's outermost contract and gates and to leave every signature beneath the contract to the implementer, who designs it through `tdd`; never accept a plan that fixes an inner signature.
+Require the plan to fix each unit's outermost contract and gates and to leave every signature beneath the contract to the implementer, who designs it through the `tdd` skill; never accept a plan that fixes an inner signature.
 
 Create the integration branch — the branch every unit's work merges into — from the current branch with `git switch -c` in the project root, and leave it checked out there; never let a unit merge anywhere else.
 
@@ -113,7 +113,7 @@ Change one structural thing before the next cycle — launch fresh on a stronger
 </stop-the-review-fix-cycles-at-three>
 
 <launch-the-debugging-round>
-Launch agents under `systematic-debugging` when a failure has no clear cause — tests fail for an unclear reason, behavior contradicts the contract while the code looks right, a fix breaks something elsewhere, or a third review-fix cycle failed — before any structural change; never let an implementer guess at a fix.
+Launch agents under the `systematic-debugging` skill when a failure has no clear cause — tests fail for an unclear reason, behavior contradicts the contract while the code looks right, a fix breaks something elsewhere, or a third review-fix cycle failed — before any structural change; never let an implementer guess at a fix.
 
 Launch one agent per hypothesis, three at most, in parallel, and compare their evidence; never let one agent carry two hypotheses.
 

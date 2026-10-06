@@ -62,7 +62,7 @@ Invoke `dev-discipline:tdd` with the Skill tool when its text is absent from thi
 
 Implement what the contract fixes; never add a feature, a parameter, an abstraction, or a file the brief does not need.
 
-Design every signature beneath the contract through `tdd`; never expect one from the brief.
+Design every signature beneath the contract through the `tdd` skill; never expect one from the brief.
 
 Follow the codebase's existing structure and naming conventions in the files the unit touches; never depart from them in those files.
 
