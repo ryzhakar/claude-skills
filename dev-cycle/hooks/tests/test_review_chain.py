@@ -176,3 +176,10 @@ def test_messaging_an_unknown_agent_changes_nothing(run_hook):
     subagent_stopped(run_hook, "dev-cycle:implementer")
     agent_messaged(run_hook, "someone-else")
     assert orchestrator_stops(run_hook) is not None
+
+
+def test_a_malformed_reviewer_stop_opens_no_stage(run_hook):
+    subagent_stopped(run_hook, "dev-cycle:implementer", "Status: DONE\nWorktree: /tmp/wt")
+    agent_launched(run_hook, "dev-cycle:spec-reviewer", "r1")
+    subagent_stopped(run_hook, "dev-cycle:spec-reviewer", "Dispatch malformed: base SHA, verdict path")
+    assert orchestrator_stops(run_hook) is None
