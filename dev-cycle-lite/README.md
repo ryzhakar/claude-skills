@@ -44,12 +44,12 @@ assistant: "I'll launch a fresh executor agent with the correction prescription.
 
 ### [prescriber](agents/prescriber.md)
 
-Write a prescription — an implementation plan leaving the executor no decision, no option, and no signature — for one unit from a spec and its contract, by the prescriptive-planning skill. Use it before each executor launch in the lite cycle, and again to rewrite a prescription around review findings. Examples:
+Write a prescription — an implementation plan leaving the executor no decision, no option, and no signature — for one unit from a spec and its requirements, by the prescriptive-planning skill. Use it before each executor launch in the lite cycle, and again to rewrite a prescription around review findings. Examples:
 
 <example>
 Context: The lite cycle has planned a unit and needs its prescription before launching an executor.
 user: "Prescribe the invoice-export unit"
-assistant: "I'll launch the prescriber agent with the spec, the unit's contract, and the prescription path."
+assistant: "I'll launch the prescriber agent with the spec, the unit's requirements, and the prescription path."
 </example>
 
 <example>

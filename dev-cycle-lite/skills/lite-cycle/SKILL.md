@@ -32,7 +32,7 @@ Write the status file at the path the `dev-cycle` skill fixes after planning and
 </take-the-spec>
 
 <prescribe-each-unit>
-Launch `prescriber` once per unit, in the background, on opus — the strongest model tier — with the spec path, the unit's contract and gates copied from the plan, the unit's input paths, and the prescription path — `briefs/prescriber-${unit}.md` under the artifact directory the `dev-cycle` skill fixes, `${unit}` the unit's name in the plan; never launch it with another item.
+Launch `prescriber` once per unit, in the background, on opus — the strongest model tier — with the spec path, the unit's requirements and gates copied from the plan, the unit's input paths, and the prescription path — `briefs/prescriber-${unit}.md` under the artifact directory the `dev-cycle` skill fixes, `${unit}` the unit's name in the plan; never launch it with another item.
 
 Hold the executor launch until the prescription is on disk; never launch an executor without one.
 </prescribe-each-unit>
@@ -62,7 +62,7 @@ Integrate a unit on `Verdict: PASS` in the verdict file and `Ready to merge: Yes
 </integrate-each-passed-unit>
 
 <re-prescribe-after-a-failed-review>
-Launch `prescriber` again after a `BLOCKED` executor report or after any review other than `Verdict: PASS` with `Ready to merge: Yes`, with the spec path, the unit's contract, gates, and input paths from its first launch, the failed prescription's path, and the findings path — the `BLOCKED` report's file, the verdict file after `Verdict: FAIL`, or the quality report file after a `Ready to merge:` other than `Yes`; never launch it without the findings path.
+Launch `prescriber` again after a `BLOCKED` executor report or after any review other than `Verdict: PASS` with `Ready to merge: Yes`, with the spec path, the unit's requirements, gates, and input paths from its first launch, the failed prescription's path, and the findings path — the `BLOCKED` report's file, the verdict file after `Verdict: FAIL`, or the quality report file after a `Ready to merge:` other than `Yes`; never launch it without the findings path.
 
 Pass it `briefs/prescriber-${unit}-2.md`, then `-3.md`, then `-4.md`, as the prescription path; never pass an earlier path again.
 
