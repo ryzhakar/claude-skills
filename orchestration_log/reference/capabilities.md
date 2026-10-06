@@ -17,7 +17,7 @@ Eleven plugins, each a top-level directory (counted 2026-10-06). `.claude-plugin
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
-**orchestration** — agent delegation and discontinuous-existence coping mechanisms. Memory,
+**orchestration** — agent delegation and discontinuous-existence coping mechanisms (5.0.1, 2026-10-06: `agentic-delegation` points at `dev-cycle`). Memory,
 record continuity, and the orientation hooks moved to `memento` 2026-09-18; `session-checkpoint` and
 `session-close` are retired, thin pointers to `memento:event-capture` and `memento:span-closure`.
 Skills: `agentic-delegation` (decompose, launch, verify, assemble; owns the orchestrator identity
@@ -64,8 +64,9 @@ as a background launch the user enters or as a sibling `claude --agent dev-cycle
 mandate for a foreground completion; an implementer stop opens a stage only on `Status: DONE`; and
 `Stop`, which continues the orchestrator's turn with the pending stage's mandate from `hooks/templates/`
 up to three times, once for a merge decision. State under `${CLAUDE_PLUGIN_DATA}/review-chain/<session>.json`,
-pruned after 7 days. Tests: `just hooks-test` (20, measured 2026-10-06). Artifacts under
-`orchestration_log/recon/${DATE}/`; the spec under `docs/specs/`.
+pruned after 7 days; a reviewer stop whose message begins `Dispatch malformed:` opens no stage. Tests: `just hooks-test`
+(21, measured 2026-10-06). Artifacts under `orchestration_log/recon/${DATE}/`; the spec under `docs/specs/`. A run
+the user marks lite dispatches dev-cycle-lite's `suborchestrator` from `dispatch-the-lite-cycle` in place of the stages below it.
 
 **dev-cycle-lite** — the cost-tiered cycle over dev-cycle and dev-discipline, 1.0.0 (created
 2026-10-06), no hooks. Skills: `prescriptive-planning` (the former `defensive-planning`, now fixing every
@@ -73,8 +74,8 @@ signature beneath the outermost interface), `lite-cycle` (delta over `dev-cycle`
 on: every unit on haiku, an opus prescription per unit, the suborchestrator reviews each unit itself,
 re-prescription after a failed review, escalation at the third failed cycle). Agents: `prescriber`
 (`model: opus`, preloads `dev-cycle-lite:prescriptive-planning`), `suborchestrator` (`model: sonnet`,
-holds `Agent`, runs `lite-cycle` at depth 1), `executor` (`model: haiku`, `isolation: worktree`,
-disposable, follows the prescription literally, reports `DONE` or `BLOCKED`).
+holds `Agent`, runs `lite-cycle` at depth 1, reviews each unit itself), `executor` (`model: haiku`, `isolation: worktree`,
+disposable, executes the prescription's exact text, matches gates as Python `re` patterns, reports `DONE` or `BLOCKED`).
 
 **manifesto** — constitution binding.
 Skills: `manifesto-oath` (identity construction from loaded constitution elements; tiered name

@@ -1,6 +1,6 @@
 # Session 2026-10-06 — dev-cycle restructure
 
-Status: in progress; seam round running; every commit pushed to `claude/dev-cycle-restructure`, PR #3.
+Status: complete, 2026-10-06 ~20:20 UTC; every commit pushed to `claude/dev-cycle-restructure`, PR #3 open against main; heartbeat Routine disabled at delivery.
 
 Opened at the owner's GO (~18:00 UTC) under `/work-silently`, after the PR #2 review of the morning's dev-discipline iteration asked for a restructure: planning the orchestration is the orchestrator's work, the agentic implementer and the prescription-following executor are different dynamics, and the loop needs an owner-interviewing spec stage. Plan frozen at `reviews/dev-cycle-restructure-plan.md`; rulings in `history/2026-10-05/events.md`.
 
@@ -12,7 +12,7 @@ Platform facts measured: `AskUserQuestion` is stripped from subagents (docs); a 
 
 ## The checker loop
 
-Three blind author–checker rounds, compliance and usability, over seven files (dev-cycle, spec-capturer, lite-cycle, prescriptive-planning, prescriber, executor, suborchestrator): r1 7/26, 7/8, 7/8, 3/15, 1/6, 7/5, 4/3; r2 7/21, 4/5, 4/9, 4/17, 1/9, 3/9, 2/3; r3 4/21, 3/4, 3/8, 5/15, 2/7, 2/5, 2/4. Every finding applied; struck: `permissionMode` on spec-capturer (a Claude Code field the standard's list omits), terms owned by `agentic-delegation` or sibling agents. Rounds closed at r3 — compliance single-digit everywhere, usability steady as checkers invent fresh cases. Reports under `recon/2026-10-06/checks/`, prompts beside them, ids in `agents.md` there. One seam checker over the three-layer chain follows.
+Three blind author–checker rounds, compliance and usability, over seven files (dev-cycle, spec-capturer, lite-cycle, prescriptive-planning, prescriber, executor, suborchestrator): r1 7/26, 7/8, 7/8, 3/15, 1/6, 7/5, 4/3; r2 7/21, 4/5, 4/9, 4/17, 1/9, 3/9, 2/3; r3 4/21, 3/4, 3/8, 5/15, 2/7, 2/5, 2/4. Every finding applied; struck: `permissionMode` on spec-capturer (a Claude Code field the standard's list omits), terms owned by `agentic-delegation` or sibling agents. Rounds closed at r3 — compliance single-digit everywhere, usability steady as checkers invent fresh cases. Reports under `recon/2026-10-06/checks/`, prompts beside them, ids in `agents.md` there. One blind seam checker over the three-layer chain found 30 mismatches, all applied toward the producer: the hook mandates carry the agents' delta items and skip malformed reviewer stops (21 tests); the implementer takes every continuation item the loop sends; the quality re-review carries the fresh spec verdict path; the spec-capturer sends `Spec:` from a sibling session; dev-cycle names its exceptions to `agentic-delegation`, passes absolute spec paths, launches implementers with the prompt text inline, fixes `briefs/`, and gained `dispatch-the-lite-cycle`; lite-cycle takes four items, re-prescribes to `-4`, names the findings file per failure kind, relaunches malformed agents; the prescription carries exact step text, numbered steps, `re` gates, and a `Commit` section; `agentic-delegation` points at `dev-cycle` (orchestration 5.0.1).
 
 ## Deviations from the plan
 
@@ -24,7 +24,7 @@ Events and failures in `history/2026-10-05/` (the day's one journal); core-shape
 
 ## Residue
 
-- Tokens: ten instruction files total 14296 (dev-cycle skill 3860, its agents 5086, lite skills 2799, lite agents 2551); no ceilings were set for this span.
+- Tokens: ten instruction files total ~14.9k after the seam round (14296 before it) (dev-cycle skill 3860, its agents 5086, lite skills 2799, lite agents 2551); no ceilings were set for this span.
 - The hook chain has not run in a live session under the `dev-cycle:` prefix; the suborchestrator has not launched at depth 1 with hooks firing beneath it.
 - `spec-chef`'s own output shape is unchanged; the spec-capturer folds its artifacts into one file by instruction alone.
 - Four pre-existing `${CLAUDE_PLUGIN_ROOT}` quoting warnings in `manifesto/hooks/hooks.json` stand untouched.
