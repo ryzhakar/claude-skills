@@ -1,8 +1,8 @@
 ---
-name: dev-orchestration
+name: dev-cycle
 description: >
-  Drive the plan, implement, review, fix, and integrate loop over software work through the implementer, spec-reviewer, and code-quality-reviewer agents, as an extension of agentic-delegation.
-  "implement a feature end-to-end", "execute an implementation plan", "build this with agents", "orchestrate development", "run the dev loop",
+  Drive the specify, plan, implement, review, and integrate loop over software work through the spec-capturer, implementer, spec-reviewer, and code-quality-reviewer agents, as an extension of agentic-delegation.
+  "specify and implement", "implement a feature end-to-end", "build this with agents", "orchestrate development", "run the dev cycle",
   "implement using subagents", "dispatch implementers", "coordinate implementation and review", or any coding task an orchestrator delegates.
 ---
 
@@ -15,17 +15,31 @@ Treat every action verb in the request — implement, build, fix, refactor, test
 <fix-the-artifact-paths>
 Write every artifact under `orchestration_log/recon/${DATE}/`, where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each launch prompt at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name, `${unit}` the name the plan gives the unit — one outermost interface and the one to three files behind it — or `all` for a whole-task launch, and `-2`, `-3` appended to a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the implementer and the two reviewers at `reports/${agent}-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prescription or brief an agent writes for another at `briefs/${agent}-${unit}.md`; each launch prompt at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name, `${unit}` the name the plan gives the unit — one outermost interface and the one to three files behind it — or `all` for a whole-task launch, and `-2`, `-3` appended to a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the implementer and the two reviewers at `reports/${agent}-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Take the implementer's worktree — the checkout the platform creates for an `implementer` run, on its own branch — from the `Worktree:` line of its report; never take a worktree path from anywhere else.
 
 Take each verdict from its file — the `Verdict:` line of a spec verdict, the `Ready to merge:` line of a quality report; never take a verdict from return text — the text an agent ends with.
 </fix-the-artifact-paths>
 
-<plan-the-units>
-Launch an agent under the `defensive-planning` skill to decompose the task into units — each independently testable, two to ten minutes of implementer work — and write the plan to its path; never launch an implementer without a plan on disk.
+<capture-the-spec>
+Provision the `spec-capturer` agent when the request names no spec file — a specification the owner has answered for — either as a background `Agent` launch the owner enters to answer its questions, or as a sibling session the owner starts in the project root with `claude --agent dev-cycle:spec-capturer`; never interview the owner in the orchestrator's own context.
 
-Require the plan to fix each unit's outermost contract and gates and to leave every signature beneath the contract to the implementer, who designs it through the `tdd` skill; never accept a plan that fixes an inner signature.
+Pass it the request text, the project root, and the spec path — `specs/${slug}.md`, `docs/specs/${slug}.md`, or the directory the project already uses, created as `docs/specs/` when none exists; never pass it a plan or a unit.
+
+Take `Spec: <path>` as the capturer's only accepted return — its final message, or the message the sibling session sends; never act on a stop that returns another text.
+
+Read the spec file whole before planning; never plan from the request while a spec file exists.
+</capture-the-spec>
+
+<plan-the-units>
+Decompose the spec yourself into units — each one outermost interface and the one to three files behind it, independently testable, two to ten minutes of implementer work — and write the plan to its path; never launch an implementer without a plan on disk.
+
+Fix in the plan, for each unit, the outermost contract — the interface's name, its typed parameters, its typed return, and the behaviors callers observe — and the gates — the commands whose exit codes prove the unit done; never fix a signature beneath the contract, which the implementer designs through the `tdd` skill.
+
+Order the units by dependency — a callee before its caller — and list for each the files it may touch; never let two units launched in parallel share a file.
+
+Assign each unit a tier by its risk — sonnet by default, opus where the unit's failure voids other units or its reasoning runs deep; never assign a unit to haiku.
 
 Create the integration branch — the branch every unit's work merges into — from the current branch with `git switch -c` in the project root, and leave it checked out there; never let a unit merge anywhere else.
 
@@ -45,7 +59,7 @@ Write each implementer's prompt to its prompt file with six parts — the unit's
 
 Launch `implementer` in the background; never launch it in the foreground.
 
-Launch `implementer` on sonnet; never launch it on haiku.
+Launch `implementer` on the tier the plan assigns the unit; never launch it on haiku.
 
 Rely on the agent's own frontmatter for the worktree; never create, enter, or name a worktree for it.
 
