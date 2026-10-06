@@ -9,11 +9,11 @@ description: >
 <name-the-outermost-interface>
 Name the outermost interface — the function, command, endpoint, or module surface that callers of the unit, the code being built, use — before writing a test; never start from a function beneath it.
 
-Draw the barrier — the line between the outermost interface and everything beneath it — around the whole unit a caller sees; never draw it around a part of the unit.
+Draw the barrier — the line between the outermost interface and everything beneath it, held in the design and never marked in the code — around the whole unit a caller sees; never draw it around a part of the unit.
 
 Take as the outermost interface of a command or an endpoint its entry function — the function that the program entry point, outside the unit, calls with the parsed input and the side effects — the clock, a random source, the file system, the network, a database, the process environment, a subprocess; never take the parsing or the transport as the interface.
 
-Count as foreign a call into a library, a service, a runtime, or another team's module; never count a call into the unit's own code as foreign.
+Count as foreign a call into a library, a service, a runtime, or any code that exists before the unit; never count a call into the unit's own code as foreign.
 </name-the-outermost-interface>
 
 <write-one-failing-test>
@@ -27,6 +27,8 @@ Name the test for what the caller gets, in the caller's words; never name it for
 </write-one-failing-test>
 
 <pretend-call-the-missing-functions>
+Declare the outermost interface with its full signature — name, typed parameters, typed return — and one docstring of one sentence on one line; never write its body before its signature.
+
 Write the body of the outermost interface as a sequence of painfully obvious steps, each step a pretend call — a call to a function that does not exist yet; never write a step that does two things.
 
 Name each pretend call for what it does and returns, as its best caller would want to read it; never name one for how it works.
@@ -35,7 +37,7 @@ Shape each pretend call's arguments and return as the call site — the line tha
 </pretend-call-the-missing-functions>
 
 <declare-the-signatures>
-Declare each pretend-called function with its full signature — name, typed parameters, typed return — and a stub body, which is `...`, a `todo`, or a no-op; never fill a body in this step.
+Declare each pretend-called function with its full signature and a stub body, which is `...`, a `todo`, or a no-op; never fill a body in this step.
 
 Spend most of the unit's design effort on signatures; never spend it on bodies.
 
@@ -49,7 +51,7 @@ Keep every fact a caller or a later maintainer needs in the signature and the do
 <recurse-to-the-leaves>
 Treat each declared function as the next outermost interface and repeat the pretend calls and the declarations inside it; never skip a level.
 
-Stop recursing at a body that is a foreign call or a single primitive operation — arithmetic, a lookup, a literal construction; never stop above one.
+Stop recursing at a body that is a foreign call or one statement — arithmetic, a lookup, a literal construction, a branch, or an exception handler; never stop above one.
 </recurse-to-the-leaves>
 
 <pass-side-effects-down>
@@ -57,7 +59,7 @@ Initialize every side effect at the composition root, the program entry point or
 
 Pass each side effect as a parameter into the outermost interface and down to every function beneath the barrier that needs it; never let a function reach for one it was not handed.
 
-Keep every function beneath the barrier pure — its result a function of its arguments and nothing else; never let one gain a side effect to save a parameter.
+Keep every function beneath the barrier pure — its result a function of its arguments, handed side effects included, and nothing else; never let one gain a side effect to save a parameter.
 </pass-side-effects-down>
 
 <fill-bodies-to-green>
@@ -87,7 +89,7 @@ Carry every explanation in names, signatures, docstrings, and structure; never w
 
 Treat a comment found in the unit as a defect and rewrite the code until the comment has nothing left to say; never leave one standing.
 
-Name every literal that carries meaning — a bare number or string in logic — as a constant whose name states the meaning; never leave such a literal bare.
+Name every literal that carries meaning — every bare number or string in logic except `0`, `1`, and the empty string — as a constant whose name states the meaning; never leave such a literal bare.
 
 Name a function for the one thing it does; never join two things with `and` in a name.
 </carry-explanations-in-code>
