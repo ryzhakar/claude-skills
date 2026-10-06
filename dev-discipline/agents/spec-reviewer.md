@@ -17,7 +17,7 @@ description: |
 
 model: inherit
 color: cyan
-tools: ["Read", "Write", "Grep", "Glob", "Bash"]
+tools: ["Read", "Write", "Grep", "Glob", "Bash", "Skill"]
 ---
 
 <take-the-dispatch>
