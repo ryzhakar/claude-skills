@@ -7,7 +7,7 @@ description: >
 ---
 
 <investigate-before-fixing>
-Finish the investigation — the steps through `test-one-hypothesis` below — before changing any product code, apart from a log line that instruments a boundary — records what enters and leaves a component — and the smallest change that tests a hypothesis or a difference, each reverted before the fix; never change code to see what happens.
+Finish the investigation — the steps through `test-one-hypothesis` below — before changing any product code, apart from a log line that instruments a boundary — records what enters and leaves a component — and the smallest change that tests a hypothesis or a difference between the broken code and working code, each reverted before the fix; never change code to see what happens.
 
 Apply the whole procedure to every failure, including one that looks simple and one found under time pressure; never skip it for size or urgency.
 </investigate-before-fixing>
@@ -69,7 +69,7 @@ Run the new test and the whole suite; never call the failure fixed on the new te
 <stop-at-three-failed-fixes>
 Count the fix attempts on this failure, including those made before this investigation began; never lose the count.
 
-Return to `reproduce-and-read` with the new evidence after a failed fix; never retry a fix unchanged.
+Revert a failed fix, then return to `reproduce-and-read` with the new evidence; never retry a fix unchanged.
 
 Stop after the third failed fix; never attempt a fourth fix on the same architecture.
 
