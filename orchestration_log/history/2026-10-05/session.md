@@ -16,6 +16,14 @@ Records: events, failures, this file; `architecture_log.md` two entries; `capabi
 
 Twenty-one author–checker rounds ran across the eleven files, two blind checkers each, rulings carried inline. Counts fell round over round; what remained after round three was single-digit on every file. Reports live under `orchestration_log/recon/2026-10-05/checks/`, prompts under `prompts/`, briefs under `history/2026-10-05/briefs/`.
 
+## The seam round
+
+The owner, shown the residue, bought one launch round and one application round in place of a full-scope review. Five blind read-only checkers ran in parallel on 2026-10-06: orchestrator↔agents dispatch seams (11), tdd↔agents plus a regression read of the round-4 diff (12), hooks↔skill (9), plan conformance (14), and a live exercise of `find-polluter.sh` (3). Every seam finding was applied toward the producer's wording; the hook chain gained `Status: DONE` gating and `SendMessage` continuation retirement with eight more tests; the polluter script stopped reading a dead test command as a clean suite. Seven plan-conformance items stand as recorded deviations, one restored a lost sentence, one was no `tdd` rule, four became residue below. Reports under `orchestration_log/recon/2026-10-06/checks/`, prompts beside them, ids in `agents.md` there.
+
+## Where the rest is
+
+Events and failures beside this file; the plan and briefs under `reviews/` and `briefs/`; core-shape changes in `reference/architecture_log.md` (three entries dated 2026-10-05 and 2026-10-06); the standing description in `reference/capabilities.md`; the hook lifecycle pattern in `reference/hooks-reference.md`; the disposable checker material under `orchestration_log/recon/2026-10-0{5,6}/`, gitignored.
+
 ## Residue
 
 - Token ceilings: eight files closed above their plan ceiling (total 14442 against 12840 planned, 22041 baseline — a 34% cut); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded. Under ceiling: dev-orchestration, systematic-debugging, the templates.
