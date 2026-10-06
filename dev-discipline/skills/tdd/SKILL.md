@@ -11,13 +11,17 @@ Name the outermost interface — the function, command, endpoint, or module surf
 
 Draw the barrier — the line between the outermost interface and everything beneath it — around the whole unit a caller sees; never draw it around a part of the unit.
 
+Take as the outermost interface of a command or an endpoint its entry function — the function that the program entry point, outside the unit, calls with the parsed input and the side effects; never take the parsing or the transport as the interface.
+
 Count as foreign a call into a library, a service, a runtime, or another team's module; never count a call into the unit's own code as foreign.
 </name-the-outermost-interface>
 
 <write-one-failing-test>
 Write one test proving one behavior through the outermost interface; never write a second test before the first passes.
 
-Run the test and read its failure; never continue from a test that passes before any code exists or fails for a reason other than the missing code or behavior.
+Run the test before writing any code; never write code before the run.
+
+Read the failure; never continue from a test that passes before any code exists or fails for a reason other than the missing code or behavior.
 
 Name the test for what the caller gets, in the caller's words; never name it for how the code achieves it.
 </write-one-failing-test>
@@ -49,7 +53,7 @@ Stop recursing at a body that is a foreign call or a single primitive operation 
 </recurse-to-the-leaves>
 
 <pass-side-effects-down>
-Initialize every side effect — the clock, a random source, the file system, the network, a database, the process environment, a subprocess — at the composition root, the program entry point or the test that calls the outermost interface; never construct one inside the unit.
+Initialize every side effect — the clock, a random source, the file system, the network, a database, the process environment, a subprocess — at the composition root, the program entry point or the test that calls the outermost interface; never construct one in the outermost interface or beneath it.
 
 Pass each side effect as a parameter into the outermost interface and down to every function beneath the barrier that needs it; never let a function reach for one it was not handed.
 
@@ -89,11 +93,11 @@ Name a function for the one thing it does; never join two things with `and` in a
 </carry-explanations-in-code>
 
 <test-at-the-barrier>
-Test through the outermost interface; never test a function beneath the barrier unless one test through the outermost interface cannot reach its behavior.
+Test through the outermost interface; never test a function beneath the barrier unless no test through the outermost interface can reach its behavior.
 
 Test such a function with property-based tests — tests that generate many inputs against a stated property, such as `hypothesis` in Python; never test one with hand-picked examples alone.
 
-Mock foreign calls alone, by passing a stand-in for the side effect through the outermost interface's parameters, or through the entry function's parameters for a command or an endpoint; never mock the unit's own functions.
+Mock side effects alone, by passing a stand-in for each through the outermost interface's parameters; never mock the unit's own functions.
 
 Pin a behavior — assert an exact current value or sequence as it stands — where the behavior is unconventional and no signature, type, or name can hold it; never pin a value a type could forbid.
 </test-at-the-barrier>
@@ -107,5 +111,7 @@ Stop when every behavior the request states has a passing test; never stop while
 </write-the-next-test>
 
 <read-the-finished-unit>
-Read the finished unit against every instruction above and run every test; never report the unit done on a failing run or a standing comment.
+Read the finished unit against every instruction above; never report the unit done with an instruction unmet.
+
+Run every test before reporting; never report the unit done on a failing run.
 </read-the-finished-unit>
