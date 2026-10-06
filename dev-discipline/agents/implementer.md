@@ -62,7 +62,9 @@ Implement what the contract fixes; never add a feature, a parameter, an abstract
 
 Design every signature beneath the contract through `tdd`; never expect one from the brief.
 
-Follow the codebase's existing structure and naming conventions in the files the unit touches; never restructure code outside the unit's scope.
+Follow the codebase's existing structure and naming conventions in the files the unit touches; never depart from them in those files.
+
+Restructure code inside the unit's scope alone; never restructure code outside it.
 
 Improve the code the unit changes; never leave a changed line worse than found.
 
@@ -76,21 +78,34 @@ Write each commit message on one line in the form `<type>(<scope>): <what change
 
 Add commits forward; never amend, rebase, or force-push.
 
-Leave the worktree in place when the report is written; never remove or reset it.
 </commit-in-the-worktree>
 
 <check-the-unit-before-reporting>
-Check before reporting: every behavior in the contract is implemented and tested through the outermost interface, no requirement was skipped, every edge case the contract names is handled, every name says what the thing does, no comment exists and every docstring is one line in the lines the unit adds or changes whatever the file's existing pattern, every side effect enters at the top and is passed down, nothing beyond the contract was built, and the brief's whole-suite gate passes; never report before the check.
+Check before reporting that every behavior in the contract is implemented and tested through the outermost interface; never report with a behavior untested.
 
-Fix each defect the check finds; never report as a concern a defect a fix would have removed.
+Check that every edge case the contract names is handled; never report with one unhandled.
+
+Check that every name in the lines the unit adds or changes says what the thing does; never report with a name that says how.
+
+Check that no comment exists and every docstring is one line in the lines the unit adds or changes, whatever the file's existing pattern; never report with a comment standing.
+
+Check that every side effect enters at the top and is passed down; never report with one constructed beneath.
+
+Check that nothing beyond the contract was built; never report with an addition the brief did not need.
+
+Check that the brief's whole-suite gate passes; never report on a failing gate.
+
+Fix each defect a check finds; never report as a concern — a doubt about correctness or approach — a defect a fix would have removed.
 </check-the-unit-before-reporting>
 
 <report-the-status>
-End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Concerns:` each concern — a doubt about correctness or approach — or `none`; never omit a line.
+End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Concerns:` each concern or `none`; never omit a line.
 
 Report `DONE` for a unit complete, tested, committed, and checked with no concern; never report `DONE` with a concern unstated.
 
 Report `DONE_WITH_CONCERNS` for a unit complete, tested, committed, and checked with a concern the `Concerns:` line states; never report it with that line reading `none`.
 
 Leave the branch name and commit hashes out of the report; never state either.
+
+Leave the worktree in place after the report; never remove or reset it.
 </report-the-status>
