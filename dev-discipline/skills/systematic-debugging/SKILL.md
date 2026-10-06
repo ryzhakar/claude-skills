@@ -23,11 +23,13 @@ List every change since the last known good state — commits, dependencies, con
 </reproduce-and-read>
 
 <trace-to-the-source>
-Trace backward from the line that raised the error through each caller or writer of the value it failed on, checking the value each passed or wrote, until the first point where the data went wrong; never fix where the error appears.
+Trace backward from the line that raised the error through each caller or writer of the value it failed on, checking the value each passed or wrote, until the first point where the data went wrong; never stop the trace before that point.
 
 Instrument each component boundary in a multi-component system — log what enters and what leaves each component — and run once to see which boundary the data crosses wrong; never guess the failing component.
 
-Bisect test pollution — state one test leaves behind that fails another — with `scripts/find-polluter.sh <pollution-path> <test-command> <test-files...>` from this skill's directory, which runs the tests one at a time and stops at the first that creates the path, wrapping the test command so it creates a file when the leftover state is not a file; never read every test by eye to find it.
+Bisect test pollution — state one test leaves behind that fails another — with `scripts/find-polluter.sh <pollution-path> <test-command> <test-files...>` from this skill's directory, which runs the tests one at a time and stops at the first that creates the path; never read every test by eye to find it.
+
+Wrap the test command so it creates a file when the leftover state is not a file; never pass the script a state it cannot see.
 </trace-to-the-source>
 
 <compare-with-working-code>
@@ -39,9 +41,11 @@ Write down what the broken code assumes about its inputs, state, environment, an
 </compare-with-working-code>
 
 <test-one-hypothesis>
-State one hypothesis in writing, in the form `X is the root cause because Y`; never test two in one change.
+State one hypothesis in writing, in the form `X is the root cause because Y`; never hold one unwritten.
 
-Test the hypothesis with the smallest change that can confirm or refute it, changing one variable, and revert the change; never stack a second change on an untested first.
+Test the hypothesis with the smallest change that can confirm or refute it, changing one variable; never stack a second change on an untested first.
+
+Revert the testing change once it has confirmed or refuted the hypothesis; never leave it in the code.
 
 Form a new hypothesis when the test refutes the first; never add a fix on top of a refuted one.
 
@@ -67,7 +71,9 @@ Count the fix attempts on this failure, including those made before this investi
 
 Return to `reproduce-and-read` with the new evidence after a failed fix; never retry a fix unchanged.
 
-Stop after the third failed fix and report the architecture as the cause, citing each fix that revealed new coupling, needed a large refactor, or created a symptom elsewhere; never attempt a fourth fix on the same architecture.
+Stop after the third failed fix; never attempt a fourth fix on the same architecture.
+
+Report the architecture as the cause, citing each fix that revealed new coupling, needed a large refactor, or created a symptom elsewhere; never report the third failure as one more bug.
 </stop-at-three-failed-fixes>
 
 <report-the-cause>
