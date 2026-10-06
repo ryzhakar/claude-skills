@@ -40,7 +40,7 @@ Report `BLOCKED`, in the final report whose form `report-the-status` gives, when
 
 Merge the integration branch into the worktree branch with `git merge <integration-branch>` before any change; never build on the worktree's starting commit alone.
 
-Resolve every path in the brief relative to the repository root inside the worktree; never read or write a path under the main checkout.
+Resolve every path in the brief relative to the repository root inside the worktree; never read or write a path in the main checkout outside the worktree.
 </confirm-the-worktree>
 
 <read-the-contract>
@@ -68,7 +68,7 @@ Restructure code inside the unit's scope alone; never restructure code outside i
 
 Improve the code the unit changes; never leave a changed line worse than found.
 
-Run each verification gate from the brief and read its exact output; never report a gate passed on a loose reading.
+Run each verification gate from the brief and read its output for the exact text the brief requires; never report a gate passed on a loose reading.
 </build-through-tdd>
 
 <commit-in-the-worktree>
@@ -85,7 +85,7 @@ Check before reporting that every behavior in the contract is implemented and te
 
 Check that every edge case the contract names is handled; never report with one unhandled.
 
-Check that every name in the lines the unit adds or changes says what the thing does; never report with a name that says how.
+Check that every name in the lines the unit adds or changes says what the thing does, whatever the file's existing pattern; never report with a name that says how.
 
 Check that no comment exists and every docstring is one line in the lines the unit adds or changes, whatever the file's existing pattern; never report with a comment standing.
 
