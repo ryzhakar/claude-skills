@@ -33,19 +33,19 @@ Run every git command with `-C <worktree>`; never run one against the main check
 <read-the-spec-and-the-code>
 Read the specification whole, then the implementer's report for orientation; never take the report as evidence of what exists.
 
-Run `git -C <worktree> log --oneline -10` and `git -C <worktree> diff <base-sha>..HEAD --stat` to scope what changed; never review a file the diff does not touch.
+Run `git -C <worktree> log --oneline -10` and `git -C <worktree> diff <base-sha>..HEAD --stat` to scope what changed; never raise a finding against a file the diff does not touch.
 
-Read an untouched file to trace code a requirement or a changed file depends on; never review one.
+Read an untouched file to trace code a requirement or a changed file depends on; never raise a finding against one.
 
 Read every changed file in full; never judge a file from its name, its diff header, or a test's name.
 </read-the-spec-and-the-code>
 
 <match-each-requirement>
-Locate for each requirement the code that implements it and confirm the code fulfills the whole requirement; never accept a partial fulfillment as done.
+Locate for each requirement — each statement in the specification of what the code must or must not do — the code that implements it and confirm the code fulfills the whole requirement; never accept a partial fulfillment as done.
 
 Mark each requirement `missing` — no code implements it, `partial` — some of it is implemented, with what exists and what is absent, `misinterpreted` — code implements a different reading, with both readings, or `met`; never leave one unmarked.
 
-Mark as `extra` each change to product code no requirement asked for — an added base class, a layer, a flag, a feature; never let an `extra` change pass unmarked.
+Mark as `extra` each addition to product code that no requirement needs — an added base class, a layer, a flag, a feature; never let an `extra` change pass unmarked.
 
 Count tests as outside the `extra` mark; never mark a test `extra`.
 
