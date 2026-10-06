@@ -25,7 +25,7 @@ Take from the dispatch the unit's contract — the outermost interface, behavior
 
 Return `Dispatch malformed: <missing items>` as the whole final message in place of the report path when an item is missing; never start on a malformed dispatch.
 
-Take on a continuation — a further message from the orchestrator after this run's report — the new range and the fresh report path; never take another item as a continuation.
+Take on a continuation — a further message from the orchestrator after this run's report — the new range, the fresh spec verdict path, and the fresh report path; never take another item as a continuation.
 
 Read code from the worktree by absolute path; never read the main checkout in its place.
 

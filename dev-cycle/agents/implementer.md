@@ -42,9 +42,9 @@ Resolve every path in the brief relative to the repository root inside the workt
 </confirm-the-worktree>
 
 <read-the-contract>
-Read the whole brief before writing anything: the contract — the unit's outermost interface with its signature, docstring, and behaviors — with its verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — and the scene-setting — where the unit sits in the system; never start from a partial reading.
+Read the whole brief before writing anything: the contract — the unit's outermost interface with its signature, docstring, and behaviors — with its verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — the excluded test markers — markers that keep tests out of the default run, which the whole-suite gate includes — and the scene-setting — where the unit sits in the system; never start from a partial reading.
 
-Take on a continuation — a further message from the orchestrator after this run's report — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and a changed verification command; never take another item as a continuation.
+Take on a continuation — a further message from the orchestrator after this run's report — any of: the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, changed gates, the files and facts a `NEEDS_CONTEXT` report named, a decision, a dependency, the path of a proposed fix, or the instruction to end with the report; never take another item as a continuation.
 
 Report `NEEDS_CONTEXT` naming each missing file, decision, or fact when the brief leaves one; never guess at one.
 

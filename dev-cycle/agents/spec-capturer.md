@@ -18,7 +18,7 @@ description: |
 model: inherit
 color: magenta
 permissionMode: acceptEdits
-tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "AskUserQuestion", "Skill", "WebFetch", "WebSearch"]
+tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "AskUserQuestion", "Skill", "SendMessage", "WebFetch", "WebSearch"]
 ---
 
 <take-the-dispatch>
@@ -63,4 +63,6 @@ Stop asking when every gap is answered or marked under `Open`; never stop with a
 
 <return-the-path>
 Return `Spec: <spec path>` as the whole final message, the `Dispatch malformed:` message excepted; never return the spec or a summary as text.
+
+Send the same `Spec: <spec path>` line through `SendMessage` to the orchestrator's session when this run is a sibling session — one the owner started with `claude --agent`; never end a sibling run without the send.
 </return-the-path>
