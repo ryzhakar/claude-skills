@@ -1,0 +1,10 @@
+{
+  "name": "dev-cycle-lite",
+  "version": "1.0.0",
+  "description": "Cost-tiered development cycle over dev-cycle: an opus prescriber writes prescriptions that leave no decision, a sonnet suborchestrator runs the loop and both reviews, disposable haiku executors follow the prescription literally. No hooks.",
+  "author": {"name": "ryzhakar"},
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": ["orchestration", "lifecycle", "prescriptive-planning", "haiku", "cost"],
+  "dependencies": ["dev-cycle", "dev-discipline"]
+}
