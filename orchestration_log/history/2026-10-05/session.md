@@ -1,21 +1,22 @@
-# Session 2026-10-05
+# Session 2026-10-05 → 2026-10-06
 
-Opened on `claude/dev-discipline-iteration-yby2xn` to iterate dev-discipline under `memento:skill-creation`, with the orchestrator writing every instruction change itself and agents checking and verifying. The owner withdrew with full autonomy granted, one gate kept: a GO before the rewrite begins.
+Opened on `claude/dev-discipline-iteration-yby2xn` to iterate dev-discipline under `memento:skill-creation`, the orchestrator writing every instruction change itself, agents checking blind. GO came 23:12 UTC on 2026-10-05; the owner withdrew with a checkpoint ruling at 07:55 UTC on 2026-10-06.
 
-## Preparation
+## What shipped (2.2.0, every commit pushed)
 
-Every dev-discipline file, the orchestration parent, the skill-writing standard, the two conduct skills, the memento ontology and schema, the reference layer, the stance and governance reviews, and the manifestos were read from source. Platform documentation for agents, skills, hooks, and worktrees was fetched and read where the files make claims.
+Seven skills and three agents rewritten under the standard: XML imperative tags, one instruction per sentence, each paired with its own prohibition, terms defined at first use, no rationale. `tdd` now carries the owner's process — one failing test through the outermost interface, pretend calls, signatures with stub bodies, recursion to the leaves, side effects initialized at the composition root and passed down, no comments, one-line docstrings, refactor after green, tests held at the barrier, property tests beneath it. `code-quality-reviewer` checks against the preloaded `tdd` rather than a copied list; `implementer` preloads `tdd`, merges the integration branch first, and reports instead of asking; `spec-reviewer` gained Bash. `dev-orchestration` is delta-only against `agentic-delegation`, with the plan fixing outer contracts and the implementer designing beneath them.
 
-Four findings change the shape of the work beyond compression. The three SubagentStop mandates reach the stopping subagent, never the orchestrator — the documentation sends parent injection through PostToolUse on the Agent tool — so the review-chain hooks are redesigned around a recorded pending stage and a main-session Stop hook. Plugin subagents report a plugin-scoped type, so the bare matchers are anchored and widened. Subagent worktrees branch from the default branch, so the brief names the integration branch and the implementer merges it first. The platform now refuses edits and commands aimed at the main checkout from an isolated subagent, so the re-rooting prose across three agents gives way to one platform fact in the implementer.
+The hook layer was rebuilt on a platform fact: SubagentStop output reaches the subagent, not the parent. One tested script, `hooks/review-chain.py`, records pending review stages on SubagentStop, retires them on `PostToolUse` of the `Agent` tool, and continues the orchestrator's `Stop` with the pending mandate; twelve tests green through `just hooks-test`; `claude plugin validate` passes.
 
-The owner's code-writing process — outermost test first, pretend calls, signatures with stub bodies, recursion to the leaves, side effects passed down from the top, no comments, one-line docstrings, refactor after green, tests held at the barrier, property tests below it — becomes the new `tdd` and the checklist of `code-quality-reviewer`, with the plan fixing only each unit's outermost contract.
+Records: events, failures, this file; `architecture_log.md` two entries; `capabilities.md`, `conventions.md`, `hooks-reference.md` corrected; READMEs regenerated.
 
-The plan is `reviews/dev-discipline-iteration-plan.md`; reusable checker and verifier briefs are under `briefs/`; traces are in `events.md`.
+## The checker loop
 
-## In flight
+Twenty-one author–checker rounds ran across the eleven files, two blind checkers each, rulings carried inline. Counts fell round over round; what remained after round three was single-digit on every file. Reports live under `orchestration_log/recon/2026-10-05/checks/`, prompts under `prompts/`, briefs under `history/2026-10-05/briefs/`.
 
-Nothing. The platform-facts scout completed and was superseded by direct reads; no cron is set.
+## Residue
 
-## Direction
-
-GO executes the plan's §7 end to end. The version lands at 2.2.0 unless the GO names 3.0.0.
+- Token ceilings: seven files closed above their plan ceiling (total 13707 against 12840 planned, 22041 baseline); the overage is the standard's one-instruction-per-sentence rule and the definitions the usability checkers demanded.
+- Round-4 reports for tdd, defensive-planning, improve-architecture, triage-issue, receiving-code-review, code-quality-reviewer, and round-3 for spec-reviewer and systematic-debugging, round-2 usability for implementer and dev-orchestration, were in flight at the checkpoint; findings that arrive are applied and pushed, nothing new launches.
+- The cross-file contradiction pass and the independent verifier agent did not run; the orchestrator ran the mechanical checks itself (hook tests, validator, README check, hygiene greps, token counts).
+- The empty-string ending of `work-silently` loops in this harness; `check-back` needs a reset-aligned, environment-independent wake on a quota death. Both recorded in failures.md for their plugins.
