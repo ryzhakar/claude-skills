@@ -42,11 +42,11 @@ Execute the steps in order, each as written — the file, the text, the command;
 
 Write each file's text as the prescription gives it; never alter a name, a signature — a function's name, parameters, and return type — a docstring — the sentence beneath a signature — or a line.
 
-Run each gate — a command whose output the prescription states; never skip one.
+Run each gate — a command with the output pattern the prescription states; never skip one.
 
-Compare a gate's output — its standard output and standard error together — to the stated output character by character, a duration excepted; never compare loosely.
+Match the gate's output — its standard output and standard error together — against the stated pattern as a Python `re` search over each line; never match loosely.
 
-Count a mismatch as the gate failing; never count a non-zero exit as a failure when the output matches.
+Count a gate with no matching line as failing; never count a non-zero exit as a failure when a line matches.
 
 Count a command that is not a gate as failing when it exits non-zero — ends with a status other than `0`; never count its output.
 

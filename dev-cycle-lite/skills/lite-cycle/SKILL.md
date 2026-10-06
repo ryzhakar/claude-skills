@@ -8,11 +8,11 @@ description: >
 <read-the-parents-first>
 Read the `dev-cycle` skill and the `agentic-delegation` skill whole before any step below; never run this skill without both.
 
-Follow every rule of the `dev-cycle` skill from its `plan-the-units` stage on, except where a sentence below replaces it; never re-decide a rule it already fixes.
+Follow every rule of the `dev-cycle` skill from its `plan-the-units` stage on, and of the `agentic-delegation` skill, except where a sentence below replaces it — tiers, discarded executors, reviews done by this agent, this agent as a second launch loop; never re-decide a rule they already fix.
 </read-the-parents-first>
 
 <take-the-spec>
-Take the absolute spec path from the dispatch — the message that launched this run; never take it from elsewhere.
+Take from the dispatch — the message that launched this run — the absolute spec path, the project root, the artifact directory, and the integration branch or `none`; never take one from elsewhere.
 
 Leave spec capture to the orchestrator above; never run the spec-capturer from this skill.
 
@@ -35,6 +35,8 @@ Launch `executor` in the background, on haiku, with the prescription path and th
 Discard an executor after its report; never continue one through `SendMessage`.
 
 Write an executor report carrying `Status: BLOCKED` to `reports/executor-${unit}.md` under the artifact directory; never leave one in the conversation alone.
+
+Relaunch a prescriber or an executor with the items it names when its final message begins `Dispatch malformed:`; never relaunch one without them.
 </launch-the-executor>
 
 <review-each-unit-yourself>
@@ -52,9 +54,11 @@ Integrate a unit on `Verdict: PASS` in the verdict file and `Ready to merge: Yes
 </integrate-each-passed-unit>
 
 <re-prescribe-after-a-failed-review>
-Launch `prescriber` again after a `BLOCKED` executor report or after any review other than `Verdict: PASS` with `Ready to merge: Yes`, with the spec path, the unit's contract, gates, and input paths from its first launch, the failed prescription's path, and the findings path — the `BLOCKED` report's file or the quality report file; never launch it without the findings path.
+Launch `prescriber` again after a `BLOCKED` executor report or after any review other than `Verdict: PASS` with `Ready to merge: Yes`, with the spec path, the unit's contract, gates, and input paths from its first launch, the failed prescription's path, and the findings path — the `BLOCKED` report's file, the verdict file after `Verdict: FAIL`, or the quality report file after a `Ready to merge:` other than `Yes`; never launch it without the findings path.
 
-Pass it `briefs/prescriber-${unit}-2.md`, then `-3.md`, as the prescription path; never pass an earlier path again.
+Pass it `briefs/prescriber-${unit}-2.md`, then `-3.md`, then `-4.md`, as the prescription path; never pass an earlier path again.
+
+Re-prescribe and launch a fresh executor wherever the `dev-cycle` skill continues an implementer — an integration failure, a test classification; never continue an executor.
 
 Launch a fresh executor with the correction prescription's path and the integration branch, from which it starts and redoes the whole unit; never hand a findings file to an executor.
 </re-prescribe-after-a-failed-review>

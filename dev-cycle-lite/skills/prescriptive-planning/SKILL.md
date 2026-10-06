@@ -11,13 +11,13 @@ Write every step — one action on a named file — so that a gate — one line 
 
 Pick one answer for every choice the request — what was asked for — leaves open; never write `decide whether`, `either`, `if needed`, `consider`, or an `or` offering the executor alternatives in the prescription's prose, where quoted code is exempt.
 
-Order the prescription's `##` sections as: `Files and contracts`, `Failure modes observed` for a correction prescription, the units — each one outermost interface, the function or endpoint callers outside the unit use, with the zero to three files behind it, not counting the file that declares the interface or the tests — as `Unit 1` to `Unit N`, `Forbidden patterns`, `Requirement coverage`, `Definition of done`; never order them otherwise.
+Order the prescription's `##` sections as: `Files and contracts`, `Failure modes observed` for a correction prescription, the units — each one outermost interface, the function or endpoint callers outside the unit use, with the zero to three files behind it, not counting the file that declares the interface or the tests — as `Unit 1` to `Unit N`, `Forbidden patterns`, `Requirement coverage`, `Definition of done`, `Commit` — the one-line commit message the executor commits with; never order them otherwise.
 </write-for-the-executor>
 
 <write-a-correction-prescription>
-Write a correction prescription — a prescription written after a review found the implementation of an executed prescription incomplete — in the same form as an implementation prescription, from the executed prescription and the review report, whose paths the caller — the agent or person that requested the prescription — supplies; never write one as a list of complaints.
+Write a correction prescription — a prescription written after a review found the implementation of an executed prescription incomplete — in the same form as an implementation prescription, from the executed prescription and the findings file — the review's verdict or quality report, or the executor's `BLOCKED` report, naming what failed — whose paths the caller — the agent or person that requested the prescription — supplies; never write one as a list of complaints.
 
-Write under a heading `Failure modes observed` each failure mode — a shortcut, a construction that satisfies a gate without doing the work or evades a check, that the review report names — with the code it cites as evidence; never leave a failure mode the review report names unwritten.
+Write under a heading `Failure modes observed` each failure mode — a shortcut, a construction that satisfies a gate without doing the work or evades a check, that the findings file names, or the open step a `BLOCKED` report names — with the code it cites as evidence; never leave a failure mode the findings file names unwritten.
 </write-a-correction-prescription>
 
 <list-the-files-and-contracts>
@@ -31,11 +31,11 @@ Order the units so each unit's contract exists before a unit that calls it; neve
 </list-the-files-and-contracts>
 
 <write-each-unit>
-Label each unit `Unit N` and each gate within it `Gate M`, counting from 1; never leave one unlabelled.
+Label each unit `Unit N` and each gate within it `Gate M`, counting from 1, and number each step from 1 across the prescription; never leave one unlabelled.
 
 Write each unit as: its contract and files copied verbatim from `Files and contracts`, the steps, the gates, and the scope boundary — the files the prescription changes outside the unit; never write a unit missing one of the five.
 
-State every step as an action on a named file — the signature it adds to the file declaring the interface and the behaviors the body beneath it satisfies, the behavior each test it adds proves, the behaviors a file behind the outermost interface satisfies, or the exact lines an edit to existing code removes and adds; never write `similar to`, `as above`, `TBD`, `TODO`, or `add appropriate handling`.
+State every step as an action on a named file with the exact text it adds — a signature with its docstring and body, a test, a file's whole content — or the exact lines an edit to existing code removes and adds; never state a behavior in place of text or write `similar to`, `as above`, `TBD`, `TODO`, or `add appropriate handling`.
 
 Name every type and function a later unit uses exactly as an earlier unit declared it; never rename one between units.
 
