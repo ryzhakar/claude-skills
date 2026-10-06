@@ -101,13 +101,13 @@ Fix each defect a check finds; never report as a concern — a doubt about corre
 </check-the-unit-before-reporting>
 
 <report-the-status>
-End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Concerns:` each concern or `none`; never omit a line.
+End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Branch:` the output of `git branch --show-current`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Concerns:` each concern or `none`; never omit a line.
 
 Report `DONE` for a unit complete, tested, committed, and checked with no concern; never report `DONE` with a concern unstated.
 
 Report `DONE_WITH_CONCERNS` for a unit complete, tested, committed, and checked with a concern the `Concerns:` line states; never report it with that line reading `none`.
 
-Leave the branch name and commit hashes out of the report; never state either.
+Leave commit hashes out of the report; never state one.
 
 Leave the worktree in place after the report; never remove or reset it.
 </report-the-status>
