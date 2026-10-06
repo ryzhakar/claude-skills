@@ -122,7 +122,7 @@ assistant: "I'll launch the spec-reviewer agent to compare the code to the requi
 </example>
 
 
-**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob, Bash
+**Model:** `inherit` · **Tools:** Read, Write, Grep, Glob, Bash, Skill
 
 ---
 
