@@ -15,7 +15,7 @@ Pick one answer for every choice the work holds; never write `decide whether`, `
 <list-the-files-and-contracts>
 List every file the work creates or changes, each with the one responsibility it holds; never leave a file for the implementer to discover.
 
-List for each unit — one outermost interface, the surface callers of the unit use, and the one to three files behind it, not counting the file that declares the interface or the tests, or none for an interface that is a data type — the contract: the interface's signature with typed parameters and return, a docstring of one sentence on one line, the behaviors a test proves through the interface, and for an interface that is a data type its fields with their types; never leave a unit without its contract.
+List for each unit — one outermost interface, the surface callers of the unit use, and the zero to three files behind it, not counting the file that declares the interface or the tests — the contract: the interface's signature with typed parameters and return, a docstring of one sentence on one line, the behaviors a test proves through the interface, and for an interface that is a data type its fields with their types; never leave a unit without its contract.
 
 Leave, as the one exception to the rules above, every signature beneath the outermost interface to the implementer, who designs it through `tdd`; never fix one in the plan.
 
@@ -25,7 +25,7 @@ Order the units so each unit's contract exists before a unit that calls it; neve
 <write-each-unit>
 Write each unit as: the contract, the files, the steps — each an action on a named file, the verification gates — each a command and the exact output it requires, and the scope boundary — what the unit does not touch; never write a unit missing one of the five.
 
-State every step as an action on a named file — the signature it adds to the file declaring the interface, the behavior each test it adds proves, or the behaviors a file behind the outermost interface satisfies; never write `similar to`, `as above`, `TBD`, `TODO`, or `add appropriate handling`.
+State every step as an action on a named file — the signature it adds to the file declaring the interface, the behavior each test it adds proves, the behaviors a file behind the outermost interface satisfies, or the exact lines an edit to existing code removes and adds; never write `similar to`, `as above`, `TBD`, `TODO`, or `add appropriate handling`.
 
 Name every type and function a later unit uses exactly as an earlier unit declared it; never introduce a type or function name that the plan, the project, or its libraries did not declare.
 </write-each-unit>
@@ -51,11 +51,11 @@ Write under a heading `Definition of done` a numbered list of binary checks — 
 <write-a-correction-plan>
 Write a correction plan — a plan written after a review found the implementation of an executed plan, whose path the caller supplies, short — in the same form as an implementation plan, with the three additions below; never write one as a list of complaints.
 
-Name under a heading `Failure modes observed` each shortcut the implementer took, with the evidence from the code; never name a hypothetical one.
+Name under a heading `Failure modes observed` each shortcut the caller's review report names, with the code it cites as evidence; never name a hypothetical one.
 
 Forbid each shortcut the implementer used, as the code it used, beside the patterns the executed plan already forbids; never omit one it used.
 
-Add a gate that catches each defect the executed plan's gates passed; never reuse a gate that passed a broken result unchanged.
+Add a gate that catches each failure mode the executed plan's gates passed; never reuse a gate that passed a broken result unchanged.
 </write-a-correction-plan>
 
 <check-the-plan>
@@ -71,7 +71,7 @@ Check that every name a later unit uses matches the signature an earlier unit de
 </check-the-plan>
 
 <write-the-plan-to-disk>
-Write the plan to the path the caller supplied, or to `docs/plans/<slug>.md` with `<slug>` the first three words of the task statement in lowercase hyphenated words, `-correction` appended for a correction plan, when none was supplied; never return the plan as conversation text.
+Write the plan to the output path the caller supplied, or to `docs/plans/<slug>.md` with `<slug>` the first three words of the caller's request in lowercase hyphenated words, `-correction` appended for a correction plan, when none was supplied; never return the plan as conversation text.
 
 Return that path as the result; never return more.
 </write-the-plan-to-disk>
