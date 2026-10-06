@@ -18,9 +18,9 @@ Treat every action verb in the request as an order to launch agents, planning ex
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's role name — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer`, or the noun of the task below that launches it: `marker-lister`, `classifier`, `fetcher`, `diagnoser`, `investigator`, `hypothesis-lister`, `integrator`, `suite-runner`, `compatibility-checker`, `reviewer-${concern}`, `test-classifier` — `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names, the executor's report of the `lite-cycle` skill excepted; each prescription — a brief the `prescriber` of dev-cycle-lite writes for an `executor` — at `briefs/prescriber-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names, the executor's report of the `lite-cycle` skill excepted; each prescription — a brief the `prescriber` of dev-cycle-lite writes for an `executor` — at `briefs/prescriber-${unit}.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
-Launch each noun-named role as a general-purpose `Agent` on sonnet from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
+Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on sonnet, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
 Take the implementer's worktree from the `Worktree:` line of its report; never take a worktree path from anywhere else.
 
@@ -45,14 +45,6 @@ Leave an end of the capturer's run that returns another text to the user, who is
 Read the spec file whole before planning; never plan from the request while this task's spec file exists.
 </capture-the-spec>
 
-<dispatch-the-lite-cycle>
-Launch the `suborchestrator` of dev-cycle-lite in the background, when the user marks the run lite, with the absolute spec path, the project root, the artifact directory — `orchestration_log/recon/${DATE}/` under the project root — and the integration branch or `none`; never run `plan-the-units` and the stages below for a lite run.
-
-Read its report's `Status:`, `Integration branch:`, `Units integrated:`, `Units returned:`, and `Status file:` lines; never read another line.
-
-Return each unit on `Units returned:` to the user with its prescription and verdict paths; never re-run it yourself.
-</dispatch-the-lite-cycle>
-
 <plan-the-units>
 Decompose the spec yourself into units — each one outermost interface, the function or endpoint callers outside the unit use, and the zero to three files behind it, not counting the declaring file or the tests, independently testable, two to ten minutes of implementer work — and write the plan to its path; never decompose from the request.
 
@@ -72,7 +64,7 @@ Create the integration branch from the current branch with `git switch -c integr
 
 Name the integration branch once in the status file; never let two units name different integration branches.
 
-Launch a `marker-lister` after planning to list every excluded test marker; never launch the first implementer before the status file names the excluded set.
+Launch an agent after planning to list every excluded test marker; never launch the first implementer before the status file names the excluded set.
 
 Name the excluded set in the status file; never leave it unnamed there.
 </plan-the-units>
@@ -102,11 +94,11 @@ Treat a reported worktree path that is not a directory containing `.git` as a `B
 </derive-branch-and-shas-from-git>
 
 <route-on-status>
-Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent, `classifier`, to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its contract, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, `fetcher`, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent, `diagnoser`, that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
+Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its contract, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
 
 Continue the same implementer through `SendMessage` with the delta alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound and its worktree stands; never resend the contract it already holds.
 
-Launch a fresh implementer when the diagnoser names the approach wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
+Launch a fresh implementer when the diagnosis agent names the approach wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
 Route a diagnosed block: a wrong approach launches fresh with a corrected brief; a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a stronger model; a unit too large is rewritten by the orchestrator as sub-units in the plan and the status file, each launched fresh; a plan defect returns to `plan-the-units` and the user; an unknown cause runs `launch-the-debugging-round` and continues the implementer with the path of the fix the round proposes; never relaunch a blocked implementer with unchanged inputs.
 
@@ -120,19 +112,17 @@ Launch `spec-reviewer` with the unit's contract, the implementer's report, the w
 
 Relaunch a reviewer with the items it names when its final message begins `Dispatch malformed:`; never relaunch one without the items it names.
 
-Continue the implementer with the verdict file's path on `FAIL`, after the quality review's report arrives; never inline the findings.
+Continue the implementer with the verdict file's path on `FAIL`; never inline the findings.
 
 Continue the same spec-reviewer after the fix with the new diff range `BASE..new HEAD`, the sentence `re-review the delta and confirm the passing criteria still hold`, and a verdict path with a fresh timestamp; never launch a fresh reviewer for a re-review while the first's agent id is held.
 </launch-the-spec-review>
 
 <launch-the-quality-review>
-Launch `code-quality-reviewer` after every spec review, on `PASS` and on `FAIL` alike, with the unit's contract, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, and the report path to write; never launch it without one of the six.
+Launch `code-quality-reviewer` after a spec review ending `Verdict: PASS`, with the unit's contract, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, and the report path to write; never launch it without one of the six.
 
 Read the `Ready to merge:` line and the finding headings from the report file; never read the findings' bodies.
 
-Treat the report that follows a `FAIL` spec verdict as superseded by the re-reviews the implementer continuation leads to; never start a second continuation from it.
-
-Continue the implementer with the report file's path, naming `Critical` and `Important` as the findings to fix, on `With fixes` or `No` after a `PASS` spec verdict; never inline the findings.
+Continue the implementer with the report file's path, naming `Critical` and `Important` as the findings to fix, on `With fixes` or `No`; never inline the findings.
 
 Continue the same `code-quality-reviewer` after the fix with the new range, the fresh spec verdict path, and a fresh report path; never launch a fresh reviewer for a re-review while the first's agent id is held.
 
@@ -140,7 +130,7 @@ Count every finding a reviewer writes in scope, whenever the code it names was i
 </launch-the-quality-review>
 
 <integrate-on-pass>
-Launch the integrator of `integrate-the-units` for a unit on `Verdict: PASS` and `Ready to merge: Yes`; never on other values.
+Launch the integration agent of `integrate-the-units` for a unit on `Verdict: PASS` and `Ready to merge: Yes`; never on other values.
 
 Write the outcome — integrated, or implementer continued — to the status file in the same turn; never carry it in the conversation alone.
 
@@ -154,7 +144,7 @@ Stop when the third cycle's re-review fails; never enter a fourth with the same 
 
 Run `launch-the-debugging-round` before any structural change; never change structure on a guess.
 
-Launch a `diagnoser` with the round's finding to name one structural change — launch fresh on a stronger model, return the unit's contract to `plan-the-units` for the user to clarify, or split the unit; never name the change in the orchestrator's context.
+Launch a diagnosis agent with the round's finding to name one structural change — launch fresh on a stronger model, return the unit's contract to `plan-the-units` for the user to clarify, or split the unit; never name the change in the orchestrator's context.
 
 Make the named change before the next cycle; never enter the next cycle unchanged.
 </stop-the-review-fix-cycles-at-three>
@@ -162,9 +152,9 @@ Make the named change before the next cycle; never enter the next cycle unchange
 <launch-the-debugging-round>
 Launch agents under the `systematic-debugging` skill when a failure has no clear cause — tests fail for an unclear reason, behavior contradicts the contract while the code looks right, a fix breaks something elsewhere, or a third review-fix cycle failed — before any structural change; never let an implementer guess at a fix.
 
-Launch one agent, `hypothesis-lister`, to list up to three hypotheses; never list them in the orchestrator's context.
+Launch one agent to list up to three hypotheses; never list them in the orchestrator's context.
 
-Launch one `investigator` per hypothesis in parallel, each ending with its evidence and, where it finds the cause, a proposed minimal fix; never let one agent carry two hypotheses.
+Launch one agent per hypothesis in parallel, each ending with its evidence and, where it finds the cause, a proposed minimal fix; never let one agent carry two hypotheses.
 
 Compare the investigators' evidence and take the fix of the one that finds the cause; never take a fix without evidence.
 
@@ -172,19 +162,19 @@ Surface to the user, with the evidence gathered, when three hypotheses fail; nev
 </launch-the-debugging-round>
 
 <integrate-the-units>
-Launch an `integrator` for each unit that passed both reviews, one unit at a time, in the project root checkout with the integration branch checked out, to merge the unit's worktree branch into the integration branch, run the whole test suite with every excluded marker included, and report the result; never merge in the orchestrator's own context.
+Launch an integration agent for each unit that passed both reviews, one unit at a time, in the project root checkout with the integration branch checked out, to merge the unit's worktree branch into the integration branch, run the whole test suite with every excluded marker included, and report the result; never merge in the orchestrator's own context.
 
-Launch, after every unit is integrated, a `suite-runner` to run the whole suite and a `compatibility-checker` to check interface compatibility between units — types, signatures, data contracts — and end-to-end behavior against the original request; never call the task done on unit tests alone.
+Launch, after every unit is integrated, one agent to run the whole suite and one to check interface compatibility between units — types, signatures, data contracts — and end-to-end behavior against the original request; never call the task done on unit tests alone.
 
-Launch, in the same turn as the `suite-runner` and the `compatibility-checker`, a cross-cutting review of the whole change with one `reviewer-${concern}` per concern — spec fidelity, data flow integrity, simplicity, duplicated knowledge, unused features; never review unit by unit.
+Launch, in the same turn, a cross-cutting review of the whole change with one agent per concern — spec fidelity, data flow integrity, simplicity, duplicated knowledge, unused features; never review unit by unit.
 
 Continue the implementer of each unit an agent ending `Result: FAIL` names with the path of that agent's report, as `route-on-status` prescribes for a continuation; never fix an integration failure in the orchestrator's context.
 
-Launch the `suite-runner` again after every continuation this tag or `classify-the-tests` starts; never count an earlier pass for a changed branch.
+Launch the whole-suite agent again after every continuation this tag or `classify-the-tests` starts; never count an earlier pass for a changed branch.
 </integrate-the-units>
 
 <classify-the-tests>
-Launch a `test-classifier`, after the `suite-runner` reports a pass, to classify each test the units added or changed as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, or `tautological` — asserts a default equals its own copy or a library's guarantee, and each contract behavior with no test as `missing`; never skip a test or a behavior.
+Launch an agent, after the whole-suite agent reports a pass, to classify each test the units added or changed as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, or `tautological` — asserts a default equals its own copy or a library's guarantee, and each contract behavior with no test as `missing`; never skip a test or a behavior.
 
 Continue the owning unit's implementer to delete each `tautological` test and write each `missing` one; never leave either class standing.
 
