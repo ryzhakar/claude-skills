@@ -49,7 +49,7 @@ lite-cycle's suborchestrator through the `Skill` tool, `systematic-debugging` by
 
 **dev-cycle** — the development loop over dev-discipline, orchestration, and product-craft, 1.0.0
 (created 2026-10-06). Skill `dev-cycle`: `specify → plan → implement → review → integrate`, delta-only
-against `agentic-delegation`; the orchestrator plans the units itself (contract, gates, dependency order,
+against `agentic-delegation`; the orchestrator plans the units itself (requirements, gates, dependency order,
 files, tier by risk) and writes plan, status file, and prompt files; every code-changing continuation
 returns the unit to the spec review and re-integration. Agents: `spec-capturer` (interviews the user
 through `AskUserQuestion` by `product-craft:spec-chef`, one spec file, returns `Spec: <path>`; provisioned
