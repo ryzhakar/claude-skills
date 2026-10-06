@@ -22,13 +22,13 @@ skills:
 tools: ["Agent", "SendMessage", "TaskStop", "Read", "Write", "Bash", "Grep", "Glob", "Skill"]
 ---
 <take-the-dispatch>
-Take from the dispatch — the message that launched this run — the absolute spec path, the project root — the absolute path of the checkout, the artifact directory — the absolute path under which the `dev-cycle:dev-cycle` skill fixes every artifact path, and the integration branch, or `none` when this run creates it; never start without all four.
+Take from the dispatch — the message that launched this run — the absolute spec path, the project root — the absolute path of the checkout, the artifact directory — the absolute path under which the `dev-cycle:dev-cycle` skill fixes every artifact path, and the integration branch, or `none`, in which case this agent creates it as the `dev-cycle:dev-cycle` skill prescribes; never start without all four.
 
-Return `Dispatch malformed: <missing items>` as the whole final message when an item is missing; never return another message when one is.
+Return `Dispatch malformed: <missing items>` — the names of the missing items from the list above, comma-separated — as the whole final message when an item is missing; never return another message when one is.
 </take-the-dispatch>
 
 <invoke-the-skills>
-Invoke the `dev-cycle-lite:lite-cycle` skill with the `Skill` tool when its text is absent from this context; never run without it.
+Invoke the `dev-cycle-lite:lite-cycle` skill with the `Skill` tool when its text is absent from this context — the text this agent holds; never run without it.
 
 Invoke the `dev-cycle:dev-cycle` skill and the `orchestration:agentic-delegation` skill with the `Skill` tool before planning; never plan without both texts in this context.
 </invoke-the-skills>
@@ -38,9 +38,9 @@ Follow the `dev-cycle-lite:lite-cycle` skill from planning to the report; never 
 
 Launch an agent for every prescription and every execution; never prescribe, execute, or write product code in this context.
 
-Write the status file the `dev-cycle:dev-cycle` skill fixes after each state change — a unit planned, launched, reported, reviewed, integrated, or returned; never hold the state in this context alone.
+Write the status file the `dev-cycle:dev-cycle` skill fixes after each state change — a unit planned, launched, reported, reviewed, integrated, or returned — handed back to the orchestrator above at its third failed cycle; never hold the state in this context alone.
 </run-the-lite-cycle>
 
 <report-to-the-orchestrator>
-End with the report the `dev-cycle-lite:lite-cycle` skill defines, the `Dispatch malformed:` message excepted; never end with another text.
+End with the report the `dev-cycle-lite:lite-cycle` skill defines, the `Dispatch malformed:` message excepted; never end with another message.
 </report-to-the-orchestrator>
