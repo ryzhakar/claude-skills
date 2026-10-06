@@ -9,7 +9,7 @@ description: >
 <name-the-outermost-interface>
 Name the outermost interface — the function, command, endpoint, or module surface that callers of the unit, the code being built, use — before writing a test; never start from a function beneath it.
 
-Draw the barrier — the line between the outermost interface and everything beneath it, held in the design and never marked in the code — around the whole unit a caller sees; never draw it around a part of the unit.
+Draw the barrier — the line between the outermost interface and everything beneath it, held in the design, unmarked in the code — around the whole unit a caller sees; never draw it around a part of the unit.
 
 Take as the outermost interface of a command or an endpoint its entry function — the function that the program entry point, outside the unit, calls with the parsed input and the side effects — the clock, a random source, the file system, the network, a database, the process environment, a subprocess; never take the parsing or the transport as the interface.
 
@@ -27,7 +27,7 @@ Name the test for what the caller gets, in the caller's words; never name it for
 </write-one-failing-test>
 
 <pretend-call-the-missing-functions>
-Declare the outermost interface with its full signature — name, typed parameters, typed return — and one docstring of one sentence on one line; never write its body before its signature.
+Declare the outermost interface with its full signature — name, typed parameters, typed return — and one docstring of one sentence on one line; never write its body before both.
 
 Write the body of the outermost interface as a sequence of painfully obvious steps, each step a pretend call — a call to a function that does not exist yet; never write a step that does two things.
 
@@ -75,7 +75,7 @@ Reach green — every test passing — before any refactor; never refactor on re
 <refactor-with-hindsight>
 Rename, split, merge, and move once green, using everything the filled functions taught about the problem; never keep a name or a boundary the finished code has outgrown.
 
-Deepen each module — hide more behind fewer entry points; never widen an interface to expose a function beneath the barrier.
+Keep the outermost interface the unit's only public surface after each refactor step; never expose a function beneath the barrier.
 
 Move each piece of knowledge that two places hold into one place; never leave one piece of knowledge in two places.
 
