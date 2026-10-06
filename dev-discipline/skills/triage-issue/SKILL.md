@@ -21,19 +21,19 @@ Find where the bug surfaces, which code path carries it, why that path produces 
 <classify-the-issue>
 Split the issue into one issue per cause when the investigation finds several independent causes — causes that each need their own fix; never merge two such causes into one issue.
 
-Classify each issue as a regression — it worked before, a missing feature — it was never built, or a design flaw — it works as written and is written wrong; never leave one unclassified.
+Classify each issue as a regression — it worked before, a missing feature — it was not built, or a design flaw — it works as written and is written wrong; never leave one unclassified.
 
 State for each issue the scope — one module, an integration between modules, or a systemic pattern — the smallest change that fixes the cause, and the outermost interfaces the fix touches; never state a fix wider than the cause.
 </classify-the-issue>
 
 <plan-the-fix>
+Name `improve-architecture` as the fix when the cause is a design flaw that needs a new module boundary; never plan such a flaw as a sequence of fixes.
+
 Write the fix plan as an ordered sequence of red-green cycles in the shape `tdd` prescribes, each cycle naming one test through the unit's outermost interface and the least change that passes it; never write all tests before any change.
 
 Describe each test as the behavior a caller observes; never describe it by a file path, a line number, or a private function.
 
 Add one refactor step after the last cycle when cleanup is needed; never put a refactor between cycles.
-
-Name `improve-architecture` as the fix when the cause is a design flaw that needs a new module boundary; never plan such a flaw as a sequence of fixes.
 </plan-the-fix>
 
 <write-the-issue>
