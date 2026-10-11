@@ -80,7 +80,7 @@ Each element in any list is one of:
 
 | Key | Meaning |
 |-----|---------|
-| `you:` | Orchestrator constitution. Injected by SessionStart and PostCompact hooks as natural language prose. |
+| `you:` | Orchestrator constitution. Injected by the SessionStart hook as natural language prose. |
 | `subagents:` | Mapping of agent-type keys. Each key names a list of elements for that agent type. |
 | `other:` (under `subagents:`) | Catch-all for agents not matching any specific key. |
 
@@ -88,13 +88,21 @@ Each element in any list is one of:
 
 ## Hook behavior
 
-### SessionStart / PostCompact
+### SessionStart
 
-Parse `.manifestos.yaml`, render `you:` elements as natural language prose. Compose output from three parts: hook-specific preamble + shared binding core + inline footer. NEVER inject raw YAML.
+Matcher: `startup|resume|compact`. The host sends the firing source on stdin as `source`; the hook states it in one preamble line, `Session source: <source>.`
+
+Parse `.manifestos.yaml`, render `you:` elements as natural language prose. Compose output from three parts: session preamble + shared binding core + inline footer. NEVER inject raw YAML.
+
+Emit JSON: `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": <text>}}`. The text stays under 8,000 characters. The host persists hook output over 10,000 characters to a file and shows the model a 2KB preview.
+
+The binding core never inlines `skills/manifesto-oath/SKILL.md`. It commands the model to invoke the Skill tool with skill `manifesto:manifesto-oath` (fallback: Read the skill file by absolute path), then lists five steps in at most 25 lines: resolve, read whole, interplay, commit, verify.
 
 The footer includes a SUBAGENT BINDING REINFORCEMENT block instructing the orchestrator to use first-person user voice in dispatch prompts, so subagents receive binding directives as owner instructions rather than forwarded AI text.
 
 The orchestrator is NOT responsible for supplying base subagent bindings — SubagentStart handles that automatically. The orchestrator MAY augment subagent bindings via dispatch prompts.
+
+PostCompact is not an event in the host's `hookSpecificOutput` schema, so the plugin registers no PostCompact hook. Compaction fires SessionStart with source `compact`; that run re-binds.
 
 ### SubagentStart
 
@@ -105,7 +113,7 @@ Reads `agent_type` from stdin JSON. Matches against `subagents:` keys in `.manif
 3. `other:` catch-all
 4. Static fallback (no config)
 
-Injects the FULL binding ceremony — same resolution protocol, transitive reading, interplay analysis, and manifesto-oath mandate as the orchestrator hooks. This is a real binding injection, not a reminder.
+Injects the same binding core as SessionStart: the load command for `manifesto:manifesto-oath` and the five steps, never the skill text. Output stays under 8,000 characters. This is a real binding injection, not a reminder.
 
 The ceremony carries element names, purposes, and configured sources — never element content. Subagents read or fetch each element themselves; dispatch prompts carry sources for elements the config omits.
 
@@ -124,17 +132,18 @@ Composable parts live in `hooks/templates/parts/`:
 | File | Used by |
 |------|---------|
 | `preamble-session.txt` | SessionStart |
-| `preamble-compact.txt` | PostCompact |
 | `preamble-subagent.txt` | SubagentStart |
-| `binding-core.txt` | All three hooks (shared) |
+| `binding-core.txt` | SessionStart and SubagentStart (shared) |
 
-Footers are inlined in the shell scripts, not extracted to files.
+Placeholders: `ELEMENT_DESCRIPTION`, `MANIFESTO_DIR`, `PLUGINS_CACHE_DIR`, `SKILL_PATH`, `SOURCE`. Footers are inlined in the shell scripts, not extracted to files.
+
+`hooks/test_hooks.sh` runs every hook against the live `.manifestos.yaml` and asserts the output contract.
 
 ---
 
 ## Repository management
 
-SessionStart and PostCompact call `ensure_repo()` from `hooks/ensure-repo.sh`, cloning the manifesto repo to `manifesto_dir` on first use and pulling on later sessions. SubagentStart and UserPromptSubmit read whatever `ensure_repo()` last left in place and never clone or pull themselves, keeping their tighter timeouts network-free. `ensure_repo()` drops a self-ignoring `.gitignore` (`*`) next to the clone so the project's own git history never picks it up.
+SessionStart calls `ensure_repo()` from `hooks/ensure-repo.sh`, cloning the manifesto repo to `manifesto_dir` on first use and pulling on later sessions. SubagentStart and UserPromptSubmit read whatever `ensure_repo()` last left in place and never clone or pull themselves, keeping their tighter timeouts network-free. `ensure_repo()` drops a self-ignoring `.gitignore` (`*`) next to the clone so the project's own git history never picks it up.
 
 ---
 
