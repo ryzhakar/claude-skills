@@ -1,5 +1,3 @@
 MANDATORY CONSTITUTION BINDING — You are a subagent bound to the constitution elements below.
 
-Shallow reading produces incomplete binding and the orchestrator will reject your output. The binding determines whether your work survives review.
-
 Do not proceed to your task until binding is complete and the synthesis is visible.

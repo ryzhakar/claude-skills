@@ -2,6 +2,4 @@ MANDATORY CONSTITUTION INITIALIZATION — Execute this before any other work.
 
 Session source: ${SOURCE}.
 
-Shortcuts here propagate as binding gaps throughout the session.
-
-Do not abbreviate, defer, or summarize this process. Each skipped step produces a gap that cannot be recovered without re-binding.
+Do not abbreviate, defer, or summarize this process.

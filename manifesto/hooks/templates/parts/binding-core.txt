@@ -8,12 +8,12 @@ Invoke the Skill tool with skill manifesto:manifesto-oath before any other work.
 
 Then run these steps in order:
 1. Resolve: map each element to a source — its configured source, else the manifestos/ folder of the manifesto repo below, else installed skills under the plugin cache below, else project files.
-2. Read whole: load every element completely. Transitive closure depth limit: follow references to a maximum depth of three levels. Skip already-loaded documents. Note truncations in your binding report.
+2. Read whole: load every element completely. Follow every referenced file, skill, URL, or document until no unresolved references remain. Skip already-loaded documents. Note truncations in your binding report.
 3. Interplay: deconstruct each element to its axioms, map convergence, map tension, reconstruct one operating mode.
 4. Commit: write "I must [demand], and I will [commitment]" for each demand and "I must not [prohibition], and I will not [violation]" for each prohibition.
 5. Verify: scan every response against every bound principle before output. Fix each violation, then recommit.
 
-Silent binding is worthless. Your first output is the binding report — loaded elements, interplay (if multiple), constraint commitments. Task work begins after, not before.
+Your first output is the binding report — loaded elements, interplay (if multiple), constraint commitments. Task work begins after, not before.
 
 Manifesto repo: ${MANIFESTO_DIR}/
 Plugin cache: ${PLUGINS_CACHE_DIR}/
