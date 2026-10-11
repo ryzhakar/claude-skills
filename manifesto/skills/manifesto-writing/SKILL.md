@@ -71,7 +71,16 @@ Test every qualification and caveat: one that says what the enemy is not stays a
 
 Carry a QUALIFIED axiom's limit, as the substrate states it, as a boundary; never drop it.
 
-Rewrite each source pattern as its manifesto pattern: `I believe that X` as `X.`; `You might consider Y` as the imperative `Y.`; `It's possible that Z` as `Z.` or nothing; `Let me explain why...` as the conclusion; an extended analogy as one sharp image; a gradual buildup as the blade first; never leave a source pattern standing.
+Rewrite each source pattern as its manifesto pattern; never leave a source pattern standing.
+
+| Source Pattern | Manifesto Pattern |
+|----------------|-------------------|
+| "I believe that X" | "X." |
+| "You might consider Y" | "Y." (imperative) |
+| "It's possible that Z" | "Z." or cut entirely |
+| "Let me explain why..." | State the conclusion directly |
+| Extended analogy | One sharp image, then move on |
+| Gradual buildup | Lead with the blade |
 
 Turn `I think that collectively we are infatuated with these two notions of easy. We are just so self-involved in these two aspects, it's hurting us tremendously. All we care about is, can I get this instantly and start running it in five seconds?` into `We are infatuated with easy. We want tools we can install in five seconds. We want syntax that looks like what we already know. We mistake familiarity for quality. This infatuation is destroying us.`; never keep the speaker's hedges.
 
@@ -83,7 +92,7 @@ Lift `I didn't put the definition in here, but incidental is Latin for your faul
 <build-the-structure>
 Keep bindable lines — demands checkable at a literal reading, examples and table rows included — at 70% or more of non-blank body lines, headings excluded; never ship below 70%.
 
-Order the manifesto as the enemy line, one section per axiom, a self-check section headed `Before you ship`, and the choice; never add a section outside that order.
+Order the manifesto as the enemy line, one section per axiom, a self-check section whose heading begins `Before you` in any capitalization (`Before you ship`, `Before You Send`), and the choice; never add a section outside that order.
 
 State each axiom in one sentence at the head of its section; never spread one across two.
 
@@ -91,7 +100,7 @@ Put every mapping of enemy against replacement in a two-column table; never in p
 
 Teach each prescription inside its attack, in the same voice; never leave a diagnosis without the prescription it implies.
 
-Fill `Before you ship` with numbered checks the reader runs on its own output, each checkable at a literal reading; never put a judgment call there.
+Fill the self-check section with numbered checks the reader runs on its own output, each checkable at a literal reading; never put a judgment call there.
 
 Close on two options — the first quoting the opening enemy line, the second stating its replacement — followed by a one-word command to choose; never end on argument.
 </build-the-structure>
