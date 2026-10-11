@@ -1,3 +1,0 @@
-MANDATORY CONSTITUTION RE-BINDING — Context was just compacted.
-
-Execute the full binding protocol before any other work. Each skipped step propagates as a binding gap for the rest of the session.
