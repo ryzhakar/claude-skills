@@ -96,7 +96,7 @@ Parse `.manifestos.yaml`, render `you:` elements as natural language prose. Comp
 
 Emit JSON: `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": <text>}}`. The text stays under 8,000 characters. The host persists hook output over 10,000 characters to a file and shows the model a 2KB preview.
 
-The binding core never inlines `skills/manifesto-oath/SKILL.md`. It commands the model to invoke the Skill tool with skill `manifesto:manifesto-oath` (fallback: Read the skill file by absolute path), then lists five steps in at most 25 lines: resolve, read whole, interplay, commit, verify.
+The binding core never inlines `skills/manifesto-oath/SKILL.md`. It commands the model to invoke the Skill tool with skill `manifesto:manifesto-oath` (fallback: Read the skill file by absolute path), then lists five steps in at most 25 lines: resolve, read whole, interplay, commit, verify. Transitive depth: unbounded. Step two follows every reference until no unresolved reference remains, the rule the oath skill states; the hooks set no depth cap.
 
 The footer includes a SUBAGENT BINDING REINFORCEMENT block instructing the orchestrator to use first-person user voice in dispatch prompts, so subagents receive binding directives as owner instructions rather than forwarded AI text.
 
@@ -109,9 +109,12 @@ PostCompact is not an event in the host's `hookSpecificOutput` schema, so the pl
 Reads `agent_type` from stdin JSON. Matches against `subagents:` keys in `.manifestos.yaml` using this resolution order:
 
 1. Exact key match
-2. Prefix-strip match
-3. `other:` catch-all
-4. Static fallback (no config)
+2. Prefix-strip match (`plugin:agent` matches the key `agent`)
+3. Suffix match (the agent type ends with a key other than `other`; `my-instruction-writer` matches `instruction-writer`)
+4. `other:` catch-all
+5. Static fallback (no config, or no match and no `other:`): the injected text names no element
+
+An absent `agent_type` skips to step 4.
 
 Injects the same binding core as SessionStart: the load command for `manifesto:manifesto-oath` and the five steps, never the skill text. Output stays under 8,000 characters. This is a real binding injection, not a reminder.
 
