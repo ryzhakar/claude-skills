@@ -4,6 +4,7 @@ export PYTHONDONTWRITEBYTECODE=1
 
 HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "$HOOKS_DIR/.." && pwd)"
+OATH_SKILL="$PLUGIN_ROOT/skills/manifesto-oath/SKILL.md"
 REPO_ROOT="$(cd "$PLUGIN_ROOT/.." && pwd)"
 LIVE_CONFIG="$REPO_ROOT/.manifestos.yaml"
 MANIFESTO_DIR="${MANIFESTO_DIR:-/home/user/LLM_MANIFESTOS}"
@@ -255,6 +256,20 @@ sys.exit(1 if missing else 0)
 PY
 }
 
+skill_tier_one_line() {
+    grep -m1 '^\*\*Tier 1' "$OATH_SKILL"
+}
+
+skill_tier_one_defers_to_hook() {
+    local line
+    line=$(skill_tier_one_line) || { echo "no Tier 1 line"; return 1; }
+    case "$line" in
+        *'`Manifesto repo:`'*) ;;
+        *) echo "Tier 1 does not name the Manifesto repo: line"; return 1 ;;
+    esac
+    ! printf '%s' "$line" | grep -qE '(^|[ `(])/[A-Za-z]' || { echo "Tier 1 names an absolute path"; return 1; }
+}
+
 file_is_absent() {
     [ ! -e "$1" ] || { echo "present: $1"; return 1; }
 }
@@ -265,6 +280,7 @@ verify_hook_registration() {
     check "hooks.json: every command script exists" hooks_json_commands_exist
     check "post-compact.sh deleted" file_is_absent "$HOOKS_DIR/post-compact.sh"
     check "preamble-compact.txt deleted" file_is_absent "$HOOKS_DIR/templates/parts/preamble-compact.txt"
+    check "oath skill Tier 1 takes the manifesto dir from the hook injection" skill_tier_one_defers_to_hook
 }
 
 main() {
