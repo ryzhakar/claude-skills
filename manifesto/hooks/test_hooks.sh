@@ -13,6 +13,15 @@ MAX_BINDING_SECTION_LINES=25
 LOAD_COMMAND="Invoke the Skill tool with skill manifesto:manifesto-oath"
 OATH_BODY_SENTENCE="You are a knight receiving an oath"
 REINFORCEMENT_HEADING="Subagent Binding Reinforcement"
+CLOSURE_RULE="until no unresolved references remain"
+CAPPED_DEPTH="maximum depth of three levels"
+RATIONALE_SENTENCES=(
+    "Shortcuts here propagate as binding gaps"
+    "Each skipped step produces a gap"
+    "Shallow reading produces incomplete binding"
+    "The binding determines whether your work survives review"
+    "Silent binding is worthless"
+)
 SESSION_START_MATCHER="startup|resume|compact"
 HOST_EVENT_NAMES="PreToolUse UserPromptSubmit UserPromptExpansion SessionStart Setup PreModelSwitch PostModelSwitch SubagentStart PostToolUse PostToolUseFailure PostToolBatch Stop SubagentStop PermissionDenied Notification PermissionRequest Elicitation ElicitationResult CwdChanged FileChanged WorktreeCreate MessageDisplay"
 
@@ -121,6 +130,14 @@ lacks_text_ignoring_case() {
     ! grep -qiF -- "$2" "$1" || { echo "present: $2"; return 1; }
 }
 
+lacks_every_rationale_sentence() {
+    local sentence present=0
+    for sentence in "${RATIONALE_SENTENCES[@]}"; do
+        lacks_text "$1" "$sentence" || present=1
+    done
+    return "$present"
+}
+
 element_needles() {
     python3 "$HOOKS_DIR/parse_config.py" "$PROJECT_DIR" | python3 -c '
 import json, sys
@@ -167,6 +184,9 @@ verify_binding_context() {
     check "$label: names the manifesto dir" contains_text "$prefix.context" "Manifesto repo: $MANIFESTO_DIR/"
     check "$label: names the plugin cache path" contains_text "$prefix.context" "Plugin cache: "
     check "$label: binding section within $MAX_BINDING_SECTION_LINES lines" binding_section_fits "$prefix.context"
+    check "$label: states the oath skill's closure rule" contains_text "$prefix.context" "$CLOSURE_RULE"
+    check "$label: sets no depth cap" lacks_text "$prefix.context" "$CAPPED_DEPTH"
+    check "$label: omits rationale sentences" lacks_every_rationale_sentence "$prefix.context"
 }
 
 verify_session_start() {
