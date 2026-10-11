@@ -1,28 +1,15 @@
 {
-  "description": "Manifesto lifecycle: initialization, re-binding after compaction, subagent injection",
+  "description": "Manifesto lifecycle: binding at session start, resume, and compaction; subagent injection",
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume",
+        "matcher": "startup|resume|compact",
         "hooks": [
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
             "timeout": 30,
             "statusMessage": "Binding constitution..."
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-compact.sh",
-            "timeout": 30,
-            "statusMessage": "Re-binding constitution..."
           }
         ]
       }

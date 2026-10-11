@@ -20,7 +20,8 @@ if $YOU_EMPTY && $SUBAGENT_EMPTY; then
 fi
 
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
-SKILL_MD="$SCRIPT_DIR/../skills/manifesto-oath/SKILL.md"
+SKILL_PATH="$(cd "$SCRIPT_DIR/.." && pwd)/skills/manifesto-oath/SKILL.md"
+export SKILL_PATH
 
 # Wrap text in the hookSpecificOutput JSON required by SubagentStart hooks.
 # Plain text stdout is silently discarded; only this wrapper is injected.
@@ -32,15 +33,10 @@ print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "addi
 '
 }
 
-# Emit binding frame + SKILL.md for a given ELEMENT_DESCRIPTION
 emit_binding() {
-    render_template "$PARTS_DIR/preamble-subagent.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
+    render_template "$PARTS_DIR/preamble-subagent.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR PLUGINS_CACHE_DIR SKILL_PATH
     echo ""
-    render_template "$PARTS_DIR/binding-core.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
-    echo ""
-    echo "## Manifesto Oath Protocol (injected from skill)"
-    echo ""
-    cat "$SKILL_MD"
+    render_template "$PARTS_DIR/binding-core.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR PLUGINS_CACHE_DIR SKILL_PATH
     cat << 'FOOTER'
 
 If your dispatch prompt contains additional constitution elements beyond those listed here, bind those as well using the same protocol.
@@ -61,8 +57,7 @@ export AGENT_TYPE
 # If SUBAGENT_SECTION is empty/missing, emit fallback with full skill injection
 if [ -z "${SUBAGENT_SECTION:-}" ] || [ "${SUBAGENT_SECTION}" = "{}" ]; then
     ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
-    REBIND_NOTE=""
-    export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+    export ELEMENT_DESCRIPTION MANIFESTO_DIR
     emit_binding | emit_json
     exit 0
 fi
@@ -114,8 +109,7 @@ PYEOF
 
 if [ -z "$MATCHED_ELEMENTS" ]; then
     ELEMENT_DESCRIPTION="No role-specific elements matched for this agent type. Your orchestrator provides bindings in the dispatch prompt."
-    REBIND_NOTE=""
-    export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+    export ELEMENT_DESCRIPTION MANIFESTO_DIR
     emit_binding | emit_json
     exit 0
 fi
@@ -149,7 +143,5 @@ print(" ".join(sentences))
 PYEOF
 )
 
-REBIND_NOTE=""
-
-export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+export ELEMENT_DESCRIPTION MANIFESTO_DIR
 emit_binding | emit_json

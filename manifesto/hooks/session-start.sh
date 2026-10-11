@@ -19,6 +19,23 @@ fi
 
 ensure_repo "$MANIFESTO_DIR"
 
+emit_json() {
+    python3 -c '
+import json, sys
+text = sys.stdin.read()
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}))
+'
+}
+
+SOURCE=$(python3 -c '
+import json, re, sys
+try:
+    source = json.load(sys.stdin).get("source", "")
+except Exception:
+    source = ""
+print(source if re.fullmatch(r"[a-z]+", source) else "unknown")
+')
+
 # Render orchestrator elements as natural language prose
 ELEMENT_DESCRIPTION=$(python3 << 'PYEOF'
 import json, os
@@ -45,21 +62,17 @@ print(" ".join(sentences))
 PYEOF
 )
 
-REBIND_NOTE=""
+SKILL_PATH="$(cd "$SCRIPT_DIR/.." && pwd)/skills/manifesto-oath/SKILL.md"
 
-export ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE
+export ELEMENT_DESCRIPTION MANIFESTO_DIR SOURCE SKILL_PATH
 PARTS_DIR="$SCRIPT_DIR/templates/parts"
-SKILL_MD="$SCRIPT_DIR/../skills/manifesto-oath/SKILL.md"
-render_template "$PARTS_DIR/preamble-session.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
-echo ""
-render_template "$PARTS_DIR/binding-core.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR REBIND_NOTE PLUGINS_CACHE_DIR
-echo ""
-echo "## Manifesto Oath Protocol (injected from skill)"
-echo ""
-cat "$SKILL_MD"
+{
+    render_template "$PARTS_DIR/preamble-session.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR PLUGINS_CACHE_DIR SKILL_PATH SOURCE
+    echo ""
+    render_template "$PARTS_DIR/binding-core.txt" ELEMENT_DESCRIPTION MANIFESTO_DIR PLUGINS_CACHE_DIR SKILL_PATH SOURCE
 
-# Inline footer: user-provided elements + subagent dispatch note
-cat << 'FOOTER'
+    # Inline footer: user-provided elements + subagent dispatch note
+    cat << 'FOOTER'
 
 ## User-Provided Constitution Elements
 
@@ -87,3 +100,4 @@ When dispatching subagents, open your dispatch prompt with a one-line binding co
 
 This dual injection — hook as system context, orchestrator as user voice — is the binding's enforcement mechanism. The hook provides the ceremony. You provide the authority.
 FOOTER
+} | emit_json
