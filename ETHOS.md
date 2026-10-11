@@ -34,7 +34,7 @@ When describing system constraints, state what the platform does, not what the a
 
 ## Hooks: modularity and gating
 
-One-time hooks (SessionStart, PostCompact, SubagentStart) can be thorough — they are context injections, not per-call overhead. Extract prompt text into template files (`hooks/templates/*.txt`) for modularity. Gate all hooks on config existence — invisible when unconfigured.
+One-time hooks (SessionStart, SubagentStart) can be thorough — they are context injections, not per-call overhead. Extract prompt text into template files (`hooks/templates/*.txt`) for modularity. Gate all hooks on config existence — invisible when unconfigured.
 
 ## Core points as untouchable spine
 
