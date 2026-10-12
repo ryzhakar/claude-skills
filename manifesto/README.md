@@ -14,7 +14,7 @@ Binds Claude's operating identity to constitutions, manifestos, and principle se
 
 ### [manifesto-writing](skills/manifesto-writing/SKILL.md)
 
-Write a manifesto — a self-contained text that sets a model's operating identity once bound — from source material, in the register its enemy demands, then review and ship it. "write a manifesto", "turn this into a manifesto", "manifesto tone", "rewrite this manifesto", "make it bind", "add a manifesto to the collection", or any request to transform source material into a manifesto.
+Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
 
 
 ---
