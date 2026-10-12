@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-export SCRIPT_DIR
 PLUGINS_CACHE_DIR="$(cd "$SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
 if [[ "$PLUGINS_CACHE_DIR" != *"plugins"* ]] || [[ "$PLUGINS_CACHE_DIR" != *"cache"* ]]; then
     PLUGINS_CACHE_DIR="$HOME/.claude/plugins/cache"
@@ -118,33 +117,27 @@ fi
 # Render matched elements as natural language
 export MATCHED_ELEMENTS
 ELEMENT_DESCRIPTION=$(python3 << 'PYEOF'
-import json, os, sys
-
-sys.path.insert(0, os.environ["SCRIPT_DIR"])
-from parse_taglines import build_manifesto_lookup, register_clause
+import json, os
 
 elements = json.loads(os.environ["MATCHED_ELEMENTS"])
-entries = build_manifesto_lookup(os.environ["MANIFESTO_DIR"])
 n = len(elements)
 count_word = {1:"one",2:"two",3:"three",4:"four",5:"five",6:"six",7:"seven",8:"eight"}.get(n, str(n))
 sentences = [f"Your constitution has {count_word} element{'s' if n != 1 else ''}."]
 
 for el in elements:
     name = el["name"]
-    clause = register_clause(name, entries)
-    tag = f" ({clause})" if clause else ""
     purpose = el.get("purpose")
     source = el.get("source")
     if purpose and source:
         verb = "fetch it from" if source.startswith("http") else "read it from"
-        sentences.append(f'"{name}"{tag} governs your {purpose} — {verb} {source}.')
+        sentences.append(f'"{name}" governs your {purpose} — {verb} {source}.')
     elif purpose:
-        sentences.append(f'"{name}"{tag} governs your {purpose} — resolve its location via the tiered protocol before binding.')
+        sentences.append(f'"{name}" governs your {purpose} — resolve its location via the tiered protocol before binding.')
     elif source:
         verb = "fetch it from" if source.startswith("http") else "read it from"
-        sentences.append(f'"{name}"{tag} is part of your constitution — {verb} {source}.')
+        sentences.append(f'"{name}" is part of your constitution — {verb} {source}.')
     else:
-        sentences.append(f'"{name}"{tag} is part of your constitution — resolve its location via the tiered protocol before binding.')
+        sentences.append(f'"{name}" is part of your constitution — resolve its location via the tiered protocol before binding.')
 
 print(" ".join(sentences))
 PYEOF

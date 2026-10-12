@@ -25,7 +25,7 @@ def load_frontmatter(path):
 
 
 def build_manifesto_lookup(manifesto_dir):
-    """Read all *.md files once; return a list of entry dicts: slug, title, tagline, register, reader."""
+    """Read all *.md files once; return list of (slug, title_lower, tagline)."""
     manifestos_path = os.path.join(manifesto_dir, "manifestos")
     if not os.path.isdir(manifestos_path):
         return []
@@ -37,38 +37,18 @@ def build_manifesto_lookup(manifesto_dir):
             continue
         slug = os.path.splitext(os.path.basename(path))[0].lower().replace("-", " ")
         title = fm.get("title", "").lower()
-        entries.append({
-            "slug": slug,
-            "title": title,
-            "tagline": fm.get("tagline", ""),
-            "register": fm.get("register") or "",
-            "reader": fm.get("reader") or "",
-        })
+        tagline = fm.get("tagline", "")
+        entries.append((slug, title, tagline))
     return entries
-
-
-def find_entry(name, entries):
-    """Return the first entry matching name, or None."""
-    name_lower = name.lower().replace("-", " ").replace("_", " ")
-    for entry in entries:
-        if name_lower in entry["slug"] or entry["slug"] in name_lower or name_lower in entry["title"]:
-            return entry
-    return None
 
 
 def find_tagline(name, entries):
     """Return tagline string if found, empty string if found but no tagline, None if no match."""
-    entry = find_entry(name, entries)
-    return None if entry is None else entry["tagline"]
-
-
-def register_clause(name, entries):
-    """Return "voice: <register>, reader: <reader>" for the matching entry, keeping only the fields present, or "" when none."""
-    entry = find_entry(name, entries)
-    if entry is None:
-        return ""
-    labelled = (("voice", entry["register"]), ("reader", entry["reader"]))
-    return ", ".join(f"{label}: {value}" for label, value in labelled if value)
+    name_lower = name.lower().replace("-", " ").replace("_", " ")
+    for slug, title, tagline in entries:
+        if name_lower in slug or slug in name_lower or name_lower in title:
+            return tagline  # may be empty string
+    return None
 
 
 def main():
