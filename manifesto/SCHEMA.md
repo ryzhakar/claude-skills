@@ -92,7 +92,7 @@ Each element in any list is one of:
 
 Matcher: `startup|resume|compact`. The host sends the firing source on stdin as `source`; the hook states it in one preamble line, `Session source: <source>.`
 
-Parse `.manifestos.yaml`, render `you:` elements as natural language prose. Compose output from three parts: session preamble + shared binding core + inline footer. NEVER inject raw YAML. SessionStart and SubagentStart add `(voice: <register>, reader: <reader>)` after each element name from the matching manifesto's `register` and `reader` frontmatter fields, keep only the fields present, and omit the clause when neither exists.
+Parse `.manifestos.yaml`, render `you:` elements as natural language prose. Compose output from three parts: session preamble + shared binding core + inline footer. NEVER inject raw YAML.
 
 Emit JSON: `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": <text>}}`. The text stays under 8,000 characters. The host persists hook output over 10,000 characters to a file and shows the model a 2KB preview.
 
