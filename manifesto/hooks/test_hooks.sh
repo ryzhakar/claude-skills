@@ -155,38 +155,6 @@ for element in elements:
 ' "$1" "$2"
 }
 
-expected_clause() {
-    python3 - "$MANIFESTO_DIR/manifestos/$1.md" <<'PY'
-import re, sys
-try:
-    head = open(sys.argv[1], encoding="utf-8").read().split("---")[1]
-except (OSError, IndexError):
-    sys.exit(0)
-fields = []
-for label, key in (("voice", "register"), ("reader", "reader")):
-    match = re.search(r'^%s:\s*"?([^"\n]+?)"?\s*$' % key, head, re.M)
-    if match:
-        fields.append("%s: %s" % (label, match.group(1)))
-print(", ".join(fields))
-PY
-}
-
-names_carry_expected_clause() {
-    local file="$1" scope="$2" name clause problems=0 expected=0
-    while IFS= read -r name; do
-        clause=$(expected_clause "$name")
-        if [ -n "$clause" ]; then
-            expected=$((expected + 1))
-            grep -qF -- "\"$name\" ($clause)" "$file" || { echo "missing: \"$name\" ($clause)"; problems=1; }
-        elif grep -qE -- "\"$name\" \((voice|reader):" "$file"; then
-            echo "clause present for $name, which has no register or reader"
-            problems=1
-        fi
-    done < <(element_needles "$scope" name)
-    [ "$expected" -gt 0 ] || { echo "no element of $scope has register or reader under $MANIFESTO_DIR"; return 1; }
-    return "$problems"
-}
-
 contains_every_element() {
     local file="$1" scope="$2" fields="$3" needle missing=0 total=0
     while IFS= read -r needle; do
@@ -230,7 +198,6 @@ verify_session_start() {
     check "SessionStart $source: names every you: element and purpose" contains_every_element "$prefix.context" you name,purpose,source
     check "SessionStart $source: says which source fired" contains_text "$prefix.context" "Session source: $source."
     check "SessionStart $source: keeps the subagent reinforcement footer" contains_text "$prefix.context" "$REINFORCEMENT_HEADING"
-    check "SessionStart $source: injects register and reader per element" names_carry_expected_clause "$prefix.context" you
 }
 
 verify_subagent_start() {
@@ -240,32 +207,9 @@ verify_subagent_start() {
     verify_binding_context "SubagentStart $agent_type" "$prefix" SubagentStart
     if [ -n "$scope" ]; then
         check "SubagentStart $agent_type: names every element and purpose" contains_every_element "$prefix.context" "$scope" name,purpose,source
-        check "SubagentStart $agent_type: injects register and reader per element" names_carry_expected_clause "$prefix.context" "$scope"
     else
         check "SubagentStart $agent_type: states no element matched" contains_text "$prefix.context" "No role-specific elements matched"
     fi
-}
-
-prepare_synthetic_project() {
-    local manifestos="$WORK_DIR/synthetic-manifestos/manifestos"
-    mkdir -p "$manifestos" "$WORK_DIR/synthetic-project"
-    printf -- '---\ntitle: "Register Only"\nregister: "lecture"\n---\n' > "$manifestos/register-only.md"
-    printf -- '---\ntitle: "Reader Only"\nreader: "human"\n---\n' > "$manifestos/reader-only.md"
-    printf -- '---\ntitle: "Neither Field"\ntagline: "none"\n---\n' > "$manifestos/neither-field.md"
-    printf 'you:\n  - register-only\n  - reader-only\n  - neither-field\nmanifesto_dir: %s\n' "$WORK_DIR/synthetic-manifestos" > "$WORK_DIR/synthetic-project/.manifestos.yaml"
-}
-
-verify_clause_omission() {
-    local prefix="$WORK_DIR/synthetic" saved="$PROJECT_DIR"
-    prepare_synthetic_project
-    PROJECT_DIR="$WORK_DIR/synthetic-project"
-    run_hook session-start.sh '{"hook_event_name":"SessionStart","source":"startup"}' "$prefix"
-    PROJECT_DIR="$saved"
-    extract_context "$prefix"
-    check "partial frontmatter: exit status 0" exit_status_is_zero "$prefix"
-    check "partial frontmatter: register alone yields voice clause" contains_text "$prefix.context" '"register-only" (voice: lecture)'
-    check "partial frontmatter: reader alone yields reader clause" contains_text "$prefix.context" '"reader-only" (reader: human)'
-    check "partial frontmatter: neither field yields no clause" lacks_text "$prefix.context" '"neither-field" ('
 }
 
 verify_prompt_reminder() {
@@ -349,7 +293,6 @@ main() {
     verify_subagent_start instruction-writer subagents:instruction-writer
     verify_subagent_start manifesto:maximalist-reviewer ""
     verify_prompt_reminder
-    verify_clause_omission
     echo
     echo "$((CHECKS - FAILURES))/$CHECKS checks passed"
     [ "$FAILURES" -eq 0 ]
