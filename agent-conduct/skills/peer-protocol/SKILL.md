@@ -152,11 +152,11 @@ Copy decision-bearing messages — `[hazard]`, `[ask]`, the `[answer]` to an ask
 
 Copy as the sender, one line per message prefixed `[peers]` in your journal, written in the Bash call that takes the message's stamp; never in a separate call.
 
-Record as receiver the decisions you take, as ordinary journal events; never a receipt line.
+Record as receiver the decisions you take, as ordinary journal events, and a receipt line only where your project's record rules demand one; never otherwise.
 
 Append the same lines to `~/.claude-peers/<ref>.log` when you keep no journal; never skip the copy.
 
-Read a peer's `[peers]` lines, or its log, after compaction or resume when its card's `updated` is newer than your last read; never keep a read floor or log a receipt.
+Read a peer's `[peers]` lines, or its log, after compaction or resume when its card's `updated` is newer than your last read; never keep a read floor.
 </keep-a-durable-copy>
 
 <leave-park-or-end>
