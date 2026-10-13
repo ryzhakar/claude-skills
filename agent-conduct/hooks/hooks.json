@@ -1,5 +1,5 @@
 {
-  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while background work runs with no wake set, and after a resume names the work the old session left running; peer-protocol join text at session start and after compaction while ~/.claude-peers exists",
+  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while background work runs with no wake set, and after a resume names the work the old session left running",
   "hooks": {
     "SessionStart": [
       {
@@ -18,26 +18,6 @@
           {
             "type": "command",
             "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/check-back.py resume",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "startup|resume|clear|fork",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/peer-join.sh join",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/peer-join.sh compact",
             "timeout": 10
           }
         ]

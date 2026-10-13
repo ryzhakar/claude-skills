@@ -6,14 +6,14 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.7.0` | 3S |
+| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.7.0` | 2S |
 | [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
 | [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
-| [peers](peers/) | A society of Claude Code sessions on one machine: its protocol, its commons,... | `0.1.0` | 1S |
+| [peers](peers/) | A society of Claude Code sessions on one machine: its protocol, its commons,... | `0.1.0` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -29,7 +29,6 @@ Domain-free skills governing how an agent conducts itself while working, indepen
 ### Skills
 
 - **[check-back](agent-conduct/skills/check-back/SKILL.md)** — Before ending a turn that leaves a run pending, set the agent's own next wake, and on waking look at what was pending. "check back",...
-- **[peer-protocol](agent-conduct/skills/peer-protocol/SKILL.md)** — Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and...
 - **[work-silently](agent-conduct/skills/work-silently/SKILL.md)** — Keep working while writing nothing to the conversation, except answers to the user's own messages, until the user says to stop....
 ## [dev-cycle](dev-cycle/) `1.0.0`
 
@@ -118,6 +117,7 @@ A society of Claude Code sessions on one machine: its protocol, its commons, and
 ### Skills
 
 - **[gossip-around](peers/skills/gossip-around/SKILL.md)** — Source knowledge and resources through the peers who know them from their own work, and carry what you learn to the peers whose work it...
+- **[peer-protocol](peers/skills/peer-protocol/SKILL.md)** — Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and...
 ## [product-craft](product-craft/) `1.1.0`
 
 Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.

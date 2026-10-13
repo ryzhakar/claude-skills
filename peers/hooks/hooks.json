@@ -1,0 +1,27 @@
+{
+  "description": "peer-protocol join text at session start and after compaction while the claude-peers registry directory exists",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/peer-join.sh join",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/peer-join.sh compact",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

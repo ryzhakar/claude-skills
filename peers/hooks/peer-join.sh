@@ -1,12 +1,18 @@
 #!/bin/bash
 # SessionStart: print peer-protocol text. Argument: join | compact.
-# Silent unless $HOME/.claude-peers exists. Never creates it. Never fails the session.
+# Silent unless the registry root exists. Never creates it. Never fails the session.
 set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 
-# Gate: no peers directory, no peer protocol.
-[ -n "${HOME:-}" ] && [ -d "$HOME/.claude-peers" ] || exit 0
+# Gate: no registry directory, no peer protocol.
+ROOT="${CLAUDE_PEERS_ROOT:-}"
+if [ -z "$ROOT" ]; then
+  if [ -n "${XDG_DATA_HOME:-}" ]; then ROOT="$XDG_DATA_HOME/claude-peers"
+  elif [ -n "${HOME:-}" ]; then ROOT="$HOME/.local/share/claude-peers"
+  fi
+fi
+[ -n "$ROOT" ] && [ -d "$ROOT" ] || exit 0
 
 case "${1:-}" in
   join|compact) ;;
