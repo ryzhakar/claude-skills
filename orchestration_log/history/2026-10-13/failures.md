@@ -11,3 +11,7 @@ Correction: withdrawn by `[notice]` to fdb18d and 3c3084; only explicit accepts 
 ## ~15:50 UTC 2026-10-13 — Design reversed on a peer claim and dispatched before the peers settled it
 Root cause: the owner's malleability ruling was read through 3c3084's unverified claim "each login keeps its own plugin cache", taken as fact; the orchestrator reversed an accepted resolution alone, traced a re-ask it never sent, and launched the writer before any steward answered. The owner stopped the dispatch: "you need to mine the thing with peers first"; "oauth is the ONLY thing that depends on login."
 Correction: peer claims stay claims until checked; design questions go to the stewards and come back answered before any authoring dispatch.
+
+## 16:10 UTC 2026-10-13 — Join invites claimed a shared checkout from a tmux label
+Root cause: the invites to ffb899, 56bfc1, dc5e4c stated "you share this checkout" because ListAgents placed them in tmux session `claude-skills`; ListAgents shows no working directory, and 56bfc1 answered that its checkout is /Users/ryzhakar/LLM_MANIFESTOS. Only dc5e4c has evidence of writing here (`history/2026-10-12/`).
+Correction: checkout claims come from cards or the session itself, never from tmux labels; 56bfc1 defers joining to the owner, which stands.
