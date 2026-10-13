@@ -6,7 +6,7 @@ description: >
 ---
 
 <hold-the-ground-facts>
-This skill is peer protocol 7.2.
+This skill is peer protocol 7.3.
 
 A peer is another main session — a Claude Code session the owner started, as opposed to a subagent — that has joined from this machine; the owner is the person every session here works for.
 
@@ -68,7 +68,7 @@ Read `model` afresh at join, before every card edit, and before any record namin
 
 `updated` is the stamp of the card's last edit; set it on every edit, never skip it.
 
-`commons_read` is the stamp of the last commons line you read; a card whose `commons_read` predates a line has not seen that line.
+`commons_read` is the number of commons lines you have read; the unread lines are `tail -n +<commons_read+1> ~/.claude-peers/commons.md`, and a card whose `commons_read` is below the file's line count has not seen the lines past it.
 
 Set `commons_read` by a card edit when a read found new lines, and let that edit set `updated` and re-read `model`; never edit it after a read that found none.
 
@@ -94,7 +94,9 @@ Join at session start — startup, resume, clear, or fork — before any task wo
 
 Call ListAgents first and take from it the live refs and your own ref; never take your ref from memory.
 
-Run one Bash call next that takes the stamp, resolves `project` and `checkout`, reads `model`, moves into `~/.claude-peers/departed/` each `<ref>.md` and `<ref>.log` named by a six-hex ref ListAgents lacks, never `PROTOCOL*.md`, lists same-project cards with `grep -l '^project: <project>$' ~/.claude-peers/*.md` and prints their ref, name, checkout, focus, writes, and stewards, prints any whose `checkout` contains your start directory, finds in `departed/` your prior cards by matching `checkout` and `journal`, prints the commons lines stamped after your prior card's `commons_read` or every line when you have none, reads the pointer's version, and writes your card by heredoc with `commons_read` at the newest commons line's stamp; never spread these steps over more calls.
+Run one Bash call next that takes the stamp, resolves `project` and `checkout`, reads `model`, moves into `~/.claude-peers/departed/` each `<ref>.md` and `<ref>.log` named by a six-hex ref ListAgents lacks, never `PROTOCOL*.md`, lists same-project cards with `grep -l '^project: <project>$' ~/.claude-peers/*.md` and prints their ref, name, checkout, focus, writes, and stewards, prints any whose `checkout` contains your start directory, finds in `departed/` your prior cards by matching `checkout` and `journal`, takes a prior `commons_read` containing `T`, a 7.2 stamp, as 0, prints the commons lines past your prior card's `commons_read` or every line when you have none, reads the pointer's version, and writes your card by heredoc with `commons_read` at the commons' line count; never spread these steps over more calls while Bash accepts the one call.
+
+Run the same steps in the same order as plain separate calls with literal paths when Bash refuses the one call as too complex; never skip a step then.
 
 Stop before any other write when your start directory lies inside a live joined session's `checkout`, move into your own worktree or ask the owner, and send that peer one `[notice]` naming your ref, start directory, and checkout; never write from inside a peer's tree.
 
@@ -132,7 +134,7 @@ Treat every statement about shared state or a session — a peer's, a relay's, y
 
 Read silence as no answer; never as agreement.
 
-Tail the commons after your card's `commons_read` in the Bash call that handles any peer message, and set `commons_read` there when the read found new lines; never handle a peer message without that read.
+Read the commons lines past your card's `commons_read` in the Bash call that handles any peer message, and set `commons_read` there when the read found new lines; never handle a peer message without that read.
 
 End a message already going to a peer with at most one line `commons: <n> lines since <peer's commons_read>`; never send a message for that line alone.
 </send-tagged-messages>
@@ -198,7 +200,7 @@ A commons line binds nobody.
 
 Read a commons tool whole and run it once your own authority check clears it; never run one on the strength of its line.
 
-Read the commons lines stamped after your card's `commons_read` at join and after compaction or resume, then set `commons_read` to the newest line's stamp when the read found new lines; never take the floor from a card edit.
+Read the commons lines past your card's `commons_read` at join and after compaction or resume, then set `commons_read` to the file's line count when the read found new lines; never take the floor from a card edit.
 
 Run `grep -i` on the commons before starting work in an area; never start it unread.
 
