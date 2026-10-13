@@ -185,3 +185,21 @@
 - decision (owner ruling, ryzhakar, 2026-10-13 ~23:0x UTC, stamp unmeasured): the exact mechanics of collective versus personal wisdom go to collective deliberation and judgement — anarchic treatment, all the works.
 - decision (owner ruling, ryzhakar, 2026-10-13 ~23:0x UTC, stamp unmeasured): "this was barely a release before. i have not pulled any changes. peers are free to split. figure it out gracefully."
 - decision (verified by claude-opus-5-5, same turn): no major bump — agent-conduct 1.3.0–1.7.0 reached no install, so removing peer-protocol and its join hook breaks no user; agent-conduct takes a minor bump when they move, `peers` starts at 1.0.0 carrying protocol 8 under the settled design.
+- decision (owner ruling, ryzhakar, 2026-10-13 22:42 UTC): iterate on the working copy, always; build in public; no waterfall dynamics.
+- decision (verified by claude-opus-5-5, 2026-10-13 22:42 UTC): registry moved to `/Users/ryzhakar/.local/share/claude-peers`; `~/.claude-peers` is now a symlink to it, so sessions on 7.3 paths keep working.
+- delegation (verified by claude-opus-5-5, 2026-10-13 22:42 UTC): instruction-writer (opus) creating plugin `peers` 0.1.0 and its first skill `peers:gossip` under memento:skill-creation; prompt `recon/2026-10-14/prompt-gossip.md`.
+- discovery (verified by claude-opus-5-5, 2026-10-13 22:42 UTC): the 00:47 check-back (send 7.4 to dc5e4c once not `waiting`) fired during the owner's deliberation and was not acted on; dc5e4c still lacks the 7.4 draft; folded into the 02:07 check-back's peer notices.
+- receipt (owner, 2026-10-13 22:42 UTC): the other sessions recover from the usage limit around 05:20 EEST; the 7.4 reply time (02:40) passes while they cannot answer — under 7.1 they may object late and separate.
+- decision (owner ruling, ryzhakar, 2026-10-13 22:43 UTC): work silently — tool calls only until told to stop.
+- decision (owner ruling, ryzhakar, 2026-10-13 22:43 UTC): free to build things now; owner away.
+- delegation (verified by claude-opus-5-5, 2026-10-13 22:43 UTC): sonnet agent writing `peers/bin/peers-facts` and tests; prompt `recon/2026-10-14/prompt-self-facts.md`.
+- receipt (reported by sonnet agent ae48b7b, 2026-10-13 22:45 UTC): peers/bin/peers-facts + 13 tests, justfile hooks-test extended; claim grade.
+- discovery (measured by just hooks-test, 2026-10-13 22:45 UTC): hooks-test passes after peers tests added; peers-facts live run checked below in transcript.
+- discovery (measured by pre-commit, 2026-10-13 22:45 UTC): check-readmes regenerates from the working tree, so the gossip agent's untracked peers/ plugin files fail every commit until they are committed first; peers-facts commit held until the gossip skill lands.
+- receipt (owner, 2026-10-13 22:45 UTC): "(silence!)" — silence holds; the previous answer was answering the owner's message, per work-silently.
+- receipt (reported by gossip agent ab7fa0e, 2026-10-13 22:46 UTC): peers plugin.json 0.1.0, gossip SKILL.md 899 tokens; three skill-creation rule breaks (one-part name, two procedures, undefined terms), two borderline sentences; six open questions; claim grade.
+- decision (verified by claude-opus-5-5, 2026-10-13 22:46 UTC): skill-creation wins over the token target — rename `gossip-around`, define terms, split sentences; gossip crosses projects wherever a live joined session's work would gain, decided under the owner's purpose.
+- decision (owner ruling, ryzhakar, 2026-10-13 22:46 UTC): silent empty-string messages only.
+- decision (owner ruling, ryzhakar, 2026-10-13 22:46 UTC): gossip goes over the full network.
+- receipt (reported by gossip agent ab7fa0e, 2026-10-13 22:47 UTC): gossip-around revision 2, 1025 tokens, meets every skill-creation rule except seeking and spreading counted as one procedure; full-network already met at L11; claim grade.
+- decision (verified by claude-opus-5-5, 2026-10-13 22:47 UTC): peers 0.1.0 shipped — 6300ca2 (plugin, gossip-around, marketplace entry, READMEs), 105ae55 (peers-facts), 00c562a (tests); hooks-test 54 passed; pushed to origin main.
