@@ -1,0 +1,11 @@
+{
+  "name": "peers",
+  "version": "0.1.0",
+  "description": "A society of Claude Code sessions on one machine: its protocol, its commons, and gossip between peers.",
+  "author": {
+    "name": "ryzhakar"
+  },
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": ["peers", "society", "gossip", "sessions", "knowledge-sharing", "network-effects"]
+}

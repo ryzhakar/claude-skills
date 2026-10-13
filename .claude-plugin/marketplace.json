@@ -5,32 +5,10 @@
   },
   "plugins": [
     {
-      "name": "orchestration",
-      "source": "./orchestration/",
-      "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",
-      "version": "5.0.1",
-      "author": {
-        "name": "ryzhakar"
-      },
-      "repository": "https://github.com/ryzhakar/claude-skills",
-      "license": "MIT"
-    },
-    {
-      "name": "product-craft",
-      "source": "./product-craft/",
-      "description": "Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.",
-      "version": "1.1.0",
-      "author": {
-        "name": "ryzhakar"
-      },
-      "repository": "https://github.com/ryzhakar/claude-skills",
-      "license": "MIT"
-    },
-    {
-      "name": "dev-discipline",
-      "source": "./dev-discipline/",
-      "description": "Software engineering discipline skills, agent-agnostic: outermost-test-first signature-first TDD, systematic debugging, bug triage, architecture improvement, and receiving code review. Used ad hoc or by dev-cycle.",
-      "version": "3.0.0",
+      "name": "agent-conduct",
+      "source": "./agent-conduct/",
+      "description": "Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.",
+      "version": "1.7.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -60,10 +38,10 @@
       "license": "MIT"
     },
     {
-      "name": "prompt-engineering",
-      "source": "./prompt-engineering/",
-      "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
-      "version": "2.0.0",
+      "name": "dev-discipline",
+      "source": "./dev-discipline/",
+      "description": "Software engineering discipline skills, agent-agnostic: outermost-test-first signature-first TDD, systematic debugging, bug triage, architecture improvement, and receiving code review. Used ad hoc or by dev-cycle.",
+      "version": "3.0.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -75,6 +53,61 @@
       "source": "./manifesto/",
       "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.",
       "version": "3.2.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "memento",
+      "source": "./memento/",
+      "description": "A memory and record-keeping system for agents without continuity across sessions.",
+      "version": "0.5.1",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "orchestration",
+      "source": "./orchestration/",
+      "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",
+      "version": "5.0.1",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "peers",
+      "source": "./peers/",
+      "description": "A society of Claude Code sessions on one machine: its protocol, its commons, and gossip between peers.",
+      "version": "0.1.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "product-craft",
+      "source": "./product-craft/",
+      "description": "Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.",
+      "version": "1.1.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
+      "name": "prompt-engineering",
+      "source": "./prompt-engineering/",
+      "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
+      "version": "2.0.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -108,28 +141,6 @@
       "source": "./userland-utilities/",
       "description": "Practical utilities for common desktop and system tasks. Includes macOS app bundle repair (Gatekeeper, code signing, quarantine flags).",
       "version": "1.0.0",
-      "author": {
-        "name": "ryzhakar"
-      },
-      "repository": "https://github.com/ryzhakar/claude-skills",
-      "license": "MIT"
-    },
-    {
-      "name": "memento",
-      "source": "./memento/",
-      "description": "A memory and record-keeping system for agents without continuity across sessions.",
-      "version": "0.5.1",
-      "author": {
-        "name": "ryzhakar"
-      },
-      "repository": "https://github.com/ryzhakar/claude-skills",
-      "license": "MIT"
-    },
-    {
-      "name": "agent-conduct",
-      "source": "./agent-conduct/",
-      "description": "Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.",
-      "version": "1.7.0",
       "author": {
         "name": "ryzhakar"
       },
