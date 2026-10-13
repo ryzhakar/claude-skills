@@ -6,7 +6,7 @@ description: >
 ---
 
 <hold-the-ground-facts>
-This skill is peer protocol 6.
+This skill is peer protocol 6.1.
 
 A peer is another main session — a Claude Code session the owner started, as opposed to a subagent — that has joined from this machine; the owner is the person every session here works for.
 
