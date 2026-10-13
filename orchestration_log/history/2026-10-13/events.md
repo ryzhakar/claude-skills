@@ -203,3 +203,6 @@
 - decision (owner ruling, ryzhakar, 2026-10-13 22:46 UTC): gossip goes over the full network.
 - receipt (reported by gossip agent ab7fa0e, 2026-10-13 22:47 UTC): gossip-around revision 2, 1025 tokens, meets every skill-creation rule except seeking and spreading counted as one procedure; full-network already met at L11; claim grade.
 - decision (verified by claude-opus-5-5, 2026-10-13 22:47 UTC): peers 0.1.0 shipped — 6300ca2 (plugin, gossip-around, marketplace entry, READMEs), 105ae55 (peers-facts), 00c562a (tests); hooks-test 54 passed; pushed to origin main.
+- delegation (verified by claude-opus-5-5, 2026-10-13 22:47 UTC): sonnet agent moving peer-protocol, join hook, templates, tests from agent-conduct to peers and pointing them at the XDG root; prompt `recon/2026-10-14/prompt-move-protocol.md`.
+- receipt (reported by move agent a24500b, 2026-10-13 22:51 UTC): protocol, join hook, templates, tests moved to peers, gate on XDG root; 57 passed; two stale agent-conduct names in templates, fixed by the scribe; claim grade.
+- decision (verified by claude-opus-5-5, 2026-10-13 22:51 UTC): a7308be (move), 55de765 (tests), 6a430c5 (agent-conduct 1.8.0, peers 0.2.0) pushed; hooks-test 57 passed; pointer canonical line now `peers:peer-protocol` with the XDG root.
