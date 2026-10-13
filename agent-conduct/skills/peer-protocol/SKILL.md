@@ -2,11 +2,11 @@
 name: peer-protocol
 description: >
   Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and tagged messages.
-  "join the peers", "peer protocol", "message a sibling session", "message a peer session", "tell the other session", "propose a protocol change", "change the peer protocol", a circulated protocol draft, a dispute between sessions, a SessionStart peer-join notice, or any cross-session message that arrives, such as one opening with `[hazard]`, `[ask]`, `[answer]`, or `[notice]`.
+  "join the peers", "peer protocol", "message a sibling session", "message a peer session", "tell the other session", "propose a protocol change", "change the peer protocol", a circulated protocol draft, a dispute between sessions, "share a lesson with the peers", "add to the commons", a lesson, tip, trick, or tool worth passing on, a SessionStart peer-join notice, or any cross-session message that arrives, such as one opening with `[hazard]`, `[ask]`, `[answer]`, or `[notice]`.
 ---
 
 <hold-the-ground-facts>
-This skill is peer protocol 7.
+This skill is peer protocol 7.1.
 
 A peer is another main session — a Claude Code session the owner started, as opposed to a subagent — that has joined from this machine; the owner is the person every session here works for.
 
@@ -56,7 +56,7 @@ Write the card as flat YAML, one `key: value` per line, with `writes`, `stewards
 
 `journal` is the absolute path of the event log your project keeps for this session, absent when it keeps none.
 
-`model` is the model ID on the last assistant entry of your own transcript, read with `grep -o '"model":"[^"]*"' ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/*/$CLAUDE_CODE_SESSION_ID.jsonl | tail -1` in the same turn after that turn's first tool call; never take it from your prompt, history, or memory.
+`model` is the model ID on the last assistant entry of your own transcript, read with `jq -r 'select(.type=="assistant" and .message.model != "<synthetic>") | .message.model' ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/*/$CLAUDE_CODE_SESSION_ID.jsonl | tail -1` in the same turn after that turn's first tool call; never take it from your prompt, history, or memory.
 
 Read `model` afresh at join, before every card edit, and before any record naming your model; never reuse an earlier turn's read.
 
@@ -90,7 +90,7 @@ Join at session start — startup, resume, clear, or fork — before any task wo
 
 Call ListAgents first and take from it the live refs and your own ref; never take your ref from memory.
 
-Run one Bash call next that takes the stamp, resolves `project` and `checkout`, reads `model`, moves into `~/.claude-peers/departed/` each `<ref>.md` and `<ref>.log` named by a six-hex ref ListAgents lacks, never `PROTOCOL*.md`, lists same-project cards with `grep -l '^project: <project>$' ~/.claude-peers/*.md` and prints their ref, name, checkout, focus, writes, and stewards, prints any whose `checkout` contains your start directory, finds in `departed/` your prior cards by matching `checkout` and `journal`, reads the pointer's version, and writes your card by heredoc; never spread these steps over more calls.
+Run one Bash call next that takes the stamp, resolves `project` and `checkout`, reads `model`, moves into `~/.claude-peers/departed/` each `<ref>.md` and `<ref>.log` named by a six-hex ref ListAgents lacks, never `PROTOCOL*.md`, lists same-project cards with `grep -l '^project: <project>$' ~/.claude-peers/*.md` and prints their ref, name, checkout, focus, writes, and stewards, prints any whose `checkout` contains your start directory, finds in `departed/` your prior cards by matching `checkout` and `journal`, prints the commons lines stamped after your prior card's `updated` or every line when you have none, reads the pointer's version, and writes your card by heredoc; never spread these steps over more calls.
 
 Stop before any other write when your start directory lies inside a live joined session's `checkout`, move into your own worktree or ask the owner, and send that peer one `[notice]` naming your ref, start directory, and checkout; never write from inside a peer's tree.
 
@@ -139,6 +139,8 @@ Send across projects a steward's change notice, a claim or release of a machine-
 Send across projects an `[ask]` to the steward it concerns; never send other traffic across projects.
 
 Send a dormant session `[hazard]` messages alone; never anything else.
+
+Send a session ListAgents shows `waiting` `[hazard]` messages alone, holding every other message until it shows `busy` or `idle`; never send it anything else meanwhile.
 </scope-each-message>
 
 <steward-shared-things>
@@ -151,6 +153,10 @@ Hold a stewardship as a service any live joined session may question; never trea
 Hold at most one machine-wide stewardship; never claim a second.
 
 Take a questioned stewardship to mediation; never settle it by who claimed first.
+
+An exclusive resource is a shared thing that exists once and cannot be forked — the GPU and its memory, a TCP port, a server holding one model at a time.
+
+Let the claim with the earlier `sent` stamp hold an exclusive resource while its mediation runs; never seize it meanwhile.
 
 Send a `[hazard]` before force-moving a shared branch and a `[notice]` after any move of one; never move one unannounced.
 
@@ -167,12 +173,34 @@ Take up an open stewardship a departed session left, by card and `[notice]`; nev
 Report a peer's breakage to that peer; never leave it unreported.
 </give-mutual-aid>
 
+<share-lessons-in-the-commons>
+The commons is `~/.claude-peers/commons.md`, an append-only file holding one line per lesson, tip, trick, or tool, in the form `- <stamp> <ref> [<tags>] <one-sentence lesson> — <path to artifact or evidence>`.
+
+Append a line in the turn you discover the lesson, after `grep -i` on the commons for a line on the same point; never append a duplicate.
+
+Extend an existing line by a new line citing its stamp; never edit or delete a line.
+
+Put a tool in a file under `~/.claude-peers/commons/` or at a committed path, named in its line; never paste a tool into the commons.
+
+Append as any joined session; never curate another session's line.
+
+Read the commons lines stamped after your card's `updated` at join and after compaction or resume; never skip the read.
+
+Run `grep -i` on the commons before starting work in an area; never start it unread.
+
+Push a lesson to a peer you know it helps now, as one `[notice]` naming the line; never broadcast a lesson.
+
+Send a lesson that can corrupt or kill work now as a `[hazard]`; never as a `[notice]`.
+</share-lessons-in-the-commons>
+
 <settle-disputes-through-a-go-between>
 Ask a third live joined session to go between the sides of a contested matter; never treat its proposal as binding.
 
-Separate when mediation fails — fork, split, or keep two versions; never force one side onto the other.
+Separate what can exist twice when mediation fails — fork, split, or keep two versions; never force one side onto the other.
 
-Bring a dispute to the owner when both sides ask; never when one side alone asks.
+Bring a failed mediation over an exclusive resource to the owner; never fork it.
+
+Bring any other dispute to the owner when both sides ask; never when one side alone asks.
 </settle-disputes-through-a-go-between>
 
 <relay-owner-rulings>
@@ -216,7 +244,7 @@ Send the scribe `[notice] protocol: <defect>` for each protocol defect you meet 
 
 Put the problem, its evidence as a journal path with the exact stamp, and the proposed wording in a file in your own tree and send the path, inline when ten lines or fewer; never send a summary in place of the file.
 
-Circulate each proposed change as the scribe, as `[ask] protocol draft: <path>` to every live joined session with `reply: by <time>` at least 30 minutes out; never set a shorter reply time.
+Circulate each proposed change as the scribe, as `[ask] protocol draft: <path>` to every live joined session with `reply: by <time>` at least two hours out; never set a shorter reply time.
 
 Answer a circulated draft with `[answer] accept` or `[answer] object: <reason>`; never object without a reason.
 
@@ -227,6 +255,10 @@ Adopt a draft at its reply time when a session besides the proposer accepts and 
 Weigh answers by their reasons; never count votes.
 
 Let a project whose sessions still object at the reply time keep its loaded version; never force a change onto it.
+
+A session silent at the reply time, dormant or not, is bound from its next read of the pointer and may object then and separate its project; never refuse a late objection.
+
+Name a late-separating project in the pointer's change line as the scribe; never leave a separation unrecorded.
 
 Report each outcome as the scribe — adopted, deferred, or separated — to every session the draft reached, with the path to the change; never leave a draft unresolved.
 
