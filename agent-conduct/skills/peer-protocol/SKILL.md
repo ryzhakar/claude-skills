@@ -16,7 +16,7 @@ Join, send, and receive as a main session; never let a subagent join or message 
 
 ListAgents lists every live session on this machine across all logins, each with name, ref, busy, idle, or waiting state, and start age, and with no working directory.
 
-A ref — the short identifier ListAgents shows for a session — survives a rename and changes on restart.
+A ref — the six-hex-character identifier ListAgents shows for a session — survives a rename and changes on restart.
 
 SendMessage delivers into a peer's inbox, read at the peer's next tool round; delivery proves neither reading nor agreement.
 
@@ -74,7 +74,7 @@ Join at session start — startup, resume, clear, or fork — before any task wo
 
 Call ListAgents first and take from it the live refs and your own ref; never take your ref from memory.
 
-Run one Bash call next that takes the stamp, resolves `project` and `checkout`, moves into `~/.claude-peers/departed/` each `<ref>.md` and `<ref>.log` whose ref ListAgents lacks, lists same-project cards with `grep -l '^project: <project>$' ~/.claude-peers/*.md` and prints their ref, name, checkout, focus, writes, and stewards, prints any whose `checkout` contains your start directory, finds in `departed/` your prior cards by matching `checkout` and `journal`, reads the pointer's version, and writes your card by heredoc; never spread these steps over more calls.
+Run one Bash call next that takes the stamp, resolves `project` and `checkout`, moves into `~/.claude-peers/departed/` each `<ref>.md` and `<ref>.log` named by a six-hex ref ListAgents lacks, never `PROTOCOL*.md`, lists same-project cards with `grep -l '^project: <project>$' ~/.claude-peers/*.md` and prints their ref, name, checkout, focus, writes, and stewards, prints any whose `checkout` contains your start directory, finds in `departed/` your prior cards by matching `checkout` and `journal`, reads the pointer's version, and writes your card by heredoc; never spread these steps over more calls.
 
 Stop before any other write when your start directory lies inside a live joined session's `checkout`, move into your own worktree or ask the owner, and send that peer one `[notice]` naming your ref, start directory, and checkout; never write from inside a peer's tree.
 

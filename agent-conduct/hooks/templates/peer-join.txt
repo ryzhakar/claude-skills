@@ -1,6 +1,6 @@
 ~/.claude-peers/ exists: join before any task. Subagents never join.
 1. ListAgents: live refs, own ref.
-2. One Bash call: stamp = `date '+%Y-%m-%dT%H:%M%z'`; project = parent of `git rev-parse --path-format=absolute --git-common-dir`, else start dir; move unlisted refs' .md/.log to departed/; print cards with your project; prior cards: departed/ ones with your checkout+journal; heredoc own <ref>.md:
+2. One Bash call: stamp = `date '+%Y-%m-%dT%H:%M%z'`; project = parent of `git rev-parse --path-format=absolute --git-common-dir`, else start dir; move unlisted six-hex refs' .md/.log (never PROTOCOL*) to departed/; print cards with your project; prior cards: departed/ ones with your checkout+journal; heredoc own <ref>.md:
 ref:
 name:
 project:
