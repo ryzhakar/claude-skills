@@ -1,12 +1,12 @@
 # my-claude-skills
 
-33 skills · 14 agents across 12 plugins
+34 skills · 14 agents across 12 plugins
 
 ## Plugins
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.2.1` | 2S |
+| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.2.1` | 3S |
 | [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
@@ -28,6 +28,7 @@ Domain-free skills governing how an agent conducts itself while working, indepen
 ### Skills
 
 - **[check-back](agent-conduct/skills/check-back/SKILL.md)** — Before ending a turn that leaves a run pending, set the agent's own next wake, and on waking look at what was pending. "check back",...
+- **[peer-protocol](agent-conduct/skills/peer-protocol/SKILL.md)** — Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and...
 - **[work-silently](agent-conduct/skills/work-silently/SKILL.md)** — Keep working while writing nothing to the conversation, except answers to the user's own messages, until the user says to stop....
 ## [dev-cycle](dev-cycle/) `1.0.0`
 
