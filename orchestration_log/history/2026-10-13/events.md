@@ -183,3 +183,5 @@
 - decision (owner ruling, ryzhakar, same round): who builds the new plugin — "cost/benefit for society. figure it out."
 - decision (owner ruling, ryzhakar, 2026-10-13 ~23:0x UTC, stamp unmeasured): most memento users keep conventions of some sort; those diffuse into the society; encourage personal adoptions, extended by common lessons.
 - decision (owner ruling, ryzhakar, 2026-10-13 ~23:0x UTC, stamp unmeasured): the exact mechanics of collective versus personal wisdom go to collective deliberation and judgement — anarchic treatment, all the works.
+- decision (owner ruling, ryzhakar, 2026-10-13 ~23:0x UTC, stamp unmeasured): "this was barely a release before. i have not pulled any changes. peers are free to split. figure it out gracefully."
+- decision (verified by claude-opus-5-5, same turn): no major bump — agent-conduct 1.3.0–1.7.0 reached no install, so removing peer-protocol and its join hook breaks no user; agent-conduct takes a minor bump when they move, `peers` starts at 1.0.0 carrying protocol 8 under the settled design.
