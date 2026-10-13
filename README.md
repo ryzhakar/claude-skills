@@ -6,7 +6,7 @@
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.3.1` | 3S |
+| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.4.0` | 3S |
 | [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
@@ -21,7 +21,7 @@
 
 ---
 
-## [agent-conduct](agent-conduct/) `1.3.1`
+## [agent-conduct](agent-conduct/) `1.4.0`
 
 Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.
 

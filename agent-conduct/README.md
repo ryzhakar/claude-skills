@@ -14,7 +14,7 @@ Before ending a turn that leaves a run pending, set the agent's own next wake, a
 
 ### [peer-protocol](skills/peer-protocol/SKILL.md)
 
-Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and tagged messages. "join the peers", "peer protocol", "message a sibling session", "message a peer session", "tell the other session", "propose a protocol change", "change the peer protocol", a SessionStart peer-join notice, or any cross-session message that arrives, such as one opening with `[hazard]`, `[ask]`, `[answer]`, or `[notice]`.
+Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and tagged messages. "join the peers", "peer protocol", "message a sibling session", "message a peer session", "tell the other session", "propose a protocol change", "change the peer protocol", a circulated protocol draft, a dispute between sessions, a SessionStart peer-join notice, or any cross-session message that arrives, such as one opening with `[hazard]`, `[ask]`, `[answer]`, or `[notice]`.
 
 
 ---
