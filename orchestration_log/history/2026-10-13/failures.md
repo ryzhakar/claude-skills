@@ -23,3 +23,7 @@ Correction: true send minute 2026-10-13T19:47+0300 per `date`; [notice] to dc5e4
 ## 16:55 UTC 2026-10-13 — Protocol 7 pushed as one commit under "chore(agent-conduct): 1.4.0"
 Root cause: the skill and template commits failed the check-readmes pre-commit hook (the skill's description changed, the README did not); their staged files rode into the version commit, and the chain used `;` with no exit check, so the push ran. 3ad2018 on origin main carries SKILL.md, peer-join.txt, plugin.json, marketplace.json, READMEs.
 Correction: pushed history on main is left as is; commit chains in this repo run `just readme` before any commit touching a skill and stop on the first non-zero exit.
+
+## 21:40 UTC 2026-10-13 — Journal dates and an owner-ruling time written wrong
+Root cause: after 00:00 EEST the traces wrote the local date beside "UTC" times; the owner's reading-half ruling was stamped from the moment of handling (~00:20 EEST) instead of its arrival (19:59 EEST), read off the turn order across a usage-limit gap.
+Correction: correction trace appended; trace stamps come from `date -u '+%Y-%m-%d %H:%M'` in the writing call, never assembled by hand.
