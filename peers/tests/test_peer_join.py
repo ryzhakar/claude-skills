@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-HOOKS_DIR = Path(__file__).resolve().parent.parent
+HOOKS_DIR = Path(__file__).resolve().parent.parent / "hooks"
 HOOKS_JSON = HOOKS_DIR / "hooks.json"
 SCRIPT = HOOKS_DIR / "peer-join.sh"
 JOIN_TEXT = "JOIN-FIXTURE: join the peer protocol.\n"
@@ -66,7 +66,7 @@ def session_start(home, plugin_root):
 
 
 def open_gate(home):
-    (home / ".claude-peers").mkdir()
+    (home / ".local" / "share" / "claude-peers").mkdir(parents=True)
 
 
 def test_absent_gate_prints_nothing_for_every_source(home, plugin_root, session_start):
@@ -79,7 +79,7 @@ def test_absent_gate_leaves_the_peers_directory_uncreated(home, plugin_root, ses
     write_templates(plugin_root)
     session_start("startup")
     session_start("compact")
-    assert not (home / ".claude-peers").exists()
+    assert not (home / ".local" / "share" / "claude-peers").exists()
 
 
 def test_startup_prints_the_join_text(home, plugin_root, session_start):
@@ -123,6 +123,35 @@ def test_missing_template_leaves_the_other_source_working(home, plugin_root, ses
     write_templates(plugin_root, compact=None)
     open_gate(home)
     assert session_start("startup") == JOIN_TEXT
+
+
+def run_script(home, plugin_root, **extra):
+    return subprocess.run(
+        ["bash", "-c", peer_commands("startup")[0]],
+        capture_output=True,
+        text=True,
+        env={"HOME": str(home), "CLAUDE_PLUGIN_ROOT": str(plugin_root), "PATH": "/usr/bin:/bin", **extra},
+    )
+
+
+def test_xdg_data_home_opens_the_gate(home, plugin_root, tmp_path):
+    write_templates(plugin_root)
+    xdg = tmp_path / "xdg"
+    (xdg / "claude-peers").mkdir(parents=True)
+    assert run_script(home, plugin_root, XDG_DATA_HOME=str(xdg)).stdout == JOIN_TEXT
+
+
+def test_peers_root_override_opens_the_gate(home, plugin_root, tmp_path):
+    write_templates(plugin_root)
+    root = tmp_path / "custom-root"
+    root.mkdir()
+    assert run_script(home, plugin_root, CLAUDE_PEERS_ROOT=str(root)).stdout == JOIN_TEXT
+
+
+def test_home_dot_claude_peers_alone_does_not_open_the_gate(home, plugin_root):
+    write_templates(plugin_root)
+    (home / ".claude-peers").mkdir()
+    assert run_script(home, plugin_root).stdout == ""
 
 
 def test_unset_home_prints_nothing_and_exits_zero(plugin_root):
