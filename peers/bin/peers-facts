@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Prints facts this Claude Code session states about itself, one `key: value` per line; omits a key whose source is absent.
+set -u
+
+date '+stamp: %Y-%m-%dT%H:%M%z'
+date -u '+stamp_utc: %Y-%m-%dT%H:%MZ'
+
+login="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+sid="${CLAUDE_CODE_SESSION_ID:-}"
+
+if [ -n "$sid" ] && command -v jq >/dev/null 2>&1; then
+  transcript=$(ls -t "$login"/projects/*/"$sid".jsonl 2>/dev/null | head -1)
+  if [ -n "$transcript" ]; then
+    model=$(jq -r 'select(.type=="assistant" and (.message.model // "") != "" and .message.model != "<synthetic>") | .message.model' "$transcript" 2>/dev/null | tail -1)
+    [ -n "$model" ] && echo "model: $model"
+  fi
+fi
+[ -n "$sid" ] && echo "session_id: $sid"
+echo "login: $login"
+
+cwd=$(pwd)
+echo "cwd: $cwd"
+
+project="$cwd"
+if checkout=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n "$checkout" ]; then
+  echo "checkout: $checkout"
+  branch=$(git branch --show-current 2>/dev/null)
+  [ -n "$branch" ] && echo "branch: $branch"
+  common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  [ -n "$common" ] && project=$(dirname "$common")
+fi
+echo "project: $project"
+
+manifest=""
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -f "$CLAUDE_PROJECT_DIR/.manifestos.yaml" ]; then
+  manifest="$CLAUDE_PROJECT_DIR/.manifestos.yaml"
+elif [ -n "${checkout:-}" ] && [ -f "$checkout/.manifestos.yaml" ]; then
+  manifest="$checkout/.manifestos.yaml"
+fi
+if [ -n "$manifest" ] && command -v python3 >/dev/null 2>&1; then
+  python3 - "$manifest" <<'PY'
+import re, sys
+names, in_you = [], False
+for line in open(sys.argv[1], encoding="utf-8"):
+    if re.match(r"^\S", line):
+        in_you = re.match(r"^you:\s*(#.*)?$", line) is not None
+        continue
+    if in_you:
+        m = re.match(r"^\s*-\s*name:\s*(.+?)\s*$", line)
+        if m:
+            names.append(m.group(1).strip("'\""))
+if names:
+    print("manifestos_declared: [" + ", ".join(names) + "]")
+PY
+fi
+
+echo "root: ${CLAUDE_PEERS_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-peers}"
+exit 0
