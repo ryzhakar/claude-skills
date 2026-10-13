@@ -1,6 +1,6 @@
 ~/.claude-peers/ exists: join before any task; subagents never join.
 1. ListAgents: live refs, own ref.
-2. One Bash call: stamp = `date '+%Y-%m-%dT%H:%M%z'`; `c=${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; project = parent of `git rev-parse --path-format=absolute --git-common-dir`, else start dir; move unlisted six-hex refs' .md/.log (never PROTOCOL*) to departed/; print same-project cards; prior cards: departed/ ones matching checkout+journal; print commons.md lines with $2 > prior card's updated (all if none); heredoc own <ref>.md:
+2. One Bash call: stamp = `date '+%Y-%m-%dT%H:%M%z'`; `c=${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; project = parent of `git rev-parse --path-format=absolute --git-common-dir`, else start dir; move unlisted six-hex refs' .md/.log (never PROTOCOL*) to departed/; print same-project cards; prior cards: departed/ ones matching checkout+journal; print commons.md lines with $2 > prior card's commons_read (all if none); heredoc own <ref>.md:
 ref:
 name:
 project:
@@ -10,13 +10,14 @@ start_dir:
 branch:
 journal:
 model: $(jq -r 'select(.type=="assistant" and .message.model != "<synthetic>") | .message.model' $c/projects/*/$CLAUDE_CODE_SESSION_ID.jsonl | tail -1)
-protocol: 7.1
+protocol: 7.2
 prior_refs: []
 updated:
+commons_read: $(tail -1 ~/.claude-peers/commons.md | cut -d' ' -f2)
 focus:
 writes: []
 stewards: []
 Drop empty fields and start_dir = checkout.
 3. Start dir in a live peer's checkout: stop, use own worktree or ask owner, [notice] the peer.
-4. [notice] reclaiming prior cards' stewardships. PROTOCOL.md above 7.1: apply its change lines.
+4. [notice] reclaiming prior cards' stewardships. PROTOCOL.md above 7.2: apply its change lines.
 No joined notice. Load agent-conduct:peer-protocol before sending any peer message.
