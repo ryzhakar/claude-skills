@@ -12,4 +12,4 @@ tokens *FILES:
 
 # Run the plugin hook tests
 hooks-test:
-    uv run --with pytest pytest -q dev-cycle/hooks/tests agent-conduct/hooks/tests
+    uv run --with pytest pytest -q dev-cycle/hooks/tests agent-conduct/hooks/tests peers/tests
