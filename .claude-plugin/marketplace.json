@@ -60,17 +60,6 @@
       "license": "MIT"
     },
     {
-      "name": "memento",
-      "source": "./memento/",
-      "description": "A memory and record-keeping system for agents without continuity across sessions.",
-      "version": "0.5.1",
-      "author": {
-        "name": "ryzhakar"
-      },
-      "repository": "https://github.com/ryzhakar/claude-skills",
-      "license": "MIT"
-    },
-    {
       "name": "orchestration",
       "source": "./orchestration/",
       "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",

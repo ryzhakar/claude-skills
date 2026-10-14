@@ -13,7 +13,7 @@ YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Twelve plugins, each a top-level directory (counted 2026-10-14, after peers left). `.claude-plugin/plugin.json` inside a plugin carries its
+Twelve plugins, each a top-level directory (counted 2026-10-14, after peers and memento left, with instruction-eval added). `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
@@ -25,17 +25,7 @@ and the liveness/monitoring mechanics for a discontinuous entity), `research-tre
 survey then depth-first verification across a knowledge surface), `session-checkpoint` (retired,
 pointer), `session-close` (retired, pointer). No hooks.
 
-**memento** — memory and record-keeping for agents without continuity across sessions. Thirteen
-skills (entry point `init`, orientation `pat-down`, closure `span-closure`, plus ten supporting
-skills — full inventory not yet carried in this file).
-Hooks: one SessionStart hook, matcher `startup|resume|compact` (moved from `orchestration`
-2026-09-18; PostCompact dropped the same day — its `additionalContext` is schema-rejected outright,
-confirmed via github.com/anthropics/claude-code/issues/46191, closed not-planned; SessionStart's
-`compact` matcher has a parallel confirmed bug for the JSON form, issues/28305, also closed
-not-planned, so plain stdout is the only viable channel and carries no documented matcher
-carve-out). Runs `session-start.sh`, which renders `templates/orientation-reminder.txt` — a pointer
-to `memento:init` — when `CLAUDE.md` exists. The script tests that one condition and has no other
-branch.
+**memento** — left 2026-10-14 for its own marketplace with the tool: github.com/ryzhakar/memento (`53fddcb`), install `memento@memento` 0.5.1, stewarded by member memento/steward; claude-skills `da5ab5d` (entry), `ab924e9` (plugin) (measured 2026-10-14: all six settings files name `memento@memento`).
 
 **dev-discipline** — agent-agnostic software-engineering skills, 3.0.0 (split 2026-10-06, see
 `architecture_log.md`): `tdd` (outermost failing test first, pretend calls, signatures with stub bodies,
