@@ -60,7 +60,18 @@ def _refuse_agents_and_skills(config_dir: Path) -> None:
 
 def _refuse_other_plugins(config_dir: Path) -> None:
     """Refuse unless enabledPlugins is exactly the two required plugins, both true."""
-    ...
+    settings_file = config_dir / SETTINGS_FILENAME
+    if not settings_file.is_file():
+        raise NeutralLoginRefused(f"{settings_file} is missing")
+    try:
+        settings = json.loads(settings_file.read_text())
+    except json.JSONDecodeError as error:
+        raise NeutralLoginRefused(f"{settings_file} is not JSON") from error
+    enabled = settings.get(ENABLED_PLUGINS_KEY) if isinstance(settings, dict) else None
+    if not isinstance(enabled, dict) or set(enabled) != set(REQUIRED_PLUGINS):
+        raise NeutralLoginRefused(f"{ENABLED_PLUGINS_KEY} is not the two required plugins")
+    if not all(value is True for value in enabled.values()):
+        raise NeutralLoginRefused(f"{ENABLED_PLUGINS_KEY} holds a plugin not true")
 
 
 def _refuse_memory_files_in_ancestry(working_dir: Path, home: Path) -> None:

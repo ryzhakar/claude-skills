@@ -74,6 +74,35 @@ def test_accepts_an_empty_agents_or_skills_folder(login: Login, folder: str):
     login.check()
 
 
+@pytest.mark.parametrize(
+    "enabled_plugins",
+    [
+        {},
+        {"instruction-eval@my-claude-skills": True},
+        {**REQUIRED_PLUGINS, "memento@my-claude-skills": True},
+        {**REQUIRED_PLUGINS, "manifesto@my-claude-skills": False},
+        {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": "true"},
+    ],
+)
+def test_refuses_enabled_plugins_other_than_the_two_required(login: Login, enabled_plugins: dict):
+    login.write_settings(enabled_plugins)
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
+def test_refuses_a_config_dir_without_settings(login: Login):
+    (login.config_dir / "settings.json").unlink()
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
+@pytest.mark.parametrize("content", ["not json", "[]", '{"enabledPlugins": []}'])
+def test_refuses_settings_that_are_not_a_plugin_mapping(login: Login, content: str):
+    (login.config_dir / "settings.json").write_text(content)
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
 @pytest.mark.parametrize("outside", [".claude", ".claudes-bare", "elsewhere/readers"])
 def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outside: str):
     config_dir = login.home / outside
