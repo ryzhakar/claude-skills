@@ -1,6 +1,6 @@
 # my-claude-skills
 
-33 skills · 14 agents across 12 plugins
+33 skills · 14 agents across 13 plugins
 
 ## Plugins
 
@@ -10,6 +10,7 @@
 | [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
+| [instruction-eval](instruction-eval/) | Measure whether an LLM instruction changes model behavior. | `0.1.0` | 0S |
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
 | [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
@@ -69,6 +70,10 @@ Software engineering discipline skills, agent-agnostic: outermost-test-first sig
   Scripts: [`find-polluter.sh`](dev-discipline/skills/systematic-debugging/scripts/find-polluter.sh)
 - **[tdd](dev-discipline/skills/tdd/SKILL.md)** — Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface...
 - **[triage-issue](dev-discipline/skills/triage-issue/SKILL.md)** — Diagnose a reported bug to its root cause and write an issue document carrying a test-first fix plan, without fixing the code. "triage...
+## [instruction-eval](instruction-eval/) `0.1.0`
+
+Measure whether an LLM instruction changes model behavior.
+
 ## [manifesto](manifesto/) `3.2.0`
 
 Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
