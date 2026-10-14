@@ -133,6 +133,30 @@ def test_done_change_noise_at_three_repeats_doubles_the_instruction_done_varianc
     assert noise["done_change"] == pytest.approx(Z * sqrt(2 * 0.25 / (3 * 2)))
 
 
+def test_noise_is_null_where_no_unit_holds_two_non_null_values():
+    rows = [
+        *done_replies("instruction", {"t1": [True, None], "t2": [None, None]}),
+        *done_replies("empty", {"t1": [True, False], "t2": [False, False]}),
+    ]
+
+    noise = measure_noise(rows, ["d1"], CONTROLS, repeats=2, level=LEVEL)
+
+    assert noise["sigma"]["done"]["instruction"] is None
+    assert noise["checks"]["completion"] is None
+    assert noise["done_change"] is None
+
+
+def test_completion_noise_is_null_when_no_control_has_a_done_value():
+    rows = [
+        *done_replies("instruction", {"t1": [True, False], "t2": [True, True]}),
+        *done_replies("empty", {"t1": [None, None], "t2": [None, None]}),
+    ]
+
+    noise = measure_noise(rows, ["d1"], CONTROLS, repeats=2, level=LEVEL)
+
+    assert noise["checks"]["completion"] is None
+
+
 def test_demand_change_noise_doubles_the_instruction_variance_of_each_gate_demand():
     rows = [
         reply("instruction", "t1", 1, {"d1": 1, "d2": 0, "dropped": 9}),
