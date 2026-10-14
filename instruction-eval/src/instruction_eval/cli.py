@@ -1,10 +1,10 @@
 import argparse
 import re
 
-READER_KINDS = ("agent", "command")
-REVISION_ID_PATTERN = re.compile(r"r[0-9]+")
+_READER_KINDS = ("agent", "command")
+_REVISION_ID_PATTERN = re.compile(r"r[0-9]+")
 
-ORDER_OF_WORK = """\
+_ORDER_OF_WORK = """\
 Order of work:
 1. in any shell: `series new`; then start the neutral session there: `cd <series folder> && claudes run readers`; every later step runs in that session
 2. user writes `2-demands.yaml`; `demands check`
@@ -21,66 +21,66 @@ Order of work:
 """
 
 
-def revision_id(text: str) -> str:
+def _revision_id(text: str) -> str:
     """Return the text when it is a revision id `r<n>`, else refuse it."""
-    if not REVISION_ID_PATTERN.fullmatch(text):
+    if not _REVISION_ID_PATTERN.fullmatch(text):
         raise argparse.ArgumentTypeError(f"not a revision id r<n>: {text}")
     return text
 
 
-def add_series_new_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_series_new_arguments(parser: argparse.ArgumentParser) -> None:
     """Add the folder name, instruction, repeatable source, and reader kind of `series new`."""
     parser.add_argument("name")
     parser.add_argument("--instruction", required=True)
     parser.add_argument("--source", action="append", default=[], dest="sources")
-    parser.add_argument("--reader-kind", required=True, choices=READER_KINDS)
+    parser.add_argument("--reader-kind", required=True, choices=_READER_KINDS)
 
 
-def add_series_stop_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_series_stop_arguments(parser: argparse.ArgumentParser) -> None:
     """Add the required reason of `series stop`."""
     parser.add_argument("--reason", required=True)
 
 
-def add_revision_argument(parser: argparse.ArgumentParser) -> None:
+def _add_revision_argument(parser: argparse.ArgumentParser) -> None:
     """Add the positional revision id."""
-    parser.add_argument("revision", type=revision_id)
+    parser.add_argument("revision", type=_revision_id)
 
 
-def add_revision_ask_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_revision_ask_arguments(parser: argparse.ArgumentParser) -> None:
     """Add the revision id and the repeatable conditions flag of `revision ask`."""
-    add_revision_argument(parser)
+    _add_revision_argument(parser)
     parser.add_argument("--conditions", action="append", default=[])
 
 
-def add_no_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_no_arguments(parser: argparse.ArgumentParser) -> None:
     """Add nothing to a command that takes no argument."""
 
 
-COMMANDS = {
+_COMMANDS = {
     "series": {
-        "new": add_series_new_arguments,
-        "status": add_no_arguments,
-        "freeze": add_no_arguments,
-        "stop": add_series_stop_arguments,
-        "keep": add_no_arguments,
+        "new": _add_series_new_arguments,
+        "status": _add_no_arguments,
+        "freeze": _add_no_arguments,
+        "stop": _add_series_stop_arguments,
+        "keep": _add_no_arguments,
     },
-    "demands": {"check": add_no_arguments},
-    "coverage": {"check": add_revision_argument},
-    "tasks": {"check": add_no_arguments},
-    "reader": {"fingerprint": add_no_arguments, "prepare": add_revision_argument},
+    "demands": {"check": _add_no_arguments},
+    "coverage": {"check": _add_revision_argument},
+    "tasks": {"check": _add_no_arguments},
+    "reader": {"fingerprint": _add_no_arguments, "prepare": _add_revision_argument},
     "revision": {
-        "ask": add_revision_ask_arguments,
-        "collect": add_revision_argument,
-        "blind": add_revision_argument,
-        "detect": add_revision_argument,
-        "score": add_revision_argument,
-        "gate": add_revision_argument,
-        "new": add_no_arguments,
+        "ask": _add_revision_ask_arguments,
+        "collect": _add_revision_argument,
+        "blind": _add_revision_argument,
+        "detect": _add_revision_argument,
+        "score": _add_revision_argument,
+        "gate": _add_revision_argument,
+        "new": _add_no_arguments,
     },
     "judge": {
-        "calibrate": add_no_arguments,
-        "prepare": add_revision_argument,
-        "collect": add_revision_argument,
+        "calibrate": _add_no_arguments,
+        "prepare": _add_revision_argument,
+        "collect": _add_revision_argument,
     },
 }
 
@@ -89,11 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser of every command, its help printing the order of work."""
     parser = argparse.ArgumentParser(
         prog="instruction-eval",
-        epilog=ORDER_OF_WORK,
+        epilog=_ORDER_OF_WORK,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     groups = parser.add_subparsers(dest="group", required=True)
-    for group, verbs in COMMANDS.items():
+    for group, verbs in _COMMANDS.items():
         verb_parsers = groups.add_parser(group).add_subparsers(dest="verb", required=True)
         for verb, add_arguments in verbs.items():
             add_arguments(verb_parsers.add_parser(verb))
