@@ -6,6 +6,8 @@ import pytest
 import yaml
 
 from instruction_eval.records import (
+    Acceptance,
+    AgentRaters,
     AgentReader,
     Budget,
     Check,
@@ -17,13 +19,16 @@ from instruction_eval.records import (
     JudgeDemand,
     LongSentencesDemand,
     PatternDemand,
+    Plan,
     RecordRefused,
     Series,
     Task,
     Tasks,
+    UserRaters,
     parse_conditions,
     parse_demands,
     parse_gate,
+    parse_plan,
     parse_reader,
     parse_series,
     parse_tasks,
@@ -342,3 +347,49 @@ def test_gate_refuses_a_repeated_comparison():
 def test_gate_refuses_a_malformed_key(changes, named):
     with pytest.raises(RecordRefused, match=re.escape(named)):
         parse_gate(edited("7-gate.yaml", **changes))
+
+
+def test_plan_loads_with_agent_raters():
+    assert parse_plan(fixture("plan.yaml")) == Plan(
+        judge_model="claude-opus-4-1",
+        raters=AgentRaters(rater_model="claude-sonnet-4-5"),
+        sample_size=12,
+        anchors_per_packet=3,
+        acceptance=Acceptance(breach_difference=0.5, self_difference=0.25, done_agreement=0.8),
+    )
+
+
+def test_plan_loads_with_the_user_as_rater():
+    assert parse_plan(edited("plan.yaml", raters=["user"], rater_model=ABSENT)).raters == UserRaters()
+
+
+@pytest.mark.parametrize("raters", [["agent"], ["user", "user"], ["user", "agent"], ["agent", "agent", "agent"], [], "user"])
+def test_plan_refuses_another_rater_set(raters):
+    with pytest.raises(RecordRefused, match="raters"):
+        parse_plan(edited("plan.yaml", raters=raters))
+
+
+def test_plan_refuses_a_rater_model_equal_to_the_judge_model():
+    with pytest.raises(RecordRefused, match="rater_model"):
+        parse_plan(edited("plan.yaml", rater_model="claude-opus-4-1"))
+
+
+@pytest.mark.parametrize(
+    ("changes", "named"),
+    [
+        ({"rater_model": ABSENT}, "rater_model"),
+        ({"raters": ["user"]}, "rater_model"),
+        ({"judge_model": "opus"}, "judge_model"),
+        ({"rater_model": "sonnet"}, "rater_model"),
+        ({"judge_model": "gpt-5"}, "judge_model"),
+        ({"sample_size": 0}, "sample_size"),
+        ({"anchors_per_packet": 2}, "anchors_per_packet"),
+        ({"acceptance": {"breach_difference": -0.1, "self_difference": 0, "done_agreement": 0.5}}, "acceptance.breach_difference"),
+        ({"acceptance": {"breach_difference": 0, "self_difference": -1, "done_agreement": 0.5}}, "acceptance.self_difference"),
+        ({"acceptance": {"breach_difference": 0, "self_difference": 0, "done_agreement": 1.5}}, "acceptance.done_agreement"),
+        ({"acceptance": {"breach_difference": 0, "self_difference": 0}}, "done_agreement"),
+    ],
+)
+def test_plan_refuses_a_malformed_key(changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_plan(edited("plan.yaml", **changes))

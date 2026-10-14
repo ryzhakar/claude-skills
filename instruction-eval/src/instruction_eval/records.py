@@ -410,6 +410,95 @@ def read_positive_number(value: object, where: str) -> float:
     return number
 
 
+USER_RATERS = ["user"]
+AGENT_RATERS = ["agent", "agent"]
+PLAN_KEYS = {"judge_model", "raters", "sample_size", "anchors_per_packet", "acceptance"}
+
+
+@dataclass(frozen=True)
+class UserRaters:
+    """The user rates the calibration sample alone."""
+
+
+@dataclass(frozen=True)
+class AgentRaters:
+    """Two agents running `rater_model` rate the calibration sample, each alone."""
+
+    rater_model: str
+
+
+@dataclass(frozen=True)
+class Acceptance:
+    """The thresholds a calibration attempt's agreement must meet."""
+
+    breach_difference: float
+    self_difference: float
+    done_agreement: float
+
+
+@dataclass(frozen=True)
+class Plan:
+    """The `6-judge/calibration/attempt-<n>/plan.yaml` record."""
+
+    judge_model: str
+    raters: UserRaters | AgentRaters
+    sample_size: int
+    anchors_per_packet: int
+    acceptance: Acceptance
+
+
+def parse_plan(document: object) -> Plan:
+    """Build the `6-judge/calibration/attempt-<n>/plan.yaml` record from its parsed document."""
+    keys = read_keys(document, "plan.yaml", required=PLAN_KEYS, optional={"rater_model"})
+    judge_model = read_agent_model(keys["judge_model"], "judge_model")
+    return Plan(
+        judge_model=judge_model,
+        raters=read_raters(keys, judge_model),
+        sample_size=read_integer(keys["sample_size"], "sample_size", minimum=1),
+        anchors_per_packet=read_integer(keys["anchors_per_packet"], "anchors_per_packet", minimum=3),
+        acceptance=read_acceptance(keys["acceptance"], "acceptance"),
+    )
+
+
+def read_raters(keys: Mapping[str, object], judge_model: str) -> UserRaters | AgentRaters:
+    """Return the rater set, `[user]` or `[agent, agent]`, carrying `rater_model` exactly when agents rate."""
+    if keys["raters"] == USER_RATERS:
+        if "rater_model" in keys:
+            raise RecordRefused("rater_model: only [agent, agent] raters carry it")
+        return UserRaters()
+    if keys["raters"] == AGENT_RATERS:
+        if "rater_model" not in keys:
+            raise RecordRefused("rater_model: missing for [agent, agent] raters")
+        return AgentRaters(rater_model=read_rater_model(keys["rater_model"], "rater_model", judge_model))
+    raise RecordRefused(f"raters: expected [user] or [agent, agent], got {keys['raters']!r}")
+
+
+def read_rater_model(value: object, where: str, judge_model: str) -> str:
+    """Return an agent rater's model, which differs from the judge's."""
+    rater_model = read_agent_model(value, where)
+    if rater_model == judge_model:
+        raise RecordRefused(f"{where}: must differ from judge_model {judge_model!r}")
+    return rater_model
+
+
+def read_acceptance(value: object, where: str) -> Acceptance:
+    """Return the acceptance thresholds of a calibration plan."""
+    keys = read_keys(value, where, required={"breach_difference", "self_difference", "done_agreement"})
+    return Acceptance(
+        breach_difference=read_bounded_number(keys["breach_difference"], f"{where}.breach_difference", 0, float("inf")),
+        self_difference=read_bounded_number(keys["self_difference"], f"{where}.self_difference", 0, float("inf")),
+        done_agreement=read_bounded_number(keys["done_agreement"], f"{where}.done_agreement", 0, 1),
+    )
+
+
+def read_bounded_number(value: object, where: str, lowest: float, highest: float) -> float:
+    """Return a number in the closed interval from `lowest` to `highest`."""
+    number = read_number(value, where)
+    if not lowest <= number <= highest:
+        raise RecordRefused(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
+    return number
+
+
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
     """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
     return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))
