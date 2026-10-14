@@ -26,6 +26,7 @@ class Comparison:
 
 def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.Generator) -> Comparison:
     """Average instruction minus other per unit and bound it by a percentile bootstrap interval at `level`, null without units."""
+    require_valid_level(level)
     if not units:
         return Comparison(mean_difference=None, interval=None, units=0)
     differences = unit_differences(units)
@@ -57,9 +58,16 @@ def percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[fl
 
 def z_for_level(level: float) -> float:
     """Return the standard normal quantile at (1 + `level`) / 2."""
+    require_valid_level(level)
     return NormalDist().inv_cdf(upper_tail_probability(level))
 
 
 def upper_tail_probability(level: float) -> float:
     """Return the probability (1 + `level`) / 2 bounding a central `level` interval from above."""
     return (1 + level) / 2
+
+
+def require_valid_level(level: float) -> None:
+    """Raise ValueError naming `level` unless it lies strictly between 0 and 1."""
+    if not 0 < level < 1:
+        raise ValueError(f"level must lie strictly between 0 and 1, got {level}")

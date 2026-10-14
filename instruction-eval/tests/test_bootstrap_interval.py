@@ -1,6 +1,7 @@
 import math
 
 import numpy
+import pytest
 
 from instruction_eval.scores import BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, PairedUnit, compare_paired, z_for_level
 
@@ -70,3 +71,15 @@ def test_z_at_level_095_is_the_two_sided_normal_critical_value():
 
 def test_z_at_level_090_is_the_normal_quantile_at_095():
     assert math.isclose(z_for_level(0.9), 1.6448536269514722, rel_tol=1e-12)
+
+
+@pytest.mark.parametrize("level", [0.0, 1.0, -0.5, 1.5])
+def test_comparison_refuses_level_outside_open_unit_interval(level):
+    with pytest.raises(ValueError, match=f"level must lie strictly between 0 and 1, got {level}"):
+        compare_paired(UNITS, level, numpy.random.default_rng(BOOTSTRAP_SEED))
+
+
+@pytest.mark.parametrize("level", [0.0, 1.0, -0.5, 1.5])
+def test_z_refuses_level_outside_open_unit_interval(level):
+    with pytest.raises(ValueError, match=f"level must lie strictly between 0 and 1, got {level}"):
+        z_for_level(level)
