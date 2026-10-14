@@ -103,6 +103,52 @@ def test_refuses_settings_that_are_not_a_plugin_mapping(login: Login, content: s
         login.check()
 
 
+MEMORY_FILES = ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md", ".manifestos.yaml"]
+
+
+REFUSED_PLACEMENTS = [
+    (placement, memory_file)
+    for placement in ["working_dir", "three_levels_up", "home"]
+    for memory_file in MEMORY_FILES
+    if (placement, memory_file) != ("home", ".claude/CLAUDE.md")
+]
+
+
+@pytest.mark.parametrize(("placement", "memory_file"), REFUSED_PLACEMENTS)
+def test_refuses_a_memory_file_at_the_working_dir_or_an_ancestor(
+    login: Login, placement: str, memory_file: str
+):
+    holders = {
+        "working_dir": login.working_dir,
+        "three_levels_up": login.working_dir.parents[2],
+        "home": login.home,
+    }
+    planted = holders[placement] / memory_file
+    planted.parent.mkdir(parents=True, exist_ok=True)
+    planted.write_text("memory")
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
+@pytest.mark.parametrize("memory_file", MEMORY_FILES)
+def test_refuses_a_memory_file_in_a_folder_outside_home(login: Login, memory_file: str):
+    outside = login.home.parent / "outside"
+    login.working_dir = outside / "series"
+    login.working_dir.mkdir(parents=True)
+    planted = outside / memory_file
+    planted.parent.mkdir(parents=True, exist_ok=True)
+    planted.write_text("memory")
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
+def test_accepts_the_home_user_memory(login: Login):
+    user_memory = login.home / ".claude" / "CLAUDE.md"
+    user_memory.parent.mkdir()
+    user_memory.write_text("memory")
+    login.check()
+
+
 @pytest.mark.parametrize("outside", [".claude", ".claudes-bare", "elsewhere/readers"])
 def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outside: str):
     config_dir = login.home / outside

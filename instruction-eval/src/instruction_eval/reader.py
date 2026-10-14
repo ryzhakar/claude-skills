@@ -7,6 +7,13 @@ BARE_LOGINS_DIRNAME = ".claudes-bare"
 SETTINGS_FILENAME = "settings.json"
 MEMORY_FILENAME = "CLAUDE.md"
 EXTENSION_FOLDERNAMES = ("agents", "skills")
+USER_MEMORY_RELATIVE_PATH = Path(".claude") / "CLAUDE.md"
+MEMORY_RELATIVE_PATHS = (
+    Path("CLAUDE.md"),
+    USER_MEMORY_RELATIVE_PATH,
+    Path("CLAUDE.local.md"),
+    Path(".manifestos.yaml"),
+)
 ENABLED_PLUGINS_KEY = "enabledPlugins"
 REQUIRED_PLUGINS = {
     "instruction-eval@my-claude-skills": True,
@@ -76,4 +83,10 @@ def _refuse_other_plugins(config_dir: Path) -> None:
 
 def _refuse_memory_files_in_ancestry(working_dir: Path, home: Path) -> None:
     """Refuse when the working directory or an ancestor holds a memory file, sparing the home user memory."""
-    ...
+    user_memory = (home / USER_MEMORY_RELATIVE_PATH).resolve()
+    resolved = working_dir.resolve()
+    for folder in (resolved, *resolved.parents):
+        for relative_path in MEMORY_RELATIVE_PATHS:
+            memory_file = folder / relative_path
+            if memory_file != user_memory and memory_file.exists():
+                raise NeutralLoginRefused(f"{memory_file} exists")
