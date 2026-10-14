@@ -175,3 +175,17 @@ def test_unknown_argument_prints_nothing_and_exits_zero(home, plugin_root):
         env={"HOME": str(home), "CLAUDE_PLUGIN_ROOT": str(plugin_root), "PATH": "/usr/bin:/bin"},
     )
     assert (completed.returncode, completed.stdout) == (0, "")
+
+
+def test_root_placeholder_prints_the_default_root(home, plugin_root, session_start):
+    write_templates(plugin_root, join="root=<root> again=<root>\n")
+    open_gate(home)
+    expected = f"{home}/.local/share/claude-peers"
+    assert session_start("startup") == f"root={expected} again={expected}\n"
+
+
+def test_root_placeholder_prints_the_override_root(home, plugin_root, tmp_path):
+    root = tmp_path / "custom&root"
+    root.mkdir()
+    write_templates(plugin_root, join="root=<root>\n")
+    assert run_script(home, plugin_root, CLAUDE_PEERS_ROOT=str(root)).stdout == f"root={root}\n"
