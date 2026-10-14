@@ -13,7 +13,7 @@ YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Eleven plugins, each a top-level directory (counted 2026-10-14, after peers and memento left). `.claude-plugin/plugin.json` inside a plugin carries its
+Twelve plugins, each a top-level directory (counted 2026-10-14, after peers and memento left, with instruction-eval added). `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
