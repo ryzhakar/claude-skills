@@ -11,6 +11,16 @@ class AgentKind(Enum):
     JUDGE = "judge"
 
 
+class DefinitionEdited(Exception):
+    """Raised when a definition on disk differs from its recomputation."""
+
+
+def refuse_edited_definition(on_disk: bytes, recomputed: bytes) -> None:
+    """Raise DefinitionEdited when the bytes on disk differ from the recomputed bytes."""
+    if on_disk != recomputed:
+        raise DefinitionEdited
+
+
 def render_agent_definition(name: str, model: str, kind: AgentKind, body: bytes) -> bytes:
     """Render an agent definition file whose body is the given bytes."""
     frontmatter = frontmatter_text(name, model, kind)
