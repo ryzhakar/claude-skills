@@ -1,0 +1,23 @@
+[project]
+name = "instruction-eval"
+version = "0.1.0"
+description = "Measure whether an LLM instruction changes model behavior."
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6", "numpy>=1.26"]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/instruction_eval"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
