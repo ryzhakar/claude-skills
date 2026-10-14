@@ -2,7 +2,7 @@ import math
 
 import numpy
 
-from instruction_eval.scores import BOOTSTRAP_SEED, PairedUnit, compare_paired
+from instruction_eval.scores import BOOTSTRAP_SEED, PairedUnit, compare_paired, z_for_level
 
 RESAMPLES = 2000
 LEVEL = 0.9
@@ -63,3 +63,11 @@ def test_no_units_gives_null_interval():
     assert comparison.mean_difference is None
     assert comparison.interval is None
     assert comparison.units == 0
+
+
+def test_z_at_level_095_is_the_two_sided_normal_critical_value():
+    assert math.isclose(z_for_level(0.95), 1.959963984540054, rel_tol=1e-12)
+
+
+def test_z_at_level_090_is_the_normal_quantile_at_095():
+    assert math.isclose(z_for_level(0.9), 1.6448536269514722, rel_tol=1e-12)

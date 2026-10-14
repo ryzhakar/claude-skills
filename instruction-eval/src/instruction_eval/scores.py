@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from statistics import NormalDist
 from typing import NamedTuple, Sequence
 
 import numpy
@@ -50,3 +51,8 @@ def percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[fl
     """Return the central `level` interval of the resample means by numpy's linear quantile."""
     low, high = numpy.quantile(resample_means, [(1 - level) / 2, (1 + level) / 2], method="linear")
     return float(low), float(high)
+
+
+def z_for_level(level: float) -> float:
+    """Return the standard normal quantile at (1 + `level`) / 2."""
+    return NormalDist().inv_cdf((1 + level) / 2)
