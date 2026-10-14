@@ -97,6 +97,23 @@ def test_drift_noise_compares_instruction_with_source_when_a_source_exists():
     assert noise["checks"]["drift"] == pytest.approx(Z * sqrt(0.5 / (2 * 2)))
 
 
+def test_conversation_turns_leave_task_noise_unchanged():
+    task_rows = [
+        reply("instruction", "t1", 1, {"d1": 1}),
+        reply("instruction", "t1", 2, {"d1": 3}),
+        reply("empty", "t1", 1, {"d1": 2}),
+        reply("empty", "t1", 2, {"d1": 6}),
+    ]
+    conversation_rows = [
+        *turn_replies("instruction", {"c1": [[0, 9], [5, 0]]}),
+        *turn_replies("empty", {"c1": [[7, 0], [0, 3]]}),
+    ]
+
+    noise = measure_noise([*task_rows, *conversation_rows], ["d1"], CONTROLS, repeats=2, level=LEVEL)
+
+    assert noise["checks"]["instruction-vs-empty"] == pytest.approx(Z * sqrt((2 + 8) / (2 * 1)))
+
+
 def test_drift_noise_is_absent_without_conversations():
     noise = measure_noise(THREE_REPEAT_DONE_ROWS, ["d1"], CONTROLS, repeats=3, level=LEVEL)
 
