@@ -87,7 +87,16 @@ def test_loading_an_absent_record_refuses_naming_it(series):
         load_record(series, "r1/9-outcome.yaml")
 
 
-@pytest.mark.parametrize("content", [b"- passed\n", b"passed: true\n", b"passed: true\ninputs: [series.yaml]\n"])
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"- passed\n",
+        b"passed: true\n",
+        b"passed: true\ninputs: [series.yaml]\n",
+        b"inputs: {1: abc}\n",
+        b"inputs: {series.yaml: 1}\n",
+    ],
+)
 def test_loading_a_record_without_an_inputs_map_refuses_as_malformed(series, content):
     series.write_once("r1/9-outcome.yaml", content)
     with pytest.raises(Refusal, match=r"^malformed record: r1/9-outcome.yaml \(no inputs map\)$"):

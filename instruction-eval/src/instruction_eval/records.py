@@ -76,14 +76,19 @@ def _read_record(files: SeriesFolder, path: str) -> bytes:
 
 
 def _parse_record(content: bytes, path: str) -> dict[str, Any]:
-    """Parse a CLI record, refusing it as malformed unless it is a YAML mapping holding an `inputs` mapping."""
+    """Parse a CLI record, refusing it as malformed unless it is a YAML mapping holding an `inputs` mapping of strings to strings."""
     try:
         record = yaml.safe_load(content)
     except yaml.YAMLError:
         raise Refusal(f"malformed record: {path} (not YAML)") from None
-    if not isinstance(record, dict) or not isinstance(record.get(INPUTS_KEY), dict):
+    if not isinstance(record, dict) or not _is_text_map(record.get(INPUTS_KEY)):
         raise Refusal(f"malformed record: {path} (no inputs map)")
     return record
+
+
+def _is_text_map(value: Any) -> bool:
+    """Tell whether the value is a mapping from strings to strings."""
+    return isinstance(value, dict) and all(isinstance(item, str) for pair in value.items() for item in pair)
 
 
 def _hash_inputs(files: SeriesFolder, reads: Iterable[str]) -> dict[str, str]:
