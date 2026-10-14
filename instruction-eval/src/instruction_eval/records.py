@@ -19,6 +19,8 @@ COMPARES = (
 )
 HASH_PATTERN = r"[0-9a-f]{64}"
 BUDGET_REASON = "budget"
+TOTAL_KEY = "total"
+TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
 
 
 class RecordError(ValueError):
@@ -31,6 +33,7 @@ class RecordKind(StrEnum):
     FROZEN = "frozen"
     REPLY = "reply"
     ORIGINS = "origins"
+    VERDICT = "verdict"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -89,7 +92,7 @@ def _mapping(
             _refuse(path, f"expected a map, got {value!r}")
         for key in value:
             if key not in required and key not in optional:
-                _refuse(f"{path}.{key}", "unknown key")
+                _refuse(f"{path}.{key}", TOTAL_REFUSAL if TOTAL_KEY in str(key) else "unknown key")
         for key, key_check in required.items():
             if key not in value:
                 _refuse(f"{path}.{key}", "missing key")
@@ -249,7 +252,45 @@ def _origin(value: Any, path: str) -> None:
     (_ANCHOR_ORIGIN if is_anchor else _REPLY_ORIGIN)(value, path)
 
 
+def _list_of(item_check: Check, unique_by: str | None = None, non_empty: bool = False) -> Check:
+    def check(value: Any, path: str) -> None:
+        if not isinstance(value, list) or (non_empty and not value):
+            _refuse(path, f"expected {'a non-empty' if non_empty else 'a'} list, got {value!r}")
+        for index, item in enumerate(value):
+            item_check(item, f"{path}[{index}]")
+        if unique_by is not None:
+            seen = [item[unique_by] for item in value]
+            if len(set(seen)) != len(seen):
+                _refuse(path, f"duplicate {unique_by}")
+
+    return check
+
+
+def _boolean_or_null(value: Any, path: str) -> None:
+    if value is not None and not isinstance(value, bool):
+        _refuse(path, f"expected true, false, or null, got {value!r}")
+
+
+def _breach_demand_id(value: Any, path: str) -> None:
+    if value == TOTAL_KEY:
+        _refuse(path, TOTAL_REFUSAL)
+    _IDENTIFIER(value, path)
+
+
+_BREACHES = _map_of(_breach_demand_id, _integer(0))
+_VERDICT_ENTRY = _mapping(
+    {
+        "id": _IDENTIFIER,
+        "breaches": _BREACHES,
+        "done": _boolean_or_null,
+        "kind": _enum("answer", "probe", "refusal", "blank"),
+        "notes": _string,
+    }
+)
+
+
 _SCHEMAS: Mapping[RecordKind, Check] = {
+    RecordKind.VERDICT: _mapping({"verdicts": _list_of(_VERDICT_ENTRY, "id", non_empty=True)}),
     RecordKind.ORIGINS: _mapping(
         {
             "inputs": _INPUTS,

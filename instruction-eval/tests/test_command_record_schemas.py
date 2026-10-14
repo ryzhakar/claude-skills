@@ -272,3 +272,42 @@ def test_origins_record_refuses_missing_entry_key(path):
 def test_origins_anchor_entry_refuses_reply_keys():
     document = changed(load_fixture(RecordKind.ORIGINS), ("ids", "a9z", "task"), "greet")
     assert_refused(RecordKind.ORIGINS, document, "task")
+
+
+def test_verdict_record_parses_as_written():
+    document = load_fixture(RecordKind.VERDICT)
+    assert parse_record(RecordKind.VERDICT, document) == document
+
+
+@pytest.mark.parametrize("done", [True, False, None])
+def test_verdict_done_accepts_true_false_and_null(done):
+    document = changed(load_fixture(RecordKind.VERDICT), ("verdicts", 0, "done"), done)
+    assert parse_record(RecordKind.VERDICT, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("verdicts",), []),
+    (("verdicts", 0, "id"), "Bad Id"),
+    (("verdicts", 1, "id"), "x7k"),
+    (("verdicts", 0, "breaches", "brevity"), -1),
+    (("verdicts", 0, "breaches", "brevity"), 1.5),
+    (("verdicts", 0, "breaches", "brevity"), True),
+    (("verdicts", 0, "done"), "yes"),
+    (("verdicts", 0, "done"), 1),
+    (("verdicts", 0, "kind"), "essay"),
+    (("verdicts", 0, "notes"), None),
+])
+def test_verdict_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.VERDICT), path, value)
+    assert_refused(RecordKind.VERDICT, document, path[-1])
+
+
+def test_verdict_record_carries_no_inputs():
+    document = changed(load_fixture(RecordKind.VERDICT), ("inputs",), {})
+    assert_refused(RecordKind.VERDICT, document, "inputs")
+
+
+@pytest.mark.parametrize("path", [("verdicts", 0, "breaches", "total"), ("verdicts", 0, "total")])
+def test_verdict_record_refuses_a_total_key(path):
+    document = changed(load_fixture(RecordKind.VERDICT), path, 3)
+    assert_refused(RecordKind.VERDICT, document, "total")
