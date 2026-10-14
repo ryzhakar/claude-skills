@@ -62,6 +62,7 @@ def measure_noise(
         "sigma": {"breaches": breaches_sigma, "done": done_sigma, "demands": demands_sigma},
         "checks": checks,
         "demands": demands_change,
+        "done_change": half_width(z, [done_sigma[INSTRUCTION]] * 2, repeats * task_count),
     }
 
 

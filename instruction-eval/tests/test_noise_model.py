@@ -64,6 +64,12 @@ def test_completion_noise_at_three_repeats_compares_instruction_with_the_best_do
     assert noise["checks"]["completion"] == pytest.approx(Z * sqrt((0.25 + 1 / 6) / (3 * 2)))
 
 
+def test_done_change_noise_at_three_repeats_doubles_the_instruction_done_variance():
+    noise = measure_noise(THREE_REPEAT_DONE_ROWS, ["d1"], CONTROLS, repeats=3, level=LEVEL)
+
+    assert noise["done_change"] == pytest.approx(Z * sqrt(2 * 0.25 / (3 * 2)))
+
+
 def test_demand_change_noise_doubles_the_instruction_variance_of_each_gate_demand():
     rows = [
         reply("instruction", "t1", 1, {"d1": 1, "d2": 0, "dropped": 9}),
