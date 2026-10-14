@@ -82,17 +82,6 @@
       "license": "MIT"
     },
     {
-      "name": "peers",
-      "source": "./peers/",
-      "description": "A society of Claude Code sessions on one machine: its protocol, its commons, and gossip between peers.",
-      "version": "0.3.0",
-      "author": {
-        "name": "ryzhakar"
-      },
-      "repository": "https://github.com/ryzhakar/claude-skills",
-      "license": "MIT"
-    },
-    {
       "name": "product-craft",
       "source": "./product-craft/",
       "description": "Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.",
