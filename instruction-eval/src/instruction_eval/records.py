@@ -29,6 +29,7 @@ class RecordKind(StrEnum):
     STOP = "stop"
     REVISION = "revision"
     FROZEN = "frozen"
+    REPLY = "reply"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -146,6 +147,24 @@ _INPUTS = _map_of(_text, _HASH)
 _POSITION = _integer(1)
 _COMPARES = _enum(*COMPARES)
 _BY_CONDITION = _map_of(_IDENTIFIER, _nullable(_NON_NEGATIVE))
+_NULLABLE_COUNT = _nullable(_integer(0))
+_SPLIT = _enum("open", "sealed")
+_READER_KIND = _enum("agent", "command")
+_ABSOLUTE_PATH = _matching(r"/.+", "an absolute path")
+_AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
+_COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
+
+
+def _reply_reader_kind_rule(reply: Record, path: str) -> None:
+    is_agent = reply["reader_kind"] == "agent"
+    for key in _AGENT_ONLY_REPLY_KEYS:
+        if (key in reply) != is_agent:
+            _refuse(f"{path}.{key}", "present iff reader_kind is agent")
+    for key in _COMMAND_ONLY_REPLY_KEYS:
+        if (key in reply) == is_agent:
+            _refuse(f"{path}.{key}", "present iff reader_kind is command")
+
+
 _NOISE = _mapping(
     {
         "repeats": _integer(2),
@@ -239,6 +258,29 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
             "frozen_at": _timestamp,
         },
         {"fingerprint_hash": _HASH},
+    ),
+    RecordKind.REPLY: _mapping(
+        {
+            "inputs": _INPUTS,
+            "condition": _IDENTIFIER,
+            "task": _IDENTIFIER,
+            "split": _SPLIT,
+            "repeat": _POSITION,
+            "message": _string,
+            "text": _string,
+            "model": _text,
+            "reader_kind": _READER_KIND,
+            "started": _timestamp,
+            "seconds": _NON_NEGATIVE,
+            "cost": _mapping({"input_tokens": _NULLABLE_COUNT, "output_tokens": _NULLABLE_COUNT}),
+        },
+        {
+            "turn": _POSITION,
+            "transcript": _ABSOLUTE_PATH,
+            "transcript_hash": _HASH,
+            "fingerprint_hash": _HASH,
+        },
+        _reply_reader_kind_rule,
     ),
 }
 

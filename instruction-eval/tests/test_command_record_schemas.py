@@ -176,3 +176,64 @@ def test_frozen_record_refuses_bad_value(path, value):
 def test_frozen_record_refuses_missing_noise_key():
     document = without(load_fixture(RecordKind.FROZEN), ("noise", "done_change"))
     assert_refused(RecordKind.FROZEN, document, "done_change")
+
+
+def command_reply() -> dict:
+    document = load_fixture(RecordKind.REPLY)
+    del document["transcript"], document["transcript_hash"]
+    document.update(reader_kind="command", fingerprint_hash="c" * 64)
+    return document
+
+
+def test_agent_reply_parses_as_written():
+    document = load_fixture(RecordKind.REPLY)
+    assert parse_record(RecordKind.REPLY, document) == document
+
+
+def test_command_reply_carries_fingerprint_hash_and_no_transcript():
+    document = command_reply()
+    assert parse_record(RecordKind.REPLY, document) == document
+
+
+def test_turn_reply_carries_its_turn_number():
+    document = changed(load_fixture(RecordKind.REPLY), ("turn",), 2)
+    assert parse_record(RecordKind.REPLY, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("condition",), "Bad Id"),
+    (("split",), "hidden"),
+    (("repeat",), 0),
+    (("turn",), 0),
+    (("reader_kind",), "human"),
+    (("started",), "2026-10-14T10:00:00"),
+    (("seconds",), "fast"),
+    (("transcript",), "relative/path.jsonl"),
+    (("transcript_hash",), "nope"),
+    (("cost", "input_tokens"), -1),
+    (("cost", "output_tokens"), 1.5),
+    (("cost", "total_tokens"), 3),
+    (("model",), ""),
+    (("message",), 7),
+    (("text",), None),
+])
+def test_reply_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.REPLY), path, value)
+    assert_refused(RecordKind.REPLY, document, path[-1])
+
+
+@pytest.mark.parametrize("variant,drop,add", [
+    ("agent", "transcript", None),
+    ("agent", "transcript_hash", None),
+    ("agent", None, ("fingerprint_hash", "c" * 64)),
+    ("command", "fingerprint_hash", None),
+    ("command", None, ("transcript", "/tmp/t.jsonl")),
+    ("command", None, ("transcript_hash", "d" * 64)),
+])
+def test_reply_refuses_fields_of_the_other_reader_kind(variant, drop, add):
+    document = load_fixture(RecordKind.REPLY) if variant == "agent" else command_reply()
+    if drop:
+        del document[drop]
+    if add:
+        document[add[0]] = add[1]
+    assert_refused(RecordKind.REPLY, document, (drop or add[0]))
