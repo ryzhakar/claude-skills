@@ -1,5 +1,7 @@
 import hashlib
 import shutil
+from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
@@ -78,3 +80,23 @@ def test_loading_a_record_after_its_consumed_key_was_removed_refuses_naming_the_
     gate.write_text(gate.read_text().replace("repeats: 3\n", ""))
     with pytest.raises(Refusal, match=r"^missing input: 7-gate.yaml#repeats$"):
         load_record(series, "r1/9-outcome.yaml")
+
+
+@dataclass
+class ReadCountingFiles:
+    folder: SeriesFolder
+    reads: Counter = field(default_factory=Counter)
+
+    def read_bytes(self, path):
+        self.reads[path] += 1
+        return self.folder.read_bytes(path)
+
+    def write_once(self, path, content):
+        self.folder.write_once(path, content)
+
+
+def test_a_file_consumed_under_several_keys_is_read_once_per_write_and_once_per_load(series):
+    files = ReadCountingFiles(series)
+    write_record(files, "r1/9-outcome.yaml", {"passed": True}, ["7-gate.yaml#repeats", "7-gate.yaml#level"])
+    load_record(files, "r1/9-outcome.yaml")
+    assert files.reads["7-gate.yaml"] == 2

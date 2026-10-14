@@ -1,9 +1,10 @@
 """Series records: files written once, and CLI records whose inputs must still hash as written."""
 
+import functools
 import hashlib
 import os
 import tempfile
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -67,29 +68,31 @@ def write_record(files: SeriesFiles, path: str, record: Mapping[str, Any], reads
 def load_record(files: SeriesFiles, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
     record = yaml.safe_load(files.read_bytes(path))
-    for entry, written_hash in record[INPUTS_KEY].items():
-        if _hash_input(files, entry) != written_hash:
+    written_hashes = record[INPUTS_KEY]
+    current_hashes = _hash_inputs(files, written_hashes)
+    for entry, written_hash in written_hashes.items():
+        if current_hashes[entry] != written_hash:
             raise Refusal(f"stale: {path} (input {entry} changed)")
     return record
 
 
 def _hash_inputs(files: SeriesFiles, reads: Iterable[str]) -> dict[str, str]:
-    """Map each read to the sha256 of what it names."""
-    return {entry: _hash_input(files, entry) for entry in reads}
+    """Map each read to the sha256 of what it names, reading and parsing each named file once."""
+    read_file = functools.cache(lambda file_path: _read_input(files, file_path))
+    parse_file = functools.cache(lambda file_path: yaml.safe_load(read_file(file_path)))
+    return {entry: _hash_input(read_file, parse_file, entry) for entry in reads}
 
 
-def _hash_input(files: SeriesFiles, entry: str) -> str:
+def _hash_input(read_file: Callable[[str], bytes], parse_file: Callable[[str], Any], entry: str) -> str:
     """Hash a whole series file, or for `<path>#<key>` that key's value dumped as canonical YAML."""
     file_path, separator, key = entry.partition(KEY_SEPARATOR)
-    content = _read_input(files, file_path)
     if not separator:
-        return _sha256(content)
-    return _sha256(_dump_canonical_yaml(_read_top_level_value(content, entry, key)))
+        return _sha256(read_file(file_path))
+    return _sha256(_dump_canonical_yaml(_read_top_level_value(parse_file(file_path), entry, key)))
 
 
-def _read_top_level_value(content: bytes, entry: str, key: str) -> Any:
-    """Return the value of a top-level key of YAML content, refusing `entry` as missing when the key is absent."""
-    document = yaml.safe_load(content)
+def _read_top_level_value(document: Any, entry: str, key: str) -> Any:
+    """Return the value of a top-level key of a parsed YAML document, refusing `entry` as missing when the key is absent."""
     if not isinstance(document, dict) or key not in document:
         raise Refusal(f"missing input: {entry}")
     return document[key]
