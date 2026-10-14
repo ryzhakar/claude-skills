@@ -1,0 +1,23 @@
+inputs:
+  r1/5-replies/instruction/greet/repeat-1.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ids:
+  x7k:
+    packet: p1
+    condition: instruction
+    task: greet
+    split: open
+    repeat: 1
+    borrowed_from: null
+  m2q:
+    packet: p1
+    condition: empty
+    task: chat
+    split: sealed
+    repeat: 2
+    turn: 2
+    borrowed_from: r1
+  a9z:
+    packet: p1
+    anchor: anchor-1
+packets:
+  p1: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
