@@ -30,7 +30,7 @@ def project_key(series_folder: Path) -> str:
     """Return the series folder's absolute path with each slash and dot replaced by a dash."""
     return "".join(
         KEY_REPLACEMENT if char in KEY_SEPARATOR_CHARS else char
-        for char in str(series_folder)
+        for char in str(series_folder.absolute())
     )
 
 
