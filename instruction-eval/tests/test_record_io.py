@@ -82,6 +82,11 @@ def test_loading_a_record_after_its_consumed_key_was_removed_refuses_naming_the_
         load_record(series, "r1/9-outcome.yaml")
 
 
+def test_loading_an_absent_record_refuses_naming_it(series):
+    with pytest.raises(Refusal, match=r"^missing record: r1/9-outcome.yaml$"):
+        load_record(series, "r1/9-outcome.yaml")
+
+
 @dataclass
 class ReadCountingFiles:
     folder: SeriesFolder

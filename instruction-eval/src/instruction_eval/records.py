@@ -67,13 +67,21 @@ def write_record(files: SeriesFiles, path: str, record: Mapping[str, Any], reads
 
 def load_record(files: SeriesFiles, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
-    record = yaml.safe_load(files.read_bytes(path))
+    record = yaml.safe_load(_read_record(files, path))
     written_hashes = record[INPUTS_KEY]
     current_hashes = _hash_inputs(files, written_hashes)
     for entry, written_hash in written_hashes.items():
         if current_hashes[entry] != written_hash:
             raise Refusal(f"stale: {path} (input {entry} changed)")
     return record
+
+
+def _read_record(files: SeriesFiles, path: str) -> bytes:
+    """Read the CLI record at `path`, refusing when it is absent."""
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing record: {path}") from None
 
 
 def _hash_inputs(files: SeriesFiles, reads: Iterable[str]) -> dict[str, str]:
