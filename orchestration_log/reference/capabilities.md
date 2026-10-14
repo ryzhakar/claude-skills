@@ -13,7 +13,7 @@ YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Eleven plugins, each a top-level directory (counted 2026-10-06). `.claude-plugin/plugin.json` inside a plugin carries its
+Thirteen plugins, each a top-level directory (counted 2026-10-14). `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
@@ -106,6 +106,10 @@ plus a changes report).
 
 **python-tools** — skills: `python-ast-mass-edit` (AST-based edits across 3+ files),
 `uv-pyright-debug` (true pyright diagnostics in uv-managed projects).
+
+**agent-conduct** — domain-free conduct skills, 1.8.0 (2026-10-14): `check-back` (set the agent's own next wake before a turn ends with work pending), `work-silently` (tool calls only until told otherwise); hooks for check-back and the silence mandate. The peer protocol and its join hook left for `peers` 2026-10-14.
+
+**peers** — a society of Claude Code main sessions on one machine, 0.3.0 (created 2026-10-14). Skills: `peer-protocol` (protocol 8 — purpose, owner outside, card schema, join as outcomes, tagged messages, commons as public place, stewardship, disputes, consent, scribe), `gossip-around` (source knowledge and resources through peers who know them, spread what helps across the full network). Script `bin/peers-facts` prints parsed self-facts for a given directory (time, model from the transcript, session id, login, checkout, branch, project, declared manifestos, root). SessionStart hook prints one line naming the society when the root `${CLAUDE_PEERS_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-peers}` exists. Tests in `peers/tests` (62 passing in `just hooks-test`, measured 2026-10-14). Registry, commons, culture live at the root, outside the repo.
 
 **userland-utilities** — skill: `fix-macos-app` (clears quarantine and re-signs blocked macOS apps).
 
