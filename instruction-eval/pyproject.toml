@@ -5,6 +5,10 @@ description = "Measure whether an LLM instruction changes model behavior."
 requires-python = ">=3.11"
 dependencies = ["pyyaml>=6", "numpy>=1.26"]
 
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
 [dependency-groups]
 dev = ["pytest>=8"]
 

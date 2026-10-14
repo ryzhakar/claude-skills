@@ -27,5 +27,9 @@ def test_lockfile_locks_yaml_parser_and_numpy():
     assert {"pyyaml", "numpy"} <= locked
 
 
+def test_lockfile_names_no_loopback_index():
+    assert "127.0.0.1" not in (PLUGIN_ROOT / "uv.lock").read_text()
+
+
 def test_plugin_ships_no_hooks():
     assert not (PLUGIN_ROOT / "hooks").exists()
