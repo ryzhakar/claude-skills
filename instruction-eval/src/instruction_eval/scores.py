@@ -18,13 +18,15 @@ class PairedUnit(NamedTuple):
 class Comparison:
     """Mean instruction-minus-other difference over units, its percentile bootstrap interval, and the unit count."""
 
-    mean_difference: float
-    interval: tuple[float, float]
+    mean_difference: float | None
+    interval: tuple[float, float] | None
     units: int
 
 
 def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.Generator) -> Comparison:
-    """Average instruction minus other per unit and bound it by a percentile bootstrap interval at `level`."""
+    """Average instruction minus other per unit and bound it by a percentile bootstrap interval at `level`, null without units."""
+    if not units:
+        return Comparison(mean_difference=None, interval=None, units=0)
     differences = unit_differences(units)
     resample_means = bootstrap_resample_means(differences, rng)
     return Comparison(

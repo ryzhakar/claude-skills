@@ -55,3 +55,11 @@ def test_instruction_above_other_on_every_unit_gives_interval_wholly_above_zero(
     assert comparison.mean_difference == 1.5
     assert comparison.interval is not None
     assert comparison.interval[0] > 0
+
+
+def test_no_units_gives_null_interval():
+    comparison = compare_paired([], LEVEL, numpy.random.default_rng(BOOTSTRAP_SEED))
+
+    assert comparison.mean_difference is None
+    assert comparison.interval is None
+    assert comparison.units == 0
