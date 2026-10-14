@@ -43,6 +43,7 @@ ABBREVIATIONS = {b"e.g", b"i.e", b"etc", b"vs", b"cf", b"Mr", b"Mrs", b"Dr", b"S
 SINGLE_LETTER = re.compile(rb"[A-Za-z]")
 WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
 FENCE_OPEN = re.compile(rb"\s*(`{3,}|~{3,})")
+FRONTMATTER_DELIMITER = re.compile(rb"---\s*\Z")
 
 
 def read_units(text: bytes) -> list[Unit]:
@@ -63,12 +64,21 @@ def read_units(text: bytes) -> list[Unit]:
 
 def unit_extent(lines: list[bytes], first: int) -> tuple[int, bool]:
     """Return the last line of the unit opening at a line and whether that unit splits into sentences."""
+    if first == 0 and (closing := frontmatter_closing_line(lines)) is not None:
+        return closing, False
     fence = FENCE_OPEN.match(lines[first])
     if fence:
         return fence_last_line(lines, first, fence.group(1)), False
     if WHOLE_LINE_UNIT.match(lines[first]):
         return first, False
     return paragraph_last_line(lines, first), True
+
+
+def frontmatter_closing_line(lines: list[bytes]) -> int | None:
+    """Return the line closing a frontmatter block that opens the text, or None when the text opens none."""
+    if not FRONTMATTER_DELIMITER.match(lines[0]):
+        return None
+    return next((index for index in range(1, len(lines)) if FRONTMATTER_DELIMITER.match(lines[index])), None)
 
 
 def fence_last_line(lines: list[bytes], first: int, fence: bytes) -> int:
