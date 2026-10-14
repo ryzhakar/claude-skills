@@ -9,6 +9,7 @@ from instruction_eval.reader import TokenUsage, parse_transcript_replies
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "transcript-parse"
 SINGLE_TURN_REPLY_LINE_COUNT = 4
+THREE_TURN_REPLY_LINE_COUNTS = (2, 7, 9)
 
 
 def replies_of(fixture_name):
@@ -54,6 +55,15 @@ def test_transcript_hash_covers_bytes_through_the_reply_line_only():
     through_reply_line = b"".join(transcript_bytes.splitlines(keepends=True)[:SINGLE_TURN_REPLY_LINE_COUNT])
     [reply] = replies_of("single-turn.jsonl")
     assert reply.transcript_hash == hashlib.sha256(through_reply_line).hexdigest()
+
+
+def test_each_conversation_reply_hashes_bytes_through_its_own_reply_line():
+    transcript_lines = (FIXTURES / "three-turn.jsonl").read_bytes().splitlines(keepends=True)
+    expected = [
+        hashlib.sha256(b"".join(transcript_lines[:line_count])).hexdigest()
+        for line_count in THREE_TURN_REPLY_LINE_COUNTS
+    ]
+    assert [reply.transcript_hash for reply in replies_of("three-turn.jsonl")] == expected
 
 
 def test_conversation_pairs_kth_user_message_with_last_assistant_text_before_the_next():
