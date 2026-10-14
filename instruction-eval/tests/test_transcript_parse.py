@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,3 +31,10 @@ def test_reply_tokens_take_each_assistant_message_final_usage():
 def test_reply_tokens_are_absent_when_the_transcript_records_no_usage():
     [reply] = replies_of("no-usage.jsonl")
     assert reply.tokens is None
+
+
+def test_transcript_hash_covers_bytes_through_the_reply_line_only():
+    transcript_bytes = (FIXTURES / "single-turn.jsonl").read_bytes()
+    through_reply_line = b"".join(transcript_bytes.splitlines(keepends=True)[:4])
+    [reply] = replies_of("single-turn.jsonl")
+    assert reply.transcript_hash == hashlib.sha256(through_reply_line).hexdigest()
