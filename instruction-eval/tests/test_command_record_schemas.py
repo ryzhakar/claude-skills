@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from hypothesis import given, strategies as st
 
 from instruction_eval.records import RecordError, RecordKind, parse_record
 
@@ -563,3 +564,83 @@ def test_anchors_record_parses_as_written():
 def test_anchors_record_refuses_bad_value(path, value):
     document = changed(load_fixture(RecordKind.ANCHORS), path, value)
     assert_refused(RecordKind.ANCHORS, document, path[-1])
+
+
+JSON_SCALARS = (
+    st.none() | st.booleans() | st.integers() | st.floats(allow_nan=True) | st.text(max_size=8)
+)
+JSON_VALUES = st.recursive(
+    JSON_SCALARS,
+    lambda children: st.lists(children, max_size=3)
+    | st.dictionaries(st.text(max_size=8), children, max_size=3),
+    max_leaves=12,
+)
+ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]*")
+BREACH_PATH = ("verdicts", 0, "breaches", "brevity")
+INTERVAL_PATH = ("comparisons", "drift", "interval")
+
+
+@given(document=JSON_VALUES, kind=st.sampled_from(list(RecordKind)))
+def test_arbitrary_documents_are_refused_with_record_error_alone(document, kind):
+    try:
+        parse_record(kind, document)
+    except RecordError:
+        pass
+
+
+@given(identifier=st.text().filter(lambda text: ID_PATTERN.fullmatch(text) is None))
+def test_ids_outside_the_id_pattern_are_refused(identifier):
+    document = changed(load_fixture(RecordKind.REPLY), ("task",), identifier)
+    assert_refused(RecordKind.REPLY, document, "task")
+
+
+@given(identifier=st.from_regex(ID_PATTERN, fullmatch=True))
+def test_ids_inside_the_id_pattern_are_accepted(identifier):
+    document = changed(load_fixture(RecordKind.REPLY), ("task",), identifier)
+    assert parse_record(RecordKind.REPLY, document) == document
+
+
+@given(count=st.integers(max_value=-1) | st.floats() | st.text() | st.booleans())
+def test_breach_counts_other_than_non_negative_integers_are_refused(count):
+    document = changed(load_fixture(RecordKind.VERDICT), BREACH_PATH, count)
+    assert_refused(RecordKind.VERDICT, document, "brevity")
+
+
+@given(count=st.integers(min_value=0))
+def test_non_negative_integer_breach_counts_are_accepted(count):
+    document = changed(load_fixture(RecordKind.VERDICT), BREACH_PATH, count)
+    assert parse_record(RecordKind.VERDICT, document) == document
+
+
+@given(moment=st.datetimes())
+def test_timestamps_without_offset_are_refused(moment):
+    document = changed(load_fixture(RecordKind.FROZEN), ("frozen_at",), moment.isoformat())
+    assert_refused(RecordKind.FROZEN, document, "frozen_at")
+
+
+@given(moment=st.datetimes(timezones=st.timezones()))
+def test_timestamps_with_offset_are_accepted(moment):
+    document = changed(load_fixture(RecordKind.FROZEN), ("frozen_at",), moment.isoformat())
+    assert parse_record(RecordKind.FROZEN, document) == document
+
+
+@given(low=st.integers(-1000, 1000), high=st.integers(-1000, 1000))
+def test_intervals_are_accepted_exactly_when_low_does_not_exceed_high(low, high):
+    document = changed(load_fixture(RecordKind.SCORES), INTERVAL_PATH, [low, high])
+    if low <= high:
+        assert parse_record(RecordKind.SCORES, document) == document
+    else:
+        assert_refused(RecordKind.SCORES, document, "interval")
+
+
+@given(bounds=st.lists(st.integers(-1000, 1000), max_size=5).filter(lambda bounds: len(bounds) != 2))
+def test_intervals_of_other_lengths_are_refused(bounds):
+    document = changed(load_fixture(RecordKind.SCORES), INTERVAL_PATH, bounds)
+    assert_refused(RecordKind.SCORES, document, "interval")
+
+
+@given(ids=st.lists(st.from_regex(ID_PATTERN, fullmatch=True), min_size=1, max_size=4))
+def test_repeated_blind_ids_in_a_verdict_are_refused(ids):
+    entry = load_fixture(RecordKind.VERDICT)["verdicts"][0]
+    verdicts = [dict(entry, id=identifier) for identifier in ids + ids[:1]]
+    assert_refused(RecordKind.VERDICT, {"verdicts": verdicts}, "duplicate")
