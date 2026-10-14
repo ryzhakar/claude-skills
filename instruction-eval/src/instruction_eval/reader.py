@@ -102,10 +102,12 @@ def timestamp_of(entry: dict) -> datetime:
 def turn_token_usage(turn_lines: tuple[TranscriptLine, ...]) -> TokenUsage | None:
     """Sum the final usage of each assistant message in the turn, or None when any message lacks usage."""
     final_usages = {
-        line.entry["message"]["id"]: line.entry["message"]["usage"]
+        line.entry["message"]["id"]: line.entry["message"].get("usage")
         for line in turn_lines
         if line.entry["type"] == "assistant"
     }.values()
+    if None in final_usages:
+        return None
     return TokenUsage(
         input_tokens=sum(usage["input_tokens"] for usage in final_usages),
         output_tokens=sum(usage["output_tokens"] for usage in final_usages),
