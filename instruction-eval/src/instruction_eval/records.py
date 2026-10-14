@@ -73,8 +73,11 @@ def _read_record(files: SeriesFolder, path: str) -> bytes:
 
 
 def _parse_record(content: bytes, path: str) -> dict[str, Any]:
-    """Parse a CLI record, refusing it as malformed unless it is a mapping holding an `inputs` mapping."""
-    record = yaml.safe_load(content)
+    """Parse a CLI record, refusing it as malformed unless it is a YAML mapping holding an `inputs` mapping."""
+    try:
+        record = yaml.safe_load(content)
+    except yaml.YAMLError:
+        raise Refusal(f"malformed record: {path} (not YAML)") from None
     if not isinstance(record, dict) or not isinstance(record.get(INPUTS_KEY), dict):
         raise Refusal(f"malformed record: {path} (no inputs map)")
     return record

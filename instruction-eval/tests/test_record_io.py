@@ -94,6 +94,12 @@ def test_loading_a_record_without_an_inputs_map_refuses_as_malformed(series, con
         load_record(series, "r1/9-outcome.yaml")
 
 
+def test_loading_a_record_that_is_not_yaml_refuses_as_malformed(series):
+    series.write_once("r1/9-outcome.yaml", b"inputs: [unclosed\n")
+    with pytest.raises(Refusal, match=r"^malformed record: r1/9-outcome.yaml \(not YAML\)$"):
+        load_record(series, "r1/9-outcome.yaml")
+
+
 @dataclass(frozen=True)
 class ReadCountingFolder(SeriesFolder):
     reads: Counter = field(default_factory=Counter)
