@@ -58,7 +58,7 @@ def test_reply_tokens_are_absent_when_any_assistant_message_of_the_turn_lacks_us
 
 
 def test_empty_transcript_yields_no_reply():
-    assert parse_transcript_replies(FIXTURES / "empty.jsonl", b"") == ()
+    assert parse_transcript_replies(Path("empty.jsonl"), b"") == ()
 
 
 def test_transcript_hash_covers_bytes_through_the_reply_line_only():
