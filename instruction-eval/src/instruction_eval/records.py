@@ -1,0 +1,126 @@
+import re
+from collections.abc import Callable, Mapping
+from enum import StrEnum
+from typing import Any, NoReturn
+
+Record = Mapping[str, Any]
+Check = Callable[[Any, str], None]
+
+REVISION_ID_PATTERN = r"r[1-9][0-9]*"
+HASH_PATTERN = r"[0-9a-f]{64}"
+BUDGET_REASON = "budget"
+
+
+class RecordError(ValueError):
+    """Raised when a record breaks its schema."""
+
+
+class RecordKind(StrEnum):
+    STOP = "stop"
+
+
+def _refuse(path: str, reason: str) -> NoReturn:
+    raise RecordError(f"{path}: {reason}")
+
+
+def _matching(pattern: str, description: str) -> Check:
+    def check(value: Any, path: str) -> None:
+        if not isinstance(value, str) or re.fullmatch(pattern, value) is None:
+            _refuse(path, f"expected {description}, got {value!r}")
+
+    return check
+
+
+def _enum(*allowed: str) -> Check:
+    def check(value: Any, path: str) -> None:
+        if not isinstance(value, str) or value not in allowed:
+            _refuse(path, f"expected one of {list(allowed)}, got {value!r}")
+
+    return check
+
+
+def _nullable(inner: Check) -> Check:
+    def check(value: Any, path: str) -> None:
+        if value is not None:
+            inner(value, path)
+
+    return check
+
+
+def _text(value: Any, path: str) -> None:
+    if not isinstance(value, str) or not value:
+        _refuse(path, f"expected non-empty string, got {value!r}")
+
+
+def _map_of(key_check: Check, value_check: Check) -> Check:
+    def check(value: Any, path: str) -> None:
+        if not isinstance(value, Mapping):
+            _refuse(path, f"expected a map, got {value!r}")
+        for key, item in value.items():
+            key_check(key, f"{path}.{key}")
+            value_check(item, f"{path}.{key}")
+
+    return check
+
+
+def _mapping(
+    required: Mapping[str, Check],
+    optional: Mapping[str, Check] | None = None,
+    rule: Check | None = None,
+) -> Check:
+    optional = optional or {}
+
+    def check(value: Any, path: str) -> None:
+        if not isinstance(value, Mapping):
+            _refuse(path, f"expected a map, got {value!r}")
+        for key in value:
+            if key not in required and key not in optional:
+                _refuse(f"{path}.{key}", "unknown key")
+        for key, key_check in required.items():
+            if key not in value:
+                _refuse(f"{path}.{key}", "missing key")
+            key_check(value[key], f"{path}.{key}")
+        for key, key_check in optional.items():
+            if key in value:
+                key_check(value[key], f"{path}.{key}")
+        if rule is not None:
+            rule(value, path)
+
+    return check
+
+
+_HASH = _matching(HASH_PATTERN, "lowercase sha256 hex")
+_REVISION_ID = _matching(REVISION_ID_PATTERN, "a revision id")
+_INPUTS = _map_of(_text, _HASH)
+
+
+def _stop_reason_rule(record: Record, path: str) -> None:
+    stop = record["stop"]
+    reason = record.get("reason")
+    if stop == "unresolvable":
+        if reason is None:
+            _refuse(f"{path}.reason", "required for unresolvable")
+    elif stop == "capped":
+        if reason is not None and reason != BUDGET_REASON:
+            _refuse(f"{path}.reason", f"only {BUDGET_REASON!r} allowed for capped")
+    elif reason is not None:
+        _refuse(f"{path}.reason", f"not allowed for {stop}")
+
+
+_SCHEMAS: Mapping[RecordKind, Check] = {
+    RecordKind.STOP: _mapping(
+        {
+            "inputs": _INPUTS,
+            "stop": _enum("passed", "no-effect", "capped", "unresolvable"),
+            "kept": _nullable(_REVISION_ID),
+        },
+        {"reason": _text},
+        _stop_reason_rule,
+    ),
+}
+
+
+def parse_record(kind: RecordKind, document: Any) -> Record:
+    """Return the document when it matches the kind's schema and raise RecordError otherwise."""
+    _SCHEMAS[kind](document, kind.value)
+    return document
