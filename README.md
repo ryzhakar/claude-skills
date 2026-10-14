@@ -13,7 +13,7 @@
 | [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
 | [memento](memento/) | A memory and record-keeping system for agents without continuity across sessions. | `0.5.1` | 13S |
 | [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
-| [peers](peers/) | A society of Claude Code sessions on one machine: its protocol, its commons,... | `0.2.0` | 2S |
+| [peers](peers/) | A society of Claude Code sessions on one machine: its protocol, its commons,... | `0.3.0` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -110,7 +110,7 @@ Agent delegation framework and multi-agent research orchestration. Decompose wor
 - **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Agents are cheap, context is expensive — decompose aggressively, delegate...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
-## [peers](peers/) `0.2.0`
+## [peers](peers/) `0.3.0`
 
 A society of Claude Code sessions on one machine: its protocol, its commons, and gossip between peers.
 
