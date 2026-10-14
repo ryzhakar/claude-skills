@@ -1,6 +1,8 @@
 import argparse
+import re
 
 import pytest
+from hypothesis import given, strategies as st
 
 from instruction_eval.cli import build_parser
 
@@ -54,19 +56,33 @@ def test_reader_kind_is_required():
         parse("series", "new", "demo", "--instruction", "i.md")
 
 
-def test_revision_ask_repeats_conditions_once_per_value():
-    parsed = parse("revision", "ask", "r2", "--conditions", "instruction", "--conditions", "omit-3")
-    assert parsed.conditions == ["instruction", "omit-3"]
-    assert parsed.revision == "r2"
+CONDITION_NAMES = st.text(
+    alphabet=st.characters(blacklist_characters="-", blacklist_categories=("Cs",)),
+    min_size=1,
+)
+
+
+@given(names=st.lists(CONDITION_NAMES))
+def test_revision_ask_returns_repeated_conditions_in_order(names):
+    flags = [part for name in names for part in ("--conditions", name)]
+    assert parse("revision", "ask", "r2", *flags).conditions == names
 
 
 def test_revision_ask_without_conditions_leaves_the_list_empty():
     assert parse("revision", "ask", "r1").conditions == []
 
 
-def test_revision_id_must_be_r_then_a_number():
+@given(number=st.integers(min_value=0).map(str))
+def test_revision_id_of_r_then_digits_is_accepted(number):
+    assert parse("revision", "ask", f"r{number}").revision == f"r{number}"
+
+
+@given(text=st.text(alphabet=st.characters(blacklist_categories=("Cs",))).filter(
+    lambda text: not re.fullmatch(r"r[0-9]+", text) and not text.startswith("-")
+))
+def test_revision_id_not_r_then_digits_is_refused(text):
     with pytest.raises(SystemExit):
-        parse("revision", "ask", "2")
+        parse("revision", "ask", text)
 
 
 def test_series_stop_takes_a_reason_value():
