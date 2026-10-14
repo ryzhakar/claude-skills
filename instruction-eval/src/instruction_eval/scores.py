@@ -1,8 +1,11 @@
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from functools import partial
 from math import sqrt
 from statistics import NormalDist, linear_regression, mean, variance
-from typing import TypedDict
+from typing import NamedTuple, TypedDict
+
+import numpy
 
 _INSTRUCTION = "instruction"
 _SOURCE = "source"
@@ -205,3 +208,72 @@ def _half_width(z: float, variances: Sequence[float | None], repeat_units: int) 
     if None in variances:
         return None
     return z * sqrt(sum(variances) / repeat_units)
+
+
+BOOTSTRAP_SEED = 20261012
+BOOTSTRAP_RESAMPLES = 2000
+
+
+class PairedUnit(NamedTuple):
+    """One resampled unit's value under the instruction and under the condition it is compared with."""
+
+    instruction: float
+    other: float
+
+
+@dataclass(frozen=True)
+class Comparison:
+    """Mean instruction-minus-other difference over units, its percentile bootstrap interval, and the unit count."""
+
+    mean_difference: float | None
+    interval: tuple[float, float] | None
+    units: int
+
+
+def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.Generator) -> Comparison:
+    """Average instruction minus other per unit and bound it by a percentile bootstrap interval at `level`, null without units."""
+    require_valid_level(level)
+    if not units:
+        return Comparison(mean_difference=None, interval=None, units=0)
+    differences = unit_differences(units)
+    resample_means = bootstrap_resample_means(differences, rng)
+    return Comparison(
+        mean_difference=float(differences.mean()),
+        interval=percentile_interval(resample_means, level),
+        units=len(differences),
+    )
+
+
+def unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
+    """Return each unit's instruction value minus its other value."""
+    return numpy.array([unit.instruction - unit.other for unit in units], dtype=float)
+
+
+def bootstrap_resample_means(differences: numpy.ndarray, rng: numpy.random.Generator) -> numpy.ndarray:
+    """Return the mean difference of each of the resamples drawn from units with replacement."""
+    resampled_indices = rng.integers(0, len(differences), size=(BOOTSTRAP_RESAMPLES, len(differences)))
+    return differences[resampled_indices].mean(axis=1)
+
+
+def percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[float, float]:
+    """Return the central `level` interval of the resample means by numpy's linear quantile."""
+    upper_probability = upper_tail_probability(level)
+    low, high = numpy.quantile(resample_means, [1 - upper_probability, upper_probability], method="linear")
+    return float(low), float(high)
+
+
+def z_for_level(level: float) -> float:
+    """Return the standard normal quantile at (1 + `level`) / 2."""
+    require_valid_level(level)
+    return NormalDist().inv_cdf(upper_tail_probability(level))
+
+
+def upper_tail_probability(level: float) -> float:
+    """Return the probability (1 + `level`) / 2 bounding a central `level` interval from above."""
+    return (1 + level) / 2
+
+
+def require_valid_level(level: float) -> None:
+    """Raise ValueError naming `level` unless it lies strictly between 0 and 1."""
+    if not 0 < level < 1:
+        raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
