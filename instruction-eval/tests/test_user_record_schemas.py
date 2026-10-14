@@ -6,14 +6,18 @@ import pytest
 import yaml
 
 from instruction_eval.records import (
+    Conversation,
     Demands,
     JudgeDemand,
     LongSentencesDemand,
     PatternDemand,
     RecordRefused,
     Series,
+    Task,
+    Tasks,
     parse_demands,
     parse_series,
+    parse_tasks,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "user-record-schemas"
@@ -120,3 +124,40 @@ def test_demands_refuse_a_malformed_demand(index, changes, named):
 def test_demands_refuse_an_empty_list():
     with pytest.raises(RecordRefused, match="non-empty"):
         parse_demands({"demands": []})
+
+
+def test_tasks_load_with_compiled_answer_keys():
+    tasks = parse_tasks(fixture("3-tasks.yaml"))
+    assert tasks == Tasks(
+        tasks=(
+            Task(id="explain-tides", tempts="short-sentences", split="open", message="Why does the sea rise twice a day?", answer_key=None),
+            Task(
+                id="fix-loop",
+                tempts="overreach",
+                split="sealed",
+                message="My loop prints one number too many. Fix only that.",
+                answer_key=re.compile(r"range\(n\)"),
+            ),
+        ),
+        conversations=(
+            Conversation(id="plan-trip", split="open", turns=("I want to visit Lisbon in spring.", "Which week has the fewest crowds?")),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("list_key", "changes", "named"),
+    [
+        ("tasks", {"split": "closed"}, "tasks[0].split"),
+        ("tasks", {"answer_key": "[unclosed"}, "tasks[0].answer_key"),
+        ("tasks", {"answer_key": ABSENT}, "answer_key"),
+        ("tasks", {"tempts": "Short Sentences"}, "tasks[0].tempts"),
+        ("tasks", {"message": ""}, "tasks[0].message"),
+        ("conversations", {"split": "both"}, "conversations[0].split"),
+        ("conversations", {"turns": ["fine", 3]}, "conversations[0].turns[1]"),
+        ("conversations", {"id": "-plan"}, "conversations[0].id"),
+    ],
+)
+def test_tasks_refuse_a_malformed_entry(list_key, changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_tasks(edited_entry("3-tasks.yaml", list_key, 0, **changes))

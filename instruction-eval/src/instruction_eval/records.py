@@ -1,14 +1,16 @@
 """Typed records of a series, built from parsed YAML documents and refused when malformed."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, get_args
+from typing import Literal, TypeVar, get_args
 
 HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+Entry = TypeVar("Entry")
 
 ReaderKind = Literal["agent", "command"]
 
@@ -112,6 +114,73 @@ def read_demand_id(value: object, where: str) -> str:
     if demand_id in RESERVED_DEMAND_IDS:
         raise RecordRefused(f"{where}: {demand_id!r} is reserved")
     return demand_id
+
+
+Split = Literal["open", "sealed"]
+
+
+@dataclass(frozen=True)
+class Task:
+    """One single-message task of `3-tasks.yaml`."""
+
+    id: str
+    tempts: str
+    split: Split
+    message: str
+    answer_key: re.Pattern[str] | None
+
+
+@dataclass(frozen=True)
+class Conversation:
+    """One multi-turn conversation of `3-tasks.yaml`."""
+
+    id: str
+    split: Split
+    turns: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Tasks:
+    """The `3-tasks.yaml` record."""
+
+    tasks: tuple[Task, ...]
+    conversations: tuple[Conversation, ...]
+
+
+def parse_tasks(document: object) -> Tasks:
+    """Build the `3-tasks.yaml` record from its parsed document."""
+    keys = read_keys(document, "3-tasks.yaml", required={"tasks", "conversations"})
+    return Tasks(
+        tasks=read_entries(keys["tasks"], "tasks", read_task),
+        conversations=read_entries(keys["conversations"], "conversations", read_conversation),
+    )
+
+
+def read_task(value: object, where: str) -> Task:
+    """Return one task entry."""
+    keys = read_keys(value, where, required={"id", "tempts", "split", "message", "answer_key"})
+    return Task(
+        id=read_id(keys["id"], f"{where}.id"),
+        tempts=read_id(keys["tempts"], f"{where}.tempts"),
+        split=read_choice(keys["split"], f"{where}.split", get_args(Split)),
+        message=read_string(keys["message"], f"{where}.message"),
+        answer_key=None if keys["answer_key"] is None else read_regex(keys["answer_key"], f"{where}.answer_key"),
+    )
+
+
+def read_conversation(value: object, where: str) -> Conversation:
+    """Return one conversation entry."""
+    keys = read_keys(value, where, required={"id", "split", "turns"})
+    return Conversation(
+        id=read_id(keys["id"], f"{where}.id"),
+        split=read_choice(keys["split"], f"{where}.split", get_args(Split)),
+        turns=read_entries(keys["turns"], f"{where}.turns", read_string),
+    )
+
+
+def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
+    """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
+    return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))
 
 
 def read_id(value: object, where: str) -> str:
