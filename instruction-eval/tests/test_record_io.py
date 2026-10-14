@@ -100,6 +100,19 @@ def test_loading_a_record_that_is_not_yaml_refuses_as_malformed(series):
         load_record(series, "r1/9-outcome.yaml")
 
 
+def test_writing_a_record_from_a_keyed_input_that_is_not_yaml_refuses_naming_the_input(series):
+    (series.root / "7-gate.yaml").write_text("repeats: [unclosed\n")
+    with pytest.raises(Refusal, match=r"^malformed input: 7-gate.yaml$"):
+        write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["7-gate.yaml#repeats"])
+
+
+def test_loading_a_record_after_its_keyed_input_stopped_being_yaml_refuses_naming_the_input(series):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["7-gate.yaml#repeats"])
+    (series.root / "7-gate.yaml").write_text("repeats: [unclosed\n")
+    with pytest.raises(Refusal, match=r"^malformed input: 7-gate.yaml$"):
+        load_record(series, "r1/9-outcome.yaml")
+
+
 @dataclass(frozen=True)
 class ReadCountingFolder(SeriesFolder):
     reads: Counter = field(default_factory=Counter)

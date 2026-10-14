@@ -86,7 +86,7 @@ def _parse_record(content: bytes, path: str) -> dict[str, Any]:
 def _hash_inputs(files: SeriesFolder, reads: Iterable[str]) -> dict[str, str]:
     """Map each read to the sha256 of what it names, reading and parsing each named file once."""
     read_file = functools.cache(lambda file_path: _read_input(files, file_path))
-    parse_file = functools.cache(lambda file_path: yaml.safe_load(read_file(file_path)))
+    parse_file = functools.cache(lambda file_path: _parse_input(read_file(file_path), file_path))
     return {entry: _hash_input(read_file, parse_file, entry) for entry in reads}
 
 
@@ -103,6 +103,14 @@ def _read_top_level_value(document: Any, entry: str, key: str) -> Any:
     if not isinstance(document, dict) or key not in document:
         raise Refusal(f"missing input: {entry}")
     return document[key]
+
+
+def _parse_input(content: bytes, path: str) -> Any:
+    """Parse the YAML series input at `path`, refusing it as malformed when it is not YAML."""
+    try:
+        return yaml.safe_load(content)
+    except yaml.YAMLError:
+        raise Refusal(f"malformed input: {path}") from None
 
 
 def _read_input(files: SeriesFolder, path: str) -> bytes:
