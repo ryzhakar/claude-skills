@@ -81,6 +81,7 @@ def edited(name: str, **changes: object) -> dict:
         ({"sources": ["/a.md", "b.md"]}, "sources[1]"),
         ({"created": "2026-10-14T10:00:00"}, "created"),
         ({"inputs": {"2-demands.yaml": "ABC"}}, "inputs"),
+        ({"inputs": {"2-demands.yaml": "a" * 64 + "\n"}}, "inputs"),
         ({"created": ABSENT}, "created"),
         ({"cause": "too long"}, "cause"),
     ],
@@ -135,6 +136,7 @@ LONG_SENTENCES, PATTERN, JUDGE = 0, 1, 2
         (JUDGE, {"id": "overreach"}, "reserved"),
         (JUDGE, {"id": "completion"}, "reserved"),
         (JUDGE, {"id": "Active_Voice"}, "demands[2].id"),
+        (JUDGE, {"id": "active-voice\n"}, "demands[2].id"),
         (JUDGE, {"boundary": ""}, "demands[2].boundary"),
     ],
 )
@@ -272,7 +274,7 @@ def test_reader_refuses_a_model_alias(variant, alias):
         parse_reader(edited(variant, model=alias))
 
 
-@pytest.mark.parametrize("model", ["gpt-5-mini", "claude", "claude-", "Claude-sonnet-4-5", "claude-sonnet-4-5 "])
+@pytest.mark.parametrize("model", ["gpt-5-mini", "claude", "claude-", "Claude-sonnet-4-5", "claude-sonnet-4-5 ", "claude-sonnet-4-5\n"])
 def test_agent_reader_refuses_a_model_outside_the_claude_pattern(model):
     with pytest.raises(RecordRefused, match="model"):
         parse_reader(edited("5-reader-agent.yaml", model=model))
@@ -433,6 +435,7 @@ def test_hypothesis_refuses_a_cause_inside_the_change():
     [
         ({"failing_demand": "Short"}, "failing_demand"),
         ({"replies_read": ["b3f9a01c"]}, "replies_read[0]"),
+        ({"replies_read": ["b3f9a01c2\n"]}, "replies_read[0]"),
         ({"replies_read": ["short-sentences"]}, "replies_read[0]"),
         ({"change": {"action": "move", "sentence": 4}}, "change"),
         ({"change": {"action": "rewrite", "sentence": 4, "to": 1}}, "change"),
