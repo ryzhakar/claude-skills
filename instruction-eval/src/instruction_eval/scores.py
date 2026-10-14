@@ -4,17 +4,17 @@ from math import sqrt
 from statistics import NormalDist, linear_regression, mean, variance
 from typing import TypedDict
 
-INSTRUCTION = "instruction"
-SOURCE = "source"
-EMPTY = "empty"
-VS_CONTROLS = (EMPTY, "aim", "placebo")
-VS_PREFIX = "instruction-vs-"
-NEAR_SOURCE = "instruction-near-source"
-COMPLETION = "completion"
-DRIFT = "drift"
-TWO_SIDED_TAILS = 2
-LEAST_VALUES_FOR_VARIANCE = 2
-LEAST_TURNS_FOR_SLOPE = 2
+_INSTRUCTION = "instruction"
+_SOURCE = "source"
+_EMPTY = "empty"
+_VS_CONTROLS = (_EMPTY, "aim", "placebo")
+_VS_PREFIX = "instruction-vs-"
+_NEAR_SOURCE = "instruction-near-source"
+_COMPLETION = "completion"
+_DRIFT = "drift"
+_TWO_SIDED_TAILS = 2
+_LEAST_VALUES_FOR_VARIANCE = 2
+_LEAST_TURNS_FOR_SLOPE = 2
 
 
 class ScoredReply(TypedDict):
@@ -57,8 +57,8 @@ def measure_noise(
     level: float,
 ) -> Noise:
     """Return r1's noise: each condition's repeat variances and the half-width each check and change can resolve."""
-    z = NormalDist().inv_cdf((1 + level) / TWO_SIDED_TAILS)
-    conditions = [INSTRUCTION, *controls]
+    z = NormalDist().inv_cdf((1 + level) / _TWO_SIDED_TAILS)
+    conditions = [_INSTRUCTION, *controls]
     task_replies = [row for row in sealed_rows if row["turn"] is None]
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
@@ -88,10 +88,10 @@ def measure_noise(
             repeats * _unit_count(turn_replies),
         ),
         "demands": {
-            demand: _change_half_width(z, by_condition[INSTRUCTION], task_repeat_units)
+            demand: _change_half_width(z, by_condition[_INSTRUCTION], task_repeat_units)
             for demand, by_condition in sigma["demands"].items()
         },
-        "done_change": _change_half_width(z, sigma["done"][INSTRUCTION], task_repeat_units),
+        "done_change": _change_half_width(z, sigma["done"][_INSTRUCTION], task_repeat_units),
     }
 
 
@@ -107,16 +107,16 @@ def _check_half_widths(
     breaches = sigma["breaches"]
     done_of_completion_control = sigma["done"][completion_control] if completion_control else None
     checks = {
-        VS_PREFIX + control: _half_width(z, [breaches[INSTRUCTION], breaches[control]], task_repeat_units)
-        for control in VS_CONTROLS
+        _VS_PREFIX + control: _half_width(z, [breaches[_INSTRUCTION], breaches[control]], task_repeat_units)
+        for control in _VS_CONTROLS
     }
-    checks[COMPLETION] = _half_width(z, [sigma["done"][INSTRUCTION], done_of_completion_control], task_repeat_units)
-    if SOURCE in controls:
-        checks[NEAR_SOURCE] = _half_width(z, [breaches[INSTRUCTION], breaches[SOURCE]], task_repeat_units)
+    checks[_COMPLETION] = _half_width(z, [sigma["done"][_INSTRUCTION], done_of_completion_control], task_repeat_units)
+    if _SOURCE in controls:
+        checks[_NEAR_SOURCE] = _half_width(z, [breaches[_INSTRUCTION], breaches[_SOURCE]], task_repeat_units)
     if conversation_repeat_units:
         drift = sigma["drift"]
-        drift_control = SOURCE if SOURCE in controls else EMPTY
-        checks[DRIFT] = _half_width(z, [drift[INSTRUCTION], drift[drift_control]], conversation_repeat_units)
+        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
+        checks[_DRIFT] = _half_width(z, [drift[_INSTRUCTION], drift[drift_control]], conversation_repeat_units)
     return checks
 
 
@@ -163,7 +163,7 @@ def _drift_slopes_by_unit(
 
 def _least_squares_slope(turns: Sequence[int], totals: Sequence[int]) -> float | None:
     """Return the least-squares slope of totals over turns, or null when fewer than two distinct turns exist."""
-    if len(set(turns)) < LEAST_TURNS_FOR_SLOPE:
+    if len(set(turns)) < _LEAST_TURNS_FOR_SLOPE:
         return None
     return linear_regression(turns, totals).slope
 
@@ -191,7 +191,7 @@ def _best_done_control(replies: Sequence[ScoredReply], controls: Sequence[str]) 
 def _mean_repeat_variance(values_by_unit: Mapping[str, Sequence[float | None]]) -> float | None:
     """Return the mean sample variance over units holding at least two non-null values, or null when none does."""
     present_by_unit = [[value for value in values if value is not None] for values in values_by_unit.values()]
-    variances = [variance(present) for present in present_by_unit if len(present) >= LEAST_VALUES_FOR_VARIANCE]
+    variances = [variance(present) for present in present_by_unit if len(present) >= _LEAST_VALUES_FOR_VARIANCE]
     return mean(variances) if variances else None
 
 
