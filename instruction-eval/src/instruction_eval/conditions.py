@@ -1,4 +1,4 @@
-FENCE = "---"
+_FENCE = "---"
 
 
 class UnclosedFrontmatter(ValueError):
@@ -8,9 +8,9 @@ class UnclosedFrontmatter(ValueError):
 def strip_frontmatter(text: str, path: str) -> str:
     """Return the text without its leading frontmatter block, refusing an unclosed block."""
     lines = text.split("\n")
-    if lines[0] != FENCE:
+    if lines[0] != _FENCE:
         return text
-    closing_index = next((i for i, line in enumerate(lines[1:], 1) if line == FENCE), None)
+    closing_index = next((i for i, line in enumerate(lines[1:], 1) if line == _FENCE), None)
     if closing_index is None:
         raise UnclosedFrontmatter(f"unclosed frontmatter: {path}")
     return "\n".join(lines[closing_index + 1:])
