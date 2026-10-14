@@ -1,13 +1,16 @@
 from pathlib import Path
 
+import pytest
+
 from instruction_eval.reader import locate_transcripts
 
 CONFIG_DIR = Path(__file__).parent / "fixtures" / "transcript-locate" / "config"
+WORKING_DIR = Path("/srv")
 SERIES_FOLDER = Path("/srv/series.v1")
 
 
 def test_series_transcripts_are_found_with_their_agent_types():
-    found = locate_transcripts(CONFIG_DIR, SERIES_FOLDER)
+    found = locate_transcripts(CONFIG_DIR, SERIES_FOLDER, WORKING_DIR)
     assert [(t.agent_id, t.agent_type) for t in found] == [
         ("a1", "ie-reader-r1-empty"),
         ("b2", "ie-reader-r1-terse"),
@@ -15,28 +18,32 @@ def test_series_transcripts_are_found_with_their_agent_types():
 
 
 def test_transcripts_of_other_series_folders_are_left_out():
-    found = locate_transcripts(CONFIG_DIR, Path("/srv/other"))
+    found = locate_transcripts(CONFIG_DIR, Path("/srv/other"), WORKING_DIR)
     assert [t.agent_id for t in found] == ["c3"]
 
 
 def test_series_folder_without_sessions_has_no_transcripts():
-    assert locate_transcripts(CONFIG_DIR, Path("/srv/unused")) == []
+    assert locate_transcripts(CONFIG_DIR, Path("/srv/unused"), WORKING_DIR) == []
 
 
 def test_transcript_names_its_session_and_file():
-    first = locate_transcripts(CONFIG_DIR, SERIES_FOLDER)[0]
+    first = locate_transcripts(CONFIG_DIR, SERIES_FOLDER, WORKING_DIR)[0]
     assert first.session == "sess-a"
     assert first.path == (
         CONFIG_DIR / "projects" / "-srv-series-v1" / "sess-a" / "subagents" / "agent-a1.jsonl"
     )
 
 
-def test_relative_series_folder_is_read_as_its_absolute_path(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    key = str(tmp_path / "series.v1").replace("/", "-").replace(".", "-")
-    subagents = tmp_path / "config" / "projects" / key / "sess-d" / "subagents"
-    subagents.mkdir(parents=True)
-    (subagents / "agent-d4.jsonl").write_text("{}\n")
-    (subagents / "agent-d4.meta.json").write_text('{"agentType": "ie-reader-r1-empty"}\n')
-    found = locate_transcripts(tmp_path / "config", Path("series.v1"))
-    assert [t.agent_id for t in found] == ["d4"]
+def test_relative_series_folder_is_read_under_the_working_dir():
+    found = locate_transcripts(CONFIG_DIR, Path("series.v1"), WORKING_DIR)
+    assert [t.agent_id for t in found] == ["a1", "b2"]
+
+
+def test_transcript_without_meta_file_is_refused_by_name():
+    with pytest.raises(ValueError, match="agent-e5.jsonl.*meta"):
+        locate_transcripts(CONFIG_DIR, Path("/srv/nometa"), WORKING_DIR)
+
+
+def test_meta_file_without_agent_type_is_refused_by_name():
+    with pytest.raises(ValueError, match="agent-f6.jsonl.*agentType"):
+        locate_transcripts(CONFIG_DIR, Path("/srv/notype"), WORKING_DIR)

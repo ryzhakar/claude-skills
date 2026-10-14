@@ -7,40 +7,49 @@ SUBAGENTS_DIR_NAME = "subagents"
 TRANSCRIPT_PATTERN = "agent-*.jsonl"
 TRANSCRIPT_ID_PREFIX = "agent-"
 META_SUFFIX = ".meta.json"
+AGENT_TYPE_FIELD = "agentType"
 KEY_SEPARATOR_CHARS = "/."
 KEY_REPLACEMENT = "-"
 
 
 @dataclass(frozen=True)
 class Transcript:
+    """One subagent transcript with the session and agent that wrote it."""
+
     path: Path
     session: str
     agent_id: str
     agent_type: str
 
 
-def locate_transcripts(config_dir: Path, series_folder: Path) -> list[Transcript]:
+def locate_transcripts(
+    config_dir: Path, series_folder: Path, working_dir: Path
+) -> list[Transcript]:
     """Return the subagent transcripts of the series folder's sessions, ordered by path."""
-    project_dir = config_dir / PROJECTS_DIR_NAME / project_key(series_folder)
+    project_dir = config_dir / PROJECTS_DIR_NAME / _project_key(working_dir / series_folder)
     paths = sorted(project_dir.glob(f"*/{SUBAGENTS_DIR_NAME}/{TRANSCRIPT_PATTERN}"))
-    return [read_transcript(path) for path in paths]
+    return [_read_transcript(path) for path in paths]
 
 
-def project_key(series_folder: Path) -> str:
-    """Return the series folder's absolute path with each slash and dot replaced by a dash."""
+def _project_key(absolute_series_folder: Path) -> str:
+    """Return the absolute path with each slash and dot replaced by a dash."""
     return "".join(
         KEY_REPLACEMENT if char in KEY_SEPARATOR_CHARS else char
-        for char in str(series_folder.absolute())
+        for char in str(absolute_series_folder)
     )
 
 
-def read_transcript(path: Path) -> Transcript:
+def _read_transcript(path: Path) -> Transcript:
     """Return the transcript at the path with the agent type its meta file holds."""
     meta_path = path.with_suffix(META_SUFFIX)
-    agent_type = json.loads(meta_path.read_text())["agentType"]
+    if not meta_path.is_file():
+        raise ValueError(f"{path}: meta file {meta_path.name} is missing")
+    meta = json.loads(meta_path.read_text())
+    if AGENT_TYPE_FIELD not in meta:
+        raise ValueError(f"{path}: meta file lacks {AGENT_TYPE_FIELD}")
     return Transcript(
         path=path,
         session=path.parent.parent.name,
         agent_id=path.stem.removeprefix(TRANSCRIPT_ID_PREFIX),
-        agent_type=agent_type,
+        agent_type=meta[AGENT_TYPE_FIELD],
     )
