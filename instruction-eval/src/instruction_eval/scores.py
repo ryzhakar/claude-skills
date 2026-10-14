@@ -4,6 +4,7 @@ from statistics import NormalDist, mean, variance
 from typing import TypedDict
 
 INSTRUCTION = "instruction"
+SOURCE = "source"
 VS_CONTROLS = ("empty", "aim", "placebo")
 
 
@@ -47,6 +48,10 @@ def measure_noise(
     checks["completion"] = half_width(
         z, [done_sigma[INSTRUCTION], done_sigma.get(completion_control)], repeats * task_count
     )
+    if SOURCE in controls:
+        checks["instruction-near-source"] = half_width(
+            z, [breaches_sigma[INSTRUCTION], breaches_sigma[SOURCE]], repeats * task_count
+        )
     demands_sigma = {
         demand: {
             condition: mean_repeat_variance(breach_totals_by_unit(task_replies, condition, [demand]))

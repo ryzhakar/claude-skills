@@ -40,6 +40,29 @@ def test_vs_check_noise_at_two_repeats_pools_instruction_and_control_variances()
     assert noise["checks"]["instruction-vs-empty"] == pytest.approx(Z * sqrt(5 / (2 * 2)))
 
 
+def test_near_source_noise_compares_instruction_with_source():
+    rows = [
+        reply("instruction", "t1", 1, {"d1": 1}),
+        reply("instruction", "t1", 2, {"d1": 3}),
+        reply("instruction", "t2", 1, {"d1": 0}),
+        reply("instruction", "t2", 2, {"d1": 0}),
+        reply("source", "t1", 1, {"d1": 0}),
+        reply("source", "t1", 2, {"d1": 2}),
+        reply("source", "t2", 1, {"d1": 1}),
+        reply("source", "t2", 2, {"d1": 1}),
+    ]
+
+    noise = measure_noise(rows, ["d1"], [*CONTROLS, "source"], repeats=2, level=LEVEL)
+
+    assert noise["checks"]["instruction-near-source"] == pytest.approx(Z * sqrt(2 / (2 * 2)))
+
+
+def test_near_source_noise_is_absent_without_a_source():
+    noise = measure_noise(THREE_REPEAT_DONE_ROWS, ["d1"], CONTROLS, repeats=3, level=LEVEL)
+
+    assert "instruction-near-source" not in noise["checks"]
+
+
 def done_replies(condition, done_by_task):
     return [
         reply(condition, task, repeat, {"d1": 0}, done=done)
