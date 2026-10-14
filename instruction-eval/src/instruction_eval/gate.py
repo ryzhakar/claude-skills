@@ -55,10 +55,22 @@ def _predicted_cost(r1_replies: list[ReplyCost], shape: SeriesShape, unit: str) 
     ) * (reads_per_revision + omission_reads)
 
 
+def _refuse_token_budget_over_null_tokens(r1_replies: list[ReplyCost], unit: str) -> None:
+    """Raise BudgetRefusal when the unit is tokens and any r1 reply has null tokens."""
+    has_null_tokens = any(
+        reply.input_tokens is None or reply.output_tokens is None for reply in r1_replies
+    )
+    if unit == "tokens" and has_null_tokens:
+        raise BudgetRefusal("tokens budget refused: an r1 reply has null tokens")
+
+
 def refuse_unaffordable_freeze(
     budget: Budget | None, r1_replies: list[ReplyCost], shape: SeriesShape
 ) -> None:
     """Raise BudgetRefusal when the budget ceiling is below the series' predicted cost."""
+    if budget is None:
+        return
+    _refuse_token_budget_over_null_tokens(r1_replies, budget.unit)
     predicted = _predicted_cost(r1_replies, shape, budget.unit)
     if predicted > budget.ceiling:
         raise BudgetRefusal(f"predicted cost {predicted:g} exceeds ceiling {budget.ceiling:g}")

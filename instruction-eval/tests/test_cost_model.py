@@ -20,6 +20,23 @@ def test_freeze_accepts_a_ceiling_at_the_predicted_cost():
     refuse_unaffordable_freeze(Budget("seconds", PREDICTED_SECONDS), TWO_SECOND_R1_REPLIES, SHAPE)
 
 
+def test_freeze_accepts_a_series_with_no_budget():
+    refuse_unaffordable_freeze(None, TWO_SECOND_R1_REPLIES, SHAPE)
+
+
+def test_freeze_refuses_a_token_budget_when_any_r1_reply_has_null_tokens():
+    r1_replies = [ReplyCost(10, 5, 2.0), ReplyCost(None, None, 2.0)]
+    with pytest.raises(BudgetRefusal, match="null tokens"):
+        refuse_unaffordable_freeze(Budget("tokens", 1_000_000), r1_replies, SHAPE)
+
+
+def test_freeze_predicts_a_token_budget_from_input_plus_output_tokens():
+    r1_replies = [ReplyCost(1, 1, 0.0)] * 10
+    refuse_unaffordable_freeze(Budget("tokens", PREDICTED_SECONDS), r1_replies, SHAPE)
+    with pytest.raises(BudgetRefusal):
+        refuse_unaffordable_freeze(Budget("tokens", PREDICTED_SECONDS - 1), r1_replies, SHAPE)
+
+
 def test_freeze_refuses_a_ceiling_below_the_predicted_cost():
     with pytest.raises(BudgetRefusal, match="predicted cost 148"):
         refuse_unaffordable_freeze(
