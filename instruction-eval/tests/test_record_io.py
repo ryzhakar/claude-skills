@@ -33,6 +33,12 @@ def test_inputs_hold_the_sha256_of_the_whole_file_and_of_the_key_value_as_canoni
     }
 
 
+def test_writing_a_record_that_carries_its_own_inputs_refuses_and_writes_nothing(series):
+    with pytest.raises(Refusal, match=r"^record r1/9-outcome.yaml carries inputs; inputs come from its reads$"):
+        write_record(series, "r1/9-outcome.yaml", {"inputs": {"x": "1"}}, [])
+    assert not (series.root / "r1/9-outcome.yaml").exists()
+
+
 def test_writing_an_existing_file_refuses_and_keeps_the_first_bytes_alone(series):
     write_file(series, "r1/2-instruction.md", b"first")
     with pytest.raises(Refusal, match=r"^already written: r1/2-instruction.md$"):

@@ -52,7 +52,9 @@ def write_file(files: SeriesFolder, path: str, content: bytes) -> None:
 
 
 def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
-    """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256."""
+    """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256, refusing a record carrying its own."""
+    if INPUTS_KEY in record:
+        raise Refusal(f"record {path} carries inputs; inputs come from its reads")
     write_file(files, path, _dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(files, reads)}))
 
 
