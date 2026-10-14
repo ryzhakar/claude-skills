@@ -14,7 +14,9 @@ from instruction_eval.records import (
     CommandReader,
     Conditions,
     Conversation,
+    Coverage,
     Demands,
+    Dropped,
     Gate,
     Hypothesis,
     JudgeDemand,
@@ -30,6 +32,7 @@ from instruction_eval.records import (
     Tasks,
     UserRaters,
     parse_conditions,
+    parse_coverage,
     parse_demands,
     parse_gate,
     parse_hypothesis,
@@ -443,3 +446,34 @@ def test_hypothesis_refuses_a_cause_inside_the_change():
 def test_hypothesis_refuses_a_malformed_key(changes, named):
     with pytest.raises(RecordRefused, match=re.escape(named)):
         parse_hypothesis(edited("1-hypothesis.yaml", **changes))
+
+
+def test_coverage_loads_both_maps():
+    assert parse_coverage(fixture("3-coverage.yaml")) == Coverage(
+        demands={
+            "short-sentences": (1, 3),
+            "no-hedges": (2,),
+            "active-voice": Dropped(reason="The writer judged it unmeasurable here."),
+        },
+        sentences={1: ("short-sentences",), 2: ("no-hedges",), 3: ("short-sentences",)},
+    )
+
+
+@pytest.mark.parametrize(
+    ("changes", "named"),
+    [
+        ({"demands": {"short-sentences": []}}, "demands[short-sentences]"),
+        ({"demands": {"short-sentences": [0]}}, "demands[short-sentences][0]"),
+        ({"demands": {"short-sentences": {"dropped": ""}}}, "demands[short-sentences].dropped"),
+        ({"demands": {"short-sentences": {"dropped": "x", "cause": "y"}}}, "cause"),
+        ({"demands": {"Short": [1]}}, "demands key"),
+        ({"sentences": {1: []}}, "sentences[1]"),
+        ({"sentences": {"one": ["short-sentences"]}}, "sentences key"),
+        ({"sentences": {0: ["short-sentences"]}}, "sentences key"),
+        ({"sentences": {1: ["Short"]}}, "sentences[1][0]"),
+        ({"imported": [4]}, "imported"),
+    ],
+)
+def test_coverage_refuses_a_malformed_key(changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_coverage(edited("3-coverage.yaml", **changes))

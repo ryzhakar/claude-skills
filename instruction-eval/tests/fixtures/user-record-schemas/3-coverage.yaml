@@ -1,0 +1,9 @@
+demands:
+  short-sentences: [1, 3]
+  no-hedges: [2]
+  active-voice:
+    dropped: The writer judged it unmeasurable here.
+sentences:
+  1: [short-sentences]
+  2: [no-hedges]
+  3: [short-sentences]

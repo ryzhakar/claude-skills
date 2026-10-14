@@ -11,6 +11,7 @@ HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 Entry = TypeVar("Entry")
+Key = TypeVar("Key")
 
 ReaderKind = Literal["agent", "command"]
 
@@ -577,6 +578,68 @@ def read_predicted_movement(value: object, where: str) -> PredictedMovement:
         direction=read_choice(keys["direction"], f"{where}.direction", get_args(Direction)),
         size=read_positive_number(keys["size"], f"{where}.size"),
     )
+
+
+@dataclass(frozen=True)
+class Dropped:
+    """A demand the coverage drops from the gate, with the user's reason."""
+
+    reason: str
+
+
+@dataclass(frozen=True)
+class Coverage:
+    """The `r<n>/3-coverage.yaml` record."""
+
+    demands: Mapping[str, tuple[int, ...] | Dropped]
+    sentences: Mapping[int, tuple[str, ...]]
+
+
+def parse_coverage(document: object) -> Coverage:
+    """Build the `r<n>/3-coverage.yaml` record from its parsed document."""
+    keys = read_keys(document, "3-coverage.yaml", required={"demands", "sentences"})
+    return Coverage(
+        demands=read_map(keys["demands"], "demands", read_id, read_demand_coverage),
+        sentences=read_map(
+            keys["sentences"],
+            "sentences",
+            read_sentence_number,
+            lambda value, where: read_non_empty_entries(value, where, read_id),
+        ),
+    )
+
+
+def read_demand_coverage(value: object, where: str) -> tuple[int, ...] | Dropped:
+    """Return the sentences covering a demand, or its drop with a reason."""
+    if isinstance(value, list):
+        return read_non_empty_entries(value, where, read_sentence_number)
+    keys = read_keys(value, where, required={"dropped"})
+    return Dropped(reason=read_string(keys["dropped"], f"{where}.dropped"))
+
+
+def read_sentence_number(value: object, where: str) -> int:
+    """Return a sentence number, counted from 1."""
+    return read_integer(value, where, minimum=1)
+
+
+def read_non_empty_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
+    """Return every item of a non-empty YAML sequence read by `read_entry`."""
+    entries = read_entries(value, where, read_entry)
+    if not entries:
+        raise RecordRefused(f"{where}: expected a non-empty list")
+    return entries
+
+
+def read_map(
+    value: object,
+    where: str,
+    read_key: Callable[[object, str], Key],
+    read_value: Callable[[object, str], Entry],
+) -> Mapping[Key, Entry]:
+    """Return a YAML mapping with every key read by `read_key` and every value by `read_value`."""
+    if not isinstance(value, Mapping):
+        raise RecordRefused(f"{where}: expected a mapping, got {value!r}")
+    return {read_key(key, f"{where} key"): read_value(item, f"{where}[{key}]") for key, item in value.items()}
 
 
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
