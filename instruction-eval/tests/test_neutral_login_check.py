@@ -45,6 +45,12 @@ def test_refuses_an_unset_config_dir(login: Login):
         check_neutral_login({}, login.home, login.working_dir)
 
 
+def test_refuses_a_broken_link_named_claude_md_in_the_config_dir(login: Login):
+    (login.config_dir / "CLAUDE.md").symlink_to(login.home / "missing")
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
 def test_refuses_a_claude_md_in_the_config_dir(login: Login):
     (login.config_dir / "CLAUDE.md").write_text("memory")
     with pytest.raises(NeutralLoginRefused):
