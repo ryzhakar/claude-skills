@@ -42,33 +42,55 @@ WORD_BEFORE_END = re.compile(rb"[A-Za-z.]*\Z")
 ABBREVIATIONS = {b"e.g", b"i.e", b"etc", b"vs", b"cf", b"Mr", b"Mrs", b"Dr", b"St", b"No"}
 SINGLE_LETTER = re.compile(rb"[A-Za-z]")
 WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
+FENCE_OPEN = re.compile(rb"\s*(`{3,}|~{3,})")
 
 
 def read_units(text: bytes) -> list[Unit]:
     """Read the markdown units of a text in order."""
-    lines = [text[start:end] for start, end in line_spans(text)]
     spans = line_spans(text)
+    lines = [text[start:end] for start, end in spans]
     units = []
     index = 0
     while index < len(lines):
         if not lines[index].strip():
             index += 1
             continue
-        if WHOLE_LINE_UNIT.match(lines[index]):
-            units.append(Unit(*spans[index], splits=False))
-            index += 1
-            continue
-        last = index
-        while last + 1 < len(lines) and continues_paragraph(lines[last + 1]):
-            last += 1
-        units.append(Unit(spans[index][0], spans[last][1], splits=True))
+        last, splits = unit_extent(lines, index)
+        units.append(Unit(spans[index][0], spans[last][1], splits))
         index = last + 1
     return units
 
 
+def unit_extent(lines: list[bytes], first: int) -> tuple[int, bool]:
+    """Return the last line of the unit opening at a line and whether that unit splits into sentences."""
+    fence = FENCE_OPEN.match(lines[first])
+    if fence:
+        return fence_last_line(lines, first, fence.group(1)), False
+    if WHOLE_LINE_UNIT.match(lines[first]):
+        return first, False
+    return paragraph_last_line(lines, first), True
+
+
+def fence_last_line(lines: list[bytes], first: int, fence: bytes) -> int:
+    """Return the line closing a fenced code block, or the text's last non-blank line when none closes it."""
+    closing = re.compile(rb"\s*%b{%d,}\s*\Z" % (re.escape(fence[:1]), len(fence)))
+    for index in range(first + 1, len(lines)):
+        if closing.match(lines[index]):
+            return index
+    return max(index for index, line in enumerate(lines) if line.strip())
+
+
+def paragraph_last_line(lines: list[bytes], first: int) -> int:
+    """Return the last line of the paragraph or list item opening at a line."""
+    last = first
+    while last + 1 < len(lines) and continues_paragraph(lines[last + 1]):
+        last += 1
+    return last
+
+
 def continues_paragraph(line: bytes) -> bool:
     """Tell whether a line continues the paragraph or list item above it."""
-    return bool(line.strip()) and not WHOLE_LINE_UNIT.match(line)
+    return bool(line.strip()) and not WHOLE_LINE_UNIT.match(line) and not FENCE_OPEN.match(line)
 
 
 def line_spans(text: bytes) -> list[tuple[int, int]]:
