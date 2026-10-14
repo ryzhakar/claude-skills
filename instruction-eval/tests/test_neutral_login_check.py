@@ -51,6 +51,29 @@ def test_refuses_a_claude_md_in_the_config_dir(login: Login):
         login.check()
 
 
+@pytest.mark.parametrize("folder", ["agents", "skills"])
+def test_refuses_a_non_empty_agents_or_skills_folder(login: Login, folder: str):
+    (login.config_dir / folder).mkdir()
+    (login.config_dir / folder / "entry.md").write_text("x")
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
+@pytest.mark.parametrize("folder", ["agents", "skills"])
+def test_refuses_a_linked_agents_or_skills_folder(login: Login, folder: str):
+    target = login.home / "elsewhere"
+    target.mkdir()
+    (login.config_dir / folder).symlink_to(target)
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
+@pytest.mark.parametrize("folder", ["agents", "skills"])
+def test_accepts_an_empty_agents_or_skills_folder(login: Login, folder: str):
+    (login.config_dir / folder).mkdir()
+    login.check()
+
+
 @pytest.mark.parametrize("outside", [".claude", ".claudes-bare", "elsewhere/readers"])
 def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outside: str):
     config_dir = login.home / outside

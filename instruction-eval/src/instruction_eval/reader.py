@@ -6,6 +6,7 @@ CONFIG_DIR_VARIABLE = "CLAUDE_CONFIG_DIR"
 BARE_LOGINS_DIRNAME = ".claudes-bare"
 SETTINGS_FILENAME = "settings.json"
 MEMORY_FILENAME = "CLAUDE.md"
+EXTENSION_FOLDERNAMES = ("agents", "skills")
 ENABLED_PLUGINS_KEY = "enabledPlugins"
 REQUIRED_PLUGINS = {
     "instruction-eval@my-claude-skills": True,
@@ -49,7 +50,12 @@ def _refuse_claude_md(config_dir: Path) -> None:
 
 def _refuse_agents_and_skills(config_dir: Path) -> None:
     """Refuse when the config directory holds a non-empty or linked agents or skills folder."""
-    ...
+    for folder_name in EXTENSION_FOLDERNAMES:
+        folder = config_dir / folder_name
+        if folder.is_symlink():
+            raise NeutralLoginRefused(f"{folder} is a link")
+        if folder.exists() and not (folder.is_dir() and not any(folder.iterdir())):
+            raise NeutralLoginRefused(f"{folder} is not an empty folder")
 
 
 def _refuse_other_plugins(config_dir: Path) -> None:
