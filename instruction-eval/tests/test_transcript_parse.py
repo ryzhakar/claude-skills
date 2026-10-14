@@ -38,3 +38,19 @@ def test_transcript_hash_covers_bytes_through_the_reply_line_only():
     through_reply_line = b"".join(transcript_bytes.splitlines(keepends=True)[:4])
     [reply] = replies_of("single-turn.jsonl")
     assert reply.transcript_hash == hashlib.sha256(through_reply_line).hexdigest()
+
+
+def test_conversation_pairs_kth_user_message_with_last_assistant_text_before_the_next():
+    replies = replies_of("three-turn.jsonl")
+    assert [(reply.turn, reply.text) for reply in replies] == [(1, "ONE"), (2, "TWO"), (3, "THREE")]
+    assert replies[1].seconds == 3.25
+    assert replies[1].tokens == TokenUsage(input_tokens=37, output_tokens=22)
+
+
+def test_conversation_turn_message_keeps_the_send_message_wrapper():
+    replies = replies_of("three-turn.jsonl")
+    assert replies[2].message == (
+        "The coordinator sent a message while you were working:\n"
+        "TURN-3: reply with the single word THREE.\n\n"
+        "Address this before completing your current task."
+    )
