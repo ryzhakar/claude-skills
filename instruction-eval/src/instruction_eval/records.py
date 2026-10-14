@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal, get_args
 
 HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 ReaderKind = Literal["agent", "command"]
 
@@ -37,6 +38,110 @@ def parse_series(document: object) -> Series:
         created=read_timestamp(keys["created"], "created"),
         inputs=read_hashes(keys["inputs"], "inputs"),
     )
+
+
+@dataclass(frozen=True)
+class JudgeDemand:
+    """A demand whose breaches a judge counts."""
+
+    id: str
+    text: str
+    boundary: str
+
+
+@dataclass(frozen=True)
+class PatternDemand:
+    """A demand whose breaches are the matches of `pattern`."""
+
+    id: str
+    text: str
+    boundary: str
+    pattern: re.Pattern[str]
+
+
+@dataclass(frozen=True)
+class LongSentencesDemand:
+    """A demand whose breaches are the sentences longer than `limit` words."""
+
+    id: str
+    text: str
+    boundary: str
+    limit: int
+
+
+Demand = JudgeDemand | PatternDemand | LongSentencesDemand
+
+
+@dataclass(frozen=True)
+class Demands:
+    """The `2-demands.yaml` record."""
+
+    demands: tuple[Demand, ...]
+
+
+def parse_demands(document: object) -> Demands:
+    """Build the `2-demands.yaml` record from its parsed document."""
+    keys = read_keys(document, "2-demands.yaml", required={"demands"})
+    entries = read_non_empty_list(keys["demands"], "demands")
+    return Demands(demands=tuple(read_demand(entry, f"demands[{index}]") for index, entry in enumerate(entries)))
+
+
+def read_demand(value: object, where: str) -> Demand:
+    """Return the demand variant its `counted_by` names, refusing the other variants' keys."""
+    shared = {"id", "text", "boundary", "counted_by"}
+    counted_by = read_choice(read_keys(value, where, required={"counted_by"}, optional=shared | {"pattern", "limit"})["counted_by"], f"{where}.counted_by", DEMAND_COUNTERS)
+    keys = read_keys(value, where, required=shared | DEMAND_COUNTER_KEYS[counted_by])
+    demand_id = read_demand_id(keys["id"], f"{where}.id")
+    text = read_string(keys["text"], f"{where}.text")
+    boundary = read_string(keys["boundary"], f"{where}.boundary")
+    if counted_by == "pattern":
+        return PatternDemand(id=demand_id, text=text, boundary=boundary, pattern=read_regex(keys["pattern"], f"{where}.pattern"))
+    if counted_by == "long-sentences":
+        return LongSentencesDemand(id=demand_id, text=text, boundary=boundary, limit=read_integer(keys["limit"], f"{where}.limit", minimum=1))
+    return JudgeDemand(id=demand_id, text=text, boundary=boundary)
+
+
+DEMAND_COUNTERS = ("judge", "pattern", "long-sentences")
+DEMAND_COUNTER_KEYS = {"judge": set(), "pattern": {"pattern"}, "long-sentences": {"limit"}}
+RESERVED_DEMAND_IDS = ("overreach", "completion")
+
+
+def read_demand_id(value: object, where: str) -> str:
+    """Return a demand id, refusing the ids that name task and hypothesis targets."""
+    demand_id = read_id(value, where)
+    if demand_id in RESERVED_DEMAND_IDS:
+        raise RecordRefused(f"{where}: {demand_id!r} is reserved")
+    return demand_id
+
+
+def read_id(value: object, where: str) -> str:
+    """Return an id matching the series id pattern."""
+    if not isinstance(value, str) or not ID_PATTERN.match(value):
+        raise RecordRefused(f"{where}: expected an id matching {ID_PATTERN.pattern}, got {value!r}")
+    return value
+
+
+def read_non_empty_list(value: object, where: str) -> list[object]:
+    """Return a YAML sequence holding at least one item."""
+    items = read_list(value, where)
+    if not items:
+        raise RecordRefused(f"{where}: expected a non-empty list")
+    return items
+
+
+def read_regex(value: object, where: str) -> re.Pattern[str]:
+    """Return a Python regex compiled with no flags."""
+    try:
+        return re.compile(read_string(value, where))
+    except re.error as error:
+        raise RecordRefused(f"{where}: {error}") from error
+
+
+def read_integer(value: object, where: str, minimum: int) -> int:
+    """Return an integer at or above `minimum`."""
+    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+        raise RecordRefused(f"{where}: expected an integer >= {minimum}, got {value!r}")
+    return value
 
 
 def read_keys(value: object, where: str, required: set[str], optional: set[str] = frozenset()) -> Mapping[str, object]:
