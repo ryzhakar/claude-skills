@@ -6,6 +6,8 @@ import pytest
 import yaml
 
 from instruction_eval.records import (
+    AgentReader,
+    CommandReader,
     Conditions,
     Conversation,
     Demands,
@@ -18,6 +20,7 @@ from instruction_eval.records import (
     Tasks,
     parse_conditions,
     parse_demands,
+    parse_reader,
     parse_series,
     parse_tasks,
 )
@@ -217,3 +220,60 @@ def test_conditions_refuse_a_control_set_the_sources_do_not_call_for(controls, s
 def test_conditions_refuse_a_malformed_key(changes, named):
     with pytest.raises(RecordRefused, match=re.escape(named)):
         parse_conditions(edited("4-conditions.yaml", **changes), series_with_sources())
+
+
+def test_agent_reader_loads_as_its_variant():
+    assert parse_reader(fixture("5-reader-agent.yaml")) == AgentReader(model="claude-sonnet-4-5")
+
+
+def test_command_reader_loads_as_its_variant():
+    assert parse_reader(fixture("5-reader-command.yaml")) == CommandReader(
+        model="gpt-5-mini",
+        command=("llm-reply", "--system-file", "{condition}"),
+        fingerprint=("llm-reply", "--version"),
+        sampling={"temperature": 0.7, "max_tokens": 1024, "seed": "fixed"},
+    )
+
+
+@pytest.mark.parametrize("key", ["command", "fingerprint", "sampling"])
+def test_agent_reader_refuses_a_command_reader_key(key):
+    command_reader = fixture("5-reader-command.yaml")
+    with pytest.raises(RecordRefused, match=key):
+        parse_reader(edited("5-reader-agent.yaml", **{key: command_reader[key]}))
+
+
+@pytest.mark.parametrize("key", ["command", "fingerprint", "sampling"])
+def test_command_reader_refuses_a_missing_variant_key(key):
+    with pytest.raises(RecordRefused, match=key):
+        parse_reader(edited("5-reader-command.yaml", **{key: ABSENT}))
+
+
+@pytest.mark.parametrize("alias", ["sonnet", "opus", "haiku", "fable", "inherit"])
+@pytest.mark.parametrize("variant", ["5-reader-agent.yaml", "5-reader-command.yaml"])
+def test_reader_refuses_a_model_alias(variant, alias):
+    with pytest.raises(RecordRefused, match="model"):
+        parse_reader(edited(variant, model=alias))
+
+
+@pytest.mark.parametrize("model", ["gpt-5-mini", "claude", "claude-", "Claude-sonnet-4-5", "claude-sonnet-4-5 "])
+def test_agent_reader_refuses_a_model_outside_the_claude_pattern(model):
+    with pytest.raises(RecordRefused, match="model"):
+        parse_reader(edited("5-reader-agent.yaml", model=model))
+
+
+@pytest.mark.parametrize(
+    ("changes", "named"),
+    [
+        ({"kind": "script"}, "kind"),
+        ({"model": ""}, "model"),
+        ({"command": ["llm-reply", "--system-file"]}, "command"),
+        ({"command": ["llm-reply", "{condition}", "{condition}"]}, "command"),
+        ({"command": ["llm-reply", 7, "{condition}"]}, "command[1]"),
+        ({"fingerprint": "llm-reply --version"}, "fingerprint"),
+        ({"sampling": {"temperature": [0.7]}}, "sampling"),
+        ({"sampling": {"stop": None}}, "sampling"),
+    ],
+)
+def test_command_reader_refuses_a_malformed_key(changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_reader(edited("5-reader-command.yaml", **changes))

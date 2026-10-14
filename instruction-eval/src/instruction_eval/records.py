@@ -221,6 +221,85 @@ def read_line(value: object, where: str) -> str:
     return line
 
 
+AGENT_MODEL_PATTERN = re.compile(r"^claude-[a-z0-9]+(-[a-z0-9]+)+$")
+MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
+CONDITION_PLACEHOLDER = "{condition}"
+Scalar = str | int | float | bool
+
+
+@dataclass(frozen=True)
+class AgentReader:
+    """The `5-reader.yaml` variant for a Claude subagent reader."""
+
+    model: str
+
+
+@dataclass(frozen=True)
+class CommandReader:
+    """The `5-reader.yaml` variant for a reader run as an external command."""
+
+    model: str
+    command: tuple[str, ...]
+    fingerprint: tuple[str, ...]
+    sampling: Mapping[str, Scalar]
+
+
+Reader = AgentReader | CommandReader
+
+
+def parse_reader(document: object) -> Reader:
+    """Build the `5-reader.yaml` record as the variant its `kind` names, refusing the other variant's keys."""
+    kind = read_choice(read_keys(document, "5-reader.yaml", required={"kind"}, optional=COMMAND_READER_KEYS)["kind"], "kind", get_args(ReaderKind))
+    if kind == "agent":
+        keys = read_keys(document, "5-reader.yaml", required={"kind", "model"})
+        return AgentReader(model=read_agent_model(keys["model"], "model"))
+    keys = read_keys(document, "5-reader.yaml", required=COMMAND_READER_KEYS)
+    return CommandReader(
+        model=read_model(keys["model"], "model"),
+        command=read_command(keys["command"], "command"),
+        fingerprint=read_entries(keys["fingerprint"], "fingerprint", read_string),
+        sampling=read_sampling(keys["sampling"], "sampling"),
+    )
+
+
+COMMAND_READER_KEYS = {"kind", "model", "command", "fingerprint", "sampling"}
+
+
+def read_agent_model(value: object, where: str) -> str:
+    """Return a full Claude model id."""
+    model = read_model(value, where)
+    if not AGENT_MODEL_PATTERN.match(model):
+        raise RecordRefused(f"{where}: expected a model id matching {AGENT_MODEL_PATTERN.pattern}, got {model!r}")
+    return model
+
+
+def read_model(value: object, where: str) -> str:
+    """Return a non-empty model name that is not a Claude alias."""
+    model = read_string(value, where)
+    if model in MODEL_ALIASES:
+        raise RecordRefused(f"{where}: alias {model!r} is refused; name the full model id")
+    return model
+
+
+def read_command(value: object, where: str) -> tuple[str, ...]:
+    """Return a command line holding the condition placeholder exactly once."""
+    command = read_entries(value, where, read_string)
+    if sum(part.count(CONDITION_PLACEHOLDER) for part in command) != 1:
+        raise RecordRefused(f"{where}: expected {CONDITION_PLACEHOLDER} exactly once")
+    return command
+
+
+def read_sampling(value: object, where: str) -> Mapping[str, Scalar]:
+    """Return a map from a sampling setting to its scalar value."""
+    if not isinstance(value, Mapping):
+        raise RecordRefused(f"{where}: expected a mapping, got {value!r}")
+    for setting, setting_value in value.items():
+        read_string(setting, f"{where} key")
+        if not isinstance(setting_value, Scalar):
+            raise RecordRefused(f"{where}[{setting}]: expected a scalar, got {setting_value!r}")
+    return dict(value)
+
+
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
     """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
     return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))
