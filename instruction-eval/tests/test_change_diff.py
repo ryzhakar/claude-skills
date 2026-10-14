@@ -1,4 +1,5 @@
 import pytest
+from hypothesis import given, strategies as st
 
 from instruction_eval.revision import Change, change_holds
 
@@ -98,3 +99,74 @@ def test_adjacent_swap_holds_named_as_moving_the_first_sentence_later():
 
 def test_adjacent_swap_holds_named_as_moving_the_second_sentence_earlier():
     assert change_holds(["a", "b"], ["b", "a"], Change("move", 2, 1))
+
+
+sentence_lists = st.lists(st.text(max_size=4), min_size=1, max_size=6)
+sentences = st.text(max_size=4)
+
+
+def numbers_in(items: list[str], extra: int = 0):
+    return st.integers(min_value=1, max_value=len(items) + extra)
+
+
+def with_removed(items: list[str], number: int) -> list[str]:
+    return items[: number - 1] + items[number:]
+
+
+def with_inserted(items: list[str], number: int, sentence: str) -> list[str]:
+    return items[: number - 1] + [sentence] + items[number - 1 :]
+
+
+@st.composite
+def distinct_number_pairs(draw):
+    parent = draw(st.lists(st.text(max_size=4), min_size=2, max_size=6))
+    source = draw(numbers_in(parent))
+    destination = draw(numbers_in(parent).filter(lambda n: n != source))
+    return parent, source, destination
+
+
+@given(st.data())
+def test_rewriting_to_a_different_sentence_holds(data):
+    parent = data.draw(sentence_lists)
+    number = data.draw(numbers_in(parent))
+    replacement = data.draw(sentences.filter(lambda text: text != parent[number - 1]))
+    child = parent[: number - 1] + [replacement] + parent[number:]
+    assert change_holds(parent, child, Change("rewrite", number))
+
+
+@given(st.data())
+def test_rewriting_to_an_equal_sentence_never_holds(data):
+    parent = data.draw(sentence_lists)
+    number = data.draw(numbers_in(parent))
+    assert not change_holds(parent, list(parent), Change("rewrite", number))
+
+
+@given(st.data())
+def test_adding_a_sentence_holds(data):
+    parent = data.draw(st.lists(sentences, max_size=6))
+    number = data.draw(numbers_in(parent, extra=1))
+    child = with_inserted(parent, number, data.draw(sentences))
+    assert change_holds(parent, child, Change("add", number))
+
+
+@given(st.data())
+def test_deleting_a_sentence_holds(data):
+    parent = data.draw(sentence_lists)
+    number = data.draw(numbers_in(parent))
+    assert change_holds(parent, with_removed(parent, number), Change("delete", number))
+
+
+@given(st.data())
+def test_a_delete_is_undone_by_an_add_at_the_same_number(data):
+    parent = data.draw(sentence_lists)
+    number = data.draw(numbers_in(parent))
+    child = with_removed(parent, number)
+    assert change_holds(child, parent, Change("add", number))
+
+
+@given(distinct_number_pairs())
+def test_a_move_holds_and_is_undone_by_the_reverse_move(case):
+    parent, source, destination = case
+    child = with_inserted(with_removed(parent, source), destination, parent[source - 1])
+    assert change_holds(parent, child, Change("move", source, destination))
+    assert change_holds(child, parent, Change("move", destination, source))
