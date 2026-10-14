@@ -44,15 +44,22 @@ def unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
 
 def bootstrap_resample_means(differences: numpy.ndarray, rng: numpy.random.Generator) -> numpy.ndarray:
     """Return the mean difference of each of the resamples drawn from units with replacement."""
-    return differences[rng.integers(0, len(differences), size=(BOOTSTRAP_RESAMPLES, len(differences)))].mean(axis=1)
+    resampled_indices = rng.integers(0, len(differences), size=(BOOTSTRAP_RESAMPLES, len(differences)))
+    return differences[resampled_indices].mean(axis=1)
 
 
 def percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[float, float]:
     """Return the central `level` interval of the resample means by numpy's linear quantile."""
-    low, high = numpy.quantile(resample_means, [(1 - level) / 2, (1 + level) / 2], method="linear")
+    upper_probability = upper_tail_probability(level)
+    low, high = numpy.quantile(resample_means, [1 - upper_probability, upper_probability], method="linear")
     return float(low), float(high)
 
 
 def z_for_level(level: float) -> float:
     """Return the standard normal quantile at (1 + `level`) / 2."""
-    return NormalDist().inv_cdf((1 + level) / 2)
+    return NormalDist().inv_cdf(upper_tail_probability(level))
+
+
+def upper_tail_probability(level: float) -> float:
+    """Return the probability (1 + `level`) / 2 bounding a central `level` interval from above."""
+    return (1 + level) / 2
