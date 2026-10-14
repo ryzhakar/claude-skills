@@ -33,13 +33,40 @@ def measure_noise(
         condition: mean_repeat_variance(breach_totals_by_unit(task_replies, condition, gate_demands))
         for condition in (INSTRUCTION, *controls)
     }
+    done_sigma = {
+        condition: mean_repeat_variance(done_values_by_unit(task_replies, condition))
+        for condition in (INSTRUCTION, *controls)
+    }
+    completion_control = best_done_control(task_replies, controls)
     checks = {
         f"instruction-vs-{control}": half_width(
             z, [breaches_sigma[INSTRUCTION], breaches_sigma[control]], repeats * task_count
         )
         for control in VS_CONTROLS
     }
-    return {"sigma": {"breaches": breaches_sigma}, "checks": checks}
+    checks["completion"] = half_width(
+        z, [done_sigma[INSTRUCTION], done_sigma.get(completion_control)], repeats * task_count
+    )
+    return {"sigma": {"breaches": breaches_sigma, "done": done_sigma}, "checks": checks}
+
+
+def done_values_by_unit(replies: Sequence[ScoredReply], condition: str) -> dict[str, list[float | None]]:
+    """Map each unit to its condition's done values as 1, 0, or null, one per repeat."""
+    values: dict[str, list[float | None]] = {}
+    for reply in replies:
+        if reply["condition"] == condition:
+            values.setdefault(reply["task"], []).append(None if reply["done"] is None else float(reply["done"]))
+    return values
+
+
+def best_done_control(replies: Sequence[ScoredReply], controls: Sequence[str]) -> str | None:
+    """Return the control with the highest done rate over non-null done values, or null when no control has one."""
+    done_rates = {
+        control: mean(present)
+        for control in controls
+        if (present := [reply["done"] for reply in replies if reply["condition"] == control and reply["done"] is not None])
+    }
+    return max(done_rates, key=done_rates.__getitem__, default=None)
 
 
 def breach_totals_by_unit(
