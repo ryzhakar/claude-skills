@@ -178,6 +178,49 @@ def read_conversation(value: object, where: str) -> Conversation:
     )
 
 
+Control = Literal["empty", "aim", "placebo", "source"]
+Omissions = Literal["every-sentence", "none"]
+CONTROLS_WITHOUT_SOURCES = ("empty", "aim", "placebo")
+
+
+@dataclass(frozen=True)
+class Conditions:
+    """The `4-conditions.yaml` record."""
+
+    controls: tuple[Control, ...]
+    aim: str
+    placebo_source: Path
+    omissions: Omissions
+
+
+def parse_conditions(document: object, series: Series) -> Conditions:
+    """Build the `4-conditions.yaml` record, refusing controls other than the set the series sources call for."""
+    keys = read_keys(document, "4-conditions.yaml", required={"controls", "aim", "placebo_source", "omissions"})
+    return Conditions(
+        controls=read_controls(keys["controls"], "controls", series.sources),
+        aim=read_line(keys["aim"], "aim"),
+        placebo_source=read_absolute_path(keys["placebo_source"], "placebo_source"),
+        omissions=read_choice(keys["omissions"], "omissions", get_args(Omissions)),
+    )
+
+
+def read_controls(value: object, where: str, sources: tuple[Path, ...]) -> tuple[Control, ...]:
+    """Return the controls, which hold `source` exactly when the series has sources."""
+    controls = read_entries(value, where, lambda item, item_where: read_choice(item, item_where, get_args(Control)))
+    expected = get_args(Control) if sources else CONTROLS_WITHOUT_SOURCES
+    if sorted(controls) != sorted(expected):
+        raise RecordRefused(f"{where}: expected exactly {', '.join(expected)}, got {', '.join(controls)}")
+    return controls
+
+
+def read_line(value: object, where: str) -> str:
+    """Return a non-empty string holding no line break."""
+    line = read_string(value, where)
+    if line != line.splitlines()[0]:
+        raise RecordRefused(f"{where}: expected one line, got {value!r}")
+    return line
+
+
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
     """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
     return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))

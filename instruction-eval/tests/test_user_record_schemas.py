@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 from instruction_eval.records import (
+    Conditions,
     Conversation,
     Demands,
     JudgeDemand,
@@ -15,6 +16,7 @@ from instruction_eval.records import (
     Series,
     Task,
     Tasks,
+    parse_conditions,
     parse_demands,
     parse_series,
     parse_tasks,
@@ -161,3 +163,57 @@ def test_tasks_load_with_compiled_answer_keys():
 def test_tasks_refuse_a_malformed_entry(list_key, changes, named):
     with pytest.raises(RecordRefused, match=re.escape(named)):
         parse_tasks(edited_entry("3-tasks.yaml", list_key, 0, **changes))
+
+
+def series_with_sources() -> Series:
+    return parse_series(fixture("series.yaml"))
+
+
+def series_without_sources() -> Series:
+    return parse_series(edited("series.yaml", sources=[]))
+
+
+def test_conditions_load_with_every_control_when_the_series_has_sources():
+    conditions = parse_conditions(fixture("4-conditions.yaml"), series_with_sources())
+    assert conditions == Conditions(
+        controls=("empty", "aim", "placebo", "source"),
+        aim="Make every reply terse.",
+        placebo_source=Path("/home/writer/placebo/gardening.md"),
+        omissions="every-sentence",
+    )
+
+
+def test_conditions_load_without_source_control_when_the_series_has_no_sources():
+    conditions = parse_conditions(edited("4-conditions.yaml", controls=["placebo", "empty", "aim"]), series_without_sources())
+    assert conditions.controls == ("placebo", "empty", "aim")
+
+
+@pytest.mark.parametrize(
+    ("controls", "series"),
+    [
+        (["empty", "aim", "placebo"], series_with_sources),
+        (["empty", "aim", "placebo", "source"], series_without_sources),
+        (["empty", "aim", "placebo", "source", "source"], series_with_sources),
+        (["empty", "aim", "source"], series_with_sources),
+    ],
+)
+def test_conditions_refuse_a_control_set_the_sources_do_not_call_for(controls, series):
+    with pytest.raises(RecordRefused, match="controls"):
+        parse_conditions(edited("4-conditions.yaml", controls=controls), series())
+
+
+@pytest.mark.parametrize(
+    ("changes", "named"),
+    [
+        ({"controls": ["empty", "aim", "placebo", "source", "silence"]}, "controls[4]"),
+        ({"aim": "Make every reply terse.\nAnd kind."}, "aim"),
+        ({"aim": "Make every reply terse.\n"}, "aim"),
+        ({"aim": ""}, "aim"),
+        ({"placebo_source": "placebo/gardening.md"}, "placebo_source"),
+        ({"omissions": "some"}, "omissions"),
+        ({"omissions": ABSENT}, "omissions"),
+    ],
+)
+def test_conditions_refuse_a_malformed_key(changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_conditions(edited("4-conditions.yaml", **changes), series_with_sources())
