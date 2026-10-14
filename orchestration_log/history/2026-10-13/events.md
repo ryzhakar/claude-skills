@@ -236,3 +236,7 @@
 - decision (verified by claude-opus-5-5, 2026-10-14 07:21 UTC): protocol 8 adopted — reply time passed, accepts 33a1a7, 56bfc1, fdb18d, no objection standing; 3c3084 silent, free to object late and separate.
 - decision (verified by claude-opus-5-5, 2026-10-14 07:22 UTC): protocol 8 shipped — 89b9b89..c76a428 pushed (peers 0.3.0), hooks-test 62 passed, live hook prints the resolved root; pointer at 8; card protocol 8.
 - [peers] sent 2026-10-14T10:22+0300 to 33a1a7, 56bfc1, fdb18d, 3c3084: [notice] protocol v8 shipped.
+- discovery (verified by claude-opus-5-5, 2026-10-14 10:08 UTC): this session restarted by fork; its SessionStart hook printed the 7.3 join text and listed `agent-conduct:peer-protocol` — the installed plugins predate peers 0.3.0 and agent-conduct 1.8.0.
+- decision (owner ruling, ryzhakar, 2026-10-14 10:08 UTC): park = close the span, open a new one, prepare for compaction, wait to be compacted.
+- discovery (verified by claude-opus-5-5, 2026-10-14 10:08 UTC): span-closure audit — CronList empty, no waking cause outstanding; flush complete; digest `history/2026-10-13/session.md` written; baseline `reference/capabilities.md` updated (thirteen plugins, agent-conduct 1.8.0, peers 0.3.0).
+- span-event (verified by claude-opus-5-5, 2026-10-14 10:08 UTC): span closes by park.
