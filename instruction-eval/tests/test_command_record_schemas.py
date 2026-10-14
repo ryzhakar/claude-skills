@@ -311,3 +311,47 @@ def test_verdict_record_carries_no_inputs():
 def test_verdict_record_refuses_a_total_key(path):
     document = changed(load_fixture(RecordKind.VERDICT), path, 3)
     assert_refused(RecordKind.VERDICT, document, "total")
+
+
+def test_detectors_record_parses_as_written():
+    document = load_fixture(RecordKind.DETECTORS)
+    assert parse_record(RecordKind.DETECTORS, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("verdicts", 0, "id"), "Bad Id"),
+    (("verdicts", 1, "id"), "x7k"),
+    (("verdicts", 0, "breaches", "hedging"), -2),
+    (("verdicts", 0, "done_by_answer_key"), "yes"),
+    (("verdicts", 0, "breaches", "total"), 3),
+    (("verdicts", 0, "breaches_total"), 3),
+    (("verdicts", 0, "done"), True),
+])
+def test_detectors_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.DETECTORS), path, value)
+    assert_refused(RecordKind.DETECTORS, document, path[-1])
+
+
+def test_detectors_record_refuses_missing_answer_key_field():
+    document = without(load_fixture(RecordKind.DETECTORS), ("verdicts", 0, "done_by_answer_key"))
+    assert_refused(RecordKind.DETECTORS, document, "done_by_answer_key")
+
+
+def test_collected_record_parses_as_written():
+    document = load_fixture(RecordKind.COLLECTED)
+    assert parse_record(RecordKind.COLLECTED, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("packets", "Bad Packet"), {}),
+    (("packets", "p1", "accepted"), 0),
+    (("packets", "p1", "judge_model"), "opus"),
+    (("packets", "p1", "transcript"), "judge.jsonl"),
+    (("packets", "p1", "transcript_hash"), "nope"),
+    (("packets", "p1", "anchors", "breach_difference", "brevity"), "high"),
+    (("packets", "p1", "anchors", "breach_difference", "total"), 1),
+    (("packets", "p1", "anchors", "done_agreement"), None),
+])
+def test_collected_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.COLLECTED), path, value)
+    assert_refused(RecordKind.COLLECTED, document, path[-1])

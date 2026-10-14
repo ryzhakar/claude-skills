@@ -34,6 +34,8 @@ class RecordKind(StrEnum):
     REPLY = "reply"
     ORIGINS = "origins"
     VERDICT = "verdict"
+    DETECTORS = "detectors"
+    COLLECTED = "collected"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -289,7 +291,33 @@ _VERDICT_ENTRY = _mapping(
 )
 
 
+_DETECTOR_ENTRY = _mapping(
+    {"id": _IDENTIFIER, "breaches": _BREACHES, "done_by_answer_key": _boolean_or_null}
+)
+_AGENT_MODEL = _matching(r"claude-[a-z0-9]+(-[a-z0-9]+)+", "a full claude model id")
+_COLLECTED_PACKET = _mapping(
+    {
+        "accepted": _POSITION,
+        "judge_model": _AGENT_MODEL,
+        "transcript": _ABSOLUTE_PATH,
+        "transcript_hash": _HASH,
+        "anchors": _mapping(
+            {
+                "breach_difference": _map_of(_breach_demand_id, _ANY_NUMBER),
+                "done_agreement": _ANY_NUMBER,
+            }
+        ),
+    }
+)
+
+
 _SCHEMAS: Mapping[RecordKind, Check] = {
+    RecordKind.DETECTORS: _mapping(
+        {"inputs": _INPUTS, "verdicts": _list_of(_DETECTOR_ENTRY, "id", non_empty=True)}
+    ),
+    RecordKind.COLLECTED: _mapping(
+        {"inputs": _INPUTS, "packets": _map_of(_IDENTIFIER, _COLLECTED_PACKET)}
+    ),
     RecordKind.VERDICT: _mapping({"verdicts": _list_of(_VERDICT_ENTRY, "id", non_empty=True)}),
     RecordKind.ORIGINS: _mapping(
         {

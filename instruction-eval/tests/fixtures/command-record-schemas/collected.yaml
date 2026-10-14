@@ -1,0 +1,12 @@
+inputs:
+  r1/7-verdicts/p1/k1.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+packets:
+  p1:
+    accepted: 1
+    judge_model: claude-opus-4-1
+    transcript: /tmp/transcripts/judge-p1.jsonl
+    transcript_hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    anchors:
+      breach_difference:
+        brevity: 0.5
+      done_agreement: 1
