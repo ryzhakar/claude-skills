@@ -51,10 +51,18 @@ def _hash_inputs(series: Path, reads: Iterable[str]) -> dict[str, str]:
 def _hash_input(series: Path, entry: str) -> str:
     """Hash a whole series file, or for `<path>#<key>` that key's value dumped as canonical YAML."""
     file_path, separator, key = entry.partition(KEY_SEPARATOR)
-    content = (series / file_path).read_bytes()
+    content = _read_input(series, file_path)
     if not separator:
         return _sha256(content)
     return _sha256(_dump_yaml(yaml.safe_load(content)[key]))
+
+
+def _read_input(series: Path, path: str) -> bytes:
+    """Read the series input at `path`, refusing when it is absent."""
+    try:
+        return (series / path).read_bytes()
+    except FileNotFoundError:
+        raise Refusal(f"missing input: {path}") from None
 
 
 def _stage_beside(target: Path, content: bytes) -> Path:

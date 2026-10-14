@@ -34,3 +34,12 @@ def test_loading_a_record_after_its_consumed_key_changed_refuses_as_stale(series
     gate.write_text(gate.read_text().replace("repeats: 3", "repeats: 4"))
     with pytest.raises(Refusal, match=r"^stale: r1/9-outcome.yaml \(input 7-gate.yaml#repeats changed\)$"):
         load_record(series, "r1/9-outcome.yaml")
+
+
+@pytest.mark.parametrize("entry", ["series.yaml", "7-gate.yaml#repeats"])
+def test_loading_a_record_after_its_input_was_deleted_refuses_naming_the_missing_input(series, entry):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, [entry])
+    missing_path = entry.partition("#")[0]
+    (series / missing_path).unlink()
+    with pytest.raises(Refusal, match=rf"^missing input: {missing_path}$"):
+        load_record(series, "r1/9-outcome.yaml")
