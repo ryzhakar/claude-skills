@@ -17,6 +17,7 @@ class RecordError(ValueError):
 
 class RecordKind(StrEnum):
     STOP = "stop"
+    REVISION = "revision"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -89,9 +90,53 @@ def _mapping(
     return check
 
 
+def _string(value: Any, path: str) -> None:
+    if not isinstance(value, str):
+        _refuse(path, f"expected string, got {value!r}")
+
+
+def _integer(minimum: int) -> Check:
+    def check(value: Any, path: str) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+            _refuse(path, f"expected integer >= {minimum}, got {value!r}")
+
+    return check
+
+
 _HASH = _matching(HASH_PATTERN, "lowercase sha256 hex")
 _REVISION_ID = _matching(REVISION_ID_PATTERN, "a revision id")
 _INPUTS = _map_of(_text, _HASH)
+_POSITION = _integer(1)
+
+
+def _change_rule(change: Record, path: str) -> None:
+    action = change["action"]
+    if (action == "move") != ("to" in change):
+        _refuse(f"{path}.to", "present iff action is move")
+    if action == "add" and change["old"] != "":
+        _refuse(f"{path}.old", "empty on add")
+    if action == "delete" and change["new"] != "":
+        _refuse(f"{path}.new", "empty on delete")
+    if action == "move" and change["old"] != change["new"]:
+        _refuse(f"{path}.new", "the moved text on move, equal to old")
+
+
+_CHANGE = _mapping(
+    {
+        "action": _enum("rewrite", "add", "delete", "move"),
+        "sentence": _POSITION,
+        "old": _string,
+        "new": _string,
+    },
+    {"to": _POSITION},
+    _change_rule,
+)
+
+
+def _revision_lineage_rule(record: Record, path: str) -> None:
+    for key in ("parent", "parent_record", "change"):
+        if (record[key] is None) != (record["number"] == 1):
+            _refuse(f"{path}.{key}", "null iff number is 1")
 
 
 def _stop_reason_rule(record: Record, path: str) -> None:
@@ -116,6 +161,17 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
         },
         {"reason": _text},
         _stop_reason_rule,
+    ),
+    RecordKind.REVISION: _mapping(
+        {
+            "inputs": _INPUTS,
+            "number": _POSITION,
+            "parent": _nullable(_REVISION_ID),
+            "hash": _HASH,
+            "parent_record": _nullable(_HASH),
+            "change": _nullable(_CHANGE),
+        },
+        rule=_revision_lineage_rule,
     ),
 }
 

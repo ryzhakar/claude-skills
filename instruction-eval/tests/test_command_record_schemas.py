@@ -75,3 +75,65 @@ def test_stop_reason_is_present_only_for_unresolvable_and_budget_cap(stop, reaso
         assert parse_record(RecordKind.STOP, document) == document
     else:
         assert_refused(RecordKind.STOP, document, "reason")
+
+
+def first_revision() -> dict:
+    document = load_fixture(RecordKind.REVISION)
+    document.update(number=1, parent=None, parent_record=None, change=None)
+    return document
+
+
+def test_revision_record_parses_as_written():
+    document = load_fixture(RecordKind.REVISION)
+    assert parse_record(RecordKind.REVISION, document) == document
+
+
+def test_first_revision_has_no_parent_and_no_change():
+    document = first_revision()
+    assert parse_record(RecordKind.REVISION, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("number",), 0),
+    (("number",), True),
+    (("parent",), None),
+    (("parent_record",), None),
+    (("change",), None),
+    (("hash",), "ABC"),
+    (("change", "action"), "swap"),
+    (("change", "sentence"), 0),
+    (("change", "to"), 2),
+    (("change", "old"), 5),
+])
+def test_revision_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.REVISION), path, value)
+    assert_refused(RecordKind.REVISION, document, path[-1])
+
+
+@pytest.mark.parametrize("path,value", [
+    (("parent",), "r1"),
+    (("parent_record",), "a" * 64),
+    (("change",), {"action": "add", "sentence": 1, "old": "", "new": "x"}),
+])
+def test_first_revision_refuses_parent_fields(path, value):
+    assert_refused(RecordKind.REVISION, changed(first_revision(), path, value), path[0])
+
+
+@pytest.mark.parametrize("change", [
+    {"action": "add", "sentence": 2, "old": "gone", "new": "x"},
+    {"action": "delete", "sentence": 2, "old": "x", "new": "left"},
+    {"action": "move", "sentence": 2, "old": "x", "new": "y", "to": 4},
+    {"action": "move", "sentence": 2, "old": "x", "new": "x"},
+])
+def test_revision_change_text_follows_its_action(change):
+    assert_refused(RecordKind.REVISION, changed(load_fixture(RecordKind.REVISION), ("change",), change), "change")
+
+
+@pytest.mark.parametrize("change", [
+    {"action": "add", "sentence": 2, "old": "", "new": "x"},
+    {"action": "delete", "sentence": 2, "old": "x", "new": ""},
+    {"action": "move", "sentence": 2, "old": "x", "new": "x", "to": 4},
+])
+def test_revision_change_accepts_each_action(change):
+    document = changed(load_fixture(RecordKind.REVISION), ("change",), change)
+    assert parse_record(RecordKind.REVISION, document) == document

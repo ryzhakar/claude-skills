@@ -1,0 +1,11 @@
+inputs:
+  r1/2-revision.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+number: 2
+parent: r1
+hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+parent_record: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+change:
+  action: rewrite
+  sentence: 3
+  old: Be brief.
+  new: Answer in one line.
