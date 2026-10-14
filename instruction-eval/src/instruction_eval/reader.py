@@ -29,7 +29,14 @@ def check_neutral_login(
 
 def _neutral_config_dir(environ: Mapping[str, str], home: Path) -> Path:
     """Return the config directory, refusing when it is unset or outside the bare logins folder."""
-    ...
+    configured = environ.get(CONFIG_DIR_VARIABLE)
+    if not configured:
+        raise NeutralLoginRefused(f"{CONFIG_DIR_VARIABLE} is unset")
+    config_dir = Path(configured).resolve()
+    bare_logins = (home / BARE_LOGINS_DIRNAME).resolve()
+    if bare_logins not in config_dir.parents:
+        raise NeutralLoginRefused(f"{config_dir} is outside {bare_logins}")
+    return config_dir
 
 
 def _refuse_claude_md(config_dir: Path) -> None:

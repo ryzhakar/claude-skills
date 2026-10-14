@@ -38,3 +38,17 @@ def login(tmp_path: Path) -> Login:
 
 def test_accepts_a_clean_neutral_login(login: Login):
     login.check()
+
+
+def test_refuses_an_unset_config_dir(login: Login):
+    with pytest.raises(NeutralLoginRefused):
+        check_neutral_login({}, login.home, login.working_dir)
+
+
+@pytest.mark.parametrize("outside", [".claude", ".claudes-bare", "elsewhere/readers"])
+def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outside: str):
+    config_dir = login.home / outside
+    config_dir.mkdir(parents=True, exist_ok=True)
+    environ = {"CLAUDE_CONFIG_DIR": str(config_dir)}
+    with pytest.raises(NeutralLoginRefused):
+        check_neutral_login(environ, login.home, login.working_dir)
