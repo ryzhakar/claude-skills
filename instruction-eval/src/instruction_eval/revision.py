@@ -15,6 +15,13 @@ class Change:
     sentence: int
     destination: int | None = None
 
+    def __post_init__(self) -> None:
+        """Refuse a move without a destination and any other action with one."""
+        if self.action == Action.MOVE and self.destination is None:
+            raise ValueError("move needs a destination")
+        if self.action != Action.MOVE and self.destination is not None:
+            raise ValueError("only move takes a destination")
+
 
 def change_holds(parent: list[str], child: list[str], change: Change) -> bool:
     """Say whether the child sentence list is the parent with exactly the named change applied."""

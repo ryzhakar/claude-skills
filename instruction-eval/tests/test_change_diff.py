@@ -1,3 +1,5 @@
+import pytest
+
 from instruction_eval.revision import Change, change_holds
 
 PARENT = ["a", "b", "c"]
@@ -79,8 +81,15 @@ def test_move_refuses_destination_number_zero():
     assert not change_holds(PARENT, ["b", "c", "a"], Change("move", 1, 0))
 
 
-def test_move_refuses_a_missing_destination():
-    assert not change_holds(PARENT, ["b", "c", "a"], Change("move", 1))
+def test_a_move_without_a_destination_cannot_be_constructed():
+    with pytest.raises(ValueError, match="move needs a destination"):
+        Change("move", 1)
+
+
+@pytest.mark.parametrize("action", ["rewrite", "add", "delete"])
+def test_a_non_move_with_a_destination_cannot_be_constructed(action):
+    with pytest.raises(ValueError, match="only move takes a destination"):
+        Change(action, 1, 5)
 
 
 def test_adjacent_swap_holds_named_as_moving_the_first_sentence_later():
