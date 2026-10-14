@@ -10,6 +10,24 @@ _USER_ENTRY_TYPE = "user"
 _ASSISTANT_ENTRY_TYPE = "assistant"
 _TEXT_BLOCK_TYPE = "text"
 _SEND_MESSAGE_WRAPPER_OPENING = "The coordinator sent a message while you were working:\n"
+_TYPE_KEY = "type"
+_MESSAGE_KEY = "message"
+_CONTENT_KEY = "content"
+_TIMESTAMP_KEY = "timestamp"
+_ID_KEY = "id"
+_MODEL_KEY = "model"
+_USAGE_KEY = "usage"
+_META_KEY = "isMeta"
+_TEXT_KEY = "text"
+_FIELDS_READ_BY_ENTRY_TYPE = {
+    _USER_ENTRY_TYPE: ((_TIMESTAMP_KEY,), (_MESSAGE_KEY, _CONTENT_KEY)),
+    _ASSISTANT_ENTRY_TYPE: (
+        (_TIMESTAMP_KEY,),
+        (_MESSAGE_KEY, _ID_KEY),
+        (_MESSAGE_KEY, _MODEL_KEY),
+        (_MESSAGE_KEY, _CONTENT_KEY),
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -71,11 +89,40 @@ def _split_transcript_lines(transcript: Path, content: bytes) -> tuple[_Transcri
 
 
 def _parse_transcript_line(transcript: Path, number: int, raw_line: bytes) -> dict[str, Any]:
-    """Parse one transcript line as JSON, refusing with the transcript and line number when it is not."""
+    """Parse one transcript line into an entry holding every field the parser reads, refusing with transcript and line otherwise."""
+    entry = _decode_transcript_line(transcript, number, raw_line)
+    fault = _structural_fault(entry)
+    if fault is not None:
+        raise ValueError(f"{transcript}: line {number} {fault}")
+    return entry
+
+
+def _decode_transcript_line(transcript: Path, number: int, raw_line: bytes) -> object:
+    """Decode one transcript line as JSON, refusing with the transcript and line number when it is not."""
     try:
         return json.loads(raw_line)
     except json.JSONDecodeError as error:
         raise ValueError(f"{transcript}: line {number} is not JSON") from error
+
+
+def _structural_fault(entry: object) -> str | None:
+    """Name the first field the parser reads that the decoded entry lacks, or None when it holds them all."""
+    if not isinstance(entry, dict):
+        return "is not a JSON object"
+    if _TYPE_KEY not in entry:
+        return f"lacks {_TYPE_KEY}"
+    missing = [path for path in _FIELDS_READ_BY_ENTRY_TYPE.get(entry[_TYPE_KEY], ()) if not _has_field(entry, path)]
+    return f"lacks {'.'.join(missing[0])}" if missing else None
+
+
+def _has_field(entry: dict[str, Any], path: tuple[str, ...]) -> bool:
+    """Tell whether the nested keys of the path lead to a value in the entry."""
+    value: object = entry
+    for key in path:
+        if not isinstance(value, dict) or key not in value:
+            return False
+        value = value[key]
+    return True
 
 
 def _group_lines_by_turn(lines: tuple[_TranscriptLine, ...]) -> tuple[tuple[_TranscriptLine, ...], ...]:

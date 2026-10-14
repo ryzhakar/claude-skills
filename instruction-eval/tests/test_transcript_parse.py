@@ -101,3 +101,22 @@ def test_a_line_that_is_not_json_is_refused_naming_transcript_and_line():
     truncated = transcript.read_bytes() + b'{"type":"assist'
     with pytest.raises(ValueError, match=rf"^{re.escape(str(transcript))}: line 6 is not JSON$"):
         parse_transcript_replies(transcript, truncated)
+
+
+@pytest.mark.parametrize(
+    ("malformed_line", "fault"),
+    [
+        (b"[]", "is not a JSON object"),
+        (b"{}", "lacks type"),
+        (b'{"type":"user","timestamp":"2026-10-14T19:47:30.000Z"}', "lacks message.content"),
+        (
+            b'{"type":"assistant","timestamp":"2026-10-14T19:47:31.000Z",'
+            b'"message":{"model":"claude-sonnet-5-5","content":[{"type":"text","text":"OK"}]}}',
+            "lacks message.id",
+        ),
+    ],
+)
+def test_a_parseable_line_missing_a_read_field_is_refused_naming_transcript_line_and_field(malformed_line, fault):
+    transcript = FIXTURES / "single-turn.jsonl"
+    with pytest.raises(ValueError, match=rf"^{re.escape(str(transcript))}: line 6 {fault}$"):
+        parse_transcript_replies(transcript, transcript.read_bytes() + malformed_line)
