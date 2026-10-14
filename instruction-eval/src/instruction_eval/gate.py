@@ -76,6 +76,18 @@ def refuse_unaffordable_freeze(
         raise BudgetRefusal(f"predicted cost {predicted:g} exceeds ceiling {budget.ceiling:g}")
 
 
+def refuse_unaffordable_ask(
+    budget: Budget | None, r1_replies: list[ReplyCost], cost_so_far: float, ask_reply_count: int
+) -> None:
+    """Raise BudgetRefusal when the cost so far plus the ask's replies at r1's mean cost exceeds the ceiling."""
+    if budget is None:
+        return
+    _refuse_token_budget_over_null_tokens(r1_replies, budget.unit)
+    projected = cost_so_far + ask_reply_count * _mean_reply_cost(r1_replies, budget.unit)
+    if projected > budget.ceiling:
+        raise BudgetRefusal(f"projected cost {projected:g} exceeds ceiling {budget.ceiling:g}")
+
+
 def _sum_unless_null(values: list[int | None]) -> int | None:
     """Sum the values, or return null when any value is null."""
     return None if None in values else sum(values)
