@@ -181,8 +181,14 @@ def test_frozen_record_refuses_missing_noise_key():
 def command_reply() -> dict:
     document = load_fixture(RecordKind.REPLY)
     del document["transcript"], document["transcript_hash"]
-    document.update(reader_kind="command", fingerprint_hash="c" * 64)
+    document.update(reader_kind="command", fingerprint_hash="c" * 64, cost=dict(NULL_COST))
     return document
+
+
+def test_command_reply_refuses_integer_cost():
+    document = command_reply()
+    document["cost"] = load_fixture(RecordKind.REPLY)["cost"]
+    assert_refused(RecordKind.REPLY, document, "cost")
 
 
 def test_agent_reply_parses_as_written():

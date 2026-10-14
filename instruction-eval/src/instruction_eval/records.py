@@ -196,6 +196,8 @@ def _reply_reader_kind_rule(reply: Record, path: str) -> None:
     for key in _COMMAND_ONLY_REPLY_KEYS:
         if (key in reply) == is_agent:
             _refuse(f"{path}.{key}", "present iff reader_kind is command")
+    if not is_agent and reply["cost"]["spent_input_tokens"] is not None:
+        _refuse(f"{path}.cost", "null for command readers")
 
 
 _NOISE = _mapping(
