@@ -2,9 +2,8 @@ import math
 
 import numpy
 
-from instruction_eval.scores import BOOTSTRAP_SEED, PairedUnit, compare_paired, z_for_level
+from instruction_eval.scores import BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, PairedUnit, compare_paired, z_for_level
 
-RESAMPLES = 2000
 LEVEL = 0.9
 UNITS = [
     PairedUnit(instruction=0.0, other=1.0),
@@ -23,7 +22,7 @@ def linear_quantile_by_hand(ascending: list[float], probability: float) -> float
 
 def test_interval_matches_hand_computed_percentile_bootstrap():
     differences = [unit.instruction - unit.other for unit in UNITS]
-    draws = numpy.random.default_rng(BOOTSTRAP_SEED).integers(0, len(UNITS), size=(RESAMPLES, len(UNITS)))
+    draws = numpy.random.default_rng(BOOTSTRAP_SEED).integers(0, len(UNITS), size=(BOOTSTRAP_RESAMPLES, len(UNITS)))
     resample_means = sorted(sum(differences[index] for index in row) / len(UNITS) for row in draws.tolist())
     expected_low = linear_quantile_by_hand(resample_means, (1 - LEVEL) / 2)
     expected_high = linear_quantile_by_hand(resample_means, (1 + LEVEL) / 2)
