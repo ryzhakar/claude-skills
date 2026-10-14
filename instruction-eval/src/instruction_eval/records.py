@@ -54,7 +54,15 @@ def _hash_input(series: Path, entry: str) -> str:
     content = _read_input(series, file_path)
     if not separator:
         return _sha256(content)
-    return _sha256(_dump_yaml(yaml.safe_load(content)[key]))
+    return _sha256(_dump_yaml(_read_top_level_value(content, entry, key)))
+
+
+def _read_top_level_value(content: bytes, entry: str, key: str) -> Any:
+    """Return the value of a top-level key of YAML content, refusing `entry` as missing when the key is absent."""
+    document = yaml.safe_load(content)
+    if not isinstance(document, dict) or key not in document:
+        raise Refusal(f"missing input: {entry}")
+    return document[key]
 
 
 def _read_input(series: Path, path: str) -> bytes:

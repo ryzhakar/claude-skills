@@ -59,3 +59,11 @@ def test_loading_a_record_after_its_input_was_deleted_refuses_naming_the_missing
     (series / missing_path).unlink()
     with pytest.raises(Refusal, match=rf"^missing input: {missing_path}$"):
         load_record(series, "r1/9-outcome.yaml")
+
+
+def test_loading_a_record_after_its_consumed_key_was_removed_refuses_naming_the_missing_key(series):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["7-gate.yaml#repeats"])
+    gate = series / "7-gate.yaml"
+    gate.write_text(gate.read_text().replace("repeats: 3\n", ""))
+    with pytest.raises(Refusal, match=r"^missing input: 7-gate.yaml#repeats$"):
+        load_record(series, "r1/9-outcome.yaml")
