@@ -35,3 +35,23 @@ def test_interval_matches_hand_computed_percentile_bootstrap():
     assert comparison.interval is not None
     assert math.isclose(comparison.interval[0], expected_low, abs_tol=1e-12)
     assert math.isclose(comparison.interval[1], expected_high, abs_tol=1e-12)
+
+
+def test_instruction_below_other_on_every_unit_gives_interval_wholly_below_zero():
+    units = [PairedUnit(instruction=0.0, other=value) for value in (1.0, 2.0, 1.5)]
+
+    comparison = compare_paired(units, LEVEL, numpy.random.default_rng(BOOTSTRAP_SEED))
+
+    assert comparison.mean_difference == -1.5
+    assert comparison.interval is not None
+    assert comparison.interval[1] < 0
+
+
+def test_instruction_above_other_on_every_unit_gives_interval_wholly_above_zero():
+    units = [PairedUnit(instruction=value, other=0.0) for value in (1.0, 2.0, 1.5)]
+
+    comparison = compare_paired(units, LEVEL, numpy.random.default_rng(BOOTSTRAP_SEED))
+
+    assert comparison.mean_difference == 1.5
+    assert comparison.interval is not None
+    assert comparison.interval[0] > 0
