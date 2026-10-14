@@ -1,11 +1,12 @@
 from collections.abc import Mapping, Sequence
 from math import sqrt
-from statistics import NormalDist, mean, variance
+from statistics import NormalDist, linear_regression, mean, variance
 from typing import TypedDict
 
 INSTRUCTION = "instruction"
 SOURCE = "source"
-VS_CONTROLS = ("empty", "aim", "placebo")
+EMPTY = "empty"
+VS_CONTROLS = (EMPTY, "aim", "placebo")
 
 
 class ScoredReply(TypedDict):
@@ -52,6 +53,17 @@ def measure_noise(
         checks["instruction-near-source"] = half_width(
             z, [breaches_sigma[INSTRUCTION], breaches_sigma[SOURCE]], repeats * task_count
         )
+    turn_replies = [row for row in sealed_rows if row["turn"] is not None]
+    conversation_count = len({row["task"] for row in turn_replies})
+    drift_sigma = {
+        condition: mean_repeat_variance(drift_slopes_by_unit(turn_replies, condition, gate_demands))
+        for condition in (INSTRUCTION, *controls)
+    }
+    if turn_replies:
+        drift_control = SOURCE if SOURCE in controls else EMPTY
+        checks["drift"] = half_width(
+            z, [drift_sigma[INSTRUCTION], drift_sigma[drift_control]], repeats * conversation_count
+        )
     demands_sigma = {
         demand: {
             condition: mean_repeat_variance(breach_totals_by_unit(task_replies, condition, [demand]))
@@ -64,11 +76,32 @@ def measure_noise(
         for demand, by_condition in demands_sigma.items()
     }
     return {
-        "sigma": {"breaches": breaches_sigma, "done": done_sigma, "demands": demands_sigma},
+        "sigma": {"breaches": breaches_sigma, "done": done_sigma, "drift": drift_sigma, "demands": demands_sigma},
         "checks": checks,
         "demands": demands_change,
         "done_change": half_width(z, [done_sigma[INSTRUCTION]] * 2, repeats * task_count),
     }
+
+
+def drift_slopes_by_unit(
+    replies: Sequence[ScoredReply], condition: str, demands: Sequence[str]
+) -> dict[str, list[float | None]]:
+    """Map each conversation to its condition's least-squares slopes of breach totals over turns, one per repeat."""
+    turn_totals: dict[tuple[str, int], tuple[list[int], list[int]]] = {}
+    for reply in replies:
+        if reply["condition"] == condition:
+            turns, totals = turn_totals.setdefault((reply["task"], reply["repeat"]), ([], []))
+            turns.append(reply["turn"])
+            totals.append(breach_total(reply, demands))
+    slopes: dict[str, list[float | None]] = {}
+    for (conversation, _), (turns, totals) in turn_totals.items():
+        slopes.setdefault(conversation, []).append(linear_regression(turns, totals).slope)
+    return slopes
+
+
+def breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
+    """Return the reply's breaches summed over the demands."""
+    return sum(reply["breaches"][demand] for demand in demands)
 
 
 def done_values_by_unit(replies: Sequence[ScoredReply], condition: str) -> dict[str, list[float | None]]:
@@ -97,7 +130,7 @@ def breach_totals_by_unit(
     totals: dict[str, list[float | None]] = {}
     for reply in replies:
         if reply["condition"] == condition:
-            totals.setdefault(reply["task"], []).append(sum(reply["breaches"][demand] for demand in demands))
+            totals.setdefault(reply["task"], []).append(breach_total(reply, demands))
     return totals
 
 

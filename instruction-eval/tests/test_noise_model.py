@@ -63,6 +63,28 @@ def test_near_source_noise_is_absent_without_a_source():
     assert "instruction-near-source" not in noise["checks"]
 
 
+def turn_replies(condition, totals_by_conversation):
+    return [
+        reply(condition, conversation, repeat, {"d1": total}, turn=turn)
+        for conversation, repeats in totals_by_conversation.items()
+        for repeat, totals in enumerate(repeats, start=1)
+        for turn, total in enumerate(totals, start=1)
+    ]
+
+
+def test_drift_noise_pools_slope_variances_over_conversations_against_empty():
+    rows = [
+        *turn_replies("instruction", {"c1": [[0, 1, 2], [0, 0, 0]], "c2": [[1, 1, 1], [1, 1, 1]]}),
+        *turn_replies("empty", {"c1": [[0, 2, 4], [0, 0, 0]], "c2": [[3, 2, 1], [1, 2, 3]]}),
+    ]
+
+    noise = measure_noise(rows, ["d1"], CONTROLS, repeats=2, level=LEVEL)
+
+    assert noise["sigma"]["drift"]["instruction"] == pytest.approx(0.25)
+    assert noise["sigma"]["drift"]["empty"] == pytest.approx(2.0)
+    assert noise["checks"]["drift"] == pytest.approx(Z * sqrt(2.25 / (2 * 2)))
+
+
 def done_replies(condition, done_by_task):
     return [
         reply(condition, task, repeat, {"d1": 0}, done=done)
