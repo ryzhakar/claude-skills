@@ -444,3 +444,83 @@ def test_outcome_target_accepts_completion():
 def test_outcome_parent_fields_come_together(dropped):
     document = without(load_fixture(RecordKind.OUTCOME), (dropped,))
     assert_refused(RecordKind.OUTCOME, document, dropped)
+
+
+def test_agreement_record_parses_as_written():
+    document = load_fixture(RecordKind.AGREEMENT)
+    assert parse_record(RecordKind.AGREEMENT, document) == document
+
+
+def test_agreement_scale_accepts_a_number():
+    document = changed(load_fixture(RecordKind.AGREEMENT), ("scale",), 1.5)
+    assert parse_record(RecordKind.AGREEMENT, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("demands", "Bad Id"), {"breach_difference": 0, "self_difference": 0}),
+    (("demands", "brevity", "breach_difference"), "high"),
+    (("demands", "brevity", "total"), 1),
+    (("done_agreement"), None),
+    (("scale",), "big"),
+    (("ratings", "candidate-1.yaml", "model"), "opus"),
+    (("ratings", "candidate-1.yaml", "transcript"), "relative.jsonl"),
+    (("ratings", "candidate-1.yaml", "transcript_hash"), "nope"),
+    (("accepted",), True),
+])
+def test_agreement_record_refuses_bad_value(path, value):
+    path = (path,) if isinstance(path, str) else path
+    document = changed(load_fixture(RecordKind.AGREEMENT), path, value)
+    assert_refused(RecordKind.AGREEMENT, document, path[-1])
+
+
+def test_calibration_record_parses_as_written():
+    document = load_fixture(RecordKind.CALIBRATION)
+    assert parse_record(RecordKind.CALIBRATION, document) == document
+
+
+@pytest.mark.parametrize("raters", [["user"], ["agent", "agent"]])
+def test_calibration_accepts_user_or_two_agent_raters(raters):
+    document = changed(load_fixture(RecordKind.CALIBRATION), ("raters",), raters)
+    assert parse_record(RecordKind.CALIBRATION, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("raters",), ["agent"]),
+    (("raters",), ["user", "user"]),
+    (("raters",), ["agent", "user"]),
+    (("attempt",), 0),
+    (("judge_model",), "sonnet"),
+    (("sample_size",), 0),
+    (("anchors_per_packet",), 2),
+    (("acceptance", "breach_difference"), -1),
+    (("acceptance", "self_difference"), "tight"),
+    (("acceptance", "done_agreement"), 1.5),
+    (("brief_hash",), "nope"),
+    (("agreement", "done_agreement"), None),
+    (("accepted",), True),
+    (("rater_model",), "claude-opus-4-1"),
+])
+def test_calibration_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.CALIBRATION), path, value)
+    assert_refused(RecordKind.CALIBRATION, document, path[-1])
+
+
+def test_anchors_record_parses_as_written():
+    document = load_fixture(RecordKind.ANCHORS)
+    assert parse_record(RecordKind.ANCHORS, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("anchors",), []),
+    (("anchors", 0, "id"), "Bad Id"),
+    (("anchors", 1, "id"), "anchor-1"),
+    (("anchors", 0, "task"), "Bad Task"),
+    (("anchors", 0, "message"), 3),
+    (("anchors", 0, "text"), None),
+    (("anchors", 0, "breaches", "brevity"), -1),
+    (("anchors", 0, "breaches", "total"), 1),
+    (("anchors", 0, "done"), "yes"),
+])
+def test_anchors_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.ANCHORS), path, value)
+    assert_refused(RecordKind.ANCHORS, document, path[-1])

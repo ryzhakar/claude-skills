@@ -21,6 +21,8 @@ HASH_PATTERN = r"[0-9a-f]{64}"
 BUDGET_REASON = "budget"
 TOTAL_KEY = "total"
 INTERVAL_LENGTH = 2
+MINIMUM_ANCHORS_PER_PACKET = 3
+PERMITTED_RATER_SETS = (["user"], ["agent", "agent"])
 PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
 TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
 
@@ -40,6 +42,9 @@ class RecordKind(StrEnum):
     COLLECTED = "collected"
     SCORES = "scores"
     OUTCOME = "outcome"
+    AGREEMENT = "agreement"
+    CALIBRATION = "calibration"
+    ANCHORS = "anchors"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -384,7 +389,65 @@ _OUTCOME_COST = _mapping(
 )
 
 
+def _raters(value: Any, path: str) -> None:
+    if value not in PERMITTED_RATER_SETS:
+        _refuse(path, f"expected one of {PERMITTED_RATER_SETS}, got {value!r}")
+
+
+_AGREEMENT = _mapping(
+    {
+        "inputs": _INPUTS,
+        "demands": _map_of(
+            _IDENTIFIER,
+            _mapping({"breach_difference": _ANY_NUMBER, "self_difference": _ANY_NUMBER}),
+        ),
+        "done_agreement": _ANY_NUMBER,
+        "scale": _nullable(_ANY_NUMBER),
+        "ratings": _map_of(
+            _text,
+            _mapping(
+                {"model": _AGENT_MODEL, "transcript": _ABSOLUTE_PATH, "transcript_hash": _HASH}
+            ),
+        ),
+    }
+)
+_ACCEPTANCE = _mapping(
+    {
+        "breach_difference": _NON_NEGATIVE,
+        "self_difference": _NON_NEGATIVE,
+        "done_agreement": _UNIT_CLOSED,
+    }
+)
+_ANCHOR = _mapping(
+    {
+        "id": _IDENTIFIER,
+        "task": _IDENTIFIER,
+        "message": _string,
+        "text": _string,
+        "breaches": _BREACHES,
+        "done": _boolean_or_null,
+    }
+)
+
+
 _SCHEMAS: Mapping[RecordKind, Check] = {
+    RecordKind.AGREEMENT: _AGREEMENT,
+    RecordKind.CALIBRATION: _mapping(
+        {
+            "inputs": _INPUTS,
+            "attempt": _POSITION,
+            "judge_model": _AGENT_MODEL,
+            "raters": _raters,
+            "sample_size": _integer(1),
+            "anchors_per_packet": _integer(MINIMUM_ANCHORS_PER_PACKET),
+            "acceptance": _ACCEPTANCE,
+            "brief_hash": _HASH,
+            "agreement": _AGREEMENT,
+        }
+    ),
+    RecordKind.ANCHORS: _mapping(
+        {"inputs": _INPUTS, "anchors": _list_of(_ANCHOR, "id", non_empty=True)}
+    ),
     RecordKind.SCORES: _mapping(
         {
             "inputs": _INPUTS,
