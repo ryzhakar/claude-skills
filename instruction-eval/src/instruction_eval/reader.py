@@ -46,7 +46,7 @@ class TranscriptReply:
 class _TranscriptLine:
     """One parsed transcript entry with the byte offset just past its line."""
 
-    entry: dict
+    entry: dict[str, Any]
     end: int
 
 
@@ -84,7 +84,7 @@ def _group_lines_by_turn(lines: tuple[_TranscriptLine, ...]) -> tuple[tuple[_Tra
     return tuple(lines[start:stop] for start, stop in zip(starts, [*starts[1:], len(lines)]))
 
 
-def _is_user_message(entry: dict) -> bool:
+def _is_user_message(entry: dict[str, Any]) -> bool:
     """Tell a turn-opening user string, typed or delivered by SendMessage, from harness injections, tool results, and other entries."""
     if entry["type"] != _USER_ENTRY_TYPE or not isinstance(entry["message"]["content"], str):
         return False
@@ -113,14 +113,14 @@ def _reply_to_turn(
     )
 
 
-def _text_blocks(entry: dict) -> tuple[str, ...]:
+def _text_blocks(entry: dict[str, Any]) -> tuple[str, ...]:
     """Return the text blocks of an assistant entry, empty for every other entry."""
     if entry["type"] != _ASSISTANT_ENTRY_TYPE:
         return ()
     return tuple(block["text"] for block in entry["message"]["content"] if block["type"] == _TEXT_BLOCK_TYPE)
 
 
-def _timestamp_of(entry: dict) -> datetime:
+def _timestamp_of(entry: dict[str, Any]) -> datetime:
     """Return the entry's ISO 8601 timestamp as an aware datetime."""
     return datetime.fromisoformat(entry["timestamp"])
 
