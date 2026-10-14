@@ -13,13 +13,15 @@ from instruction_eval.reader import (
 PINNED_MODEL = "claude-sonnet-5-5"
 CONDITION_BYTES = b"Answer plainly.\r\n\nTrailing space \n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
-SLUGS = st.from_regex(r"[a-z][a-z0-9-]{0,40}", fullmatch=True)
+FENCE_LINE = b"---\n"
+SLUGS =st.from_regex(r"[a-z][a-z0-9-]{0,40}", fullmatch=True)
 
 
 def split_definition(definition: bytes) -> tuple[dict, bytes]:
-    opening, frontmatter, body = definition.split(b"---\n", 2)
-    assert opening == b""
-    return yaml.safe_load(frontmatter), body
+    lines = definition.splitlines(keepends=True)
+    assert lines[0] == FENCE_LINE
+    closing = lines.index(FENCE_LINE, 1)
+    return yaml.safe_load(b"".join(lines[1:closing])), b"".join(lines[closing + 1 :])
 
 
 def test_reader_definition_carries_fixed_frontmatter_and_condition_bytes_as_body():
@@ -31,6 +33,12 @@ def test_reader_definition_carries_fixed_frontmatter_and_condition_bytes_as_body
     assert frontmatter["description"] == LAUNCH_LIST_DESCRIPTION
     assert frontmatter["model"] == PINNED_MODEL
     assert body == CONDITION_BYTES
+
+
+def test_name_ending_in_dashes_keeps_the_body_unchanged():
+    definition = render_agent_definition("a---", PINNED_MODEL, AgentKind.READER, b"")
+    assert split_definition(definition) == (split_definition(definition)[0], b"")
+    assert split_definition(definition)[0]["name"] == "a---"
 
 
 @given(name=SLUGS, body=st.binary())
