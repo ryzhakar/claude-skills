@@ -31,7 +31,7 @@ def write_file(series: Path, path: str, content: bytes) -> None:
 
 def write_record(series: Path, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256."""
-    write_file(series, path, _dump_yaml({**record, "inputs": _hash_inputs(series, reads)}))
+    write_file(series, path, _dump_canonical_yaml({**record, "inputs": _hash_inputs(series, reads)}))
 
 
 def load_record(series: Path, path: str) -> dict[str, Any]:
@@ -54,7 +54,7 @@ def _hash_input(series: Path, entry: str) -> str:
     content = _read_input(series, file_path)
     if not separator:
         return _sha256(content)
-    return _sha256(_dump_yaml(_read_top_level_value(content, entry, key)))
+    return _sha256(_dump_canonical_yaml(_read_top_level_value(content, entry, key)))
 
 
 def _read_top_level_value(content: bytes, entry: str, key: str) -> Any:
@@ -80,7 +80,7 @@ def _stage_beside(target: Path, content: bytes) -> Path:
     return Path(staged.name)
 
 
-def _dump_yaml(value: Any) -> bytes:
+def _dump_canonical_yaml(value: Any) -> bytes:
     """Dump a value as YAML with sorted keys in block style."""
     return yaml.safe_dump(value, sort_keys=True, default_flow_style=False, allow_unicode=True).encode()
 
