@@ -355,3 +355,92 @@ def test_collected_record_parses_as_written():
 def test_collected_record_refuses_bad_value(path, value):
     document = changed(load_fixture(RecordKind.COLLECTED), path, value)
     assert_refused(RecordKind.COLLECTED, document, path[-1])
+
+
+def test_scores_record_parses_as_written():
+    document = load_fixture(RecordKind.SCORES)
+    assert parse_record(RecordKind.SCORES, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("split",), "sealed"),
+    (("rows", 0, "kind"), "essay"),
+    (("rows", 0, "repeat"), 0),
+    (("rows", 0, "turn"), 0),
+    (("rows", 0, "borrowed_from"), "parent"),
+    (("rows", 0, "breaches", "brevity"), -1),
+    (("rows", 0, "breaches", "total"), 2),
+    (("rows", 0, "breaches_total"), 2),
+    (("rows", 0, "done"), "maybe"),
+    (("rows", 0, "done_by_judge"), 1),
+    (("by_condition", "instruction", "breaches_per_reply"), -1),
+    (("by_condition", "instruction", "kinds", "essay"), 1),
+    (("by_condition", "instruction", "kinds", "answer"), -1),
+    (("by_condition", "instruction", "done_rate"), 1.5),
+    (("by_condition", "instruction", "total"), 3),
+    (("comparisons", "instruction-vs-nothing"), {"mean_difference": 0, "interval": None, "units": 1}),
+    (("comparisons", "drift", "units"), 1.5),
+    (("comparisons", "drift", "interval"), [1, 0]),
+    (("comparisons", "drift", "interval"), [1]),
+    (("drift", "instruction", "interval"), None),
+    (("drift", "instruction", "slope"), "up"),
+    (("disagreements",), ["Bad Id"]),
+])
+def test_scores_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.SCORES), path, value)
+    assert_refused(RecordKind.SCORES, document, path[-1])
+
+
+def test_scores_record_refuses_missing_row_key():
+    document = without(load_fixture(RecordKind.SCORES), ("rows", 0, "done_by_judge"))
+    assert_refused(RecordKind.SCORES, document, "done_by_judge")
+
+
+def test_outcome_record_parses_as_written():
+    document = load_fixture(RecordKind.OUTCOME)
+    assert parse_record(RecordKind.OUTCOME, document) == document
+
+
+def first_revision_outcome() -> dict:
+    document = load_fixture(RecordKind.OUTCOME)
+    del document["changed_from_parent"], document["parent_comparison"]
+    return document
+
+
+def test_first_revision_outcome_omits_parent_fields():
+    document = first_revision_outcome()
+    assert parse_record(RecordKind.OUTCOME, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("outcome",), "draw"),
+    (("checks", 0, "compares"), "instruction-vs-all"),
+    (("checks", 0, "gap"), 0),
+    (("checks", 0, "pass"), "yes"),
+    (("checks", 0, "interval"), [1, 0]),
+    (("changed_from_parent",), "improved"),
+    (("parent_comparison", "target"), "Bad Target"),
+    (("parent_comparison", "interval"), None),
+    (("instruction_breaches"), "none"),
+    (("completion_passed",), None),
+    (("words",), -1),
+    (("cost", "replies"), 1.5),
+    (("cost", "input_tokens"), -1),
+    (("cost", "seconds"), "slow"),
+    (("cost", "breaches_total"), 1),
+])
+def test_outcome_record_refuses_bad_value(path, value):
+    path = (path,) if isinstance(path, str) else path
+    document = changed(load_fixture(RecordKind.OUTCOME), path, value)
+    assert_refused(RecordKind.OUTCOME, document, path[-1])
+
+
+def test_outcome_target_accepts_completion():
+    document = changed(load_fixture(RecordKind.OUTCOME), ("parent_comparison", "target"), "completion")
+    assert parse_record(RecordKind.OUTCOME, document) == document
+
+
+@pytest.mark.parametrize("dropped", ["changed_from_parent", "parent_comparison"])
+def test_outcome_parent_fields_come_together(dropped):
+    document = without(load_fixture(RecordKind.OUTCOME), (dropped,))
+    assert_refused(RecordKind.OUTCOME, document, dropped)

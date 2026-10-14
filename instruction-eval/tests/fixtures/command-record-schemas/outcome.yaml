@@ -1,0 +1,27 @@
+inputs:
+  r1/8-scores.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+outcome: pass
+checks:
+  - compares: instruction-vs-empty
+    gap: 0.5
+    mean_difference: -1.0
+    interval: [-1.5, -0.5]
+    pass: true
+  - compares: drift
+    gap: 0.1
+    mean_difference: 0.0
+    interval: null
+    pass: false
+changed_from_parent: changed
+parent_comparison:
+  target: brevity
+  mean_difference: -0.4
+  interval: [-0.8, 0.0]
+instruction_breaches: 1.25
+completion_passed: true
+words: 42
+cost:
+  replies: 12
+  input_tokens: 1500
+  output_tokens: null
+  seconds: 31.5

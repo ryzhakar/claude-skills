@@ -20,6 +20,8 @@ COMPARES = (
 HASH_PATTERN = r"[0-9a-f]{64}"
 BUDGET_REASON = "budget"
 TOTAL_KEY = "total"
+INTERVAL_LENGTH = 2
+PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
 TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
 
 
@@ -36,6 +38,8 @@ class RecordKind(StrEnum):
     VERDICT = "verdict"
     DETECTORS = "detectors"
     COLLECTED = "collected"
+    SCORES = "scores"
+    OUTCOME = "outcome"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -156,6 +160,7 @@ _BY_CONDITION = _map_of(_IDENTIFIER, _nullable(_NON_NEGATIVE))
 _NULLABLE_COUNT = _nullable(_integer(0))
 _SPLIT = _enum("open", "sealed")
 _READER_KIND = _enum("agent", "command")
+_VERDICT_KIND = _enum("answer", "probe", "refusal", "blank")
 _ABSOLUTE_PATH = _matching(r"/.+", "an absolute path")
 _AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
 _COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
@@ -285,7 +290,7 @@ _VERDICT_ENTRY = _mapping(
         "id": _IDENTIFIER,
         "breaches": _BREACHES,
         "done": _boolean_or_null,
-        "kind": _enum("answer", "probe", "refusal", "blank"),
+        "kind": _VERDICT_KIND,
         "notes": _string,
     }
 )
@@ -311,7 +316,102 @@ _COLLECTED_PACKET = _mapping(
 )
 
 
+def _boolean(value: Any, path: str) -> None:
+    if not isinstance(value, bool):
+        _refuse(path, f"expected true or false, got {value!r}")
+
+
+def _interval(value: Any, path: str) -> None:
+    _list_of(_ANY_NUMBER)(value, path)
+    if len(value) != INTERVAL_LENGTH or value[0] > value[1]:
+        _refuse(path, f"expected [low, high] with low <= high, got {value!r}")
+
+
+def _outcome_parent_fields_rule(outcome: Record, path: str) -> None:
+    present = [key for key in PARENT_OUTCOME_KEYS if key in outcome]
+    if present and len(present) != len(PARENT_OUTCOME_KEYS):
+        missing = next(key for key in PARENT_OUTCOME_KEYS if key not in outcome)
+        _refuse(f"{path}.{missing}", "present together with its pair")
+
+
+_UNIT_CLOSED = _number("in [0, 1]", lambda value: 0 <= value <= 1)
+_ROW = _mapping(
+    {
+        "id": _IDENTIFIER,
+        "condition": _IDENTIFIER,
+        "task": _IDENTIFIER,
+        "repeat": _POSITION,
+        "turn": _nullable(_POSITION),
+        "borrowed_from": _NULLABLE_REVISION_ID,
+        "breaches": _BREACHES,
+        "kind": _VERDICT_KIND,
+        "done_by_answer_key": _boolean_or_null,
+        "done_by_judge": _boolean_or_null,
+        "done": _boolean_or_null,
+    }
+)
+_CONDITION_SCORES = _mapping(
+    {
+        "breaches_per_reply": _NON_NEGATIVE,
+        "demands": _map_of(_IDENTIFIER, _NON_NEGATIVE),
+        "done_rate": _UNIT_CLOSED,
+        "kinds": _map_of(_VERDICT_KIND, _integer(0)),
+    }
+)
+_COMPARISON = _mapping(
+    {"mean_difference": _ANY_NUMBER, "interval": _nullable(_interval), "units": _integer(0)}
+)
+_DRIFT = _mapping({"slope": _ANY_NUMBER, "interval": _interval})
+_OUTCOME_CHECK = _mapping(
+    {
+        "compares": _COMPARES,
+        "gap": _POSITIVE,
+        "mean_difference": _ANY_NUMBER,
+        "interval": _nullable(_interval),
+        "pass": _boolean,
+    }
+)
+_PARENT_COMPARISON = _mapping(
+    {"target": _IDENTIFIER, "mean_difference": _ANY_NUMBER, "interval": _interval}
+)
+_OUTCOME_COST = _mapping(
+    {
+        "replies": _integer(0),
+        "input_tokens": _NULLABLE_COUNT,
+        "output_tokens": _NULLABLE_COUNT,
+        "seconds": _NON_NEGATIVE,
+    }
+)
+
+
 _SCHEMAS: Mapping[RecordKind, Check] = {
+    RecordKind.SCORES: _mapping(
+        {
+            "inputs": _INPUTS,
+            "split": _enum("open"),
+            "rows": _list_of(_ROW),
+            "by_condition": _map_of(_IDENTIFIER, _CONDITION_SCORES),
+            "comparisons": _map_of(_COMPARES, _COMPARISON),
+            "drift": _map_of(_IDENTIFIER, _DRIFT),
+            "disagreements": _list_of(_IDENTIFIER),
+        }
+    ),
+    RecordKind.OUTCOME: _mapping(
+        {
+            "inputs": _INPUTS,
+            "outcome": _enum("pass", "fail"),
+            "checks": _list_of(_OUTCOME_CHECK),
+            "instruction_breaches": _NON_NEGATIVE,
+            "completion_passed": _boolean,
+            "words": _integer(0),
+            "cost": _OUTCOME_COST,
+        },
+        {
+            "changed_from_parent": _enum("changed", "reversed", "unchanged", "unresolved"),
+            "parent_comparison": _PARENT_COMPARISON,
+        },
+        _outcome_parent_fields_rule,
+    ),
     RecordKind.DETECTORS: _mapping(
         {"inputs": _INPUTS, "verdicts": _list_of(_DETECTOR_ENTRY, "id", non_empty=True)}
     ),
