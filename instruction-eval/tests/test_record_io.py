@@ -36,6 +36,22 @@ def test_loading_a_record_after_its_consumed_key_changed_refuses_as_stale(series
         load_record(series, "r1/9-outcome.yaml")
 
 
+def test_editing_an_unconsumed_key_or_restyling_a_consumed_one_keeps_the_record_loadable(series):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["7-gate.yaml#keep_rule"])
+    (series / "7-gate.yaml").write_text(
+        "keep_rule: {tie: earliest, rank: [completion, overreach]}\nlevel: 0.95\nrepeats: 3\ndone_by: judge\n"
+    )
+    assert load_record(series, "r1/9-outcome.yaml")["passed"] is True
+
+
+def test_loading_a_record_after_a_whole_file_input_changed_refuses_as_stale(series):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["series.yaml"])
+    with (series / "series.yaml").open("a") as series_file:
+        series_file.write("\n")
+    with pytest.raises(Refusal, match=r"^stale: r1/9-outcome.yaml \(input series.yaml changed\)$"):
+        load_record(series, "r1/9-outcome.yaml")
+
+
 @pytest.mark.parametrize("entry", ["series.yaml", "7-gate.yaml#repeats"])
 def test_loading_a_record_after_its_input_was_deleted_refuses_naming_the_missing_input(series, entry):
     write_record(series, "r1/9-outcome.yaml", {"passed": True}, [entry])
