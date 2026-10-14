@@ -21,6 +21,7 @@ HASH_PATTERN = r"[0-9a-f]{64}"
 BUDGET_REASON = "budget"
 TOTAL_KEY = "total"
 INTERVAL_LENGTH = 2
+REPLY_INPUT_TOKEN_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
 MINIMUM_ANCHORS_PER_PACKET = 3
 PERMITTED_RATER_SETS = (["user"], ["agent", "agent"])
 PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
@@ -167,6 +168,22 @@ _SPLIT = _enum("open", "sealed")
 _READER_KIND = _enum("agent", "command")
 _VERDICT_KIND = _enum("answer", "probe", "refusal", "blank")
 _ABSOLUTE_PATH = _matching(r"/.+", "an absolute path")
+def _reply_cost_rule(cost: Record, path: str) -> None:
+    if len({value is None for value in cost.values()}) != 1:
+        _refuse(path, "all five fields are integers or all are null")
+    if cost["spent_input_tokens"] is None:
+        return
+    if cost["spent_input_tokens"] != sum(cost[key] for key in REPLY_INPUT_TOKEN_KEYS):
+        _refuse(f"{path}.spent_input_tokens", "the sum of the three input fields")
+
+
+_REPLY_COST = _mapping(
+    {
+        key: _NULLABLE_COUNT
+        for key in (*REPLY_INPUT_TOKEN_KEYS, "output_tokens", "spent_input_tokens")
+    },
+    rule=_reply_cost_rule,
+)
 _AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
 _COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
 
@@ -532,7 +549,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
             "reader_kind": _READER_KIND,
             "started": _timestamp,
             "seconds": _NON_NEGATIVE,
-            "cost": _mapping({"input_tokens": _NULLABLE_COUNT, "output_tokens": _NULLABLE_COUNT}),
+            "cost": _REPLY_COST,
         },
         {
             "turn": _POSITION,

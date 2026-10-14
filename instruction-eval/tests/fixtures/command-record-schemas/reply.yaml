@@ -13,5 +13,8 @@ seconds: 1.5
 transcript: /tmp/transcripts/greet-1.jsonl
 transcript_hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 cost:
-  input_tokens: 120
-  output_tokens: null
+  input_tokens: 100
+  cache_creation_input_tokens: 20
+  cache_read_input_tokens: 30
+  output_tokens: 15
+  spent_input_tokens: 150

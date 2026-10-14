@@ -195,6 +195,39 @@ def test_command_reply_carries_fingerprint_hash_and_no_transcript():
     assert parse_record(RecordKind.REPLY, document) == document
 
 
+NULL_COST = {
+    "input_tokens": None,
+    "cache_creation_input_tokens": None,
+    "cache_read_input_tokens": None,
+    "output_tokens": None,
+    "spent_input_tokens": None,
+}
+
+
+def test_reply_cost_accepts_all_null_fields():
+    document = changed(load_fixture(RecordKind.REPLY), ("cost",), dict(NULL_COST))
+    assert parse_record(RecordKind.REPLY, document) == document
+
+
+@pytest.mark.parametrize("nulled", list(NULL_COST))
+def test_reply_cost_refuses_one_null_among_integers(nulled):
+    document = changed(load_fixture(RecordKind.REPLY), ("cost", nulled), None)
+    assert_refused(RecordKind.REPLY, document, "cost")
+
+
+@pytest.mark.parametrize("filled", list(NULL_COST))
+def test_reply_cost_refuses_one_integer_among_nulls(filled):
+    cost = dict(NULL_COST, **{filled: 0})
+    document = changed(load_fixture(RecordKind.REPLY), ("cost",), cost)
+    assert_refused(RecordKind.REPLY, document, "cost")
+
+
+@pytest.mark.parametrize("key", ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"])
+def test_reply_spent_input_tokens_is_the_sum_of_the_three_input_fields(key):
+    document = changed(load_fixture(RecordKind.REPLY), ("cost", key), 999)
+    assert_refused(RecordKind.REPLY, document, "spent_input_tokens")
+
+
 def test_turn_reply_carries_its_turn_number():
     document = changed(load_fixture(RecordKind.REPLY), ("turn",), 2)
     assert parse_record(RecordKind.REPLY, document) == document
