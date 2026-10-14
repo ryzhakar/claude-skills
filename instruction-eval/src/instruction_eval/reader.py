@@ -8,6 +8,7 @@ from pathlib import Path
 _USER_ENTRY_TYPE = "user"
 _ASSISTANT_ENTRY_TYPE = "assistant"
 _TEXT_BLOCK_TYPE = "text"
+_SEND_MESSAGE_WRAPPER_OPENING = "The coordinator sent a message while you were working:\n"
 
 
 @dataclass(frozen=True)
@@ -72,8 +73,10 @@ def _group_lines_by_turn(lines: tuple[_TranscriptLine, ...]) -> tuple[tuple[_Tra
 
 
 def _is_user_message(entry: dict) -> bool:
-    """Tell a user message, whose content is a string, from tool results and every other entry."""
-    return entry["type"] == _USER_ENTRY_TYPE and isinstance(entry["message"]["content"], str)
+    """Tell a turn-opening user string, typed or delivered by SendMessage, from harness injections, tool results, and other entries."""
+    if entry["type"] != _USER_ENTRY_TYPE or not isinstance(entry["message"]["content"], str):
+        return False
+    return not entry.get("isMeta") or entry["message"]["content"].startswith(_SEND_MESSAGE_WRAPPER_OPENING)
 
 
 def _reply_to_turn(

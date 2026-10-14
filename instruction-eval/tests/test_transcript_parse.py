@@ -68,3 +68,10 @@ def test_conversation_turn_message_keeps_the_send_message_wrapper():
 def test_unanswered_turns_yield_no_reply_and_keep_later_turn_numbers():
     replies = replies_of("unanswered-turns.jsonl")
     assert [(reply.turn, reply.text) for reply in replies] == [(2, "TWO")]
+
+
+def test_harness_injected_meta_messages_open_no_turn_while_send_message_turns_do():
+    replies = replies_of("harness-injections.jsonl")
+    assert [(reply.turn, reply.text) for reply in replies] == [(1, "ONE"), (2, "TWO")]
+    assert replies[0].message == "TURN-1: reply with the single word ONE."
+    assert replies[1].message.startswith("The coordinator sent a message while you were working:\n")
