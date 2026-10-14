@@ -5,6 +5,7 @@ LATER_REVISION_COUNT = 4
 
 BudgetUnit = Literal["tokens", "seconds"]
 TOKENS_UNIT: BudgetUnit = "tokens"
+SECONDS_UNIT: BudgetUnit = "seconds"
 
 
 class BudgetRefusal(Exception):
@@ -44,7 +45,7 @@ def _reply_cost_in_unit(reply: ReplyCost, unit: BudgetUnit) -> float:
     """Return the reply's cost in the budget unit."""
     if unit == TOKENS_UNIT:
         return reply.input_tokens + reply.output_tokens
-    if unit == "seconds":
+    if unit == SECONDS_UNIT:
         return reply.seconds
     raise ValueError(f"unknown budget unit: {unit}")
 
