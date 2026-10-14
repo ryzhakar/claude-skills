@@ -16,11 +16,15 @@ from instruction_eval.records import (
     Conversation,
     Demands,
     Gate,
+    Hypothesis,
     JudgeDemand,
     LongSentencesDemand,
+    MoveChange,
     PatternDemand,
     Plan,
+    PredictedMovement,
     RecordRefused,
+    SentenceChange,
     Series,
     Task,
     Tasks,
@@ -28,6 +32,7 @@ from instruction_eval.records import (
     parse_conditions,
     parse_demands,
     parse_gate,
+    parse_hypothesis,
     parse_plan,
     parse_reader,
     parse_series,
@@ -393,3 +398,48 @@ def test_plan_refuses_a_rater_model_equal_to_the_judge_model():
 def test_plan_refuses_a_malformed_key(changes, named):
     with pytest.raises(RecordRefused, match=re.escape(named)):
         parse_plan(edited("plan.yaml", **changes))
+
+
+def test_hypothesis_loads_a_move():
+    assert parse_hypothesis(fixture("1-hypothesis.yaml")) == Hypothesis(
+        failing_demand="short-sentences",
+        replies_read=("b3f9a01c2", "b00ffa917"),
+        change=MoveChange(sentence=4, to=1),
+        predicted_movement=PredictedMovement(direction="down", size=0.6),
+    )
+
+
+@pytest.mark.parametrize("action", ["rewrite", "add", "delete"])
+def test_hypothesis_loads_a_change_in_place(action):
+    hypothesis = parse_hypothesis(edited("1-hypothesis.yaml", change={"action": action, "sentence": 2}, failing_demand="completion"))
+    assert (hypothesis.change, hypothesis.failing_demand) == (SentenceChange(action=action, sentence=2), "completion")
+
+
+def test_hypothesis_refuses_a_cause():
+    with pytest.raises(RecordRefused, match="cause"):
+        parse_hypothesis(edited("1-hypothesis.yaml", cause="the rule sits too late"))
+
+
+def test_hypothesis_refuses_a_cause_inside_the_change():
+    with pytest.raises(RecordRefused, match="cause"):
+        parse_hypothesis(edited("1-hypothesis.yaml", change={"action": "move", "sentence": 4, "to": 1, "cause": "buried"}))
+
+
+@pytest.mark.parametrize(
+    ("changes", "named"),
+    [
+        ({"failing_demand": "Short"}, "failing_demand"),
+        ({"replies_read": ["b3f9a01c"]}, "replies_read[0]"),
+        ({"replies_read": ["short-sentences"]}, "replies_read[0]"),
+        ({"change": {"action": "move", "sentence": 4}}, "change"),
+        ({"change": {"action": "rewrite", "sentence": 4, "to": 1}}, "change"),
+        ({"change": {"action": "swap", "sentence": 4}}, "change.action"),
+        ({"change": {"action": "delete", "sentence": 0}}, "change.sentence"),
+        ({"change": {"action": "move", "sentence": 4, "to": 0}}, "change.to"),
+        ({"predicted_movement": {"direction": "sideways", "size": 1}}, "predicted_movement.direction"),
+        ({"predicted_movement": {"direction": "up", "size": 0}}, "predicted_movement.size"),
+    ],
+)
+def test_hypothesis_refuses_a_malformed_key(changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_hypothesis(edited("1-hypothesis.yaml", **changes))

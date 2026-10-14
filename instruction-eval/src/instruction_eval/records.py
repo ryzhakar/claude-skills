@@ -499,6 +499,86 @@ def read_bounded_number(value: object, where: str, lowest: float, highest: float
     return number
 
 
+BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}$")
+InPlaceAction = Literal["rewrite", "add", "delete"]
+MOVE_ACTION = "move"
+Direction = Literal["down", "up"]
+
+
+@dataclass(frozen=True)
+class SentenceChange:
+    """A rewrite, addition, or deletion at one sentence position."""
+
+    action: InPlaceAction
+    sentence: int
+
+
+@dataclass(frozen=True)
+class MoveChange:
+    """A move of the parent's sentence `sentence` to position `to` in the child."""
+
+    sentence: int
+    to: int
+
+
+@dataclass(frozen=True)
+class PredictedMovement:
+    """The direction and size a hypothesis predicts for its failing demand."""
+
+    direction: Direction
+    size: float
+
+
+@dataclass(frozen=True)
+class Hypothesis:
+    """The `r<n>/1-hypothesis.yaml` record."""
+
+    failing_demand: str
+    replies_read: tuple[str, ...]
+    change: SentenceChange | MoveChange
+    predicted_movement: PredictedMovement
+
+
+def parse_hypothesis(document: object) -> Hypothesis:
+    """Build the `r<n>/1-hypothesis.yaml` record, which holds no cause."""
+    keys = read_keys(document, "1-hypothesis.yaml", required={"failing_demand", "replies_read", "change", "predicted_movement"})
+    return Hypothesis(
+        failing_demand=read_id(keys["failing_demand"], "failing_demand"),
+        replies_read=read_entries(keys["replies_read"], "replies_read", read_blind_id),
+        change=read_change(keys["change"], "change"),
+        predicted_movement=read_predicted_movement(keys["predicted_movement"], "predicted_movement"),
+    )
+
+
+def read_blind_id(value: object, where: str) -> str:
+    """Return a blind id: `b` and eight lowercase hex digits."""
+    if not isinstance(value, str) or not BLIND_ID_PATTERN.match(value):
+        raise RecordRefused(f"{where}: expected a blind id matching {BLIND_ID_PATTERN.pattern}, got {value!r}")
+    return value
+
+
+def read_change(value: object, where: str) -> SentenceChange | MoveChange:
+    """Return the one change a hypothesis makes, carrying `to` exactly when it moves a sentence."""
+    action = read_keys(value, where, required={"action"}, optional={"sentence", "to"})["action"]
+    if action == MOVE_ACTION:
+        keys = read_keys(value, where, required={"action", "sentence", "to"})
+        return MoveChange(sentence=read_integer(keys["sentence"], f"{where}.sentence", minimum=1), to=read_integer(keys["to"], f"{where}.to", minimum=1))
+    keys = read_keys(value, where, required={"action", "sentence"})
+    return SentenceChange(
+        action=read_choice(action, f"{where}.action", (*get_args(InPlaceAction), MOVE_ACTION)),
+        sentence=read_integer(keys["sentence"], f"{where}.sentence", minimum=1),
+    )
+
+
+def read_predicted_movement(value: object, where: str) -> PredictedMovement:
+    """Return a hypothesis's predicted movement."""
+    keys = read_keys(value, where, required={"direction", "size"})
+    return PredictedMovement(
+        direction=read_choice(keys["direction"], f"{where}.direction", get_args(Direction)),
+        size=read_positive_number(keys["size"], f"{where}.size"),
+    )
+
+
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
     """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
     return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))
