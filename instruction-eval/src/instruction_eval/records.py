@@ -35,8 +35,12 @@ def write_record(series: Path, path: str, record: Mapping[str, Any], reads: Iter
 
 
 def load_record(series: Path, path: str) -> dict[str, Any]:
-    """Load the CLI record at `path`."""
-    return yaml.safe_load((series / path).read_bytes())
+    """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
+    record = yaml.safe_load((series / path).read_bytes())
+    for entry, written_hash in record["inputs"].items():
+        if _hash_input(series, entry) != written_hash:
+            raise Refusal(f"stale: {path} (input {entry} changed)")
+    return record
 
 
 def _hash_inputs(series: Path, reads: Iterable[str]) -> dict[str, str]:

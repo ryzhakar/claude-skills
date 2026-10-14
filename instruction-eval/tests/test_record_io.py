@@ -26,3 +26,11 @@ def test_writing_an_existing_file_refuses_and_keeps_the_first_bytes_alone(series
         write_file(series, "r1/2-instruction.md", b"second")
     assert (series / "r1/2-instruction.md").read_bytes() == b"first"
     assert [entry.name for entry in (series / "r1").iterdir()] == ["2-instruction.md"]
+
+
+def test_loading_a_record_after_its_consumed_key_changed_refuses_as_stale(series):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["7-gate.yaml#repeats"])
+    gate = series / "7-gate.yaml"
+    gate.write_text(gate.read_text().replace("repeats: 3", "repeats: 4"))
+    with pytest.raises(Refusal, match=r"^stale: r1/9-outcome.yaml \(input 7-gate.yaml#repeats changed\)$"):
+        load_record(series, "r1/9-outcome.yaml")
