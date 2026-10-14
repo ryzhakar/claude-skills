@@ -41,23 +41,34 @@ SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
 WORD_BEFORE_END = re.compile(rb"[A-Za-z.]*\Z")
 ABBREVIATIONS = {b"e.g", b"i.e", b"etc", b"vs", b"cf", b"Mr", b"Mrs", b"Dr", b"St", b"No"}
 SINGLE_LETTER = re.compile(rb"[A-Za-z]")
+WHOLE_LINE_UNIT = re.compile(rb"\s*#")
 
 
 def read_units(text: bytes) -> list[Unit]:
     """Read the markdown units of a text in order."""
-    lines = line_spans(text)
+    lines = [text[start:end] for start, end in line_spans(text)]
+    spans = line_spans(text)
     units = []
     index = 0
     while index < len(lines):
-        if is_blank(text, lines[index]):
+        if not lines[index].strip():
+            index += 1
+            continue
+        if WHOLE_LINE_UNIT.match(lines[index]):
+            units.append(Unit(*spans[index], splits=False))
             index += 1
             continue
         last = index
-        while last + 1 < len(lines) and not is_blank(text, lines[last + 1]):
+        while last + 1 < len(lines) and continues_paragraph(lines[last + 1]):
             last += 1
-        units.append(Unit(lines[index][0], lines[last][1], splits=True))
+        units.append(Unit(spans[index][0], spans[last][1], splits=True))
         index = last + 1
     return units
+
+
+def continues_paragraph(line: bytes) -> bool:
+    """Tell whether a line continues the paragraph or list item above it."""
+    return bool(line.strip()) and not WHOLE_LINE_UNIT.match(line)
 
 
 def line_spans(text: bytes) -> list[tuple[int, int]]:
@@ -65,11 +76,6 @@ def line_spans(text: bytes) -> list[tuple[int, int]]:
     lines = text.split(b"\n")
     starts = accumulate((len(line) + len(b"\n") for line in lines), initial=0)
     return [(start, start + len(line)) for start, line in zip(starts, lines)]
-
-
-def is_blank(text: bytes, line: tuple[int, int]) -> bool:
-    """Tell whether a line holds only whitespace."""
-    return not text[line[0]:line[1]].strip()
 
 
 def sentence_spans(text: bytes, unit: Unit) -> list[tuple[int, int]]:
