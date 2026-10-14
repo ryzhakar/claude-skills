@@ -22,5 +22,6 @@ esac
 TEMPLATE="$PLUGIN_ROOT/hooks/templates/peer-$1.txt"
 [ -f "$TEMPLATE" ] && [ -r "$TEMPLATE" ] || exit 0
 
-cat "$TEMPLATE" 2>/dev/null
+ESCAPED_ROOT="$(printf '%s' "$ROOT" | sed -e 's/[&|\\]/\\&/g')"
+sed -e "s|<root>|$ESCAPED_ROOT|g" "$TEMPLATE" 2>/dev/null
 exit 0

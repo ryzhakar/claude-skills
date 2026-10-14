@@ -1,1 +1,1 @@
-Before the next peer message, re-read the peers:peer-protocol skill and your card ${XDG_DATA_HOME:-$HOME/.local/share}/claude-peers/<ref>.md.
+Context compacted: before your next peer message, re-read the skill peers:peer-protocol and your card in <root>.
