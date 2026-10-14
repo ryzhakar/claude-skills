@@ -14,6 +14,7 @@ COMPLETION = "completion"
 DRIFT = "drift"
 TWO_SIDED_TAILS = 2
 LEAST_VALUES_FOR_VARIANCE = 2
+LEAST_TURNS_FOR_SLOPE = 2
 
 
 class ScoredReply(TypedDict):
@@ -150,14 +151,21 @@ def _drift_slopes_by_unit(
     """Map each conversation to its condition's least-squares slopes of breach totals over turns, one per repeat."""
     turn_totals: dict[tuple[str, int], tuple[list[int], list[int]]] = {}
     for reply in replies:
-        if reply["condition"] == condition:
+        if reply["condition"] == condition and (turn := reply["turn"]) is not None:
             turns, totals = turn_totals.setdefault((reply["task"], reply["repeat"]), ([], []))
-            turns.append(reply["turn"])
+            turns.append(turn)
             totals.append(_breach_total(reply, demands))
     slopes: dict[str, list[float | None]] = {}
     for (conversation, _), (turns, totals) in turn_totals.items():
-        slopes.setdefault(conversation, []).append(linear_regression(turns, totals).slope)
+        slopes.setdefault(conversation, []).append(_least_squares_slope(turns, totals))
     return slopes
+
+
+def _least_squares_slope(turns: Sequence[int], totals: Sequence[int]) -> float | None:
+    """Return the least-squares slope of totals over turns, or null when fewer than two distinct turns exist."""
+    if len(set(turns)) < LEAST_TURNS_FOR_SLOPE:
+        return None
+    return linear_regression(turns, totals).slope
 
 
 def _breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:

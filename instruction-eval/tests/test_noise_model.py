@@ -97,6 +97,18 @@ def test_drift_noise_compares_instruction_with_source_when_a_source_exists():
     assert noise["checks"]["drift"] == pytest.approx(Z * sqrt(0.5 / (2 * 2)))
 
 
+def test_drift_noise_leaves_out_a_conversation_repeat_with_one_sealed_turn():
+    rows = [
+        *turn_replies("instruction", {"c1": [[0, 1, 2], [5]], "c2": [[0, 2], [0, 0]]}),
+        *turn_replies("empty", {"c1": [[0, 0, 0], [0, 0, 0]], "c2": [[0, 0], [0, 0]]}),
+    ]
+
+    noise = measure_noise(rows, ["d1"], CONTROLS, repeats=2, level=LEVEL)
+
+    assert noise["sigma"]["drift"]["instruction"] == pytest.approx(2.0)
+    assert noise["checks"]["drift"] == pytest.approx(Z * sqrt(2 / (2 * 2)))
+
+
 def test_conversation_turns_leave_task_noise_unchanged():
     task_rows = [
         reply("instruction", "t1", 1, {"d1": 1}),
