@@ -120,3 +120,11 @@ def test_a_parseable_line_missing_a_read_field_is_refused_naming_transcript_line
     transcript = FIXTURES / "single-turn.jsonl"
     with pytest.raises(ValueError, match=rf"^{re.escape(str(transcript))}: line 6 {fault}$"):
         parse_transcript_replies(transcript, transcript.read_bytes() + malformed_line)
+
+
+def test_blank_lines_are_skipped_and_still_counted_in_the_hashed_bytes():
+    transcript = FIXTURES / "single-turn.jsonl"
+    transcript_lines = transcript.read_bytes().splitlines(keepends=True)
+    [reply] = parse_transcript_replies(transcript, b"\n" + b"".join(transcript_lines) + b"\n")
+    through_reply_line = b"\n" + b"".join(transcript_lines[:SINGLE_TURN_REPLY_LINE_COUNT])
+    assert (reply.text, reply.transcript_hash) == ("OK", hashlib.sha256(through_reply_line).hexdigest())

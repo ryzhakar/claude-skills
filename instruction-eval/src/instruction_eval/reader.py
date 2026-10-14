@@ -79,12 +79,13 @@ def parse_transcript_replies(transcript: Path, content: bytes) -> tuple[Transcri
 
 
 def _split_transcript_lines(transcript: Path, content: bytes) -> tuple[_TranscriptLine, ...]:
-    """Parse each JSONL line of the transcript, keeping where its bytes end."""
+    """Parse each non-blank JSONL line of the transcript, keeping where its bytes end."""
     raw_lines = content.splitlines(keepends=True)
     ends = accumulate(len(raw_line) for raw_line in raw_lines)
     return tuple(
         _TranscriptLine(_parse_transcript_line(transcript, number, raw_line), end)
         for number, (raw_line, end) in enumerate(zip(raw_lines, ends), 1)
+        if raw_line.strip()
     )
 
 
