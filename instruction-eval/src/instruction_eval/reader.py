@@ -4,7 +4,7 @@ from dataclasses import dataclass, fields
 from datetime import datetime
 from itertools import accumulate
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 _USER_ENTRY_TYPE = "user"
 _ASSISTANT_ENTRY_TYPE = "assistant"
@@ -19,15 +19,8 @@ _MODEL_KEY = "model"
 _USAGE_KEY = "usage"
 _META_KEY = "isMeta"
 _TEXT_KEY = "text"
-_FIELDS_READ_BY_ENTRY_TYPE = {
-    _USER_ENTRY_TYPE: ((_TIMESTAMP_KEY,), (_MESSAGE_KEY, _CONTENT_KEY)),
-    _ASSISTANT_ENTRY_TYPE: (
-        (_TIMESTAMP_KEY,),
-        (_MESSAGE_KEY, _ID_KEY),
-        (_MESSAGE_KEY, _MODEL_KEY),
-        (_MESSAGE_KEY, _CONTENT_KEY),
-    ),
-}
+
+_FieldValue = TypeVar("_FieldValue")
 
 
 @dataclass(frozen=True)
@@ -61,41 +54,62 @@ class TranscriptReply:
 
 
 @dataclass(frozen=True)
-class _TranscriptLine:
-    """One parsed transcript entry with the byte offset just past its line."""
+class _TurnOpening:
+    """A user message that opens a turn, typed or delivered by SendMessage."""
 
-    entry: dict[str, Any]
+    message: str
+    timestamp: datetime
+
+
+@dataclass(frozen=True)
+class _AssistantChunk:
+    """One assistant line, with the byte offset just past it."""
+
+    message_id: str
+    model: str
+    texts: tuple[str, ...]
+    usage: TokenUsage | None
+    timestamp: datetime
     end: int
+
+
+class _MalformedEntry(Exception):
+    """A decoded transcript entry lacks a field the parser reads, or holds it in the wrong shape."""
 
 
 def parse_transcript_replies(transcript: Path, content: bytes) -> tuple[TranscriptReply, ...]:
     """Pair the k-th user message of the transcript bytes with its reply as turn k, skipping unanswered turns."""
-    turns = _group_lines_by_turn(_split_transcript_lines(transcript, content))
+    turns = _group_entries_by_turn(_read_transcript_entries(transcript, content))
     replies = (
-        _reply_to_turn(number, turn_lines, transcript, content)
-        for number, turn_lines in enumerate(turns, 1)
+        _reply_to_turn(number, opening, chunks, transcript, content)
+        for number, (opening, chunks) in enumerate(turns, 1)
     )
     return tuple(reply for reply in replies if reply is not None)
 
 
-def _split_transcript_lines(transcript: Path, content: bytes) -> tuple[_TranscriptLine, ...]:
-    """Parse each non-blank JSONL line of the transcript, keeping where its bytes end."""
+def _read_transcript_entries(transcript: Path, content: bytes) -> tuple[_TurnOpening | _AssistantChunk, ...]:
+    """Read the turn openings and assistant chunks of each non-blank JSONL line, keeping where each chunk's bytes end."""
     raw_lines = content.splitlines(keepends=True)
     ends = accumulate(len(raw_line) for raw_line in raw_lines)
-    return tuple(
-        _TranscriptLine(_parse_transcript_line(transcript, number, raw_line), end)
+    entries = (
+        _parse_transcript_line(transcript, number, raw_line, end)
         for number, (raw_line, end) in enumerate(zip(raw_lines, ends), 1)
         if raw_line.strip()
     )
+    return tuple(entry for entry in entries if entry is not None)
 
 
-def _parse_transcript_line(transcript: Path, number: int, raw_line: bytes) -> dict[str, Any]:
-    """Parse one transcript line into an entry holding every field the parser reads, refusing with transcript and line otherwise."""
+def _parse_transcript_line(
+    transcript: Path, number: int, raw_line: bytes, end: int
+) -> _TurnOpening | _AssistantChunk | None:
+    """Read one transcript line into what turn pairing uses, refusing with transcript, line, and fault when it cannot."""
     entry = _decode_transcript_line(transcript, number, raw_line)
-    fault = _structural_fault(entry)
-    if fault is not None:
-        raise ValueError(f"{transcript}: line {number} {fault}")
-    return entry
+    if not isinstance(entry, dict):
+        raise ValueError(f"{transcript}: line {number} is not a JSON object")
+    try:
+        return _entry_from_json(entry, end)
+    except _MalformedEntry as fault:
+        raise ValueError(f"{transcript}: line {number} {fault}") from fault
 
 
 def _decode_transcript_line(transcript: Path, number: int, raw_line: bytes) -> object:
@@ -106,17 +120,73 @@ def _decode_transcript_line(transcript: Path, number: int, raw_line: bytes) -> o
         raise ValueError(f"{transcript}: line {number} is not JSON") from error
 
 
-def _structural_fault(entry: object) -> str | None:
-    """Name the first field the parser reads that the decoded entry lacks, or None when it holds them all."""
-    if not isinstance(entry, dict):
-        return "is not a JSON object"
-    if _TYPE_KEY not in entry:
-        return f"lacks {_TYPE_KEY}"
-    missing = [path for path in _FIELDS_READ_BY_ENTRY_TYPE.get(entry[_TYPE_KEY], ()) if not _has_field(entry, path)]
-    return f"lacks {'.'.join(missing[0])}" if missing else None
+def _entry_from_json(entry: dict[str, Any], end: int) -> _TurnOpening | _AssistantChunk | None:
+    """Read a decoded entry as a turn opening or an assistant chunk, or None when it is neither."""
+    entry_type = _field(entry, (_TYPE_KEY,), str)
+    if entry_type == _USER_ENTRY_TYPE:
+        return _turn_opening_from_json(entry)
+    if entry_type == _ASSISTANT_ENTRY_TYPE:
+        return _assistant_chunk_from_json(entry, end)
+    return None
 
 
-def _has_field(entry: dict[str, Any], path: tuple[str, ...]) -> bool:
+def _turn_opening_from_json(entry: dict[str, Any]) -> _TurnOpening | None:
+    """Read a user entry as a turn opening, or None for tool results and harness injections."""
+    content = _field(entry, (_MESSAGE_KEY, _CONTENT_KEY), object)
+    if not isinstance(content, str):
+        return None
+    if entry.get(_META_KEY) and not content.startswith(_SEND_MESSAGE_WRAPPER_OPENING):
+        return None
+    return _TurnOpening(message=content, timestamp=_timestamp_field(entry))
+
+
+def _assistant_chunk_from_json(entry: dict[str, Any], end: int) -> _AssistantChunk:
+    """Read an assistant entry's message id, model, text blocks, usage, and timestamp."""
+    blocks = _field(entry, (_MESSAGE_KEY, _CONTENT_KEY), list)
+    return _AssistantChunk(
+        message_id=_field(entry, (_MESSAGE_KEY, _ID_KEY), str),
+        model=_field(entry, (_MESSAGE_KEY, _MODEL_KEY), str),
+        texts=tuple(
+            _field(block, (_TEXT_KEY,), str)
+            for block in blocks
+            if _field(block, (_TYPE_KEY,), str) == _TEXT_BLOCK_TYPE
+        ),
+        usage=_usage_field(entry),
+        timestamp=_timestamp_field(entry),
+        end=end,
+    )
+
+
+def _usage_field(entry: dict[str, Any]) -> TokenUsage | None:
+    """Read the assistant entry's usage, or None when it records none."""
+    if not _has_field(entry, (_MESSAGE_KEY, _USAGE_KEY)):
+        return None
+    return TokenUsage(
+        **{field.name: _field(entry, (_MESSAGE_KEY, _USAGE_KEY, field.name), int) for field in fields(TokenUsage)}
+    )
+
+
+def _timestamp_field(entry: dict[str, Any]) -> datetime:
+    """Read the entry's ISO 8601 timestamp as an aware datetime."""
+    try:
+        return datetime.fromisoformat(_field(entry, (_TIMESTAMP_KEY,), str))
+    except ValueError as error:
+        raise _MalformedEntry(f"has an unparseable {_TIMESTAMP_KEY}") from error
+
+
+def _field(entry: object, path: tuple[str, ...], expected_type: type[_FieldValue]) -> _FieldValue:
+    """Return the value the nested keys of the path lead to, refusing a missing key or a value of another type."""
+    if not _has_field(entry, path):
+        raise _MalformedEntry(f"lacks {'.'.join(path)}")
+    value: object = entry
+    for key in path:
+        value = value[key]
+    if not isinstance(value, expected_type):
+        raise _MalformedEntry(f"has a non-{expected_type.__name__} {'.'.join(path)}")
+    return value
+
+
+def _has_field(entry: object, path: tuple[str, ...]) -> bool:
     """Tell whether the nested keys of the path lead to a value in the entry."""
     value: object = entry
     for key in path:
@@ -126,62 +196,47 @@ def _has_field(entry: dict[str, Any], path: tuple[str, ...]) -> bool:
     return True
 
 
-def _group_lines_by_turn(lines: tuple[_TranscriptLine, ...]) -> tuple[tuple[_TranscriptLine, ...], ...]:
-    """Split the lines into turns, each opening with a user message and running to the next."""
-    starts = [index for index, line in enumerate(lines) if _is_user_message(line.entry)]
-    return tuple(lines[start:stop] for start, stop in zip(starts, [*starts[1:], len(lines)]))
-
-
-def _is_user_message(entry: dict[str, Any]) -> bool:
-    """Tell a turn-opening user string, typed or delivered by SendMessage, from harness injections, tool results, and other entries."""
-    if entry[_TYPE_KEY] != _USER_ENTRY_TYPE or not isinstance(entry[_MESSAGE_KEY][_CONTENT_KEY], str):
-        return False
-    return not entry.get(_META_KEY) or entry[_MESSAGE_KEY][_CONTENT_KEY].startswith(_SEND_MESSAGE_WRAPPER_OPENING)
-
-
-def _reply_to_turn(
-    number: int, turn_lines: tuple[_TranscriptLine, ...], transcript: Path, content: bytes
-) -> TranscriptReply | None:
-    """Build the reply to one turn from its last assistant text, or None when no assistant text answers it."""
-    answering_lines = [line for line in turn_lines if _text_blocks(line.entry)]
-    if not answering_lines:
-        return None
-    user_entry, reply_line = turn_lines[0].entry, answering_lines[-1]
-    started = _timestamp_of(user_entry)
-    return TranscriptReply(
-        turn=number,
-        message=user_entry[_MESSAGE_KEY][_CONTENT_KEY],
-        text="".join(_text_blocks(reply_line.entry)),
-        model=reply_line.entry[_MESSAGE_KEY][_MODEL_KEY],
-        started=started,
-        seconds=(_timestamp_of(reply_line.entry) - started).total_seconds(),
-        tokens=_turn_token_usage(turn_lines),
-        transcript=transcript,
-        transcript_hash=hashlib.sha256(content[: reply_line.end]).hexdigest(),
+def _group_entries_by_turn(
+    entries: tuple[_TurnOpening | _AssistantChunk, ...],
+) -> tuple[tuple[_TurnOpening, tuple[_AssistantChunk, ...]], ...]:
+    """Split the entries into turns, each a turn opening with the assistant chunks up to the next opening."""
+    starts = [index for index, entry in enumerate(entries) if isinstance(entry, _TurnOpening)]
+    return tuple(
+        (entries[start], entries[start + 1 : stop])
+        for start, stop in zip(starts, [*starts[1:], len(entries)])
     )
 
 
-def _text_blocks(entry: dict[str, Any]) -> tuple[str, ...]:
-    """Return the text blocks of an assistant entry, empty for every other entry."""
-    if entry[_TYPE_KEY] != _ASSISTANT_ENTRY_TYPE:
-        return ()
-    return tuple(block[_TEXT_KEY] for block in entry[_MESSAGE_KEY][_CONTENT_KEY] if block[_TYPE_KEY] == _TEXT_BLOCK_TYPE)
+def _reply_to_turn(
+    number: int,
+    opening: _TurnOpening,
+    chunks: tuple[_AssistantChunk, ...],
+    transcript: Path,
+    content: bytes,
+) -> TranscriptReply | None:
+    """Build the reply to one turn from its last assistant text, or None when no assistant text answers it."""
+    answering_chunks = [chunk for chunk in chunks if chunk.texts]
+    if not answering_chunks:
+        return None
+    reply_chunk = answering_chunks[-1]
+    return TranscriptReply(
+        turn=number,
+        message=opening.message,
+        text="".join(reply_chunk.texts),
+        model=reply_chunk.model,
+        started=opening.timestamp,
+        seconds=(reply_chunk.timestamp - opening.timestamp).total_seconds(),
+        tokens=_turn_token_usage(chunks),
+        transcript=transcript,
+        transcript_hash=hashlib.sha256(content[: reply_chunk.end]).hexdigest(),
+    )
 
 
-def _timestamp_of(entry: dict[str, Any]) -> datetime:
-    """Return the entry's ISO 8601 timestamp as an aware datetime."""
-    return datetime.fromisoformat(entry[_TIMESTAMP_KEY])
-
-
-def _turn_token_usage(turn_lines: tuple[_TranscriptLine, ...]) -> TokenUsage | None:
+def _turn_token_usage(chunks: tuple[_AssistantChunk, ...]) -> TokenUsage | None:
     """Sum the final usage of each assistant message in the turn, or None when any message lacks usage."""
-    final_usages = {
-        line.entry[_MESSAGE_KEY][_ID_KEY]: line.entry[_MESSAGE_KEY].get(_USAGE_KEY)
-        for line in turn_lines
-        if line.entry[_TYPE_KEY] == _ASSISTANT_ENTRY_TYPE
-    }.values()
+    final_usages = {chunk.message_id: chunk.usage for chunk in chunks}.values()
     if None in final_usages:
         return None
     return TokenUsage(
-        **{field.name: sum(usage[field.name] for usage in final_usages) for field in fields(TokenUsage)}
+        **{field.name: sum(getattr(usage, field.name) for usage in final_usages) for field in fields(TokenUsage)}
     )

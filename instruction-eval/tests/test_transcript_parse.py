@@ -131,6 +131,36 @@ def test_a_parseable_line_missing_a_read_field_is_refused_naming_transcript_line
         parse_transcript_replies(transcript, transcript.read_bytes() + malformed_line)
 
 
+VALID_USAGE = b'{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":1}'
+VALID_CONTENT = b'[{"type":"text","text":"OK"}]'
+
+
+def assistant_line(timestamp=b'"2026-10-14T19:47:31.000Z"', content=VALID_CONTENT, usage=VALID_USAGE):
+    return (
+        b'{"type":"assistant","timestamp":' + timestamp + b',"message":{"id":"msg_Z","model":"claude-sonnet-5-5",'
+        b'"content":' + content + b',"usage":' + usage + b"}}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("malformed_line", "fault"),
+    [
+        (assistant_line(usage=b'{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}'),
+         "lacks message.usage.output_tokens"),
+        (assistant_line(content=b'"OK"'), "has a non-list message.content"),
+        (assistant_line(content=b'[{"type":"text"}]'), "lacks text"),
+        (assistant_line(content=b'["OK"]'), "lacks type"),
+        (assistant_line(timestamp=b'"yesterday"'), "has an unparseable timestamp"),
+    ],
+)
+def test_an_assistant_line_with_a_misshapen_read_field_is_refused_naming_transcript_line_and_field(
+    malformed_line, fault
+):
+    transcript = FIXTURES / "single-turn.jsonl"
+    with pytest.raises(ValueError, match=rf"^{re.escape(str(transcript))}: line 6 {fault}$"):
+        parse_transcript_replies(transcript, transcript.read_bytes() + malformed_line)
+
+
 def test_blank_lines_are_skipped_and_still_counted_in_the_hashed_bytes():
     transcript = FIXTURES / "single-turn.jsonl"
     transcript_lines = transcript.read_bytes().splitlines(keepends=True)
