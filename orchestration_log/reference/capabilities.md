@@ -13,7 +13,7 @@ YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Eleven plugins, each a top-level directory (counted 2026-10-06). `.claude-plugin/plugin.json` inside a plugin carries its
+Twelve plugins, each a top-level directory (counted 2026-10-14, after peers left). `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
@@ -106,6 +106,10 @@ plus a changes report).
 
 **python-tools** — skills: `python-ast-mass-edit` (AST-based edits across 3+ files),
 `uv-pyright-debug` (true pyright diagnostics in uv-managed projects).
+
+**agent-conduct** — domain-free conduct skills, 1.8.0 (2026-10-14): `check-back` (set the agent's own next wake before a turn ends with work pending), `work-silently` (tool calls only until told otherwise); hooks for check-back and the silence mandate. The peer protocol and its join hook left for `peers` 2026-10-14.
+
+**peers** — left this marketplace 2026-10-14 (`cdea00d`) for `the-agents-of-anarchy/marketplace` (marketplace `agents-of-anarchy`, install `peers@agents-of-anarchy`), carried there at 0.4.1, protocol 9.1 (adopted unanimously), `2b3eac1`; 62 tests pass there — measured 2026-10-14.
 
 **userland-utilities** — skill: `fix-macos-app` (clears quarantine and re-signs blocked macOS apps).
 

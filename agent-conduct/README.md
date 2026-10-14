@@ -12,13 +12,6 @@ Before ending a turn that leaves a run pending, set the agent's own next wake, a
 
 ---
 
-### [peer-protocol](skills/peer-protocol/SKILL.md)
-
-Coordinate this main session with the other Claude Code sessions on this machine through the shared registry, a card per session, and tagged messages. "join the peers", "peer protocol", "message a sibling session", "message a peer session", "tell the other session", "propose a protocol change", "change the peer protocol", a SessionStart peer-join notice, or any cross-session message that arrives, such as one opening with `[hazard]`, `[ask]`, `[answer]`, or `[notice]`.
-
-
----
-
 ### [work-silently](skills/work-silently/SKILL.md)
 
 Keep working while writing nothing to the conversation, except answers to the user's own messages, until the user says to stop. "/work-silently", "go silent", "back to silence", "work in silence", "don't write anything until I write", "nothing but tool calls", "stay quiet and keep going", or any request to keep working without writing to the conversation.
