@@ -3,14 +3,22 @@ from statistics import NormalDist
 
 import pytest
 
-from instruction_eval.scores import measure_noise
+from instruction_eval.scores import ScoredReply, measure_noise
 
 LEVEL = 0.95
 Z = NormalDist().inv_cdf((1 + LEVEL) / 2)
 CONTROLS = ["empty", "aim", "placebo"]
 
 
-def reply(condition, task, repeat, breaches, done=None, turn=None):
+def reply(
+    condition: str,
+    task: str,
+    repeat: int,
+    breaches: dict[str, int],
+    done: bool | None = None,
+    turn: int | None = None,
+) -> ScoredReply:
+    """Build one sealed scored reply, a single-task reply when turn is null."""
     return {
         "condition": condition,
         "task": task,
@@ -63,7 +71,8 @@ def test_near_source_noise_is_absent_without_a_source():
     assert "instruction-near-source" not in noise["checks"]
 
 
-def turn_replies(condition, totals_by_conversation):
+def turn_replies(condition: str, totals_by_conversation: dict[str, list[list[int]]]) -> list[ScoredReply]:
+    """Build turn replies from d1 breach totals nested by conversation, then repeat, then turn."""
     return [
         reply(condition, conversation, repeat, {"d1": total}, turn=turn)
         for conversation, repeats in totals_by_conversation.items()
@@ -132,7 +141,8 @@ def test_drift_noise_is_absent_without_conversations():
     assert "drift" not in noise["checks"]
 
 
-def done_replies(condition, done_by_task):
+def done_replies(condition: str, done_by_task: dict[str, list[bool | None]]) -> list[ScoredReply]:
+    """Build breach-free task replies from done values nested by task, then repeat."""
     return [
         reply(condition, task, repeat, {"d1": 0}, done=done)
         for task, dones in done_by_task.items()
