@@ -25,7 +25,14 @@ def test_single_turn_reply_records_text_model_message_and_timing():
 
 def test_reply_tokens_take_each_assistant_message_final_usage():
     [reply] = replies_of("single-turn.jsonl")
-    assert reply.tokens == TokenUsage(input_tokens=3, output_tokens=12)
+    assert reply.tokens == TokenUsage(
+        input_tokens=3, cache_creation_input_tokens=13903, cache_read_input_tokens=100, output_tokens=12
+    )
+
+
+def test_spent_input_tokens_sum_uncached_cache_creation_and_cache_read_input():
+    [reply] = replies_of("single-turn.jsonl")
+    assert reply.tokens.spent_input_tokens == 14006
 
 
 def test_reply_tokens_are_absent_when_the_transcript_records_no_usage():
@@ -44,7 +51,9 @@ def test_conversation_pairs_kth_user_message_with_last_assistant_text_before_the
     replies = replies_of("three-turn.jsonl")
     assert [(reply.turn, reply.text) for reply in replies] == [(1, "ONE"), (2, "TWO"), (3, "THREE")]
     assert replies[1].seconds == 3.25
-    assert replies[1].tokens == TokenUsage(input_tokens=37, output_tokens=22)
+    assert replies[1].tokens == TokenUsage(
+        input_tokens=37, cache_creation_input_tokens=10, cache_read_input_tokens=110, output_tokens=22
+    )
 
 
 def test_conversation_turn_message_keeps_the_send_message_wrapper():

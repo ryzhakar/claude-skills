@@ -1,6 +1,6 @@
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from itertools import accumulate
 from pathlib import Path
@@ -12,10 +12,17 @@ _TEXT_BLOCK_TYPE = "text"
 
 @dataclass(frozen=True)
 class TokenUsage:
-    """Input and output tokens one reply spent, as the transcript's `message.usage` reports them."""
+    """Tokens one reply spent, each field named and counted as the transcript's `message.usage` key."""
 
     input_tokens: int
+    cache_creation_input_tokens: int
+    cache_read_input_tokens: int
     output_tokens: int
+
+    @property
+    def spent_input_tokens(self) -> int:
+        """Return every input token the reply spent: uncached, cache creation, and cache read."""
+        return self.input_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens
 
 
 @dataclass(frozen=True)
@@ -113,6 +120,5 @@ def _turn_token_usage(turn_lines: tuple[_TranscriptLine, ...]) -> TokenUsage | N
     if None in final_usages:
         return None
     return TokenUsage(
-        input_tokens=sum(usage["input_tokens"] for usage in final_usages),
-        output_tokens=sum(usage["output_tokens"] for usage in final_usages),
+        **{field.name: sum(usage[field.name] for usage in final_usages) for field in fields(TokenUsage)}
     )
