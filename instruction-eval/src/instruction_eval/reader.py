@@ -133,9 +133,9 @@ def _group_lines_by_turn(lines: tuple[_TranscriptLine, ...]) -> tuple[tuple[_Tra
 
 def _is_user_message(entry: dict[str, Any]) -> bool:
     """Tell a turn-opening user string, typed or delivered by SendMessage, from harness injections, tool results, and other entries."""
-    if entry["type"] != _USER_ENTRY_TYPE or not isinstance(entry["message"]["content"], str):
+    if entry[_TYPE_KEY] != _USER_ENTRY_TYPE or not isinstance(entry[_MESSAGE_KEY][_CONTENT_KEY], str):
         return False
-    return not entry.get("isMeta") or entry["message"]["content"].startswith(_SEND_MESSAGE_WRAPPER_OPENING)
+    return not entry.get(_META_KEY) or entry[_MESSAGE_KEY][_CONTENT_KEY].startswith(_SEND_MESSAGE_WRAPPER_OPENING)
 
 
 def _reply_to_turn(
@@ -149,9 +149,9 @@ def _reply_to_turn(
     started = _timestamp_of(user_entry)
     return TranscriptReply(
         turn=number,
-        message=user_entry["message"]["content"],
+        message=user_entry[_MESSAGE_KEY][_CONTENT_KEY],
         text="".join(_text_blocks(reply_line.entry)),
-        model=reply_line.entry["message"]["model"],
+        model=reply_line.entry[_MESSAGE_KEY][_MODEL_KEY],
         started=started,
         seconds=(_timestamp_of(reply_line.entry) - started).total_seconds(),
         tokens=_turn_token_usage(turn_lines),
@@ -162,22 +162,22 @@ def _reply_to_turn(
 
 def _text_blocks(entry: dict[str, Any]) -> tuple[str, ...]:
     """Return the text blocks of an assistant entry, empty for every other entry."""
-    if entry["type"] != _ASSISTANT_ENTRY_TYPE:
+    if entry[_TYPE_KEY] != _ASSISTANT_ENTRY_TYPE:
         return ()
-    return tuple(block["text"] for block in entry["message"]["content"] if block["type"] == _TEXT_BLOCK_TYPE)
+    return tuple(block[_TEXT_KEY] for block in entry[_MESSAGE_KEY][_CONTENT_KEY] if block[_TYPE_KEY] == _TEXT_BLOCK_TYPE)
 
 
 def _timestamp_of(entry: dict[str, Any]) -> datetime:
     """Return the entry's ISO 8601 timestamp as an aware datetime."""
-    return datetime.fromisoformat(entry["timestamp"])
+    return datetime.fromisoformat(entry[_TIMESTAMP_KEY])
 
 
 def _turn_token_usage(turn_lines: tuple[_TranscriptLine, ...]) -> TokenUsage | None:
     """Sum the final usage of each assistant message in the turn, or None when any message lacks usage."""
     final_usages = {
-        line.entry["message"]["id"]: line.entry["message"].get("usage")
+        line.entry[_MESSAGE_KEY][_ID_KEY]: line.entry[_MESSAGE_KEY].get(_USAGE_KEY)
         for line in turn_lines
-        if line.entry["type"] == _ASSISTANT_ENTRY_TYPE
+        if line.entry[_TYPE_KEY] == _ASSISTANT_ENTRY_TYPE
     }.values()
     if None in final_usages:
         return None
