@@ -30,6 +30,7 @@ class RecordKind(StrEnum):
     REVISION = "revision"
     FROZEN = "frozen"
     REPLY = "reply"
+    ORIGINS = "origins"
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -228,7 +229,34 @@ def _stop_reason_rule(record: Record, path: str) -> None:
         _refuse(f"{path}.reason", f"not allowed for {stop}")
 
 
+_NULLABLE_REVISION_ID = _nullable(_REVISION_ID)
+_REPLY_ORIGIN = _mapping(
+    {
+        "packet": _IDENTIFIER,
+        "condition": _IDENTIFIER,
+        "task": _IDENTIFIER,
+        "split": _SPLIT,
+        "repeat": _POSITION,
+        "borrowed_from": _NULLABLE_REVISION_ID,
+    },
+    {"turn": _POSITION},
+)
+_ANCHOR_ORIGIN = _mapping({"packet": _IDENTIFIER, "anchor": _IDENTIFIER})
+
+
+def _origin(value: Any, path: str) -> None:
+    is_anchor = isinstance(value, Mapping) and "anchor" in value
+    (_ANCHOR_ORIGIN if is_anchor else _REPLY_ORIGIN)(value, path)
+
+
 _SCHEMAS: Mapping[RecordKind, Check] = {
+    RecordKind.ORIGINS: _mapping(
+        {
+            "inputs": _INPUTS,
+            "ids": _map_of(_IDENTIFIER, _origin),
+            "packets": _map_of(_IDENTIFIER, _HASH),
+        }
+    ),
     RecordKind.STOP: _mapping(
         {
             "inputs": _INPUTS,

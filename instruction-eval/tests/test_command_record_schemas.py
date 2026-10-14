@@ -237,3 +237,38 @@ def test_reply_refuses_fields_of_the_other_reader_kind(variant, drop, add):
     if add:
         document[add[0]] = add[1]
     assert_refused(RecordKind.REPLY, document, (drop or add[0]))
+
+
+def test_origins_record_parses_reply_and_anchor_entries():
+    document = load_fixture(RecordKind.ORIGINS)
+    assert parse_record(RecordKind.ORIGINS, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("ids", "x7k", "packet"), "Bad Packet"),
+    (("ids", "x7k", "split"), "hidden"),
+    (("ids", "x7k", "repeat"), 0),
+    (("ids", "x7k", "borrowed_from"), "parent"),
+    (("ids", "m2q", "turn"), 0),
+    (("ids", "a9z", "anchor"), "Bad Anchor"),
+    (("ids", "Bad Blind"), {"packet": "p1", "anchor": "anchor-1"}),
+    (("packets", "p1"), "nothash"),
+    (("packets",), []),
+])
+def test_origins_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.ORIGINS), path, value)
+    assert_refused(RecordKind.ORIGINS, document, path[-1])
+
+
+@pytest.mark.parametrize("path", [
+    ("ids", "x7k", "borrowed_from"),
+    ("ids", "x7k", "task"),
+    ("ids", "a9z", "packet"),
+])
+def test_origins_record_refuses_missing_entry_key(path):
+    assert_refused(RecordKind.ORIGINS, without(load_fixture(RecordKind.ORIGINS), path), path[-1])
+
+
+def test_origins_anchor_entry_refuses_reply_keys():
+    document = changed(load_fixture(RecordKind.ORIGINS), ("ids", "a9z", "task"), "greet")
+    assert_refused(RecordKind.ORIGINS, document, "task")
