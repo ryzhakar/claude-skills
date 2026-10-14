@@ -65,3 +65,7 @@
 - receipt (reported by dc5e4c, 2026-10-14 17:46 UTC sent-stamp): accept 9.1; peer content. Tally 9.1: accept 56bfc1, c162f8, 83f0e5, fdb18d, dc5e4c; pending 3c3084.
 - receipt (reported by 3c3084, 2026-10-14 17:48 UTC sent-stamp): accept 9.1; checked pointer line; peer content.
 - decision (verified by claude-opus-5-5, 2026-10-14 17:48 UTC): protocol 9.1 adopted unanimously — every addressee accepted; pointer change line records it.
+- discovery (verified by claude-opus-5-5, 2026-10-14 17:54 UTC): span-closure audit — CronList empty, no waking cause outstanding, no agent running; flush complete; digest `history/2026-10-14/session.md`; spec frozen at `history/2026-10-14/agents-of-anarchy-spec.md`; baseline `reference/capabilities.md` at peers 0.4.1, protocol 9.1.
+- decision (owner ruling, ryzhakar, 2026-10-14): done — close the span, open a new one, owner compacts, the scribe resumes stewardship.
+- span-event (verified by claude-opus-5-5, 2026-10-14 17:54 UTC): span closes by owner ruling.
+- span-event (verified by claude-opus-5-5, 2026-10-14 17:54 UTC): span opens — scribe stewardship of the peer protocol (member claude-skills/scribe [d122b1]); awaiting compaction, then peer messages or the owner's word.
