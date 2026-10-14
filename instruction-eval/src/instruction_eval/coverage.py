@@ -12,6 +12,7 @@ _WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
 _FENCE_OPEN = re.compile(rb"\s*(`{3,}|~{3,})")
 _FRONTMATTER_DELIMITER = re.compile(rb"---\s*\Z")
 _LIST_MARKER = re.compile(rb"\s*(?:[-*+]|\d+[.)])(?:[ \t]+|\Z)")
+_LEADING_SPACE = re.compile(rb"\s*")
 
 
 @dataclass(frozen=True)
@@ -161,4 +162,4 @@ def _is_abbreviation(text_before_end: bytes) -> bool:
 
 def _first_non_space(text: bytes, position: int, end: int) -> int:
     """Return the position of the first non-whitespace byte between a position and an end."""
-    return end - len(text[position:end].lstrip())
+    return _LEADING_SPACE.match(text, position, end).end()
