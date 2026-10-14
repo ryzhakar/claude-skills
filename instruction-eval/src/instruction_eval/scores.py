@@ -76,6 +76,9 @@ def measure_noise(
         for demand, by_condition in demands_sigma.items()
     }
     return {
+        "repeats": repeats,
+        "level": level,
+        "z": z,
         "sigma": {"breaches": breaches_sigma, "done": done_sigma, "drift": drift_sigma, "demands": demands_sigma},
         "checks": checks,
         "demands": demands_change,

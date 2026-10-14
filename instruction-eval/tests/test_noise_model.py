@@ -157,6 +157,14 @@ def test_completion_noise_is_null_when_no_control_has_a_done_value():
     assert noise["checks"]["completion"] is None
 
 
+def test_noise_holds_variances_and_half_widths_only():
+    noise = measure_noise(THREE_REPEAT_DONE_ROWS, ["d1"], CONTROLS, repeats=3, level=LEVEL)
+
+    assert set(noise) == {"repeats", "level", "z", "sigma", "checks", "demands", "done_change"}
+    assert set(noise["sigma"]) == {"breaches", "done", "drift", "demands"}
+    assert (noise["repeats"], noise["level"], noise["z"]) == (3, LEVEL, pytest.approx(Z))
+
+
 def test_demand_change_noise_doubles_the_instruction_variance_of_each_gate_demand():
     rows = [
         reply("instruction", "t1", 1, {"d1": 1, "d2": 0, "dropped": 9}),
