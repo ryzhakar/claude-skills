@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 KEY_SEPARATOR = "#"
+INPUTS_KEY = "inputs"
 
 
 class Refusal(Exception):
@@ -31,13 +32,13 @@ def write_file(series: Path, path: str, content: bytes) -> None:
 
 def write_record(series: Path, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256."""
-    write_file(series, path, _dump_canonical_yaml({**record, "inputs": _hash_inputs(series, reads)}))
+    write_file(series, path, _dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(series, reads)}))
 
 
 def load_record(series: Path, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
     record = yaml.safe_load((series / path).read_bytes())
-    for entry, written_hash in record["inputs"].items():
+    for entry, written_hash in record[INPUTS_KEY].items():
         if _hash_input(series, entry) != written_hash:
             raise Refusal(f"stale: {path} (input {entry} changed)")
     return record
