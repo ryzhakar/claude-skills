@@ -44,6 +44,7 @@ SINGLE_LETTER = re.compile(rb"[A-Za-z]")
 WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
 FENCE_OPEN = re.compile(rb"\s*(`{3,}|~{3,})")
 FRONTMATTER_DELIMITER = re.compile(rb"---\s*\Z")
+LIST_MARKER = re.compile(rb"\s*(?:[-*+]|\d+[.)])(?:[ \t]+|\Z)")
 
 
 def read_units(text: bytes) -> list[Unit]:
@@ -56,22 +57,23 @@ def read_units(text: bytes) -> list[Unit]:
         if not lines[index].strip():
             index += 1
             continue
-        last, splits = unit_extent(lines, index)
-        units.append(Unit(spans[index][0], spans[last][1], splits))
+        text_offset, last, splits = unit_extent(lines, index)
+        units.append(Unit(spans[index][0] + text_offset, spans[last][1], splits))
         index = last + 1
     return units
 
 
-def unit_extent(lines: list[bytes], first: int) -> tuple[int, bool]:
-    """Return the last line of the unit opening at a line and whether that unit splits into sentences."""
+def unit_extent(lines: list[bytes], first: int) -> tuple[int, int, bool]:
+    """Return where the unit opening at a line starts its text within that line, its last line, and whether it splits."""
     if first == 0 and (closing := frontmatter_closing_line(lines)) is not None:
-        return closing, False
+        return 0, closing, False
     fence = FENCE_OPEN.match(lines[first])
     if fence:
-        return fence_last_line(lines, first, fence.group(1)), False
+        return 0, fence_last_line(lines, first, fence.group(1)), False
     if WHOLE_LINE_UNIT.match(lines[first]):
-        return first, False
-    return paragraph_last_line(lines, first), True
+        return 0, first, False
+    marker = LIST_MARKER.match(lines[first])
+    return marker.end() if marker else 0, paragraph_last_line(lines, first), True
 
 
 def frontmatter_closing_line(lines: list[bytes]) -> int | None:
@@ -100,7 +102,9 @@ def paragraph_last_line(lines: list[bytes], first: int) -> int:
 
 def continues_paragraph(line: bytes) -> bool:
     """Tell whether a line continues the paragraph or list item above it."""
-    return bool(line.strip()) and not WHOLE_LINE_UNIT.match(line) and not FENCE_OPEN.match(line)
+    return bool(line.strip()) and not any(
+        opening.match(line) for opening in (WHOLE_LINE_UNIT, FENCE_OPEN, LIST_MARKER)
+    )
 
 
 def line_spans(text: bytes) -> list[tuple[int, int]]:
