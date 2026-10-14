@@ -18,14 +18,47 @@ COMPARES = (
     "drift",
 )
 HASH_PATTERN = r"[0-9a-f]{64}"
-BUDGET_REASON = "budget"
 TOTAL_KEY = "total"
 INTERVAL_LENGTH = 2
-REPLY_INPUT_TOKEN_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
 MINIMUM_ANCHORS_PER_PACKET = 3
-PERMITTED_RATER_SETS = (["user"], ["agent", "agent"])
-PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
 TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
+
+AGENT_READER = "agent"
+COMMAND_READER = "command"
+USER_RATER = "user"
+PERMITTED_RATER_SETS = ((USER_RATER,), (AGENT_READER, AGENT_READER))
+OPEN_SPLIT = "open"
+SEALED_SPLIT = "sealed"
+
+REWRITE_ACTION = "rewrite"
+ADD_ACTION = "add"
+DELETE_ACTION = "delete"
+MOVE_ACTION = "move"
+MOVE_TARGET_KEY = "to"
+
+PASSED_STOP = "passed"
+NO_EFFECT_STOP = "no-effect"
+CAPPED_STOP = "capped"
+UNRESOLVABLE_STOP = "unresolvable"
+BUDGET_REASON = "budget"
+
+ANSWER_KIND = "answer"
+PROBE_KIND = "probe"
+REFUSAL_KIND = "refusal"
+BLANK_KIND = "blank"
+
+PASS_OUTCOME = "pass"
+FAIL_OUTCOME = "fail"
+
+ANCHOR_KEY = "anchor"
+SPENT_INPUT_TOKENS_KEY = "spent_input_tokens"
+REPLY_INPUT_TOKEN_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+REPLY_COST_KEYS = (*REPLY_INPUT_TOKEN_KEYS, "output_tokens", SPENT_INPUT_TOKENS_KEY)
+PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
+LINEAGE_KEYS = ("parent", "parent_record", "change")
+FIRST_REVISION_NUMBER = 1
+AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
+COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
 
 
 class RecordError(ValueError):
@@ -33,6 +66,8 @@ class RecordError(ValueError):
 
 
 class RecordKind(StrEnum):
+    """Names each record shape that parse_record accepts."""
+
     STOP = "stop"
     REVISION = "revision"
     FROZEN = "frozen"
@@ -49,11 +84,15 @@ class RecordKind(StrEnum):
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
+    """Raise a RecordError naming the path and the reason."""
     raise RecordError(f"{path}: {reason}")
 
 
 def _matching(pattern: str, description: str) -> Check:
+    """Return a check that accepts strings fully matching the pattern."""
+
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not a string fully matching the pattern."""
         if not isinstance(value, str) or re.fullmatch(pattern, value) is None:
             _refuse(path, f"expected {description}, got {value!r}")
 
@@ -61,7 +100,10 @@ def _matching(pattern: str, description: str) -> Check:
 
 
 def _enum(*allowed: str) -> Check:
+    """Return a check that accepts only the allowed strings."""
+
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not one of the allowed strings."""
         if not isinstance(value, str) or value not in allowed:
             _refuse(path, f"expected one of {list(allowed)}, got {value!r}")
 
@@ -69,7 +111,10 @@ def _enum(*allowed: str) -> Check:
 
 
 def _nullable(inner: Check) -> Check:
+    """Return a check that accepts null or whatever the inner check accepts."""
+
     def check(value: Any, path: str) -> None:
+        """Pass null and hand any other value to the inner check."""
         if value is not None:
             inner(value, path)
 
@@ -77,12 +122,16 @@ def _nullable(inner: Check) -> Check:
 
 
 def _text(value: Any, path: str) -> None:
+    """Refuse a value that is not a non-empty string."""
     if not isinstance(value, str) or not value:
         _refuse(path, f"expected non-empty string, got {value!r}")
 
 
 def _map_of(key_check: Check, value_check: Check) -> Check:
+    """Return a check that accepts a map whose keys and values pass the given checks."""
+
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not a map of checked keys and values."""
         if not isinstance(value, Mapping):
             _refuse(path, f"expected a map, got {value!r}")
         for key, item in value.items():
@@ -97,9 +146,11 @@ def _mapping(
     optional: Mapping[str, Check] | None = None,
     rule: Check | None = None,
 ) -> Check:
+    """Return a check that accepts a closed map with the given keys and a final cross-key rule."""
     optional = optional or {}
 
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not a closed map of checked keys obeying the rule."""
         if not isinstance(value, Mapping):
             _refuse(path, f"expected a map, got {value!r}")
         for key in value:
@@ -119,12 +170,16 @@ def _mapping(
 
 
 def _string(value: Any, path: str) -> None:
+    """Refuse a value that is not a string."""
     if not isinstance(value, str):
         _refuse(path, f"expected string, got {value!r}")
 
 
 def _integer(minimum: int) -> Check:
+    """Return a check that accepts integers at or above the minimum."""
+
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not an integer at or above the minimum."""
         if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
             _refuse(path, f"expected integer >= {minimum}, got {value!r}")
 
@@ -132,7 +187,10 @@ def _integer(minimum: int) -> Check:
 
 
 def _number(description: str, accepts: Callable[[float], bool]) -> Check:
+    """Return a check that accepts numbers the predicate accepts."""
+
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not a number the predicate accepts."""
         is_number = isinstance(value, int | float) and not isinstance(value, bool)
         if not is_number or not accepts(value):
             _refuse(path, f"expected number {description}, got {value!r}")
@@ -141,6 +199,7 @@ def _number(description: str, accepts: Callable[[float], bool]) -> Check:
 
 
 def _timestamp(value: Any, path: str) -> None:
+    """Refuse a value that is not an ISO 8601 timestamp with an offset."""
     if isinstance(value, datetime):
         parsed = value
     else:
@@ -164,40 +223,36 @@ _POSITION = _integer(1)
 _COMPARES = _enum(*COMPARES)
 _BY_CONDITION = _map_of(_IDENTIFIER, _nullable(_NON_NEGATIVE))
 _NULLABLE_COUNT = _nullable(_integer(0))
-_SPLIT = _enum("open", "sealed")
-_READER_KIND = _enum("agent", "command")
-_VERDICT_KIND = _enum("answer", "probe", "refusal", "blank")
+_SPLIT = _enum(OPEN_SPLIT, SEALED_SPLIT)
+_READER_KIND = _enum(AGENT_READER, COMMAND_READER)
+_VERDICT_KIND = _enum(ANSWER_KIND, PROBE_KIND, REFUSAL_KIND, BLANK_KIND)
 _ABSOLUTE_PATH = _matching(r"/.+", "an absolute path")
+
+
 def _reply_cost_rule(cost: Record, path: str) -> None:
+    """Refuse a cost whose fields mix null and integers or whose spent total is not the input sum."""
     if len({value is None for value in cost.values()}) != 1:
         _refuse(path, "all five fields are integers or all are null")
-    if cost["spent_input_tokens"] is None:
+    if cost[SPENT_INPUT_TOKENS_KEY] is None:
         return
-    if cost["spent_input_tokens"] != sum(cost[key] for key in REPLY_INPUT_TOKEN_KEYS):
-        _refuse(f"{path}.spent_input_tokens", "the sum of the three input fields")
+    if cost[SPENT_INPUT_TOKENS_KEY] != sum(cost[key] for key in REPLY_INPUT_TOKEN_KEYS):
+        _refuse(f"{path}.{SPENT_INPUT_TOKENS_KEY}", "the sum of the three input fields")
 
 
-_REPLY_COST = _mapping(
-    {
-        key: _NULLABLE_COUNT
-        for key in (*REPLY_INPUT_TOKEN_KEYS, "output_tokens", "spent_input_tokens")
-    },
-    rule=_reply_cost_rule,
-)
-_AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
-_COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
+_REPLY_COST = _mapping({key: _NULLABLE_COUNT for key in REPLY_COST_KEYS}, rule=_reply_cost_rule)
 
 
 def _reply_reader_kind_rule(reply: Record, path: str) -> None:
-    is_agent = reply["reader_kind"] == "agent"
-    for key in _AGENT_ONLY_REPLY_KEYS:
+    """Refuse a reply whose transcript, fingerprint, or cost fields disagree with its reader kind."""
+    is_agent = reply["reader_kind"] == AGENT_READER
+    for key in AGENT_ONLY_REPLY_KEYS:
         if (key in reply) != is_agent:
-            _refuse(f"{path}.{key}", "present iff reader_kind is agent")
-    for key in _COMMAND_ONLY_REPLY_KEYS:
+            _refuse(f"{path}.{key}", f"present iff reader_kind is {AGENT_READER}")
+    for key in COMMAND_ONLY_REPLY_KEYS:
         if (key in reply) == is_agent:
-            _refuse(f"{path}.{key}", "present iff reader_kind is command")
-    if not is_agent and reply["cost"]["spent_input_tokens"] is not None:
-        _refuse(f"{path}.cost", "null for command readers")
+            _refuse(f"{path}.{key}", f"present iff reader_kind is {COMMAND_READER}")
+    if not is_agent and reply["cost"][SPENT_INPUT_TOKENS_KEY] is not None:
+        _refuse(f"{path}.cost", f"null for {COMMAND_READER} readers")
 
 
 _NOISE = _mapping(
@@ -221,44 +276,47 @@ _NOISE = _mapping(
 
 
 def _change_rule(change: Record, path: str) -> None:
+    """Refuse a change whose target and texts disagree with its action."""
     action = change["action"]
-    if (action == "move") != ("to" in change):
-        _refuse(f"{path}.to", "present iff action is move")
-    if action == "add" and change["old"] != "":
-        _refuse(f"{path}.old", "empty on add")
-    if action == "delete" and change["new"] != "":
-        _refuse(f"{path}.new", "empty on delete")
-    if action == "move" and change["old"] != change["new"]:
-        _refuse(f"{path}.new", "the moved text on move, equal to old")
+    if (action == MOVE_ACTION) != (MOVE_TARGET_KEY in change):
+        _refuse(f"{path}.{MOVE_TARGET_KEY}", f"present iff action is {MOVE_ACTION}")
+    if action == ADD_ACTION and change["old"] != "":
+        _refuse(f"{path}.old", f"empty on {ADD_ACTION}")
+    if action == DELETE_ACTION and change["new"] != "":
+        _refuse(f"{path}.new", f"empty on {DELETE_ACTION}")
+    if action == MOVE_ACTION and change["old"] != change["new"]:
+        _refuse(f"{path}.new", f"the moved text on {MOVE_ACTION}, equal to old")
 
 
 _CHANGE = _mapping(
     {
-        "action": _enum("rewrite", "add", "delete", "move"),
+        "action": _enum(REWRITE_ACTION, ADD_ACTION, DELETE_ACTION, MOVE_ACTION),
         "sentence": _POSITION,
         "old": _string,
         "new": _string,
     },
-    {"to": _POSITION},
+    {MOVE_TARGET_KEY: _POSITION},
     _change_rule,
 )
 
 
 def _revision_lineage_rule(record: Record, path: str) -> None:
-    for key in ("parent", "parent_record", "change"):
-        if (record[key] is None) != (record["number"] == 1):
-            _refuse(f"{path}.{key}", "null iff number is 1")
+    """Refuse a revision whose lineage fields are null unless it is the first."""
+    for key in LINEAGE_KEYS:
+        if (record[key] is None) != (record["number"] == FIRST_REVISION_NUMBER):
+            _refuse(f"{path}.{key}", f"null iff number is {FIRST_REVISION_NUMBER}")
 
 
 def _stop_reason_rule(record: Record, path: str) -> None:
+    """Refuse a stop whose reason is absent, present, or worded against its stop kind."""
     stop = record["stop"]
     reason = record.get("reason")
-    if stop == "unresolvable":
+    if stop == UNRESOLVABLE_STOP:
         if reason is None:
-            _refuse(f"{path}.reason", "required for unresolvable")
-    elif stop == "capped":
+            _refuse(f"{path}.reason", f"required for {UNRESOLVABLE_STOP}")
+    elif stop == CAPPED_STOP:
         if reason is not None and reason != BUDGET_REASON:
-            _refuse(f"{path}.reason", f"only {BUDGET_REASON!r} allowed for capped")
+            _refuse(f"{path}.reason", f"only {BUDGET_REASON!r} allowed for {CAPPED_STOP}")
     elif reason is not None:
         _refuse(f"{path}.reason", f"not allowed for {stop}")
 
@@ -275,16 +333,20 @@ _REPLY_ORIGIN = _mapping(
     },
     {"turn": _POSITION},
 )
-_ANCHOR_ORIGIN = _mapping({"packet": _IDENTIFIER, "anchor": _IDENTIFIER})
+_ANCHOR_ORIGIN = _mapping({"packet": _IDENTIFIER, ANCHOR_KEY: _IDENTIFIER})
 
 
 def _origin(value: Any, path: str) -> None:
-    is_anchor = isinstance(value, Mapping) and "anchor" in value
+    """Refuse an origin that is neither a reply origin nor an anchor origin."""
+    is_anchor = isinstance(value, Mapping) and ANCHOR_KEY in value
     (_ANCHOR_ORIGIN if is_anchor else _REPLY_ORIGIN)(value, path)
 
 
 def _list_of(item_check: Check, unique_by: str | None = None, non_empty: bool = False) -> Check:
+    """Return a check that accepts a list of checked items, optionally non-empty and unique by a key."""
+
     def check(value: Any, path: str) -> None:
+        """Refuse a value that is not a list of checked items meeting the size and uniqueness rules."""
         if not isinstance(value, list) or (non_empty and not value):
             _refuse(path, f"expected {'a non-empty' if non_empty else 'a'} list, got {value!r}")
         for index, item in enumerate(value):
@@ -298,11 +360,13 @@ def _list_of(item_check: Check, unique_by: str | None = None, non_empty: bool = 
 
 
 def _boolean_or_null(value: Any, path: str) -> None:
+    """Refuse a value that is neither a boolean nor null."""
     if value is not None and not isinstance(value, bool):
         _refuse(path, f"expected true, false, or null, got {value!r}")
 
 
 def _breach_demand_id(value: Any, path: str) -> None:
+    """Refuse a breach map key that is a stored total or not an id."""
     if value == TOTAL_KEY:
         _refuse(path, TOTAL_REFUSAL)
     _IDENTIFIER(value, path)
@@ -318,8 +382,6 @@ _VERDICT_ENTRY = _mapping(
         "notes": _string,
     }
 )
-
-
 _DETECTOR_ENTRY = _mapping(
     {"id": _IDENTIFIER, "breaches": _BREACHES, "done_by_answer_key": _boolean_or_null}
 )
@@ -341,17 +403,20 @@ _COLLECTED_PACKET = _mapping(
 
 
 def _boolean(value: Any, path: str) -> None:
+    """Refuse a value that is not a boolean."""
     if not isinstance(value, bool):
         _refuse(path, f"expected true or false, got {value!r}")
 
 
 def _interval(value: Any, path: str) -> None:
+    """Refuse a value that is not a two-number list with low at most high."""
     _list_of(_ANY_NUMBER)(value, path)
     if len(value) != INTERVAL_LENGTH or value[0] > value[1]:
         _refuse(path, f"expected [low, high] with low <= high, got {value!r}")
 
 
 def _outcome_parent_fields_rule(outcome: Record, path: str) -> None:
+    """Refuse an outcome carrying only one of the two parent fields."""
     present = [key for key in PARENT_OUTCOME_KEYS if key in outcome]
     if present and len(present) != len(PARENT_OUTCOME_KEYS):
         missing = next(key for key in PARENT_OUTCOME_KEYS if key not in outcome)
@@ -409,7 +474,8 @@ _OUTCOME_COST = _mapping(
 
 
 def _raters(value: Any, path: str) -> None:
-    if value not in PERMITTED_RATER_SETS:
+    """Refuse a rater list that is neither the user alone nor two agents."""
+    if not isinstance(value, list) or tuple(value) not in PERMITTED_RATER_SETS:
         _refuse(path, f"expected one of {PERMITTED_RATER_SETS}, got {value!r}")
 
 
@@ -470,7 +536,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     RecordKind.SCORES: _mapping(
         {
             "inputs": _INPUTS,
-            "split": _enum("open"),
+            "split": _enum(OPEN_SPLIT),
             "rows": _list_of(_ROW),
             "by_condition": _map_of(_IDENTIFIER, _CONDITION_SCORES),
             "comparisons": _map_of(_COMPARES, _COMPARISON),
@@ -481,7 +547,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     RecordKind.OUTCOME: _mapping(
         {
             "inputs": _INPUTS,
-            "outcome": _enum("pass", "fail"),
+            "outcome": _enum(PASS_OUTCOME, FAIL_OUTCOME),
             "checks": _list_of(_OUTCOME_CHECK),
             "instruction_breaches": _NON_NEGATIVE,
             "completion_passed": _boolean,
@@ -511,7 +577,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     RecordKind.STOP: _mapping(
         {
             "inputs": _INPUTS,
-            "stop": _enum("passed", "no-effect", "capped", "unresolvable"),
+            "stop": _enum(PASSED_STOP, NO_EFFECT_STOP, CAPPED_STOP, UNRESOLVABLE_STOP),
             "kept": _nullable(_REVISION_ID),
         },
         {"reason": _text},
