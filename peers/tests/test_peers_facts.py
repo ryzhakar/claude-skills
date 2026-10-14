@@ -178,3 +178,31 @@ def test_stamps_present(home, workdir):
     facts = run(home, workdir)
     assert facts["stamp_utc"].endswith("Z")
     assert "T" in facts["stamp"]
+
+
+def test_directory_argument_overrides_cwd(home, tmp_path, workdir):
+    repo = make_repo(tmp_path / "other")
+    result = subprocess.run(
+        [str(SCRIPT), str(repo)], cwd=workdir, capture_output=True, text=True,
+        env={"PATH": os.environ["PATH"], "HOME": str(home),
+             "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"},
+    )
+    assert result.returncode == 0, result.stderr
+    facts = dict(line.partition(": ")[::2] for line in result.stdout.splitlines())
+    assert Path(facts["cwd"]).resolve() == repo.resolve()
+    assert Path(facts["checkout"]).resolve() == repo.resolve()
+    assert facts["branch"] == "main"
+    assert Path(facts["project"]).resolve() == repo.resolve()
+
+
+@pytest.mark.parametrize("bad", ["missing", "file"])
+def test_bad_argument_exits_2(home, workdir, bad):
+    target = workdir / bad
+    if bad == "file":
+        target.write_text("x")
+    result = subprocess.run(
+        [str(SCRIPT), str(target)], cwd=workdir, capture_output=True, text=True,
+        env={"PATH": os.environ["PATH"], "HOME": str(home)},
+    )
+    assert result.returncode == 2
+    assert result.stderr.strip() == f"error: {target} is not a directory"
