@@ -5,6 +5,7 @@ from pathlib import Path
 CONFIG_DIR_VARIABLE = "CLAUDE_CONFIG_DIR"
 BARE_LOGINS_DIRNAME = ".claudes-bare"
 SETTINGS_FILENAME = "settings.json"
+MEMORY_FILENAME = "CLAUDE.md"
 ENABLED_PLUGINS_KEY = "enabledPlugins"
 REQUIRED_PLUGINS = {
     "instruction-eval@my-claude-skills": True,
@@ -41,7 +42,9 @@ def _neutral_config_dir(environ: Mapping[str, str], home: Path) -> Path:
 
 def _refuse_claude_md(config_dir: Path) -> None:
     """Refuse when the config directory holds a CLAUDE.md."""
-    ...
+    memory_file = config_dir / MEMORY_FILENAME
+    if memory_file.exists() or memory_file.is_symlink():
+        raise NeutralLoginRefused(f"{memory_file} exists")
 
 
 def _refuse_agents_and_skills(config_dir: Path) -> None:

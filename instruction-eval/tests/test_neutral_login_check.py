@@ -45,6 +45,12 @@ def test_refuses_an_unset_config_dir(login: Login):
         check_neutral_login({}, login.home, login.working_dir)
 
 
+def test_refuses_a_claude_md_in_the_config_dir(login: Login):
+    (login.config_dir / "CLAUDE.md").write_text("memory")
+    with pytest.raises(NeutralLoginRefused):
+        login.check()
+
+
 @pytest.mark.parametrize("outside", [".claude", ".claudes-bare", "elsewhere/readers"])
 def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outside: str):
     config_dir = login.home / outside
