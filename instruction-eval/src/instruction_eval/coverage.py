@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from itertools import accumulate
 
 _SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
-_WORD_BEFORE_END = re.compile(rb"[A-Za-z.]*\Z")
-_ABBREVIATIONS = {b"e.g", b"i.e", b"etc", b"vs", b"cf", b"Mr", b"Mrs", b"Dr", b"St", b"No"}
-_SINGLE_LETTER = re.compile(rb"[A-Za-z]")
+_WORD_BEFORE_END = re.compile(r"(?:[^\W\d_]|\.)*\Z")
+_ABBREVIATIONS = {"e.g", "i.e", "etc", "vs", "cf", "Mr", "Mrs", "Dr", "St", "No"}
+_SINGLE_LETTER = re.compile(r"[^\W\d_]")
 _WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
 _FENCE_OPEN = re.compile(rb"\s*(`{3,}|~{3,})")
 _FRONTMATTER_DELIMITER = re.compile(rb"---\s*\Z")
@@ -136,7 +136,7 @@ def _last_non_space_end(text: bytes, unit: _Unit) -> int:
 
 def _is_abbreviation(text_before_end: bytes) -> bool:
     """Tell whether the word ending a text is an abbreviation or a single letter, which ends no sentence."""
-    word = _WORD_BEFORE_END.search(text_before_end).group()
+    word = _WORD_BEFORE_END.search(text_before_end.decode(errors="replace")).group()
     return word in _ABBREVIATIONS or bool(_SINGLE_LETTER.fullmatch(word))
 
 
