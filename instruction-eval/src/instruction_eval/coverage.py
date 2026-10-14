@@ -41,7 +41,7 @@ SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
 WORD_BEFORE_END = re.compile(rb"[A-Za-z.]*\Z")
 ABBREVIATIONS = {b"e.g", b"i.e", b"etc", b"vs", b"cf", b"Mr", b"Mrs", b"Dr", b"St", b"No"}
 SINGLE_LETTER = re.compile(rb"[A-Za-z]")
-WHOLE_LINE_UNIT = re.compile(rb"\s*[#|]")
+WHOLE_LINE_UNIT = re.compile(rb"\s*[#|>]")
 
 
 def read_units(text: bytes) -> list[Unit]:
