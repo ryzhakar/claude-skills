@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,8 @@ from instruction_eval.coverage import split_sentences
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "sentence-split"
 FIXTURE_NAMES = sorted(path.stem for path in FIXTURE_DIR.glob("*.md"))
+ABBREVIATION_RUN_LENGTH = 20_000
+SPLIT_SECONDS_LIMIT = 2
 
 
 @pytest.mark.parametrize("name", FIXTURE_NAMES)
@@ -19,3 +22,11 @@ def test_sentences_are_numbered_spans_within_their_units(name):
         {"unit": sentence.unit, "text": text[sentence.start:sentence.end].decode()}
         for sentence in sentences
     ] == expected
+
+
+def test_abbreviation_heavy_paragraph_splits_in_linear_time():
+    text = b"Mr. " * ABBREVIATION_RUN_LENGTH + b"End."
+    started = time.perf_counter()
+    sentences = split_sentences(text)
+    assert time.perf_counter() - started < SPLIT_SECONDS_LIMIT
+    assert [(sentence.start, sentence.end) for sentence in sentences] == [(0, len(text))]

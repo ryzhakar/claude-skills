@@ -119,8 +119,10 @@ def _sentence_spans(text: bytes, unit: _Unit) -> list[tuple[int, int]]:
         return [(unit.start, unit.end)]
     spans = []
     sentence_start = unit.start
+    previous_end = unit.start
     for end in _SENTENCE_END.finditer(text, unit.start, unit.end):
-        if _is_abbreviation(text[sentence_start:end.start()]):
+        word_region_start, previous_end = previous_end, end.end()
+        if _is_abbreviation(text[word_region_start:end.start()]):
             continue
         spans.append((_first_non_space(text, sentence_start, unit.end), end.end()))
         sentence_start = end.end()
