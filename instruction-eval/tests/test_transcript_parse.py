@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,13 +9,19 @@ import pytest
 from instruction_eval.reader import TokenUsage, parse_transcript_replies
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "transcript-parse"
-SINGLE_TURN_REPLY_LINE_COUNT = 4
-THREE_TURN_REPLY_LINE_COUNTS = (2, 7, 9)
+SINGLE_TURN_REPLY_UUID = "r2"
+THREE_TURN_REPLY_UUIDS = ("r1", "r4", "r5")
 
 
 def replies_of(fixture_name):
     transcript = FIXTURES / fixture_name
     return parse_transcript_replies(transcript, transcript.read_bytes())
+
+
+def bytes_through_entry(fixture_name, uuid):
+    lines = (FIXTURES / fixture_name).read_bytes().splitlines(keepends=True)
+    line_count = next(number for number, line in enumerate(lines, 1) if json.loads(line)["uuid"] == uuid)
+    return b"".join(lines[:line_count])
 
 
 def test_single_turn_reply_records_text_model_message_and_timing():
@@ -51,17 +58,15 @@ def test_reply_tokens_are_absent_when_any_assistant_message_of_the_turn_lacks_us
 
 
 def test_transcript_hash_covers_bytes_through_the_reply_line_only():
-    transcript_bytes = (FIXTURES / "single-turn.jsonl").read_bytes()
-    through_reply_line = b"".join(transcript_bytes.splitlines(keepends=True)[:SINGLE_TURN_REPLY_LINE_COUNT])
     [reply] = replies_of("single-turn.jsonl")
+    through_reply_line = bytes_through_entry("single-turn.jsonl", SINGLE_TURN_REPLY_UUID)
     assert reply.transcript_hash == hashlib.sha256(through_reply_line).hexdigest()
 
 
 def test_each_conversation_reply_hashes_bytes_through_its_own_reply_line():
-    transcript_lines = (FIXTURES / "three-turn.jsonl").read_bytes().splitlines(keepends=True)
     expected = [
-        hashlib.sha256(b"".join(transcript_lines[:line_count])).hexdigest()
-        for line_count in THREE_TURN_REPLY_LINE_COUNTS
+        hashlib.sha256(bytes_through_entry("three-turn.jsonl", uuid)).hexdigest()
+        for uuid in THREE_TURN_REPLY_UUIDS
     ]
     assert [reply.transcript_hash for reply in replies_of("three-turn.jsonl")] == expected
 
@@ -126,5 +131,5 @@ def test_blank_lines_are_skipped_and_still_counted_in_the_hashed_bytes():
     transcript = FIXTURES / "single-turn.jsonl"
     transcript_lines = transcript.read_bytes().splitlines(keepends=True)
     [reply] = parse_transcript_replies(transcript, b"\n" + b"".join(transcript_lines) + b"\n")
-    through_reply_line = b"\n" + b"".join(transcript_lines[:SINGLE_TURN_REPLY_LINE_COUNT])
+    through_reply_line = b"\n" + bytes_through_entry("single-turn.jsonl", SINGLE_TURN_REPLY_UUID)
     assert (reply.text, reply.transcript_hash) == ("OK", hashlib.sha256(through_reply_line).hexdigest())
