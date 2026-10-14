@@ -47,7 +47,22 @@ def measure_noise(
     checks["completion"] = half_width(
         z, [done_sigma[INSTRUCTION], done_sigma.get(completion_control)], repeats * task_count
     )
-    return {"sigma": {"breaches": breaches_sigma, "done": done_sigma}, "checks": checks}
+    demands_sigma = {
+        demand: {
+            condition: mean_repeat_variance(breach_totals_by_unit(task_replies, condition, [demand]))
+            for condition in (INSTRUCTION, *controls)
+        }
+        for demand in gate_demands
+    }
+    demands_change = {
+        demand: half_width(z, [by_condition[INSTRUCTION]] * 2, repeats * task_count)
+        for demand, by_condition in demands_sigma.items()
+    }
+    return {
+        "sigma": {"breaches": breaches_sigma, "done": done_sigma, "demands": demands_sigma},
+        "checks": checks,
+        "demands": demands_change,
+    }
 
 
 def done_values_by_unit(replies: Sequence[ScoredReply], condition: str) -> dict[str, list[float | None]]:
