@@ -11,3 +11,11 @@ Correction: escalate through `AskUserQuestion` only, each question self-containe
 ## ~10:45 UTC 2026-10-13 — The split and the name went to the owner unthought
 Root cause: the orchestrator relayed the brief's split as "three writer skills stay", flattening the brief's own finding that two of them carry general lines, and so asked the clean seven/three question the owner had already rejected; it read the owner's "simmer on this more" as the owner deferring the name, when it directed the orchestrator to think, and relayed an agent's candidates with no derivation of its own. The owner: "until you know what's in those 3 skills, you cannot know if there is anything you should own"; "have you given this ANY thought at all?"
 Correction: the orchestrator reads the skills itself before asking about the line, derives the name itself, and walks the owner through each technical call one question at a time.
+
+## ~17:10 UTC 2026-10-13 — The spec-schema agent died on the account's session limit before writing
+Root cause: HTTP 429 `session limit · resets 12:20am (Europe/Kiev)` killed the opus spec-schema agent after it had taken the scoped Petro-feedback addition and before it wrote any output; the same limit held this session, so death, wake, and reset arrived together at 2026-10-14T00:21+0300.
+Correction: resumed through `SendMessage` to its id at the reset, per the 2026-10-06 rule.
+
+## 2026-10-14T20:33+0300 — A constitution dispatched as a review
+Root cause: the owner's "self-documenting-code to the rescue here!" went out as a rename pass over the drafted spec ("current → proposed") — a review of what exists — so the draft's structure and names would anchor the result. The owner: "i need that applied as constitution to the design, not as a review to whats here."
+Correction: the naming agent stopped; self-documenting-code joins the design constitution of the orchestrator and every design agent; the design language is derived afresh from rulings, facts, and sources, the drafted brief, schema, and spec left unread by the deriving agent.
