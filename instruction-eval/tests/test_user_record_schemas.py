@@ -7,10 +7,13 @@ import yaml
 
 from instruction_eval.records import (
     AgentReader,
+    Budget,
+    Check,
     CommandReader,
     Conditions,
     Conversation,
     Demands,
+    Gate,
     JudgeDemand,
     LongSentencesDemand,
     PatternDemand,
@@ -20,6 +23,7 @@ from instruction_eval.records import (
     Tasks,
     parse_conditions,
     parse_demands,
+    parse_gate,
     parse_reader,
     parse_series,
     parse_tasks,
@@ -277,3 +281,64 @@ def test_agent_reader_refuses_a_model_outside_the_claude_pattern(model):
 def test_command_reader_refuses_a_malformed_key(changes, named):
     with pytest.raises(RecordRefused, match=re.escape(named)):
         parse_reader(edited("5-reader-command.yaml", **changes))
+
+
+def test_gate_loads_every_key():
+    assert parse_gate(fixture("7-gate.yaml")) == Gate(
+        repeats=5,
+        level=0.95,
+        done_by="answer-key",
+        checks=(
+            Check(compares="instruction-vs-empty", gap=0.5),
+            Check(compares="instruction-vs-aim", gap=0.5),
+            Check(compares="instruction-vs-placebo", gap=0.25),
+            Check(compares="completion", gap=0.1),
+            Check(compares="drift", gap=1),
+        ),
+        keep_rule="best-estimate-shortest",
+        budget=Budget(unit="tokens", ceiling=2000000),
+    )
+
+
+def test_gate_loads_with_only_the_step_four_keys():
+    assert parse_gate({"repeats": 3, "level": 0.9, "done_by": "judge"}) == Gate(
+        repeats=3, level=0.9, done_by="judge", checks=None, keep_rule=None, budget=None
+    )
+
+
+def test_gate_loads_an_unbounded_budget():
+    assert parse_gate(edited("7-gate.yaml", budget="none")).budget == "none"
+
+
+@pytest.mark.parametrize("compares", ["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion"])
+def test_gate_refuses_checks_lacking_a_required_comparison(compares):
+    checks = [check for check in fixture("7-gate.yaml")["checks"] if check["compares"] != compares]
+    with pytest.raises(RecordRefused, match=re.escape(compares)):
+        parse_gate(edited("7-gate.yaml", checks=checks))
+
+
+def test_gate_refuses_a_repeated_comparison():
+    checks = fixture("7-gate.yaml")["checks"] + [{"compares": "drift", "gap": 2}]
+    with pytest.raises(RecordRefused, match="drift"):
+        parse_gate(edited("7-gate.yaml", checks=checks))
+
+
+@pytest.mark.parametrize(
+    ("changes", "named"),
+    [
+        ({"repeats": 1}, "repeats"),
+        ({"level": 1}, "level"),
+        ({"level": 0}, "level"),
+        ({"level": True}, "level"),
+        ({"done_by": "reader"}, "done_by"),
+        ({"keep_rule": "shortest"}, "keep_rule"),
+        ({"budget": "unlimited"}, "budget"),
+        ({"budget": {"unit": "dollars", "ceiling": 5}}, "budget.unit"),
+        ({"budget": {"unit": "seconds", "ceiling": 0}}, "budget.ceiling"),
+        ({"checks": [{"compares": "instruction-vs-empty", "gap": 0}]}, "checks[0].gap"),
+        ({"checks": [{"compares": "instruction-vs-source", "gap": 1}]}, "checks[0].compares"),
+    ],
+)
+def test_gate_refuses_a_malformed_key(changes, named):
+    with pytest.raises(RecordRefused, match=re.escape(named)):
+        parse_gate(edited("7-gate.yaml", **changes))

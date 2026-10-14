@@ -300,6 +300,116 @@ def read_sampling(value: object, where: str) -> Mapping[str, Scalar]:
     return dict(value)
 
 
+DoneBy = Literal["answer-key", "judge"]
+Compares = Literal["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "instruction-near-source", "completion", "drift"]
+REQUIRED_COMPARES = ("instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion")
+KeepRule = Literal["best-estimate-shortest"]
+BudgetUnit = Literal["tokens", "seconds"]
+NoBudget = Literal["none"]
+
+
+@dataclass(frozen=True)
+class Check:
+    """One gate check: a comparison and the gap it must clear."""
+
+    compares: Compares
+    gap: float
+
+
+@dataclass(frozen=True)
+class Budget:
+    """A ceiling on the series cost in one unit."""
+
+    unit: BudgetUnit
+    ceiling: float
+
+
+@dataclass(frozen=True)
+class Gate:
+    """The `7-gate.yaml` record, each key None until the user writes it."""
+
+    repeats: int | None
+    level: float | None
+    done_by: DoneBy | None
+    checks: tuple[Check, ...] | None
+    keep_rule: KeepRule | None
+    budget: Budget | NoBudget | None
+
+
+def parse_gate(document: object) -> Gate:
+    """Build the `7-gate.yaml` record from its parsed document, any key absent."""
+    keys = read_keys(document, "7-gate.yaml", required=set(), optional={"repeats", "level", "done_by", "checks", "keep_rule", "budget"})
+    return Gate(
+        repeats=read_present(keys, "repeats", lambda value, where: read_integer(value, where, minimum=2)),
+        level=read_present(keys, "level", read_level),
+        done_by=read_present(keys, "done_by", lambda value, where: read_choice(value, where, get_args(DoneBy))),
+        checks=read_present(keys, "checks", read_checks),
+        keep_rule=read_present(keys, "keep_rule", lambda value, where: read_choice(value, where, get_args(KeepRule))),
+        budget=read_present(keys, "budget", read_budget),
+    )
+
+
+def read_present(keys: Mapping[str, object], key: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
+    """Return the key's value read by `read_value`, or None when the key is absent."""
+    return read_value(keys[key], key) if key in keys else None
+
+
+def read_level(value: object, where: str) -> float:
+    """Return a confidence level strictly between 0 and 1."""
+    level = read_number(value, where)
+    if not 0 < level < 1:
+        raise RecordRefused(f"{where}: expected a number in (0, 1), got {value!r}")
+    return level
+
+
+def read_checks(value: object, where: str) -> tuple[Check, ...]:
+    """Return the gate checks, each comparison once and every required comparison present."""
+    checks = read_entries(value, where, read_check)
+    compared = [check.compares for check in checks]
+    repeated = sorted({compares for compares in compared if compared.count(compares) > 1})
+    if repeated:
+        raise RecordRefused(f"{where}: repeated {', '.join(repeated)}")
+    missing = [compares for compares in REQUIRED_COMPARES if compares not in compared]
+    if missing:
+        raise RecordRefused(f"{where}: missing {', '.join(missing)}")
+    return checks
+
+
+def read_check(value: object, where: str) -> Check:
+    """Return one gate check."""
+    keys = read_keys(value, where, required={"compares", "gap"})
+    return Check(
+        compares=read_choice(keys["compares"], f"{where}.compares", get_args(Compares)),
+        gap=read_positive_number(keys["gap"], f"{where}.gap"),
+    )
+
+
+def read_budget(value: object, where: str) -> Budget | NoBudget:
+    """Return a cost ceiling, or `none` for an unbounded series."""
+    if value in get_args(NoBudget):
+        return value
+    keys = read_keys(value, where, required={"unit", "ceiling"})
+    return Budget(
+        unit=read_choice(keys["unit"], f"{where}.unit", get_args(BudgetUnit)),
+        ceiling=read_positive_number(keys["ceiling"], f"{where}.ceiling"),
+    )
+
+
+def read_number(value: object, where: str) -> float:
+    """Return an integer or float, never a boolean."""
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        raise RecordRefused(f"{where}: expected a number, got {value!r}")
+    return value
+
+
+def read_positive_number(value: object, where: str) -> float:
+    """Return a number above 0."""
+    number = read_number(value, where)
+    if number <= 0:
+        raise RecordRefused(f"{where}: expected a number > 0, got {value!r}")
+    return number
+
+
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
     """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
     return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))
