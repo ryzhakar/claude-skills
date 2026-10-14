@@ -2,18 +2,59 @@
 
 import re
 from collections.abc import Callable, Mapping
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, TypeVar, get_args
 
-HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-
 Entry = TypeVar("Entry")
 Key = TypeVar("Key")
 
+DOCUMENT = ""
+DOCUMENT_LABEL = "record"
+FEWEST_REPEATS = 2
+FEWEST_ANCHORS_PER_PACKET = 3
+MOVE_ACTION = "move"
+HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}$")
+AGENT_MODEL_PATTERN = re.compile(r"^claude-[a-z0-9]+(-[a-z0-9]+)+$")
+MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
+RESERVED_DEMAND_IDS = ("overreach", "completion")
+CONDITION_PLACEHOLDER = "{condition}"
+USER_RATERS = ["user"]
+AGENT_RATERS = ["agent", "agent"]
+
 ReaderKind = Literal["agent", "command"]
+Split = Literal["open", "sealed"]
+Control = Literal["empty", "aim", "placebo", "source"]
+CONTROLS_WITHOUT_SOURCES = ("empty", "aim", "placebo")
+Omissions = Literal["every-sentence", "none"]
+DoneBy = Literal["answer-key", "judge"]
+Compares = Literal["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "instruction-near-source", "completion", "drift"]
+REQUIRED_COMPARES = ("instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion")
+KeepRule = Literal["best-estimate-shortest"]
+BudgetUnit = Literal["tokens", "seconds"]
+NoBudget = Literal["none"]
+InPlaceAction = Literal["rewrite", "add", "delete"]
+Direction = Literal["down", "up"]
+Scalar = str | int | float | bool
+
+DEMAND_KEYS = {"id", "text", "boundary", "counted_by"}
+DEMAND_KEYS_BY_COUNTER = {
+    "judge": DEMAND_KEYS,
+    "pattern": DEMAND_KEYS | {"pattern"},
+    "long-sentences": DEMAND_KEYS | {"limit"},
+}
+READER_KEYS_BY_KIND = {
+    "agent": {"kind", "model"},
+    "command": {"kind", "model", "command", "fingerprint", "sampling"},
+}
+CHANGE_KEYS_BY_ACTION = {
+    **{action: {"action", "sentence"} for action in get_args(InPlaceAction)},
+    MOVE_ACTION: {"action", "sentence", "to"},
+}
 
 
 class RecordRefused(ValueError):
@@ -33,13 +74,13 @@ class Series:
 
 def parse_series(document: object) -> Series:
     """Build the `series.yaml` record from its parsed document."""
-    keys = read_keys(document, "series.yaml", required={"instruction", "sources", "reader_kind", "created", "inputs"})
+    keys = read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "created", "inputs"})
     return Series(
         instruction=read_absolute_path(keys["instruction"], "instruction"),
-        sources=tuple(read_absolute_path(source, f"sources[{index}]") for index, source in enumerate(read_list(keys["sources"], "sources"))),
+        sources=read_entries(keys["sources"], "sources", read_absolute_path),
         reader_kind=read_choice(keys["reader_kind"], "reader_kind", get_args(ReaderKind)),
         created=read_timestamp(keys["created"], "created"),
-        inputs=read_hashes(keys["inputs"], "inputs"),
+        inputs=read_map(keys["inputs"], "inputs", read_string, read_hash),
     )
 
 
@@ -84,29 +125,21 @@ class Demands:
 
 def parse_demands(document: object) -> Demands:
     """Build the `2-demands.yaml` record from its parsed document."""
-    keys = read_keys(document, "2-demands.yaml", required={"demands"})
-    entries = read_non_empty_list(keys["demands"], "demands")
-    return Demands(demands=tuple(read_demand(entry, f"demands[{index}]") for index, entry in enumerate(entries)))
+    keys = read_keys(document, DOCUMENT, required={"demands"})
+    return Demands(demands=read_non_empty_entries(keys["demands"], "demands", read_demand))
 
 
 def read_demand(value: object, where: str) -> Demand:
     """Return the demand variant its `counted_by` names, refusing the other variants' keys."""
-    shared = {"id", "text", "boundary", "counted_by"}
-    counted_by = read_choice(read_keys(value, where, required={"counted_by"}, optional=shared | {"pattern", "limit"})["counted_by"], f"{where}.counted_by", DEMAND_COUNTERS)
-    keys = read_keys(value, where, required=shared | DEMAND_COUNTER_KEYS[counted_by])
-    demand_id = read_demand_id(keys["id"], f"{where}.id")
-    text = read_string(keys["text"], f"{where}.text")
-    boundary = read_string(keys["boundary"], f"{where}.boundary")
+    counted_by, keys = read_variant(value, where, "counted_by", DEMAND_KEYS_BY_COUNTER)
+    demand_id = read_demand_id(keys["id"], child(where, "id"))
+    text = read_string(keys["text"], child(where, "text"))
+    boundary = read_string(keys["boundary"], child(where, "boundary"))
     if counted_by == "pattern":
-        return PatternDemand(id=demand_id, text=text, boundary=boundary, pattern=read_regex(keys["pattern"], f"{where}.pattern"))
+        return PatternDemand(id=demand_id, text=text, boundary=boundary, pattern=read_regex(keys["pattern"], child(where, "pattern")))
     if counted_by == "long-sentences":
-        return LongSentencesDemand(id=demand_id, text=text, boundary=boundary, limit=read_integer(keys["limit"], f"{where}.limit", minimum=1))
+        return LongSentencesDemand(id=demand_id, text=text, boundary=boundary, limit=read_integer(keys["limit"], child(where, "limit"), minimum=1))
     return JudgeDemand(id=demand_id, text=text, boundary=boundary)
-
-
-DEMAND_COUNTERS = ("judge", "pattern", "long-sentences")
-DEMAND_COUNTER_KEYS = {"judge": set(), "pattern": {"pattern"}, "long-sentences": {"limit"}}
-RESERVED_DEMAND_IDS = ("overreach", "completion")
 
 
 def read_demand_id(value: object, where: str) -> str:
@@ -115,9 +148,6 @@ def read_demand_id(value: object, where: str) -> str:
     if demand_id in RESERVED_DEMAND_IDS:
         raise RecordRefused(f"{where}: {demand_id!r} is reserved")
     return demand_id
-
-
-Split = Literal["open", "sealed"]
 
 
 @dataclass(frozen=True)
@@ -150,7 +180,7 @@ class Tasks:
 
 def parse_tasks(document: object) -> Tasks:
     """Build the `3-tasks.yaml` record from its parsed document."""
-    keys = read_keys(document, "3-tasks.yaml", required={"tasks", "conversations"})
+    keys = read_keys(document, DOCUMENT, required={"tasks", "conversations"})
     return Tasks(
         tasks=read_entries(keys["tasks"], "tasks", read_task),
         conversations=read_entries(keys["conversations"], "conversations", read_conversation),
@@ -161,11 +191,11 @@ def read_task(value: object, where: str) -> Task:
     """Return one task entry."""
     keys = read_keys(value, where, required={"id", "tempts", "split", "message", "answer_key"})
     return Task(
-        id=read_id(keys["id"], f"{where}.id"),
-        tempts=read_id(keys["tempts"], f"{where}.tempts"),
-        split=read_choice(keys["split"], f"{where}.split", get_args(Split)),
-        message=read_string(keys["message"], f"{where}.message"),
-        answer_key=None if keys["answer_key"] is None else read_regex(keys["answer_key"], f"{where}.answer_key"),
+        id=read_id(keys["id"], child(where, "id")),
+        tempts=read_id(keys["tempts"], child(where, "tempts")),
+        split=read_choice(keys["split"], child(where, "split"), get_args(Split)),
+        message=read_string(keys["message"], child(where, "message")),
+        answer_key=read_nullable(keys["answer_key"], child(where, "answer_key"), read_regex),
     )
 
 
@@ -173,15 +203,10 @@ def read_conversation(value: object, where: str) -> Conversation:
     """Return one conversation entry."""
     keys = read_keys(value, where, required={"id", "split", "turns"})
     return Conversation(
-        id=read_id(keys["id"], f"{where}.id"),
-        split=read_choice(keys["split"], f"{where}.split", get_args(Split)),
-        turns=read_entries(keys["turns"], f"{where}.turns", read_string),
+        id=read_id(keys["id"], child(where, "id")),
+        split=read_choice(keys["split"], child(where, "split"), get_args(Split)),
+        turns=read_entries(keys["turns"], child(where, "turns"), read_string),
     )
-
-
-Control = Literal["empty", "aim", "placebo", "source"]
-Omissions = Literal["every-sentence", "none"]
-CONTROLS_WITHOUT_SOURCES = ("empty", "aim", "placebo")
 
 
 @dataclass(frozen=True)
@@ -196,7 +221,7 @@ class Conditions:
 
 def parse_conditions(document: object, series: Series) -> Conditions:
     """Build the `4-conditions.yaml` record, refusing controls other than the set the series sources call for."""
-    keys = read_keys(document, "4-conditions.yaml", required={"controls", "aim", "placebo_source", "omissions"})
+    keys = read_keys(document, DOCUMENT, required={"controls", "aim", "placebo_source", "omissions"})
     return Conditions(
         controls=read_controls(keys["controls"], "controls", series.sources),
         aim=read_line(keys["aim"], "aim"),
@@ -212,20 +237,6 @@ def read_controls(value: object, where: str, sources: tuple[Path, ...]) -> tuple
     if sorted(controls) != sorted(expected):
         raise RecordRefused(f"{where}: expected exactly {', '.join(expected)}, got {', '.join(controls)}")
     return controls
-
-
-def read_line(value: object, where: str) -> str:
-    """Return a non-empty string holding no line break."""
-    line = read_string(value, where)
-    if line != line.splitlines()[0]:
-        raise RecordRefused(f"{where}: expected one line, got {value!r}")
-    return line
-
-
-AGENT_MODEL_PATTERN = re.compile(r"^claude-[a-z0-9]+(-[a-z0-9]+)+$")
-MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
-CONDITION_PLACEHOLDER = "{condition}"
-Scalar = str | int | float | bool
 
 
 @dataclass(frozen=True)
@@ -250,20 +261,15 @@ Reader = AgentReader | CommandReader
 
 def parse_reader(document: object) -> Reader:
     """Build the `5-reader.yaml` record as the variant its `kind` names, refusing the other variant's keys."""
-    kind = read_choice(read_keys(document, "5-reader.yaml", required={"kind"}, optional=COMMAND_READER_KEYS)["kind"], "kind", get_args(ReaderKind))
+    kind, keys = read_variant(document, DOCUMENT, "kind", READER_KEYS_BY_KIND)
     if kind == "agent":
-        keys = read_keys(document, "5-reader.yaml", required={"kind", "model"})
         return AgentReader(model=read_agent_model(keys["model"], "model"))
-    keys = read_keys(document, "5-reader.yaml", required=COMMAND_READER_KEYS)
     return CommandReader(
         model=read_model(keys["model"], "model"),
         command=read_command(keys["command"], "command"),
         fingerprint=read_entries(keys["fingerprint"], "fingerprint", read_string),
-        sampling=read_sampling(keys["sampling"], "sampling"),
+        sampling=read_map(keys["sampling"], "sampling", read_string, read_scalar),
     )
-
-
-COMMAND_READER_KEYS = {"kind", "model", "command", "fingerprint", "sampling"}
 
 
 def read_agent_model(value: object, where: str) -> str:
@@ -290,23 +296,11 @@ def read_command(value: object, where: str) -> tuple[str, ...]:
     return command
 
 
-def read_sampling(value: object, where: str) -> Mapping[str, Scalar]:
-    """Return a map from a sampling setting to its scalar value."""
-    if not isinstance(value, Mapping):
-        raise RecordRefused(f"{where}: expected a mapping, got {value!r}")
-    for setting, setting_value in value.items():
-        read_string(setting, f"{where} key")
-        if not isinstance(setting_value, Scalar):
-            raise RecordRefused(f"{where}[{setting}]: expected a scalar, got {setting_value!r}")
-    return dict(value)
-
-
-DoneBy = Literal["answer-key", "judge"]
-Compares = Literal["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "instruction-near-source", "completion", "drift"]
-REQUIRED_COMPARES = ("instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion")
-KeepRule = Literal["best-estimate-shortest"]
-BudgetUnit = Literal["tokens", "seconds"]
-NoBudget = Literal["none"]
+def read_scalar(value: object, where: str) -> Scalar:
+    """Return a string, number, or boolean."""
+    if not isinstance(value, Scalar):
+        raise RecordRefused(f"{where}: expected a scalar, got {value!r}")
+    return value
 
 
 @dataclass(frozen=True)
@@ -339,20 +333,15 @@ class Gate:
 
 def parse_gate(document: object) -> Gate:
     """Build the `7-gate.yaml` record from its parsed document, any key absent."""
-    keys = read_keys(document, "7-gate.yaml", required=set(), optional={"repeats", "level", "done_by", "checks", "keep_rule", "budget"})
+    keys = read_keys(document, DOCUMENT, required=set(), optional={"repeats", "level", "done_by", "checks", "keep_rule", "budget"})
     return Gate(
-        repeats=read_present(keys, "repeats", lambda value, where: read_integer(value, where, minimum=2)),
+        repeats=read_present(keys, "repeats", lambda value, where: read_integer(value, where, minimum=FEWEST_REPEATS)),
         level=read_present(keys, "level", read_level),
         done_by=read_present(keys, "done_by", lambda value, where: read_choice(value, where, get_args(DoneBy))),
         checks=read_present(keys, "checks", read_checks),
         keep_rule=read_present(keys, "keep_rule", lambda value, where: read_choice(value, where, get_args(KeepRule))),
         budget=read_present(keys, "budget", read_budget),
     )
-
-
-def read_present(keys: Mapping[str, object], key: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
-    """Return the key's value read by `read_value`, or None when the key is absent."""
-    return read_value(keys[key], key) if key in keys else None
 
 
 def read_level(value: object, where: str) -> float:
@@ -380,8 +369,8 @@ def read_check(value: object, where: str) -> Check:
     """Return one gate check."""
     keys = read_keys(value, where, required={"compares", "gap"})
     return Check(
-        compares=read_choice(keys["compares"], f"{where}.compares", get_args(Compares)),
-        gap=read_positive_number(keys["gap"], f"{where}.gap"),
+        compares=read_choice(keys["compares"], child(where, "compares"), get_args(Compares)),
+        gap=read_positive_number(keys["gap"], child(where, "gap")),
     )
 
 
@@ -391,29 +380,9 @@ def read_budget(value: object, where: str) -> Budget | NoBudget:
         return value
     keys = read_keys(value, where, required={"unit", "ceiling"})
     return Budget(
-        unit=read_choice(keys["unit"], f"{where}.unit", get_args(BudgetUnit)),
-        ceiling=read_positive_number(keys["ceiling"], f"{where}.ceiling"),
+        unit=read_choice(keys["unit"], child(where, "unit"), get_args(BudgetUnit)),
+        ceiling=read_positive_number(keys["ceiling"], child(where, "ceiling")),
     )
-
-
-def read_number(value: object, where: str) -> float:
-    """Return an integer or float, never a boolean."""
-    if not isinstance(value, int | float) or isinstance(value, bool):
-        raise RecordRefused(f"{where}: expected a number, got {value!r}")
-    return value
-
-
-def read_positive_number(value: object, where: str) -> float:
-    """Return a number above 0."""
-    number = read_number(value, where)
-    if number <= 0:
-        raise RecordRefused(f"{where}: expected a number > 0, got {value!r}")
-    return number
-
-
-USER_RATERS = ["user"]
-AGENT_RATERS = ["agent", "agent"]
-PLAN_KEYS = {"judge_model", "raters", "sample_size", "anchors_per_packet", "acceptance"}
 
 
 @dataclass(frozen=True)
@@ -450,13 +419,18 @@ class Plan:
 
 def parse_plan(document: object) -> Plan:
     """Build the `6-judge/calibration/attempt-<n>/plan.yaml` record from its parsed document."""
-    keys = read_keys(document, "plan.yaml", required=PLAN_KEYS, optional={"rater_model"})
+    keys = read_keys(
+        document,
+        DOCUMENT,
+        required={"judge_model", "raters", "sample_size", "anchors_per_packet", "acceptance"},
+        optional={"rater_model"},
+    )
     judge_model = read_agent_model(keys["judge_model"], "judge_model")
     return Plan(
         judge_model=judge_model,
         raters=read_raters(keys, judge_model),
         sample_size=read_integer(keys["sample_size"], "sample_size", minimum=1),
-        anchors_per_packet=read_integer(keys["anchors_per_packet"], "anchors_per_packet", minimum=3),
+        anchors_per_packet=read_integer(keys["anchors_per_packet"], "anchors_per_packet", minimum=FEWEST_ANCHORS_PER_PACKET),
         acceptance=read_acceptance(keys["acceptance"], "acceptance"),
     )
 
@@ -486,24 +460,10 @@ def read_acceptance(value: object, where: str) -> Acceptance:
     """Return the acceptance thresholds of a calibration plan."""
     keys = read_keys(value, where, required={"breach_difference", "self_difference", "done_agreement"})
     return Acceptance(
-        breach_difference=read_bounded_number(keys["breach_difference"], f"{where}.breach_difference", 0, float("inf")),
-        self_difference=read_bounded_number(keys["self_difference"], f"{where}.self_difference", 0, float("inf")),
-        done_agreement=read_bounded_number(keys["done_agreement"], f"{where}.done_agreement", 0, 1),
+        breach_difference=read_bounded_number(keys["breach_difference"], child(where, "breach_difference"), 0, float("inf")),
+        self_difference=read_bounded_number(keys["self_difference"], child(where, "self_difference"), 0, float("inf")),
+        done_agreement=read_bounded_number(keys["done_agreement"], child(where, "done_agreement"), 0, 1),
     )
-
-
-def read_bounded_number(value: object, where: str, lowest: float, highest: float) -> float:
-    """Return a number in the closed interval from `lowest` to `highest`."""
-    number = read_number(value, where)
-    if not lowest <= number <= highest:
-        raise RecordRefused(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
-    return number
-
-
-BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}$")
-InPlaceAction = Literal["rewrite", "add", "delete"]
-MOVE_ACTION = "move"
-Direction = Literal["down", "up"]
 
 
 @dataclass(frozen=True)
@@ -542,7 +502,7 @@ class Hypothesis:
 
 def parse_hypothesis(document: object) -> Hypothesis:
     """Build the `r<n>/1-hypothesis.yaml` record, which holds no cause."""
-    keys = read_keys(document, "1-hypothesis.yaml", required={"failing_demand", "replies_read", "change", "predicted_movement"})
+    keys = read_keys(document, DOCUMENT, required={"failing_demand", "replies_read", "change", "predicted_movement"})
     return Hypothesis(
         failing_demand=read_id(keys["failing_demand"], "failing_demand"),
         replies_read=read_entries(keys["replies_read"], "replies_read", read_blind_id),
@@ -560,23 +520,19 @@ def read_blind_id(value: object, where: str) -> str:
 
 def read_change(value: object, where: str) -> SentenceChange | MoveChange:
     """Return the one change a hypothesis makes, carrying `to` exactly when it moves a sentence."""
-    action = read_keys(value, where, required={"action"}, optional={"sentence", "to"})["action"]
+    action, keys = read_variant(value, where, "action", CHANGE_KEYS_BY_ACTION)
+    sentence = read_integer(keys["sentence"], child(where, "sentence"), minimum=1)
     if action == MOVE_ACTION:
-        keys = read_keys(value, where, required={"action", "sentence", "to"})
-        return MoveChange(sentence=read_integer(keys["sentence"], f"{where}.sentence", minimum=1), to=read_integer(keys["to"], f"{where}.to", minimum=1))
-    keys = read_keys(value, where, required={"action", "sentence"})
-    return SentenceChange(
-        action=read_choice(action, f"{where}.action", (*get_args(InPlaceAction), MOVE_ACTION)),
-        sentence=read_integer(keys["sentence"], f"{where}.sentence", minimum=1),
-    )
+        return MoveChange(sentence=sentence, to=read_integer(keys["to"], child(where, "to"), minimum=1))
+    return SentenceChange(action=action, sentence=sentence)
 
 
 def read_predicted_movement(value: object, where: str) -> PredictedMovement:
     """Return a hypothesis's predicted movement."""
     keys = read_keys(value, where, required={"direction", "size"})
     return PredictedMovement(
-        direction=read_choice(keys["direction"], f"{where}.direction", get_args(Direction)),
-        size=read_positive_number(keys["size"], f"{where}.size"),
+        direction=read_choice(keys["direction"], child(where, "direction"), get_args(Direction)),
+        size=read_positive_number(keys["size"], child(where, "size")),
     )
 
 
@@ -597,15 +553,10 @@ class Coverage:
 
 def parse_coverage(document: object) -> Coverage:
     """Build the `r<n>/3-coverage.yaml` record from its parsed document."""
-    keys = read_keys(document, "3-coverage.yaml", required={"demands", "sentences"})
+    keys = read_keys(document, DOCUMENT, required={"demands", "sentences"})
     return Coverage(
         demands=read_map(keys["demands"], "demands", read_id, read_demand_coverage),
-        sentences=read_map(
-            keys["sentences"],
-            "sentences",
-            read_sentence_number,
-            lambda value, where: read_non_empty_entries(value, where, read_id),
-        ),
+        sentences=read_map(keys["sentences"], "sentences", read_sentence_number, read_sentence_coverage),
     )
 
 
@@ -614,12 +565,60 @@ def read_demand_coverage(value: object, where: str) -> tuple[int, ...] | Dropped
     if isinstance(value, list):
         return read_non_empty_entries(value, where, read_sentence_number)
     keys = read_keys(value, where, required={"dropped"})
-    return Dropped(reason=read_string(keys["dropped"], f"{where}.dropped"))
+    return Dropped(reason=read_string(keys["dropped"], child(where, "dropped")))
+
+
+def read_sentence_coverage(value: object, where: str) -> tuple[str, ...]:
+    """Return the demand ids a sentence carries."""
+    return read_non_empty_entries(value, where, read_id)
 
 
 def read_sentence_number(value: object, where: str) -> int:
     """Return a sentence number, counted from 1."""
     return read_integer(value, where, minimum=1)
+
+
+def child(where: str, key: str) -> str:
+    """Return the location of `key` inside the mapping at `where`."""
+    return f"{where}.{key}" if where else key
+
+
+def read_keys(value: object, where: str, required: AbstractSet[str], optional: AbstractSet[str] = frozenset()) -> Mapping[str, object]:
+    """Return a mapping holding every required key and no key outside required and optional."""
+    location = where or DOCUMENT_LABEL
+    if not isinstance(value, Mapping):
+        raise RecordRefused(f"{location}: expected a mapping, got {value!r}")
+    missing = required - value.keys()
+    if missing:
+        raise RecordRefused(f"{location}: missing {', '.join(sorted(missing))}")
+    unknown = value.keys() - required - optional
+    if unknown:
+        raise RecordRefused(f"{location}: unknown {', '.join(sorted(map(str, unknown)))}")
+    return value
+
+
+def read_variant(value: object, where: str, tag: str, keys_by_variant: Mapping[str, AbstractSet[str]]) -> tuple[str, Mapping[str, object]]:
+    """Return the variant a mapping's `tag` key names and the mapping, which holds exactly that variant's keys."""
+    every_key = set().union(*keys_by_variant.values())
+    variant = read_choice(read_keys(value, where, required={tag}, optional=every_key)[tag], child(where, tag), tuple(keys_by_variant))
+    return variant, read_keys(value, where, required=keys_by_variant[variant])
+
+
+def read_present(keys: Mapping[str, object], key: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
+    """Return the key's value read by `read_value`, or None when the key is absent."""
+    return read_value(keys[key], key) if key in keys else None
+
+
+def read_nullable(value: object, where: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
+    """Return None for a YAML null, else the value read by `read_value`."""
+    return None if value is None else read_value(value, where)
+
+
+def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
+    """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
+    if not isinstance(value, list):
+        raise RecordRefused(f"{where}: expected a list, got {value!r}")
+    return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(value))
 
 
 def read_non_empty_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
@@ -642,9 +641,19 @@ def read_map(
     return {read_key(key, f"{where} key"): read_value(item, f"{where}[{key}]") for key, item in value.items()}
 
 
-def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
-    """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
-    return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(read_list(value, where)))
+def read_string(value: object, where: str) -> str:
+    """Return a non-empty string."""
+    if not isinstance(value, str) or not value:
+        raise RecordRefused(f"{where}: expected a non-empty string, got {value!r}")
+    return value
+
+
+def read_line(value: object, where: str) -> str:
+    """Return a non-empty string holding no line break."""
+    line = read_string(value, where)
+    if line != line.splitlines()[0]:
+        raise RecordRefused(f"{where}: expected one line, got {value!r}")
+    return line
 
 
 def read_id(value: object, where: str) -> str:
@@ -654,53 +663,10 @@ def read_id(value: object, where: str) -> str:
     return value
 
 
-def read_non_empty_list(value: object, where: str) -> list[object]:
-    """Return a YAML sequence holding at least one item."""
-    items = read_list(value, where)
-    if not items:
-        raise RecordRefused(f"{where}: expected a non-empty list")
-    return items
-
-
-def read_regex(value: object, where: str) -> re.Pattern[str]:
-    """Return a Python regex compiled with no flags."""
-    try:
-        return re.compile(read_string(value, where))
-    except re.error as error:
-        raise RecordRefused(f"{where}: {error}") from error
-
-
-def read_integer(value: object, where: str, minimum: int) -> int:
-    """Return an integer at or above `minimum`."""
-    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
-        raise RecordRefused(f"{where}: expected an integer >= {minimum}, got {value!r}")
-    return value
-
-
-def read_keys(value: object, where: str, required: set[str], optional: set[str] = frozenset()) -> Mapping[str, object]:
-    """Return a mapping holding every required key and no key outside required and optional."""
-    if not isinstance(value, Mapping):
-        raise RecordRefused(f"{where}: expected a mapping, got {value!r}")
-    missing = required - value.keys()
-    if missing:
-        raise RecordRefused(f"{where}: missing {', '.join(sorted(missing))}")
-    unknown = value.keys() - required - optional
-    if unknown:
-        raise RecordRefused(f"{where}: unknown {', '.join(sorted(map(str, unknown)))}")
-    return value
-
-
-def read_list(value: object, where: str) -> list[object]:
-    """Return a YAML sequence."""
-    if not isinstance(value, list):
-        raise RecordRefused(f"{where}: expected a list, got {value!r}")
-    return value
-
-
-def read_string(value: object, where: str) -> str:
-    """Return a non-empty string."""
-    if not isinstance(value, str) or not value:
-        raise RecordRefused(f"{where}: expected a non-empty string, got {value!r}")
+def read_hash(value: object, where: str) -> str:
+    """Return a lowercase sha256 hex digest."""
+    if not isinstance(value, str) or not HASH_PATTERN.match(value):
+        raise RecordRefused(f"{where}: expected a lowercase sha256 hex, got {value!r}")
     return value
 
 
@@ -731,12 +697,39 @@ def read_timestamp(value: object, where: str) -> datetime:
     return value
 
 
-def read_hashes(value: object, where: str) -> Mapping[str, str]:
-    """Return a map from a series path to its lowercase sha256 hex."""
-    if not isinstance(value, Mapping):
-        raise RecordRefused(f"{where}: expected a mapping, got {value!r}")
-    for path, digest in value.items():
-        read_string(path, f"{where} key")
-        if not isinstance(digest, str) or not HASH_PATTERN.match(digest):
-            raise RecordRefused(f"{where}[{path}]: expected a lowercase sha256 hex, got {digest!r}")
-    return dict(value)
+def read_regex(value: object, where: str) -> re.Pattern[str]:
+    """Return a Python regex compiled with no flags."""
+    try:
+        return re.compile(read_string(value, where))
+    except re.error as error:
+        raise RecordRefused(f"{where}: {error}") from error
+
+
+def read_integer(value: object, where: str, minimum: int) -> int:
+    """Return an integer at or above `minimum`."""
+    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+        raise RecordRefused(f"{where}: expected an integer >= {minimum}, got {value!r}")
+    return value
+
+
+def read_number(value: object, where: str) -> float:
+    """Return an integer or float, never a boolean."""
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        raise RecordRefused(f"{where}: expected a number, got {value!r}")
+    return value
+
+
+def read_positive_number(value: object, where: str) -> float:
+    """Return a number above 0."""
+    number = read_number(value, where)
+    if number <= 0:
+        raise RecordRefused(f"{where}: expected a number > 0, got {value!r}")
+    return number
+
+
+def read_bounded_number(value: object, where: str, lowest: float, highest: float) -> float:
+    """Return a number in the closed interval from `lowest` to `highest`."""
+    number = read_number(value, where)
+    if not lowest <= number <= highest:
+        raise RecordRefused(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
+    return number

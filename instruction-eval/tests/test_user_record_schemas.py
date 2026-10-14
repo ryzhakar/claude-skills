@@ -60,6 +60,9 @@ def test_series_loads_as_typed_record():
     )
 
 
+ABSENT = object()
+
+
 def edited(name: str, **changes: object) -> dict:
     document = fixture(name)
     for key, value in changes.items():
@@ -68,9 +71,6 @@ def edited(name: str, **changes: object) -> dict:
         else:
             document[key] = value
     return document
-
-
-ABSENT = object()
 
 
 @pytest.mark.parametrize(
