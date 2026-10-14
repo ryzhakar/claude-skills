@@ -7,7 +7,7 @@ import tempfile
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 import yaml
 
@@ -17,18 +17,6 @@ INPUTS_KEY = "inputs"
 
 class Refusal(Exception):
     """A command's refusal, carrying the one-line message the user reads."""
-
-
-class SeriesFiles(Protocol):
-    """The files of one series folder, addressed by series-relative path."""
-
-    def read_bytes(self, path: str) -> bytes:
-        """Return the bytes at `path`, raising FileNotFoundError when it is absent."""
-        ...
-
-    def write_once(self, path: str, content: bytes) -> None:
-        """Write `content` whole to `path`, raising FileExistsError when it exists."""
-        ...
 
 
 @dataclass(frozen=True)
@@ -52,7 +40,7 @@ class SeriesFolder:
             staged.unlink()
 
 
-def write_file(files: SeriesFiles, path: str, content: bytes) -> None:
+def write_file(files: SeriesFolder, path: str, content: bytes) -> None:
     """Write the series file at `path` whole and once, refusing when it exists."""
     try:
         files.write_once(path, content)
@@ -60,12 +48,12 @@ def write_file(files: SeriesFiles, path: str, content: bytes) -> None:
         raise Refusal(f"already written: {path}") from None
 
 
-def write_record(files: SeriesFiles, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
+def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256."""
     write_file(files, path, _dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(files, reads)}))
 
 
-def load_record(files: SeriesFiles, path: str) -> dict[str, Any]:
+def load_record(files: SeriesFolder, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
     record = _parse_record(_read_record(files, path), path)
     written_hashes = record[INPUTS_KEY]
@@ -76,7 +64,7 @@ def load_record(files: SeriesFiles, path: str) -> dict[str, Any]:
     return record
 
 
-def _read_record(files: SeriesFiles, path: str) -> bytes:
+def _read_record(files: SeriesFolder, path: str) -> bytes:
     """Read the CLI record at `path`, refusing when it is absent."""
     try:
         return files.read_bytes(path)
@@ -92,7 +80,7 @@ def _parse_record(content: bytes, path: str) -> dict[str, Any]:
     return record
 
 
-def _hash_inputs(files: SeriesFiles, reads: Iterable[str]) -> dict[str, str]:
+def _hash_inputs(files: SeriesFolder, reads: Iterable[str]) -> dict[str, str]:
     """Map each read to the sha256 of what it names, reading and parsing each named file once."""
     read_file = functools.cache(lambda file_path: _read_input(files, file_path))
     parse_file = functools.cache(lambda file_path: yaml.safe_load(read_file(file_path)))
@@ -114,7 +102,7 @@ def _read_top_level_value(document: Any, entry: str, key: str) -> Any:
     return document[key]
 
 
-def _read_input(files: SeriesFiles, path: str) -> bytes:
+def _read_input(files: SeriesFolder, path: str) -> bytes:
     """Read the series input at `path`, refusing when it is absent."""
     try:
         return files.read_bytes(path)
