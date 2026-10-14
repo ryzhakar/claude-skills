@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from instruction_eval.reader import LocalFileSystem, NeutralLoginRefused, check_neutral_login
+from instruction_eval.reader import NeutralLoginRefused, check_neutral_login
 
 REQUIRED_PLUGINS = {
     "instruction-eval@my-claude-skills": True,
@@ -28,7 +28,7 @@ class Login:
         return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
 
     def check(self) -> None:
-        check_neutral_login(self.environ(), self.home, self.working_dir, LocalFileSystem())
+        check_neutral_login(self.environ(), self.home, self.working_dir)
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def test_accepts_a_clean_neutral_login(login: Login):
 
 def test_refuses_an_unset_config_dir(login: Login):
     with pytest.raises(NeutralLoginRefused):
-        check_neutral_login({}, login.home, login.working_dir, LocalFileSystem())
+        check_neutral_login({}, login.home, login.working_dir)
 
 
 def test_refuses_a_claude_md_in_the_config_dir(login: Login):
@@ -155,4 +155,4 @@ def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outsi
     config_dir.mkdir(parents=True, exist_ok=True)
     environ = {"CLAUDE_CONFIG_DIR": str(config_dir)}
     with pytest.raises(NeutralLoginRefused):
-        check_neutral_login(environ, login.home, login.working_dir, LocalFileSystem())
+        check_neutral_login(environ, login.home, login.working_dir)
