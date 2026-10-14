@@ -66,13 +66,32 @@ def _unit_extent(lines: list[bytes], first: int) -> tuple[int, int, bool]:
     """Return where the unit opening at a line starts its text within that line, its last line, and whether it splits."""
     if first == 0 and (closing := _frontmatter_closing_line(lines)) is not None:
         return 0, closing, False
-    fence = _FENCE_OPEN.match(lines[first])
-    if fence:
-        return 0, _fence_last_line(lines, first, fence.group(1)), False
-    if _WHOLE_LINE_UNIT.match(lines[first]):
-        return 0, first, False
-    marker = _LIST_MARKER.match(lines[first])
-    return marker.end() if marker else 0, _paragraph_last_line(lines, first), True
+    for pattern, extent in _UNIT_OPENINGS:
+        if opening := pattern.match(lines[first]):
+            return extent(lines, first, opening)
+    return 0, _paragraph_last_line(lines, first), True
+
+
+def _fenced_code_extent(lines: list[bytes], first: int, opening: re.Match[bytes]) -> tuple[int, int, bool]:
+    """Return the extent of a fenced code block, one sentence through its closing line."""
+    return 0, _fence_last_line(lines, first, opening.group(1)), False
+
+
+def _whole_line_extent(lines: list[bytes], first: int, opening: re.Match[bytes]) -> tuple[int, int, bool]:
+    """Return the extent of a heading, table row, blockquote line, or horizontal rule, one sentence of one line."""
+    return 0, first, False
+
+
+def _list_item_extent(lines: list[bytes], first: int, opening: re.Match[bytes]) -> tuple[int, int, bool]:
+    """Return the extent of a list item, its text after the marker splitting into sentences."""
+    return opening.end(), _paragraph_last_line(lines, first), True
+
+
+_UNIT_OPENINGS = (
+    (_FENCE_OPEN, _fenced_code_extent),
+    (_WHOLE_LINE_UNIT, _whole_line_extent),
+    (_LIST_MARKER, _list_item_extent),
+)
 
 
 def _frontmatter_closing_line(lines: list[bytes]) -> int | None:
@@ -101,9 +120,7 @@ def _paragraph_last_line(lines: list[bytes], first: int) -> int:
 
 def _continues_paragraph(line: bytes) -> bool:
     """Tell whether a line continues the paragraph or list item above it."""
-    return bool(line.strip()) and not any(
-        opening.match(line) for opening in (_WHOLE_LINE_UNIT, _FENCE_OPEN, _LIST_MARKER)
-    )
+    return bool(line.strip()) and not any(pattern.match(line) for pattern, _ in _UNIT_OPENINGS)
 
 
 def _line_spans(text: bytes) -> list[tuple[int, int]]:
