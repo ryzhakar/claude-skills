@@ -1,1 +1,0 @@
-The peer society of Claude Code sessions on this machine lives at <root>: as a main session, load the skill peers:peer-protocol and join it.

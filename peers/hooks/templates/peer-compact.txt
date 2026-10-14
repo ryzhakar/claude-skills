@@ -1,1 +1,0 @@
-Context compacted: before your next peer message, re-read the skill peers:peer-protocol and your card in <root>.
