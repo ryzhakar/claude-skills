@@ -4,8 +4,9 @@ import hashlib
 import os
 import tempfile
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import yaml
 
@@ -17,42 +18,70 @@ class Refusal(Exception):
     """A command's refusal, carrying the one-line message the user reads."""
 
 
-def write_file(series: Path, path: str, content: bytes) -> None:
+class SeriesFiles(Protocol):
+    """The files of one series folder, addressed by series-relative path."""
+
+    def read_bytes(self, path: str) -> bytes:
+        """Return the bytes at `path`, raising FileNotFoundError when it is absent."""
+        ...
+
+    def write_once(self, path: str, content: bytes) -> None:
+        """Write `content` whole to `path`, raising FileExistsError when it exists."""
+        ...
+
+
+@dataclass(frozen=True)
+class SeriesFolder:
+    """The series folder on disk at `root`."""
+
+    root: Path
+
+    def read_bytes(self, path: str) -> bytes:
+        """Return the bytes at `path`, raising FileNotFoundError when it is absent."""
+        return (self.root / path).read_bytes()
+
+    def write_once(self, path: str, content: bytes) -> None:
+        """Write `content` whole to `path`, raising FileExistsError when it exists."""
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        staged = _stage_beside(target, content)
+        try:
+            os.link(staged, target)
+        finally:
+            staged.unlink()
+
+
+def write_file(files: SeriesFiles, path: str, content: bytes) -> None:
     """Write the series file at `path` whole and once, refusing when it exists."""
-    target = series / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    staged = _stage_beside(target, content)
     try:
-        os.link(staged, target)
+        files.write_once(path, content)
     except FileExistsError:
         raise Refusal(f"already written: {path}") from None
-    finally:
-        staged.unlink()
 
 
-def write_record(series: Path, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
+def write_record(files: SeriesFiles, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256."""
-    write_file(series, path, _dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(series, reads)}))
+    write_file(files, path, _dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(files, reads)}))
 
 
-def load_record(series: Path, path: str) -> dict[str, Any]:
+def load_record(files: SeriesFiles, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
-    record = yaml.safe_load((series / path).read_bytes())
+    record = yaml.safe_load(files.read_bytes(path))
     for entry, written_hash in record[INPUTS_KEY].items():
-        if _hash_input(series, entry) != written_hash:
+        if _hash_input(files, entry) != written_hash:
             raise Refusal(f"stale: {path} (input {entry} changed)")
     return record
 
 
-def _hash_inputs(series: Path, reads: Iterable[str]) -> dict[str, str]:
+def _hash_inputs(files: SeriesFiles, reads: Iterable[str]) -> dict[str, str]:
     """Map each read to the sha256 of what it names."""
-    return {entry: _hash_input(series, entry) for entry in reads}
+    return {entry: _hash_input(files, entry) for entry in reads}
 
 
-def _hash_input(series: Path, entry: str) -> str:
+def _hash_input(files: SeriesFiles, entry: str) -> str:
     """Hash a whole series file, or for `<path>#<key>` that key's value dumped as canonical YAML."""
     file_path, separator, key = entry.partition(KEY_SEPARATOR)
-    content = _read_input(series, file_path)
+    content = _read_input(files, file_path)
     if not separator:
         return _sha256(content)
     return _sha256(_dump_canonical_yaml(_read_top_level_value(content, entry, key)))
@@ -66,10 +95,10 @@ def _read_top_level_value(content: bytes, entry: str, key: str) -> Any:
     return document[key]
 
 
-def _read_input(series: Path, path: str) -> bytes:
+def _read_input(files: SeriesFiles, path: str) -> bytes:
     """Read the series input at `path`, refusing when it is absent."""
     try:
-        return (series / path).read_bytes()
+        return files.read_bytes(path)
     except FileNotFoundError:
         raise Refusal(f"missing input: {path}") from None
 
