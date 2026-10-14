@@ -67,7 +67,7 @@ def write_record(files: SeriesFiles, path: str, record: Mapping[str, Any], reads
 
 def load_record(files: SeriesFiles, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
-    record = yaml.safe_load(_read_record(files, path))
+    record = _parse_record(_read_record(files, path), path)
     written_hashes = record[INPUTS_KEY]
     current_hashes = _hash_inputs(files, written_hashes)
     for entry, written_hash in written_hashes.items():
@@ -82,6 +82,14 @@ def _read_record(files: SeriesFiles, path: str) -> bytes:
         return files.read_bytes(path)
     except FileNotFoundError:
         raise Refusal(f"missing record: {path}") from None
+
+
+def _parse_record(content: bytes, path: str) -> dict[str, Any]:
+    """Parse a CLI record, refusing it as malformed unless it is a mapping holding an `inputs` mapping."""
+    record = yaml.safe_load(content)
+    if not isinstance(record, dict) or not isinstance(record.get(INPUTS_KEY), dict):
+        raise Refusal(f"malformed record: {path} (no inputs map)")
+    return record
 
 
 def _hash_inputs(files: SeriesFiles, reads: Iterable[str]) -> dict[str, str]:
