@@ -47,3 +47,18 @@ def test_transcript_without_meta_file_is_refused_by_name():
 def test_meta_file_without_agent_type_is_refused_by_name():
     with pytest.raises(ValueError, match="agent-f6.jsonl.*agentType"):
         locate_transcripts(CONFIG_DIR, Path("/srv/notype"), WORKING_DIR)
+
+
+def test_meta_file_with_invalid_json_is_refused_by_name():
+    with pytest.raises(ValueError, match="agent-g7.jsonl.*not valid JSON"):
+        locate_transcripts(CONFIG_DIR, Path("/srv/badjson"), WORKING_DIR)
+
+
+def test_meta_file_holding_no_object_is_refused_by_name():
+    with pytest.raises(ValueError, match="agent-h8.jsonl.*not a JSON object"):
+        locate_transcripts(CONFIG_DIR, Path("/srv/notobject"), WORKING_DIR)
+
+
+def test_meta_file_with_non_string_agent_type_is_refused_by_name():
+    with pytest.raises(ValueError, match="agent-i9.jsonl.*agentType"):
+        locate_transcripts(CONFIG_DIR, Path("/srv/badtype"), WORKING_DIR)

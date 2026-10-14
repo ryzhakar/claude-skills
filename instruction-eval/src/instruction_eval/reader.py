@@ -25,7 +25,7 @@ class Transcript:
 def locate_transcripts(
     config_dir: Path, series_folder: Path, working_dir: Path
 ) -> list[Transcript]:
-    """Return the subagent transcripts of the series folder's sessions, ordered by path."""
+    """Return the subagent transcripts of the series folder's sessions, ordered by path; an absolute series folder ignores the working dir."""
     project_dir = config_dir / PROJECTS_DIR_NAME / _project_key(working_dir / series_folder)
     paths = sorted(project_dir.glob(f"*/{SUBAGENTS_DIR_NAME}/{TRANSCRIPT_PATTERN}"))
     return [_read_transcript(path) for path in paths]
@@ -44,12 +44,24 @@ def _read_transcript(path: Path) -> Transcript:
     meta_path = path.with_suffix(META_SUFFIX)
     if not meta_path.is_file():
         raise ValueError(f"{path}: meta file {meta_path.name} is missing")
-    meta = json.loads(meta_path.read_text())
-    if AGENT_TYPE_FIELD not in meta:
-        raise ValueError(f"{path}: meta file lacks {AGENT_TYPE_FIELD}")
+    meta = _read_meta(path, meta_path)
+    agent_type = meta.get(AGENT_TYPE_FIELD)
+    if not isinstance(agent_type, str):
+        raise ValueError(f"{path}: meta file lacks a string {AGENT_TYPE_FIELD}")
     return Transcript(
         path=path,
         session=path.parent.parent.name,
         agent_id=path.stem.removeprefix(TRANSCRIPT_ID_PREFIX),
-        agent_type=meta[AGENT_TYPE_FIELD],
+        agent_type=agent_type,
     )
+
+
+def _read_meta(path: Path, meta_path: Path) -> dict:
+    """Return the JSON object the meta file holds, refusing any other content by transcript name."""
+    try:
+        meta = json.loads(meta_path.read_text())
+    except json.JSONDecodeError:
+        raise ValueError(f"{path}: meta file is not valid JSON") from None
+    if not isinstance(meta, dict):
+        raise ValueError(f"{path}: meta file is not a JSON object")
+    return meta
