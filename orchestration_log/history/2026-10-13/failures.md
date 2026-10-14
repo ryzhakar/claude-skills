@@ -27,3 +27,11 @@ Correction: pushed history on main is left as is; commit chains in this repo run
 ## 21:40 UTC 2026-10-13 — Journal dates and an owner-ruling time written wrong
 Root cause: after 00:00 EEST the traces wrote the local date beside "UTC" times; the owner's reading-half ruling was stamped from the moment of handling (~00:20 EEST) instead of its arrival (19:59 EEST), read off the turn order across a usage-limit gap.
 Correction: correction trace appended; trace stamps come from `date -u '+%Y-%m-%d %H:%M'` in the writing call, never assembled by hand.
+
+## 02:2x UTC 2026-10-14 — Told a peer its card was moved by someone's join, unchecked
+Root cause: ffb899.md sat in departed/ while ListAgents listed ffb899 live; the scribe wrote "someone's join moved it — move it back" without reading ffb899's journal; ffb899 had left on the owner's order and moved its own card; ListAgents lags a leave until the process exits.
+Correction: a found anomaly about a peer is a question to that peer, not a claim; liveness after a leave notice follows the notice.
+
+## 2026-10-13 21:20–21:41 UTC — Protocol traffic spent a peer's work window
+Root cause: the scribe ran protocol rounds amendment by amendment (7.2, its amendment, 7.3, its amendment, 7.4 within ~20 minutes); every message cost each receiver a full-context turn on a shared login; maximalist-review-wave's window reset 00:20 EEST was spent by 00:41, stopping six review runs (reported by 3c3084).
+Correction: one round per change, amendments folded before sending; reply time long enough that sessions doing heavy work answer at their own pace; the scribe counts receivers' turns as the cost of a round.
