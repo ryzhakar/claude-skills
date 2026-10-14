@@ -1,0 +1,16 @@
+{
+  "name": "instruction-eval",
+  "version": "0.1.0",
+  "description": "Measure whether an LLM instruction changes model behavior.",
+  "author": {
+    "name": "ryzhakar"
+  },
+  "repository": "https://github.com/ryzhakar/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "instruction",
+    "evaluation",
+    "prompt"
+  ],
+  "dependencies": ["manifesto"]
+}
