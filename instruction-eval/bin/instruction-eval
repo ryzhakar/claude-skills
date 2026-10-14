@@ -1,0 +1,12 @@
+#!/bin/sh
+command -v uv >/dev/null 2>&1 || { echo "instruction-eval: uv is not installed" >&2; exit 127; }
+self=$0
+while [ -L "$self" ]; do
+    target=$(readlink "$self")
+    case $target in
+        /*) self=$target ;;
+        *) self=$(dirname "$self")/$target ;;
+    esac
+done
+root=$(cd "$(dirname "$self")/.." && pwd -P)
+exec uv run --project "$root" --locked --quiet instruction-eval "$@"
