@@ -85,6 +85,24 @@ def test_drift_noise_pools_slope_variances_over_conversations_against_empty():
     assert noise["checks"]["drift"] == pytest.approx(Z * sqrt(2.25 / (2 * 2)))
 
 
+def test_drift_noise_compares_instruction_with_source_when_a_source_exists():
+    rows = [
+        *turn_replies("instruction", {"c1": [[0, 1, 2], [0, 0, 0]], "c2": [[1, 1, 1], [1, 1, 1]]}),
+        *turn_replies("empty", {"c1": [[0, 2, 4], [0, 0, 0]], "c2": [[3, 2, 1], [1, 2, 3]]}),
+        *turn_replies("source", {"c1": [[0, 1, 2], [0, 0, 0]], "c2": [[0, 0, 0], [0, 0, 0]]}),
+    ]
+
+    noise = measure_noise(rows, ["d1"], [*CONTROLS, "source"], repeats=2, level=LEVEL)
+
+    assert noise["checks"]["drift"] == pytest.approx(Z * sqrt(0.5 / (2 * 2)))
+
+
+def test_drift_noise_is_absent_without_conversations():
+    noise = measure_noise(THREE_REPEAT_DONE_ROWS, ["d1"], CONTROLS, repeats=3, level=LEVEL)
+
+    assert "drift" not in noise["checks"]
+
+
 def done_replies(condition, done_by_task):
     return [
         reply(condition, task, repeat, {"d1": 0}, done=done)
