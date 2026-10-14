@@ -1,3 +1,4 @@
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -18,6 +19,16 @@ def test_written_record_loads_back_with_inputs_naming_every_read(series):
     loaded = load_record(series, "r1/9-outcome.yaml")
     assert loaded["passed"] is True
     assert set(loaded["inputs"]) == {"series.yaml", "7-gate.yaml#repeats"}
+
+
+def test_inputs_hold_the_sha256_of_the_whole_file_and_of_the_key_value_as_canonical_yaml(series):
+    write_record(series, "r1/9-outcome.yaml", {"passed": True}, ["series.yaml", "7-gate.yaml#keep_rule"])
+    inputs = load_record(series, "r1/9-outcome.yaml")["inputs"]
+    canonical_keep_rule = "rank:\n- completion\n- overreach\ntie: earliest\n"
+    assert inputs == {
+        "series.yaml": hashlib.sha256((series / "series.yaml").read_bytes()).hexdigest(),
+        "7-gate.yaml#keep_rule": hashlib.sha256(canonical_keep_rule.encode()).hexdigest(),
+    }
 
 
 def test_writing_an_existing_file_refuses_and_keeps_the_first_bytes_alone(series):
