@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from instruction_eval.records import load_record, write_record
+from instruction_eval.records import Refusal, load_record, write_file, write_record
 
 FIXTURE_SERIES = Path(__file__).parent / "fixtures" / "record-io"
 
@@ -18,3 +18,11 @@ def test_written_record_loads_back_with_inputs_naming_every_read(series):
     loaded = load_record(series, "r1/9-outcome.yaml")
     assert loaded["passed"] is True
     assert set(loaded["inputs"]) == {"series.yaml", "7-gate.yaml#repeats"}
+
+
+def test_writing_an_existing_file_refuses_and_keeps_the_first_bytes_alone(series):
+    write_file(series, "r1/2-instruction.md", b"first")
+    with pytest.raises(Refusal, match=r"^already written: r1/2-instruction.md$"):
+        write_file(series, "r1/2-instruction.md", b"second")
+    assert (series / "r1/2-instruction.md").read_bytes() == b"first"
+    assert [entry.name for entry in (series / "r1").iterdir()] == ["2-instruction.md"]

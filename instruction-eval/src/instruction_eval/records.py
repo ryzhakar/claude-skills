@@ -1,6 +1,8 @@
 """Series records: files written once, and CLI records whose inputs must still hash as written."""
 
 import hashlib
+import os
+import tempfile
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
@@ -10,11 +12,21 @@ import yaml
 KEY_SEPARATOR = "#"
 
 
+class Refusal(Exception):
+    """A command's refusal, carrying the one-line message the user reads."""
+
+
 def write_file(series: Path, path: str, content: bytes) -> None:
-    """Write the series file at `path` whole and once."""
+    """Write the series file at `path` whole and once, refusing when it exists."""
     target = series / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(content)
+    staged = _stage_beside(target, content)
+    try:
+        os.link(staged, target)
+    except FileExistsError:
+        raise Refusal(f"already written: {path}") from None
+    finally:
+        staged.unlink()
 
 
 def write_record(series: Path, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
@@ -39,6 +51,13 @@ def _hash_input(series: Path, entry: str) -> str:
     if not separator:
         return _sha256(content)
     return _sha256(_dump_yaml(yaml.safe_load(content)[key]))
+
+
+def _stage_beside(target: Path, content: bytes) -> Path:
+    """Write the content to a fresh file in the target's folder and return its path."""
+    with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as staged:
+        staged.write(content)
+    return Path(staged.name)
 
 
 def _dump_yaml(value: Any) -> bytes:
