@@ -1,0 +1,40 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from instruction_eval.reader import NeutralLoginRefused, check_neutral_login
+
+REQUIRED_PLUGINS = {
+    "instruction-eval@my-claude-skills": True,
+    "manifesto@my-claude-skills": True,
+}
+
+
+class Login:
+    def __init__(self, home: Path):
+        self.home = home
+        self.config_dir = home / ".claudes-bare" / "readers"
+        self.working_dir = home / "work" / "series"
+        self.config_dir.mkdir(parents=True)
+        self.working_dir.mkdir(parents=True)
+        self.write_settings(REQUIRED_PLUGINS)
+
+    def write_settings(self, enabled_plugins: dict) -> None:
+        settings = {"enabledPlugins": enabled_plugins}
+        (self.config_dir / "settings.json").write_text(json.dumps(settings))
+
+    def environ(self) -> dict[str, str]:
+        return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
+
+    def check(self) -> None:
+        check_neutral_login(self.environ(), self.home, self.working_dir)
+
+
+@pytest.fixture
+def login(tmp_path: Path) -> Login:
+    return Login(tmp_path / "home")
+
+
+def test_accepts_a_clean_neutral_login(login: Login):
+    login.check()
