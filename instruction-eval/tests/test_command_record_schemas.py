@@ -137,3 +137,42 @@ def test_revision_change_text_follows_its_action(change):
 def test_revision_change_accepts_each_action(change):
     document = changed(load_fixture(RecordKind.REVISION), ("change",), change)
     assert parse_record(RecordKind.REVISION, document) == document
+
+
+def test_frozen_record_parses_as_written():
+    document = load_fixture(RecordKind.FROZEN)
+    assert parse_record(RecordKind.FROZEN, document) == document
+
+
+def test_frozen_record_accepts_fingerprint_hash_of_command_readers():
+    document = changed(load_fixture(RecordKind.FROZEN), ("fingerprint_hash",), "c" * 64)
+    assert parse_record(RecordKind.FROZEN, document) == document
+
+
+@pytest.mark.parametrize("path,value", [
+    (("hashes", "series.yaml"), "xyz"),
+    (("hashes",), ["series.yaml"]),
+    (("noise", "repeats"), 1),
+    (("noise", "level"), 1),
+    (("noise", "level"), 0),
+    (("noise", "z"), 0),
+    (("noise", "sigma", "breaches", "empty"), -0.1),
+    (("noise", "sigma", "demands", "brevity", "empty"), "high"),
+    (("noise", "sigma", "total"), {}),
+    (("noise", "checks", "instruction-vs-everything"), 0.1),
+    (("noise", "checks", "drift"), -1),
+    (("noise", "demands", "Bad Id"), 0.1),
+    (("noise", "done_change"), "none"),
+    (("fingerprint_hash",), "short"),
+    (("tool_version",), ""),
+    (("frozen_at",), "2026-10-14T10:00:00"),
+    (("frozen_at",), "yesterday"),
+])
+def test_frozen_record_refuses_bad_value(path, value):
+    document = changed(load_fixture(RecordKind.FROZEN), path, value)
+    assert_refused(RecordKind.FROZEN, document, path[-1])
+
+
+def test_frozen_record_refuses_missing_noise_key():
+    document = without(load_fixture(RecordKind.FROZEN), ("noise", "done_change"))
+    assert_refused(RecordKind.FROZEN, document, "done_change")
