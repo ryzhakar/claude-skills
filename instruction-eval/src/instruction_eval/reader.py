@@ -4,6 +4,7 @@ from dataclasses import dataclass, fields
 from datetime import datetime
 from itertools import accumulate
 from pathlib import Path
+from typing import Any
 
 _USER_ENTRY_TYPE = "user"
 _ASSISTANT_ENTRY_TYPE = "assistant"
@@ -51,7 +52,7 @@ class _TranscriptLine:
 
 def parse_transcript_replies(transcript: Path, content: bytes) -> tuple[TranscriptReply, ...]:
     """Pair the k-th user message of the transcript bytes with its reply as turn k, skipping unanswered turns."""
-    turns = _group_lines_by_turn(_split_transcript_lines(content))
+    turns = _group_lines_by_turn(_split_transcript_lines(transcript, content))
     replies = (
         _reply_to_turn(number, turn_lines, transcript, content)
         for number, turn_lines in enumerate(turns, 1)
@@ -59,11 +60,22 @@ def parse_transcript_replies(transcript: Path, content: bytes) -> tuple[Transcri
     return tuple(reply for reply in replies if reply is not None)
 
 
-def _split_transcript_lines(content: bytes) -> tuple[_TranscriptLine, ...]:
+def _split_transcript_lines(transcript: Path, content: bytes) -> tuple[_TranscriptLine, ...]:
     """Parse each JSONL line of the transcript, keeping where its bytes end."""
     raw_lines = content.splitlines(keepends=True)
     ends = accumulate(len(raw_line) for raw_line in raw_lines)
-    return tuple(_TranscriptLine(json.loads(raw_line), end) for raw_line, end in zip(raw_lines, ends))
+    return tuple(
+        _TranscriptLine(_parse_transcript_line(transcript, number, raw_line), end)
+        for number, (raw_line, end) in enumerate(zip(raw_lines, ends), 1)
+    )
+
+
+def _parse_transcript_line(transcript: Path, number: int, raw_line: bytes) -> dict[str, Any]:
+    """Parse one transcript line as JSON, refusing with the transcript and line number when it is not."""
+    try:
+        return json.loads(raw_line)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{transcript}: line {number} is not JSON") from error
 
 
 def _group_lines_by_turn(lines: tuple[_TranscriptLine, ...]) -> tuple[tuple[_TranscriptLine, ...], ...]:

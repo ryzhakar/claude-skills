@@ -1,6 +1,9 @@
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+
+import pytest
 
 from instruction_eval.reader import TokenUsage, parse_transcript_replies
 
@@ -75,3 +78,10 @@ def test_harness_injected_meta_messages_open_no_turn_while_send_message_turns_do
     assert [(reply.turn, reply.text) for reply in replies] == [(1, "ONE"), (2, "TWO")]
     assert replies[0].message == "TURN-1: reply with the single word ONE."
     assert replies[1].message.startswith("The coordinator sent a message while you were working:\n")
+
+
+def test_a_line_that_is_not_json_is_refused_naming_transcript_and_line():
+    transcript = FIXTURES / "single-turn.jsonl"
+    truncated = transcript.read_bytes() + b'{"type":"assist'
+    with pytest.raises(ValueError, match=rf"^{re.escape(str(transcript))}: line 6 is not JSON$"):
+        parse_transcript_replies(transcript, truncated)
