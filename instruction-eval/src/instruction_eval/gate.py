@@ -1,11 +1,67 @@
 from dataclasses import dataclass
 
+ASK_REPEAT_FACTOR = 4
+
+
+class BudgetRefusal(Exception):
+    pass
+
 
 @dataclass(frozen=True)
 class ReplyCost:
     input_tokens: int | None
     output_tokens: int | None
     seconds: float
+
+
+@dataclass(frozen=True)
+class Budget:
+    unit: str
+    ceiling: float
+
+
+@dataclass(frozen=True)
+class SeriesShape:
+    task_count: int
+    open_task_count: int
+    conversation_turns: int
+    repeats: int
+    omission_sentences: int
+
+
+def _reply_cost_in_unit(reply: ReplyCost, unit: str) -> float:
+    """Return the reply's cost in the budget unit."""
+    if unit == "tokens":
+        return reply.input_tokens + reply.output_tokens
+    return reply.seconds
+
+
+def _mean_reply_cost(r1_replies: list[ReplyCost], unit: str) -> float:
+    """Return r1's mean cost per reply in the budget unit."""
+    return _total_cost(r1_replies, unit) / len(r1_replies)
+
+
+def _total_cost(replies: list[ReplyCost], unit: str) -> float:
+    """Return the replies' summed cost in the budget unit."""
+    return sum(_reply_cost_in_unit(reply, unit) for reply in replies)
+
+
+def _predicted_cost(r1_replies: list[ReplyCost], shape: SeriesShape, unit: str) -> float:
+    """Return r1's cost plus four times its mean reply cost over the later revisions' replies."""
+    reads_per_revision = (shape.task_count + shape.conversation_turns) * shape.repeats
+    omission_reads = shape.open_task_count * shape.repeats * shape.omission_sentences
+    return _total_cost(r1_replies, unit) + ASK_REPEAT_FACTOR * _mean_reply_cost(
+        r1_replies, unit
+    ) * (reads_per_revision + omission_reads)
+
+
+def refuse_unaffordable_freeze(
+    budget: Budget | None, r1_replies: list[ReplyCost], shape: SeriesShape
+) -> None:
+    """Raise BudgetRefusal when the budget ceiling is below the series' predicted cost."""
+    predicted = _predicted_cost(r1_replies, shape, budget.unit)
+    if predicted > budget.ceiling:
+        raise BudgetRefusal(f"predicted cost {predicted:g} exceeds ceiling {budget.ceiling:g}")
 
 
 def _sum_unless_null(values: list[int | None]) -> int | None:
