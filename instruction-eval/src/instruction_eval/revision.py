@@ -1,7 +1,12 @@
 from dataclasses import dataclass
-from typing import Literal
+from enum import StrEnum
 
-Action = Literal["rewrite", "add", "delete", "move"]
+
+class Action(StrEnum):
+    REWRITE = "rewrite"
+    ADD = "add"
+    DELETE = "delete"
+    MOVE = "move"
 
 
 @dataclass(frozen=True)
@@ -63,8 +68,8 @@ def _move_holds(parent: list[str], child: list[str], change: Change) -> bool:
 
 
 _CHECKS = {
-    "rewrite": _rewrite_holds,
-    "add": _add_holds,
-    "delete": _delete_holds,
-    "move": _move_holds,
+    Action.REWRITE: _rewrite_holds,
+    Action.ADD: _add_holds,
+    Action.DELETE: _delete_holds,
+    Action.MOVE: _move_holds,
 }
