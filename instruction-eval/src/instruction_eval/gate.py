@@ -1,6 +1,7 @@
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from statistics import mean
+from functools import partial
 from typing import Literal, TypedDict
 
 import numpy
@@ -8,6 +9,7 @@ import numpy
 from instruction_eval.records import (
     BUDGET_REASON,
     CAPPED_STOP,
+    FEWEST_REPEATS,
     NO_EFFECT_STOP,
     PASS_OUTCOME,
     PASSED_STOP,
@@ -15,8 +17,9 @@ from instruction_eval.records import (
     Direction,
     GateCheck,
     Record,
+    Refusal,
 )
-from instruction_eval.scores import Comparison, PairedUnit, ScoredReply, compare_paired
+from instruction_eval.scores import Comparison, Noise, ScoredReply, breach_total, compare_paired, paired_units, task_means
 
 LATER_REVISION_COUNT = 4
 LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
@@ -54,6 +57,91 @@ def check_passes(check: GateCheck, comparison: Comparison) -> bool:
     if comparison.mean_difference is None or comparison.interval is None:
         return False
     return _PASS_RULES[check.compares](comparison.mean_difference, comparison.interval, check.gap)
+
+
+GAP_RESOLUTION_SHARE = 2
+SOURCE_CONDITION = "source"
+EMPTY_CONDITION = "empty"
+_NEAR_SOURCE_COMPARES: Compares = "instruction-near-source"
+_VS_EMPTY_COMPARES: Compares = "instruction-vs-empty"
+
+
+def refuse_unresolvable_gaps(
+    checks: Sequence[GateCheck],
+    noise: Noise,
+    sealed_rows: Sequence[ScoredReply],
+    gate_demands: Sequence[str],
+    series_has_sources: bool,
+    rng: numpy.random.Generator,
+) -> None:
+    """Raise Refusal on a null noise, a check whose noise exceeds half its gap, or an `instruction-near-source` check r1's sealed rows do not admit."""
+    near_source = _NEAR_SOURCE_COMPARES in {check.compares for check in checks}
+    if near_source:
+        _refuse_near_source_without_sources(series_has_sources)
+    _refuse_null_change_noise(noise)
+    _refuse_unresolvable_gaps(checks, noise)
+    if near_source:
+        _refuse_unadmitted_near_source(_vs_empty_check(checks), sealed_rows, gate_demands, noise["level"], rng)
+
+
+def _refuse_near_source_without_sources(series_has_sources: bool) -> None:
+    """Raise Refusal when an `instruction-near-source` check stands in a series without sources."""
+    if not series_has_sources:
+        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: the series has no sources")
+
+
+def _vs_empty_check(checks: Sequence[GateCheck]) -> GateCheck:
+    """Return the `instruction-vs-empty` check, which every gate holds."""
+    return next(check for check in checks if check.compares == _VS_EMPTY_COMPARES)
+
+
+def _refuse_unadmitted_near_source(
+    vs_empty: GateCheck, sealed_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, rng: numpy.random.Generator
+) -> None:
+    """Raise Refusal unless `source` minus `empty` over r1's sealed tasks passes the `instruction-vs-empty` check."""
+    gate_breaches = partial(breach_total, demands=gate_demands)
+    units = paired_units(task_means(sealed_rows, SOURCE_CONDITION, gate_breaches), task_means(sealed_rows, EMPTY_CONDITION, gate_breaches))
+    if not check_passes(vs_empty, compare_paired(units, level, rng)):
+        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: source minus empty misses the {_VS_EMPTY_COMPARES} gap on r1's sealed rows")
+
+
+def least_repeats(check: GateCheck, noise: Noise) -> int | None:
+    """Return the fewest repeats, at least two, at which the check's noise scaled from r1's repeats is at most half its gap, null without noise."""
+    half_width = noise["checks"].get(check.compares)
+    if half_width is None:
+        return None
+    return max(FEWEST_REPEATS, math.ceil(noise["repeats"] * (GAP_RESOLUTION_SHARE * half_width / check.gap) ** 2))
+
+
+def _refuse_null_change_noise(noise: Noise) -> None:
+    """Raise Refusal naming the first gate demand whose change noise is null, then a null done change noise."""
+    null_demand = next((demand for demand, half_width in noise["demands"].items() if half_width is None), None)
+    if null_demand is not None:
+        raise Refusal(f"null noise: demands.{null_demand}")
+    if noise["done_change"] is None:
+        raise Refusal("null noise: done_change")
+
+
+def _refuse_unresolvable_gaps(checks: Sequence[GateCheck], noise: Noise) -> None:
+    """Raise Refusal naming the first check with null noise, else every check whose noise exceeds half its gap with the least repeats resolving every check."""
+    for check in checks:
+        if noise["checks"].get(check.compares) is None:
+            raise Refusal(f"null noise: {check.compares}")
+    unresolvable = [check for check in checks if noise["checks"][check.compares] > check.gap / GAP_RESOLUTION_SHARE]
+    if unresolvable:
+        named = ", ".join(_unresolvable_gap_description(check, noise) for check in unresolvable)
+        raise Refusal(f"unresolvable gap: {named}; least repeats {series_least_repeats(checks, noise)}")
+
+
+def _unresolvable_gap_description(check: GateCheck, noise: Noise) -> str:
+    """Return the check named with its noise against half its gap."""
+    return f"{check.compares} (noise {noise['checks'][check.compares]:g} > gap / 2 {check.gap / GAP_RESOLUTION_SHARE:g})"
+
+
+def series_least_repeats(checks: Sequence[GateCheck], noise: Noise) -> int | None:
+    """Return the fewest repeats at which every check's noise is at most half its gap, null when a check has no noise."""
+    per_check = [least_repeats(check, noise) for check in checks]
+    return None if None in per_check else max(per_check, default=FEWEST_REPEATS)
 
 
 BudgetUnit = Literal["tokens", "seconds"]
@@ -227,28 +315,10 @@ def compare_with_parent(
     rng: numpy.random.Generator,
 ) -> ParentComparison:
     """Compare the revision's sealed instruction replies with its parent's on the target, a demand id or `completion`."""
-    units = _paired_task_values(revision_rows, parent_rows, target)
+    target_value = partial(_reply_value, target=target)
+    units = paired_units(task_means(revision_rows, INSTRUCTION_CONDITION, target_value), task_means(parent_rows, INSTRUCTION_CONDITION, target_value))
     comparison = compare_paired(units, level, rng)
     return ParentComparison(target, comparison, _movement_verdict(comparison.interval, direction, predicted_size))
-
-
-def _paired_task_values(
-    revision_rows: Sequence[ScoredReply], parent_rows: Sequence[ScoredReply], target: str
-) -> list[PairedUnit]:
-    """Pair each task's mean target value in the revision with its parent's, tasks one side lacks left out."""
-    revision_values = _task_values(revision_rows, target)
-    parent_values = _task_values(parent_rows, target)
-    return [PairedUnit(revision_values[task], parent_values[task]) for task in sorted(revision_values.keys() & parent_values.keys())]
-
-
-def _task_values(rows: Sequence[ScoredReply], target: str) -> dict[str, float]:
-    """Map each task to the mean target value of its instruction replies over repeats, tasks without a value left out."""
-    values_by_task: dict[str, list[float]] = {}
-    for row in rows:
-        value = _reply_value(row, target)
-        if row["condition"] == INSTRUCTION_CONDITION and row["turn"] is None and value is not None:
-            values_by_task.setdefault(row["task"], []).append(value)
-    return {task: mean(values) for task, values in values_by_task.items()}
 
 
 def _reply_value(row: ScoredReply, target: str) -> float | None:

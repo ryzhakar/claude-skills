@@ -598,12 +598,12 @@ _CONDITION_SCORES = _mapping(
     {
         "breaches_per_reply": _NON_NEGATIVE,
         "demands": _map_of(_IDENTIFIER, _NON_NEGATIVE),
-        "done_rate": _UNIT_CLOSED,
+        "done_rate": _nullable(_UNIT_CLOSED),
         "kinds": _map_of(_VERDICT_KIND, _integer(0)),
     }
 )
 _COMPARISON = _mapping(
-    {"mean_difference": _ANY_NUMBER, "interval": _nullable(_interval), "units": _integer(0)}
+    {"mean_difference": _nullable(_ANY_NUMBER), "interval": _nullable(_interval), "units": _integer(0)}
 )
 _DRIFT = _mapping({"slope": _ANY_NUMBER, "interval": _interval})
 _OUTCOME_CHECK = _mapping(

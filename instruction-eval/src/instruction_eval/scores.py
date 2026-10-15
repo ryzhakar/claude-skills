@@ -1,13 +1,38 @@
+import re
+from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from math import sqrt
-from statistics import NormalDist, linear_regression, mean, variance
+from statistics import NormalDist, fmean, linear_regression, mean, variance
 from typing import NamedTuple, TypedDict
 
 import numpy
 
-from instruction_eval.records import ANCHOR_KEY, DoneBy, Record, Split
+from instruction_eval.coverage import split_sentences
+from instruction_eval.records import (
+    ANCHOR_KEY,
+    DEMANDS_RECORD,
+    DETECTOR_DEMANDS,
+    FIRST_REVISION,
+    GATE_RECORD,
+    OPEN_SPLIT,
+    TASKS_RECORD,
+    Coverage,
+    DoneBy,
+    Dropped,
+    Gate,
+    LongSentencesDemand,
+    PatternDemand,
+    Record,
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    Split,
+    reply_path,
+    write_record,
+)
+from instruction_eval.tasks import words
 
 _INSTRUCTION = "instruction"
 _SOURCE = "source"
@@ -121,14 +146,14 @@ def measure_noise(
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
     sigma: NoiseSigma = {
-        "breaches": _repeat_variances(task_replies, conditions, partial(_breach_total, demands=gate_demands)),
+        "breaches": _repeat_variances(task_replies, conditions, partial(breach_total, demands=gate_demands)),
         "done": _repeat_variances(task_replies, conditions, _done_value),
         "drift": {
             condition: _mean_repeat_variance(_drift_slopes_by_unit(turn_replies, condition, gate_demands))
             for condition in conditions
         },
         "demands": {
-            demand: _repeat_variances(task_replies, conditions, partial(_breach_total, demands=[demand]))
+            demand: _repeat_variances(task_replies, conditions, partial(breach_total, demands=[demand]))
             for demand in gate_demands
         },
     }
@@ -212,7 +237,7 @@ def _drift_slopes_by_unit(
         if reply["condition"] == condition and (turn := reply["turn"]) is not None:
             turns, totals = turn_totals.setdefault((reply["task"], reply["repeat"]), ([], []))
             turns.append(turn)
-            totals.append(_breach_total(reply, demands))
+            totals.append(breach_total(reply, demands))
     slopes: dict[str, list[float | None]] = {}
     for (conversation, _), (turns, totals) in turn_totals.items():
         slopes.setdefault(conversation, []).append(_least_squares_slope(turns, totals))
@@ -226,7 +251,7 @@ def _least_squares_slope(turns: Sequence[int], totals: Sequence[int]) -> float |
     return linear_regression(turns, totals).slope
 
 
-def _breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
+def breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
     """Return the reply's breaches summed over the demands."""
     return sum(reply["breaches"][demand] for demand in demands)
 
@@ -239,9 +264,9 @@ def _done_value(reply: ScoredReply) -> float | None:
 def _best_done_control(replies: Sequence[ScoredReply], controls: Sequence[str]) -> str | None:
     """Return the control with the highest done rate over non-null done values, or null when no control has one."""
     done_rates = {
-        control: mean(present)
+        control: done_rate
         for control in controls
-        if (present := [reply["done"] for reply in replies if reply["condition"] == control and reply["done"] is not None])
+        if (done_rate := _done_rate([reply for reply in replies if reply["condition"] == control])) is not None
     }
     return max(done_rates, key=done_rates.__getitem__, default=None)
 
@@ -299,6 +324,21 @@ def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.
     )
 
 
+def paired_units(instruction_values: Mapping[str, float], other_values: Mapping[str, float]) -> list[PairedUnit]:
+    """Pair each unit's instruction-side mean with its other-side mean, units one side lacks left out."""
+    return [PairedUnit(instruction_values[unit], other_values[unit]) for unit in sorted(instruction_values.keys() & other_values.keys())]
+
+
+def task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callable[[ScoredReply], float | None]) -> dict[str, float]:
+    """Map each task to the mean value of the condition's single-task replies over repeats, tasks without a value left out."""
+    values_by_task: dict[str, list[float]] = {}
+    for row in rows:
+        value = reply_value(row)
+        if row["condition"] == condition and row["turn"] is None and value is not None:
+            values_by_task.setdefault(row["task"], []).append(value)
+    return {task: mean(values) for task, values in values_by_task.items()}
+
+
 def unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
     """Return each unit's instruction value minus its other value."""
     return numpy.array([unit.instruction - unit.other for unit in units], dtype=float)
@@ -332,3 +372,219 @@ def require_valid_level(level: float) -> None:
     """Raise ValueError naming `level` unless it lies strictly between 0 and 1."""
     if not 0 < level < 1:
         raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
+
+
+SCORES_FILE = "8-scores.yaml"
+BootstrapRng = Callable[[], numpy.random.Generator]
+ORIGINS_FILE = "6-origins.yaml"
+COLLECTED_FILE = "7-collected.yaml"
+DETECTORS_FILE = "7-detectors.yaml"
+LEVEL_INPUT = f"{GATE_RECORD}#level"
+DONE_BY_INPUT = f"{GATE_RECORD}#done_by"
+DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}#demands", f"{TASKS_RECORD}#tasks", f"{TASKS_RECORD}#conversations")
+SCORE_USER_INPUTS = (
+    *DEMANDS_AND_TASKS_INPUTS,
+    f"{FIRST_REVISION}/3-coverage.yaml#demands",
+    f"{FIRST_REVISION}/3-coverage.yaml#sentences",
+    LEVEL_INPUT,
+    DONE_BY_INPUT,
+)
+FENCE_OPENING = re.compile(r"\s*(`{3,}|~{3,})")
+LINE_BREAK = "\n"
+
+
+def revision_detect(files: SeriesFolder, revision: str) -> None:
+    """Write the revision's `7-detectors.yaml`: per reply, its `pattern` and `long-sentences` breaches outside fenced code and its answer-key match."""
+    records = SeriesRecords(files)
+    detector_demands = [demand for demand in records.demands().demands if isinstance(demand, DETECTOR_DEMANDS)]
+    answer_keys = {task.id: task.answer_key for task in records.tasks().tasks}
+    origins = records.origins(revision)
+    reply_paths = _origin_reply_paths(revision, origins)
+    replies = {blind_id: records.reply(path) for blind_id, path in reply_paths.items()}
+    verdicts = [
+        _detector_entry(blind_id, reply["text"], detector_demands, answer_keys.get(reply["task"])) for blind_id, reply in replies.items()
+    ]
+    write_record(files, f"{revision}/{DETECTORS_FILE}", {"verdicts": verdicts}, [*DEMANDS_AND_TASKS_INPUTS, *reply_paths.values(), f"{revision}/{ORIGINS_FILE}"])
+
+
+def _detector_entry(
+    blind_id: str, text: str, detector_demands: Sequence[PatternDemand | LongSentencesDemand], answer_key: re.Pattern[str] | None
+) -> dict[str, object]:
+    """Return one reply's detector entry: breaches of each detector demand outside fenced code, and the answer key's match on the full text, null without a key."""
+    prose = _without_fenced_code(text)
+    return {
+        "id": blind_id,
+        "breaches": {demand.id: _detected_breaches(demand, prose) for demand in detector_demands},
+        "done_by_answer_key": None if answer_key is None else answer_key.search(text) is not None,
+    }
+
+
+def _detected_breaches(demand: PatternDemand | LongSentencesDemand, prose: str) -> int:
+    """Return the non-overlapping pattern matches, or the sentences holding more words than the limit."""
+    if isinstance(demand, PatternDemand):
+        return sum(1 for _ in demand.pattern.finditer(prose))
+    encoded = prose.encode()
+    return sum(1 for sentence in split_sentences(encoded) if len(words(encoded[sentence.start : sentence.end].decode())) > demand.limit)
+
+
+def _without_fenced_code(text: str) -> str:
+    """Return the text with each fenced code block, through its closing fence or the text's end, replaced by one empty line."""
+    kept: list[str] = []
+    closing: re.Pattern[str] | None = None
+    for line in text.split(LINE_BREAK):
+        if closing is not None:
+            closing = None if closing.match(line) else closing
+        elif opening := FENCE_OPENING.match(line):
+            closing = _closing_fence(opening.group(1))
+            kept.append("")
+        else:
+            kept.append(line)
+    return LINE_BREAK.join(kept)
+
+
+def _closing_fence(fence: str) -> re.Pattern[str]:
+    """Return the pattern of a line closing the fence: its character at least as many times, alone on the line."""
+    return re.compile(rf"\s*{re.escape(fence[0])}{{{len(fence)},}}\s*\Z")
+
+
+def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
+    """Write the revision's `8-scores.yaml` from its open replies, each bootstrap drawing on a fresh `bootstrap_rng()`: rows, per-condition means, comparisons, drift, and done disagreements."""
+    records = SeriesRecords(files)
+    level, done_by = _scoring_keys(records.gate())
+    origins = records.origins(revision)
+    collected = records.collected(revision)
+    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    rows = join_reply_rows(origins, verdicts, records.detectors(revision), done_by, OPEN_SPLIT)
+    scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level, bootstrap_rng)
+    write_record(files, f"{revision}/{SCORES_FILE}", scores, _score_reads(revision, origins, collected))
+
+
+def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
+    """Return the gate's level and done mode, refusing either key unwritten."""
+    if gate.level is None:
+        raise Refusal(f"missing key: {LEVEL_INPUT}")
+    if gate.done_by is None:
+        raise Refusal(f"missing key: {DONE_BY_INPUT}")
+    return gate.level, gate.done_by
+
+
+def _gate_demands(coverage: Coverage) -> list[str]:
+    """Return the demands r1's coverage does not drop, in coverage order."""
+    return [demand for demand, sentences in coverage.demands.items() if not isinstance(sentences, Dropped)]
+
+
+def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]:
+    """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
+    return [
+        *SCORE_USER_INPUTS,
+        *_origin_reply_paths(revision, origins).values(),
+        f"{revision}/{ORIGINS_FILE}",
+        *(f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()),
+        f"{revision}/{COLLECTED_FILE}",
+        f"{revision}/{DETECTORS_FILE}",
+    ]
+
+
+def _origin_reply_paths(revision: str, origins: Record) -> dict[str, str]:
+    """Map each reply origin's blind id to its reply file, a borrowed one in the revision it names."""
+    return {
+        blind_id: reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+        for blind_id, origin in origins["ids"].items()
+        if ANCHOR_KEY not in origin
+    }
+
+
+def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
+    """Return the scores record of the open rows: the rows, per-condition means, comparisons, drift, and done disagreements."""
+    task_rows = [row for row in rows if row["turn"] is None]
+    turn_rows = [row for row in rows if row["turn"] is not None]
+    return {
+        "split": OPEN_SPLIT,
+        "rows": list(rows),
+        "by_condition": {
+            condition: _condition_scores([row for row in task_rows if row["condition"] == condition], gate_demands)
+            for condition in _conditions_of(task_rows)
+        },
+        "comparisons": _comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng),
+        "drift": {
+            condition: _drift(slopes, level, bootstrap_rng)
+            for condition in _conditions_of(turn_rows)
+            if (slopes := _conversation_slopes(turn_rows, gate_demands, condition))
+        },
+        "disagreements": [row["id"] for row in rows if _key_and_judge_disagree(row)],
+    }
+
+
+def _key_and_judge_disagree(row: ReplyRow) -> bool:
+    """Tell whether the reply holds both a key verdict and a judge verdict on done and they differ."""
+    return None not in (row["done_by_answer_key"], row["done_by_judge"]) and row["done_by_answer_key"] != row["done_by_judge"]
+
+
+def _comparisons(
+    task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng
+) -> dict[str, dict[str, object]]:
+    """Map each compares the rows define to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
+    controls = [condition for condition in (*_VS_CONTROLS, _SOURCE) if condition in _conditions_of(task_rows)]
+    task_breaches = partial(_task_means_of, task_rows, partial(breach_total, demands=gate_demands))
+    comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != _SOURCE}
+    if _SOURCE in controls:
+        comparisons[_NEAR_SOURCE] = _instruction_minus(task_breaches, _SOURCE, level, bootstrap_rng)
+    comparisons[_COMPLETION] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
+    if turn_rows:
+        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
+        comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level, bootstrap_rng)
+    return comparisons
+
+
+def _task_means_of(task_rows: Sequence[ScoredReply], reply_value: Callable[[ScoredReply], float | None], condition: str | None) -> dict[str, float]:
+    """Map each task to the condition's mean reply value, no task without a condition."""
+    return task_means(task_rows, condition, reply_value) if condition else {}
+
+
+def _conversation_slopes(turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], condition: str) -> dict[str, float]:
+    """Map each conversation to the condition's drift slope averaged over repeats, conversations without a slope left out."""
+    return {
+        conversation: fmean(present)
+        for conversation, slopes in _drift_slopes_by_unit(turn_rows, condition, gate_demands).items()
+        if (present := [slope for slope in slopes if slope is not None])
+    }
+
+
+def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], other: str | None, level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
+    """Return the comparison record of instruction minus the other condition over the units both hold a mean for."""
+    units = paired_units(unit_means(_INSTRUCTION), unit_means(other))
+    return _comparison_record(compare_paired(units, level, bootstrap_rng()))
+
+
+def _drift(conversation_slopes: Mapping[str, float], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
+    """Return a condition's mean drift slope over conversations and its percentile bootstrap interval."""
+    slopes = numpy.array(list(conversation_slopes.values()))
+    resample_means = bootstrap_resample_means(slopes, bootstrap_rng())
+    return {"slope": float(slopes.mean()), "interval": list(percentile_interval(resample_means, level))}
+
+
+def _comparison_record(comparison: Comparison) -> dict[str, object]:
+    """Return a comparison as `8-scores.yaml` stores it: mean difference, interval as a list or null, and unit count."""
+    interval = None if comparison.interval is None else list(comparison.interval)
+    return {"mean_difference": comparison.mean_difference, "interval": interval, "units": comparison.units}
+
+
+def _conditions_of(rows: Sequence[ScoredReply]) -> list[str]:
+    """Return the conditions the rows hold, in order of first appearance."""
+    return list(dict.fromkeys(row["condition"] for row in rows))
+
+
+def _condition_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str]) -> dict[str, object]:
+    """Return one condition's mean breaches per reply over gate demands, mean breaches per demand, done rate, and kind counts."""
+    return {
+        "breaches_per_reply": fmean(breach_total(row, gate_demands) for row in rows),
+        "demands": {demand: fmean(row["breaches"][demand] for row in rows) for demand in rows[0]["breaches"]},
+        "done_rate": _done_rate(rows),
+        "kinds": dict(Counter(row["kind"] for row in rows)),
+    }
+
+
+def _done_rate(rows: Sequence[ScoredReply]) -> float | None:
+    """Return the share of rows done among those whose done is not null, null when every done is null."""
+    present = [row["done"] for row in rows if row["done"] is not None]
+    return fmean(present) if present else None
