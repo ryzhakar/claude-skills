@@ -1,7 +1,23 @@
+import tempfile
+from pathlib import Path
+
 import pytest
 import yaml
+from hypothesis import given
+from hypothesis import strategies as st
 
-from instruction_eval.reader import agent_launch_list
+from instruction_eval.reader import (
+    AGENT_TYPE_KEY,
+    CONDITION_KEY,
+    CONVERSATION_KEY,
+    LAUNCH_MESSAGE_KEY,
+    LAUNCHES_KEY,
+    READER_AGENT_PREFIX,
+    REPEAT_KEY,
+    SEND_MESSAGES_KEY,
+    TASK_KEY,
+    agent_launch_list,
+)
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 from series_fixtures import write_revision
 
@@ -39,27 +55,27 @@ def agent_series(tmp_path, gate: dict = GATE, conditions: dict = CONDITIONS) -> 
 
 def conversation_launch(condition: str, repeat: int, revision: str = "r1") -> dict:
     return {
-        "agent_type": f"ie-reader-{revision}-{condition}",
-        "condition": condition,
-        "conversation": "c-open",
-        "repeat": repeat,
-        "message": TRIP_TURNS[0],
-        "send_messages": TRIP_TURNS[1:],
+        AGENT_TYPE_KEY: f"{READER_AGENT_PREFIX}{revision}-{condition}",
+        CONDITION_KEY: condition,
+        CONVERSATION_KEY: "c-open",
+        REPEAT_KEY: repeat,
+        LAUNCH_MESSAGE_KEY: TRIP_TURNS[0],
+        SEND_MESSAGES_KEY: TRIP_TURNS[1:],
     }
 
 
 def task_launch(condition: str, task: str, message: str, repeat: int, revision: str = "r1") -> dict:
     return {
-        "agent_type": f"ie-reader-{revision}-{condition}",
-        "condition": condition,
-        "task": task,
-        "repeat": repeat,
-        "message": message,
+        AGENT_TYPE_KEY: f"{READER_AGENT_PREFIX}{revision}-{condition}",
+        CONDITION_KEY: condition,
+        TASK_KEY: task,
+        REPEAT_KEY: repeat,
+        LAUNCH_MESSAGE_KEY: message,
     }
 
 
 def launches(files: SeriesFolder, revision: str, conditions: list[str]) -> list[dict]:
-    return yaml.safe_load(agent_launch_list(files, revision, conditions))["launches"]
+    return yaml.safe_load(agent_launch_list(files, revision, conditions))[LAUNCHES_KEY]
 
 
 def test_each_task_and_conversation_repeat_lists_its_agent_type_and_exact_messages_in_path_order(tmp_path):
@@ -82,7 +98,7 @@ def write_reply(files: SeriesFolder, path: str) -> None:
 def test_no_named_condition_lists_every_condition_of_the_revision(tmp_path):
     files = agent_series(tmp_path)
 
-    agent_types = [launch["agent_type"] for launch in launches(files, "r1", [])]
+    agent_types = [launch[AGENT_TYPE_KEY] for launch in launches(files, "r1", [])]
 
     assert sorted(set(agent_types)) == [f"ie-reader-r1-{name}" for name in ("aim", "empty", "instruction", "placebo")]
     assert len(agent_types) == 4 * 2 * 3
@@ -105,7 +121,7 @@ def test_a_later_revision_launches_its_own_instruction_and_any_control_reply_r1_
     write_reply(files, "r1/5-replies/placebo/c-open/repeat-1/turn-2.yaml")
     write_reply(files, "r1/5-replies/placebo/c-open/repeat-1/turn-3.yaml")
 
-    assert [(launch["agent_type"], launch["repeat"]) for launch in launches(files, "r2", [])] == [
+    assert [(launch[AGENT_TYPE_KEY], launch[REPEAT_KEY]) for launch in launches(files, "r2", [])] == [
         ("ie-reader-r1-placebo", 2),
         ("ie-reader-r2-instruction", 1),
         ("ie-reader-r2-instruction", 2),
@@ -137,17 +153,25 @@ def test_a_folder_that_is_no_series_refuses(tmp_path):
         agent_launch_list(SeriesFolder(tmp_path), "r1", [])
 
 
-def test_a_reply_already_collected_leaves_its_launch_out_and_a_conversation_missing_a_turn_stays_whole(tmp_path):
-    files = agent_series(tmp_path)
-    write_reply(files, "r1/5-replies/instruction/t-open/repeat-1.yaml")
-    write_reply(files, "r1/5-replies/instruction/c-open/repeat-1/turn-1.yaml")
-    write_reply(files, "r1/5-replies/instruction/c-open/repeat-2/turn-1.yaml")
-    write_reply(files, "r1/5-replies/instruction/c-open/repeat-2/turn-2.yaml")
-    write_reply(files, "r1/5-replies/instruction/c-open/repeat-2/turn-3.yaml")
+INSTRUCTION_REPLY_PATHS = [
+    *(f"r1/5-replies/instruction/{task}/repeat-{repeat}.yaml" for task in ("t-open", "t-sealed") for repeat in (1, 2)),
+    *(f"r1/5-replies/instruction/c-open/repeat-{repeat}/turn-{turn}.yaml" for repeat in (1, 2) for turn in (1, 2, 3)),
+]
 
-    assert launches(files, "r1", ["instruction"]) == [
-        conversation_launch("instruction", 1),
-        task_launch("instruction", "t-open", TIDES_MESSAGE, 2),
-        task_launch("instruction", "t-sealed", "Explain rain.", 1),
-        task_launch("instruction", "t-sealed", "Explain rain.", 2),
-    ]
+
+def launch_identity(reply_path: str) -> tuple[str, int]:
+    folder, _, remainder = reply_path.removeprefix("r1/5-replies/instruction/").partition("/")
+    return folder, int(remainder.removeprefix("repeat-").partition("/")[0].removesuffix(".yaml"))
+
+
+@given(collected=st.sets(st.sampled_from(INSTRUCTION_REPLY_PATHS)))
+def test_launches_are_exactly_the_task_and_conversation_repeats_with_an_uncollected_reply(collected):
+    with tempfile.TemporaryDirectory() as folder:
+        files = agent_series(Path(folder))
+        for path in collected:
+            write_reply(files, path)
+
+        listed = [(launch.get(TASK_KEY) or launch[CONVERSATION_KEY], launch[REPEAT_KEY]) for launch in launches(files, "r1", ["instruction"])]
+
+    uncollected = {launch_identity(path) for path in INSTRUCTION_REPLY_PATHS if path not in collected}
+    assert sorted(listed) == sorted(uncollected)

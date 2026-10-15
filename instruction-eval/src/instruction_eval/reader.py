@@ -40,6 +40,15 @@ JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
 FRONTMATTER_BREAKERS = ("\n", "\r", ": ")
 PREPARE_COMMAND = "reader prepare"
 ASK_COMMAND = "revision ask"
+READER_AGENT_PREFIX = "ie-reader-"
+LAUNCHES_KEY = "launches"
+AGENT_TYPE_KEY = "agent_type"
+CONDITION_KEY = "condition"
+TASK_KEY = "task"
+CONVERSATION_KEY = "conversation"
+REPEAT_KEY = "repeat"
+LAUNCH_MESSAGE_KEY = "message"
+SEND_MESSAGES_KEY = "send_messages"
 FINGERPRINT_COMMAND = "reader fingerprint"
 FINGERPRINT_KEYS = ("model", "build")
 AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
@@ -768,7 +777,7 @@ def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, te
 
 def _reader_agent_type(revision: str, condition: str) -> str:
     """Return the agent type of the reader that runs a condition of a revision."""
-    return f"ie-reader-{revision}-{condition}"
+    return f"{READER_AGENT_PREFIX}{revision}-{condition}"
 
 
 def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> str:
@@ -776,7 +785,7 @@ def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[s
     guard_series(files, ASK_COMMAND)
     records = SeriesRecords(files)
     replies = _asked_replies(files, revision, records, conditions)
-    return yaml.safe_dump({"launches": _launches(replies, records.tasks())}, sort_keys=False, allow_unicode=True)
+    return yaml.safe_dump({LAUNCHES_KEY: _launches(replies, records.tasks())}, sort_keys=False, allow_unicode=True)
 
 
 def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
@@ -814,8 +823,8 @@ def _launch(
     turns_by_conversation: Mapping[str, tuple[str, ...]],
 ) -> dict[str, Any]:
     """Return the launch of one task or conversation repeat."""
-    launch = {"agent_type": _reader_agent_type(revision, condition), "condition": condition}
+    launch = {AGENT_TYPE_KEY: _reader_agent_type(revision, condition), CONDITION_KEY: condition}
     if task in task_by_id:
-        return {**launch, "task": task, "repeat": repeat, "message": task_by_id[task].message}
+        return {**launch, TASK_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: task_by_id[task].message}
     first_turn, *later_turns = turns_by_conversation[task]
-    return {**launch, "conversation": task, "repeat": repeat, "message": first_turn, "send_messages": later_turns}
+    return {**launch, CONVERSATION_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: first_turn, SEND_MESSAGES_KEY: later_turns}
