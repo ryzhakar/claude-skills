@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from math import sqrt
@@ -6,6 +6,8 @@ from statistics import NormalDist, linear_regression, mean, variance
 from typing import NamedTuple, TypedDict
 
 import numpy
+
+from instruction_eval.records import ANCHOR_KEY, DoneBy, Record, Split
 
 _INSTRUCTION = "instruction"
 _SOURCE = "source"
@@ -18,6 +20,7 @@ _DRIFT = "drift"
 _TWO_SIDED_TAILS = 2
 _LEAST_VALUES_FOR_VARIANCE = 2
 _LEAST_TURNS_FOR_SLOPE = 2
+_ANSWER_KEY_DONE: DoneBy = "answer-key"
 
 
 class ScoredReply(TypedDict):
@@ -29,6 +32,58 @@ class ScoredReply(TypedDict):
     turn: int | None
     breaches: Mapping[str, int]
     done: bool | None
+
+
+class ReplyRow(ScoredReply):
+    """One reply of a revision joined from its origin, its accepted verdict, and its detector entry, as `8-scores.yaml` rows hold it."""
+
+    id: str
+    borrowed_from: str | None
+    kind: str
+    done_by_answer_key: bool | None
+    done_by_judge: bool | None
+
+
+def join_reply_rows(
+    origins: Record, verdicts: Iterable[Record], detectors: Record, done_by: DoneBy, split: Split
+) -> list[ReplyRow]:
+    """Return a row per reply of the split in origin order, anchors left out, breaches of every demand, done chosen by `done_by`."""
+    judged = _entries_by_id(entry for verdict in verdicts for entry in verdict["verdicts"])
+    detected = _entries_by_id(detectors["verdicts"])
+    return [
+        _reply_row(blind_id, origin, judged[blind_id], detected[blind_id], done_by)
+        for blind_id, origin in origins["ids"].items()
+        if ANCHOR_KEY not in origin and origin["split"] == split
+    ]
+
+
+def _entries_by_id(entries: Iterable[Record]) -> dict[str, Record]:
+    """Map each verdict or detector entry's blind id to the entry."""
+    return {entry["id"]: entry for entry in entries}
+
+
+def _reply_row(blind_id: str, origin: Record, judged: Record, detected: Record, done_by: DoneBy) -> ReplyRow:
+    """Return the row of one reply from its origin, its judge entry, and its detector entry."""
+    return {
+        "id": blind_id,
+        "condition": origin["condition"],
+        "task": origin["task"],
+        "repeat": origin["repeat"],
+        "turn": origin.get("turn"),
+        "borrowed_from": origin["borrowed_from"],
+        "breaches": {**judged["breaches"], **detected["breaches"]},
+        "kind": judged["kind"],
+        "done_by_answer_key": detected["done_by_answer_key"],
+        "done_by_judge": judged["done"],
+        "done": _reply_done(done_by, detected["done_by_answer_key"], judged["done"]),
+    }
+
+
+def _reply_done(done_by: DoneBy, done_by_answer_key: bool | None, done_by_judge: bool | None) -> bool | None:
+    """Return the judge's done, unless answer-key mode holds a key verdict for the reply's task."""
+    if done_by == _ANSWER_KEY_DONE and done_by_answer_key is not None:
+        return done_by_answer_key
+    return done_by_judge
 
 
 class NoiseSigma(TypedDict):

@@ -1,7 +1,46 @@
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal, TypedDict
 
+from instruction_eval.records import PASS_OUTCOME, Compares, GateCheck, Record
+from instruction_eval.scores import Comparison
+
 LATER_REVISION_COUNT = 4
+
+PassRule = Callable[[float, tuple[float, float], float], bool]
+
+
+def _undercuts_control_by_gap(mean_difference: float, interval: tuple[float, float], gap: float) -> bool:
+    """Tell whether the instruction undercuts its control by the gap on average and the interval lies wholly below zero."""
+    return mean_difference <= -gap and interval[1] < 0
+
+
+def _upper_bound_within_gap(mean_difference: float, interval: tuple[float, float], gap: float) -> bool:
+    """Tell whether the interval's upper bound stays at or below the gap."""
+    return interval[1] <= gap
+
+
+def _lower_bound_within_gap(mean_difference: float, interval: tuple[float, float], gap: float) -> bool:
+    """Tell whether the interval's lower bound stays at or above minus the gap."""
+    return interval[0] >= -gap
+
+
+_PASS_RULES: Mapping[Compares, PassRule] = {
+    "instruction-vs-empty": _undercuts_control_by_gap,
+    "instruction-vs-aim": _undercuts_control_by_gap,
+    "instruction-vs-placebo": _undercuts_control_by_gap,
+    "instruction-near-source": _upper_bound_within_gap,
+    "drift": _upper_bound_within_gap,
+    "completion": _lower_bound_within_gap,
+}
+
+
+def check_passes(check: GateCheck, comparison: Comparison) -> bool:
+    """Tell whether a sealed comparison passes the check's pass rule at its gap, a comparison without units failing."""
+    if comparison.mean_difference is None or comparison.interval is None:
+        return False
+    return _PASS_RULES[check.compares](comparison.mean_difference, comparison.interval, check.gap)
+
 
 BudgetUnit = Literal["tokens", "seconds"]
 TOKENS_UNIT: BudgetUnit = "tokens"
@@ -123,3 +162,22 @@ def sum_revision_cost(replies: list[ReplyCost]) -> RevisionCost:
         "output_tokens": _sum_unless_null([reply.output_tokens for reply in replies]),
         "seconds": sum(reply.seconds for reply in replies),
     }
+
+
+REVISION_PREFIX = "r"
+
+
+def kept_revision(outcomes: Mapping[str, Record]) -> str | None:
+    """Return the revision `best-estimate-shortest` keeps from each gated revision's outcome by id, null when none passed completion."""
+    candidates = [revision for revision, outcome in outcomes.items() if outcome["completion_passed"]]
+    return min(candidates, key=lambda revision: _keep_rank(revision, outcomes[revision]), default=None)
+
+
+def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
+    """Return a candidate's rank, lowest first: a pass, then fewer instruction breaches, then fewer words, then the lower number."""
+    return (outcome["outcome"] != PASS_OUTCOME, outcome["instruction_breaches"], outcome["words"], _revision_number(revision))
+
+
+def _revision_number(revision: str) -> int:
+    """Return the number a revision id carries."""
+    return int(revision.removeprefix(REVISION_PREFIX))
