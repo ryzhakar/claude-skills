@@ -889,8 +889,8 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence["Transcript"]
     rejection = _threshold_miss(measures, plan.acceptance) or _anchor_shortfall(anchors, records.tasks().tasks, plan.anchors_per_packet)
     if rejection:
         return f"rejected: attempt {attempt} ({rejection})\n"
-    write_record(files, CALIBRATION_RECORD, _calibration_record(files, records, attempt, plan), reads)
     write_record(files, ANCHORS_RECORD, {"anchors": anchors}, reads)
+    write_record(files, CALIBRATION_RECORD, _calibration_record(files, records, attempt, plan), reads)
     return f"accepted: attempt {attempt}\n"
 
 
