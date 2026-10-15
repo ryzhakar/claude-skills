@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from instruction_eval.records import Refusal
-from instruction_eval.series import Disk, series_new
+from instruction_eval.series import series_new
 from series_fixtures import sha256, tree
 
 NOW = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
@@ -15,7 +15,7 @@ INSTRUCTION = b"Be terse. Skip greetings.\n"
 def new_series(tmp_path, name="terse", instruction="live.md", sources=(), reader_kind="agent"):
     (tmp_path / "home").mkdir(exist_ok=True)
     (tmp_path / "work").mkdir(exist_ok=True)
-    return series_new(name, instruction, list(sources), reader_kind, tmp_path / "work", tmp_path / "home", NOW, Disk())
+    return series_new(name, instruction, list(sources), reader_kind, tmp_path / "work", tmp_path / "home", NOW)
 
 
 def test_a_bare_name_makes_the_series_folder_under_the_home_series_directory_holding_exactly_the_first_snapshots(tmp_path):
