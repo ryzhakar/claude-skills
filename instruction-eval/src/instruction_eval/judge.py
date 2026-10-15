@@ -15,8 +15,15 @@ from typing import TYPE_CHECKING
 import yaml
 
 from instruction_eval.conditions import strip_frontmatter
+from instruction_eval.coverage import split_sentences
 from instruction_eval.records import (
     ANCHOR_KEY,
+    ANCHORS_RECORD,
+    CALIBRATION_RECORD,
+    CONDITIONS_RECORD,
+    GATE_RECORD,
+    KEY_SEPARATOR,
+    TASKS_RECORD,
     Demand,
     Demands,
     JudgeDemand,
@@ -27,8 +34,11 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     parse_record,
+    sha256,
+    write_file,
+    write_record,
 )
-from instruction_eval.tasks import OMISSION_PREFIX, ExpectedReply
+from instruction_eval.tasks import OMISSION_PREFIX, ExpectedReply, expected_replies, refuse_missing_replies
 
 if TYPE_CHECKING:
     from instruction_eval.reader import Transcript, TranscriptReply
@@ -416,3 +426,64 @@ def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[in
     pattern = re.compile(rf"^{JUDGE_DEFINITION_PREFIX}{re.escape(revision)}-{re.escape(packet)}-k([0-9]+)\.md$")
     matches = (pattern.match(path.name) for path in (files.root / AGENTS_FOLDER).glob("*.md"))
     return sorted(int(match.group(1)) for match in matches if match)
+
+
+BLIND_COMMAND = "revision blind"
+INSTRUCTION_FILE = "2-instruction.md"
+PACKETS_FOLDER = "6-packets"
+ORIGINS_FILE = "6-origins.yaml"
+TASK_KEYS = ("tasks", "conversations")
+CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
+
+
+def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
+    """Write the revision's blinded packets and their origins, a later revision borrowing every control reply from r1, refusing without calibration, a gap in the expected replies, or too few anchors."""
+    _refuse_unusable_series(files)
+    records = SeriesRecords(files)
+    calibration = records.calibration()
+    expected = _expected_replies(files, revision, records)
+    refuse_missing_replies(files, expected)
+    replies = {reply: records.reply(reply.path) for reply in expected}
+    blinded = blind_replies(revision, replies, records.anchors()["anchors"], calibration["anchors_per_packet"], random)
+    _write_packets(files, revision, blinded.packets)
+    write_record(files, f"{revision}/{ORIGINS_FILE}", _origins_record(blinded), _blind_reads(revision, expected))
+
+
+def _refuse_unusable_series(files: SeriesFolder) -> None:
+    """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
+    from instruction_eval.series import guard_series
+
+    guard_series(files, BLIND_COMMAND)
+
+
+def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
+    """Return the replies the revision expects, refusing a gate whose repeats are unwritten."""
+    repeats = records.gate().repeats
+    if repeats is None:
+        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+    sentence_count = len(split_sentences(files.read_bytes(f"{revision}/{INSTRUCTION_FILE}")))
+    return expected_replies(revision, records.tasks(), records.conditions(), repeats, sentence_count)
+
+
+def _write_packets(files: SeriesFolder, revision: str, packets: Mapping[str, str]) -> None:
+    """Write each packet's text to the revision's packets folder."""
+    for packet, text in packets.items():
+        write_file(files, f"{revision}/{PACKETS_FOLDER}/{packet}.md", text.encode())
+
+
+def _origins_record(blinded: BlindPackets) -> dict[str, object]:
+    """Return the origins record: every blind id's origin and each packet's hash."""
+    return {"ids": blinded.origins, "packets": {packet: sha256(text.encode()) for packet, text in blinded.packets.items()}}
+
+
+def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
+    """Return what `revision blind` reads: the task and condition keys, the repeats, the revision's instruction, every expected reply, the calibration, and the anchors."""
+    return [
+        *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
+        *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
+        f"{GATE_RECORD}{KEY_SEPARATOR}repeats",
+        f"{revision}/{INSTRUCTION_FILE}",
+        *(reply.path for reply in expected),
+        CALIBRATION_RECORD,
+        ANCHORS_RECORD,
+    ]
