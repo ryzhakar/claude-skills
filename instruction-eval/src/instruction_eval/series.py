@@ -208,7 +208,7 @@ def _refuse_unless_latest_gated_revision_failed(outcomes: Mapping[str, Record]) 
 
 def _gated_outcomes(files: SeriesFolder, records: SeriesRecords) -> dict[str, Record]:
     """Return the outcome of each gated revision by id, in order."""
-    return {revision: records.outcome(revision) for revision in _revisions(files) if files.holds(_outcome_path(revision))}
+    return {revision: records.outcome(revision) for revision in revision_ids(files) if files.holds(_outcome_path(revision))}
 
 
 def _outcome_path(revision: str) -> str:
@@ -257,10 +257,10 @@ def _refuse_broken_revision_chain(files: SeriesFolder, records: SeriesRecords) -
 
 def _later_revisions(files: SeriesFolder) -> Iterator[str]:
     """Return the ids of the revisions after the first, in order, up to the first without a record."""
-    return itertools.islice(_revisions(files), 1, None)
+    return itertools.islice(revision_ids(files), 1, None)
 
 
-def _revisions(files: SeriesFolder) -> Iterator[str]:
+def revision_ids(files: SeriesFolder) -> Iterator[str]:
     """Return the ids of the revisions, in order, up to the first without a record."""
     revisions = (f"r{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
     return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
