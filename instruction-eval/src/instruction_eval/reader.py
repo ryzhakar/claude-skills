@@ -489,12 +489,17 @@ _FILE_PATH_INPUT_KEY = "file_path"
 
 def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Sequence[str], pinned_model: str) -> None:
     """Refuse a reader transcript showing a memory file, SubagentStart text, any tool use, a turn message other than the task's, or a model other than the pinned one."""
-    entries = _decoded_entries(transcript, content)
     exposures = (
-        *_outside_context_exposures(entries),
-        *_tool_use_exposures(entries, _no_tool_use_allowed),
+        *_screen_entries(
+            transcript,
+            content,
+            (
+                _outside_context_exposures,
+                lambda entry: _tool_use_exposures(entry, _no_tool_use_allowed),
+                lambda entry: _model_exposures(entry, pinned_model),
+            ),
+        ),
         *_turn_message_exposures(transcript, content, turns),
-        *_model_exposures(entries, pinned_model),
     )
     if exposures:
         raise Refusal(f"{transcript}: {exposures[0]}")
@@ -502,37 +507,56 @@ def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Se
 
 def judge_transcript_rejection(transcript: Path, content: bytes, verdict_path: Path) -> str | None:
     """Return why a judge transcript rejects its verdict, a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict path, or None when nothing does."""
-    entries = _decoded_entries(transcript, content)
-    exposures = (
-        *_outside_context_exposures(entries),
-        *_tool_use_exposures(entries, lambda tool_use: _is_oath_skill_load(tool_use) or _is_verdict_write(tool_use, verdict_path)),
+    exposures = _screen_entries(
+        transcript,
+        content,
+        (
+            _outside_context_exposures,
+            lambda entry: _tool_use_exposures(
+                entry, lambda tool_use: _is_oath_skill_load(tool_use) or _is_verdict_write(tool_use, verdict_path)
+            ),
+        ),
     )
     return exposures[0] if exposures else None
 
 
 def _is_oath_skill_load(tool_use: dict[str, Any]) -> bool:
     """Tell whether a tool use loads the manifesto oath skill."""
-    return tool_use.get(_NAME_KEY) == _SKILL_TOOL and tool_use.get(_INPUT_KEY, {}).get(_SKILL_INPUT_KEY) == OATH_SKILL
+    return _field(tool_use, (_NAME_KEY,), str) == _SKILL_TOOL and _field(tool_use, (_INPUT_KEY,), dict).get(_SKILL_INPUT_KEY) == OATH_SKILL
 
 
 def _is_verdict_write(tool_use: dict[str, Any], verdict_path: Path) -> bool:
     """Tell whether a tool use writes the verdict path."""
-    return tool_use.get(_NAME_KEY) == _WRITE_TOOL and tool_use.get(_INPUT_KEY, {}).get(_FILE_PATH_INPUT_KEY) == str(verdict_path)
+    return _field(tool_use, (_NAME_KEY,), str) == _WRITE_TOOL and _field(tool_use, (_INPUT_KEY,), dict).get(_FILE_PATH_INPUT_KEY) == str(verdict_path)
 
 
-def _decoded_entries(transcript: Path, content: bytes) -> tuple[dict[str, Any], ...]:
-    """Decode each non-blank transcript line as a JSON object, refusing with the transcript and line number when one is not."""
+def _screen_entries(
+    transcript: Path, content: bytes, screens: Iterable[Callable[[dict[str, Any]], tuple[str, ...]]]
+) -> tuple[str, ...]:
+    """Name what each screen finds in each non-blank transcript line, in line order, refusing with transcript, line, and fault a line it cannot read."""
     return tuple(
-        _decode_object_line(transcript, number, raw_line)
+        exposure
         for number, raw_line in enumerate(content.splitlines(), 1)
         if raw_line.strip()
+        for exposure in _screen_entry(transcript, number, _decode_object_line(transcript, number, raw_line), screens)
     )
 
 
-def _outside_context_exposures(entries: Iterable[dict[str, Any]]) -> tuple[str, ...]:
-    """Name each memory file and each SubagentStart text the transcript's attachments show."""
-    attachments = [entry[_ATTACHMENT_KEY] for entry in entries if entry.get(_TYPE_KEY) == _ATTACHMENT_ENTRY_TYPE]
-    return tuple(exposure for attachment in attachments for exposure in _attachment_exposures(attachment))
+def _screen_entry(
+    transcript: Path, number: int, entry: dict[str, Any], screens: Iterable[Callable[[dict[str, Any]], tuple[str, ...]]]
+) -> tuple[str, ...]:
+    """Name what each screen finds in one entry, refusing with transcript, line, and fault an entry missing a field a screen reads."""
+    try:
+        return tuple(exposure for screen in screens for exposure in screen(entry))
+    except _MalformedEntry as fault:
+        raise ValueError(f"{transcript}: line {number} {fault}") from fault
+
+
+def _outside_context_exposures(entry: dict[str, Any]) -> tuple[str, ...]:
+    """Name each memory file and each SubagentStart text an attachment entry shows."""
+    if _field(entry, (_TYPE_KEY,), str) != _ATTACHMENT_ENTRY_TYPE:
+        return ()
+    return _attachment_exposures(_field(entry, (_ATTACHMENT_KEY,), dict))
 
 
 def _attachment_exposures(attachment: dict[str, Any]) -> tuple[str, ...]:
@@ -551,21 +575,22 @@ def _subagent_start_exposures(attachment: dict[str, Any]) -> tuple[str, ...]:
 
 def _memory_file_paths(attachment: dict[str, Any]) -> tuple[str, ...]:
     """Return the path of each memory file an attachment carries into the agent's context."""
-    if attachment.get(_TYPE_KEY) == _INSTRUCTIONS_ATTACHMENT_TYPE:
-        return tuple(file[_PATH_KEY] for file in attachment[_FILES_KEY])
-    if attachment.get(_TYPE_KEY) == _NESTED_MEMORY_ATTACHMENT_TYPE:
-        return (attachment[_PATH_KEY],)
+    attachment_type = _field(attachment, (_TYPE_KEY,), str)
+    if attachment_type == _INSTRUCTIONS_ATTACHMENT_TYPE:
+        return tuple(_field(file, (_PATH_KEY,), str) for file in _field(attachment, (_FILES_KEY,), list))
+    if attachment_type == _NESTED_MEMORY_ATTACHMENT_TYPE:
+        return (_field(attachment, (_PATH_KEY,), str),)
     return ()
 
 
-def _tool_use_exposures(entries: Iterable[dict[str, Any]], allowed: Callable[[dict[str, Any]], bool]) -> tuple[str, ...]:
-    """Name each tool use of the transcript's assistant messages that the allowance refuses."""
+def _tool_use_exposures(entry: dict[str, Any], allowed: Callable[[dict[str, Any]], bool]) -> tuple[str, ...]:
+    """Name each tool use of an assistant entry that the allowance refuses."""
+    if _field(entry, (_TYPE_KEY,), str) != _ASSISTANT_ENTRY_TYPE:
+        return ()
     return tuple(
-        f"shows tool use {block.get(_NAME_KEY)}"
-        for entry in entries
-        if entry.get(_TYPE_KEY) == _ASSISTANT_ENTRY_TYPE
-        for block in entry[_MESSAGE_KEY][_CONTENT_KEY]
-        if block.get(_TYPE_KEY, "").endswith(_TOOL_USE_BLOCK_SUFFIX) and not allowed(block)
+        f"shows tool use {_field(block, (_NAME_KEY,), str)}"
+        for block in _field(entry, (_MESSAGE_KEY, _CONTENT_KEY), list)
+        if _field(block, (_TYPE_KEY,), str).endswith(_TOOL_USE_BLOCK_SUFFIX) and not allowed(block)
     )
 
 
@@ -585,9 +610,9 @@ def _turn_message_exposures(transcript: Path, content: bytes, turns: Sequence[st
     )
 
 
-def _model_exposures(entries: Iterable[dict[str, Any]], pinned_model: str) -> tuple[str, ...]:
-    """Name each assistant message model other than the pinned one."""
-    models = dict.fromkeys(
-        entry[_MESSAGE_KEY][_MODEL_KEY] for entry in entries if entry.get(_TYPE_KEY) == _ASSISTANT_ENTRY_TYPE
-    )
-    return tuple(f"model {model} is not the pinned {pinned_model}" for model in models if model != pinned_model)
+def _model_exposures(entry: dict[str, Any], pinned_model: str) -> tuple[str, ...]:
+    """Name an assistant entry's model when it is other than the pinned one."""
+    if _field(entry, (_TYPE_KEY,), str) != _ASSISTANT_ENTRY_TYPE:
+        return ()
+    model = _field(entry, (_MESSAGE_KEY, _MODEL_KEY), str)
+    return () if model == pinned_model else (f"model {model} is not the pinned {pinned_model}",)

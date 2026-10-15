@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -65,6 +66,25 @@ def test_conversation_turn_without_the_send_message_wrapper_is_refused():
 def test_turn_beyond_the_task_turns_is_refused():
     with pytest.raises(Refusal, match="turn 2 message differs from the task's$"):
         screen_reader("reader-conversation")
+
+
+MALFORMED_CASES = [
+    ("malformed-attachment-entry", "line 2 lacks attachment"),
+    ("malformed-instructions-attachment", "line 2 lacks files"),
+    ("malformed-assistant-entry", "line 3 lacks message.content"),
+]
+
+
+@pytest.mark.parametrize(("fixture_name", "fault"), MALFORMED_CASES)
+def test_reader_screen_of_a_malformed_entry_is_refused_by_transcript_and_line(fixture_name, fault):
+    with pytest.raises(ValueError, match=f"{fixture_name}.jsonl: {re.escape(fault)}$"):
+        screen_reader(fixture_name)
+
+
+@pytest.mark.parametrize(("fixture_name", "fault"), MALFORMED_CASES)
+def test_judge_screen_of_a_malformed_entry_is_refused_by_transcript_and_line(fixture_name, fault):
+    with pytest.raises(ValueError, match=f"{fixture_name}.jsonl: {re.escape(fault)}$"):
+        judge_rejection(fixture_name)
 
 
 def judge_rejection(fixture_name):
