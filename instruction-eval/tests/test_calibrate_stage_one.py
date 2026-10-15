@@ -218,3 +218,38 @@ def test_a_later_attempt_refuses_as_exhausted_when_earlier_attempts_left_too_few
         calibrate(tmp_path, files)
 
     assert tree(files.root) == before
+
+
+def definition(files: SeriesFolder, name: str) -> tuple[dict, str]:
+    """Return the frontmatter and body of the generated definition."""
+    header, _, body = files.read_bytes(f".claude/agents/{name}.md").decode().removeprefix("---\n").partition("---\n")
+    return yaml.safe_load(header), body
+
+
+def test_stage_one_writes_candidate_and_rater_definitions_from_the_snapshot_and_prints_their_launch_list(tmp_path):
+    files = stage_one_series(tmp_path)
+
+    launch_list = calibrate(tmp_path, files)
+
+    names = ["ie-calib-1-candidate-1", "ie-calib-1-candidate-2", "ie-calib-1-rater-1", "ie-calib-1-rater-2"]
+    assert yaml.safe_load(launch_list) == {"launches": [{"agent_type": name} for name in names]}
+    models = [JUDGE_MODEL, JUDGE_MODEL, RATER_MODEL, RATER_MODEL]
+    verdicts = ["candidate-1", "candidate-2", "reference-rater-1", "reference-rater-2"]
+    sample = files.read_bytes(f"{ATTEMPT_ONE}/sample.md").decode()
+    for name, model, verdict in zip(names, models, verdicts):
+        frontmatter, body = definition(files, name)
+        assert frontmatter == {"name": name, "description": "Generated agent; launch from the printed launch list only.", "model": model, "tools": "Skill, Write"}
+        assert f"Source file: {SOURCE_NAME}\n\nBe terse." in body
+        assert sample in body
+        assert f"{files.root}/{ATTEMPT_ONE}/{verdict}.yaml" in body
+        assert "d-judge" in body and "d-hedge" not in body
+
+
+def test_user_raters_leave_only_the_two_candidate_definitions(tmp_path):
+    files = stage_one_series(tmp_path)
+    write_yaml(files, f"{ATTEMPT_ONE}/plan.yaml", USER_PLAN)
+
+    launch_list = calibrate(tmp_path, files)
+
+    assert yaml.safe_load(launch_list) == {"launches": [{"agent_type": "ie-calib-1-candidate-1"}, {"agent_type": "ie-calib-1-candidate-2"}]}
+    assert sorted(path.name for path in (files.root / ".claude/agents").iterdir()) == ["ie-calib-1-candidate-1.md", "ie-calib-1-candidate-2.md"]

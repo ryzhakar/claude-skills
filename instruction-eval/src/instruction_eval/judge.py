@@ -26,20 +26,22 @@ from instruction_eval.records import (
     FIRST_REVISION,
     GATE_RECORD,
     KEY_SEPARATOR,
+    OPEN_SPLIT,
     TASKS_RECORD,
+    AgentRaters,
     Demand,
     Demands,
     JudgeDemand,
+    Plan,
     Record,
     RecordError,
     RecordKind,
     Refusal,
     SeriesFolder,
-    OPEN_SPLIT,
     SeriesRecords,
+    _attempt_folder,
     load_record,
     parse_record,
-    _attempt_folder,
     sha256,
     write_file,
     write_record,
@@ -506,6 +508,14 @@ PLAN_FILE = "plan.yaml"
 BRIEF_SNAPSHOT_FILE = "brief.md"
 ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
 FIRST_ATTEMPT = 1
+CALIBRATION_AGENT_PREFIX = "ie-calib-"
+CANDIDATE_NAME = "candidate"
+RATER_NAME = "rater"
+REFERENCE_PREFIX = "reference-"
+CANDIDATE_RUNS = (1, 2)
+RATER_RUNS = (1, 2)
+LAUNCHES_KEY = "launches"
+AGENT_TYPE_KEY = "agent_type"
 SAMPLE_PACKET = "sample"
 SAMPLE_FILE = "sample.md"
 ATTEMPT_ORIGINS_FILE = "origins.yaml"
@@ -529,6 +539,11 @@ def calibrate_stage_one(
     origins: dict[str, Record] = {}
     sample_text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, replies) for key in sample], origins, random)
     folder = _attempt_folder(attempt)
+    ratings = _ratings(attempt, plan)
+    definitions = {
+        rating.agent_type: _rating_definition(files, records, brief, sample_text, replies[sample[0]]["model"], f"{files.root}/{folder}", rating)
+        for rating in ratings
+    }
     write_file(files, f"{folder}/{BRIEF_SNAPSHOT_FILE}", brief)
     write_file(files, f"{folder}/{SAMPLE_FILE}", sample_text.encode())
     write_record(
@@ -537,7 +552,38 @@ def calibrate_stage_one(
         {"ids": origins, "packets": {SAMPLE_PACKET: sha256(sample_text.encode())}},
         [],
     )
-    return ""
+    for name, definition in definitions.items():
+        write_file(files, f"{AGENTS_FOLDER}/{name}.md", definition)
+    return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: rating.agent_type} for rating in ratings]}, sort_keys=False)
+
+
+@dataclass(frozen=True)
+class _Rating:
+    """One rating an attempt asks of an agent: its agent type, its model, and the file it writes."""
+
+    agent_type: str
+    model: str
+    file: str
+
+
+def _ratings(attempt: int, plan: Plan) -> list[_Rating]:
+    """Return the ratings the plan asks: the candidate judge twice, and with agent raters each rater once."""
+    candidates = [_Rating(f"{CALIBRATION_AGENT_PREFIX}{attempt}-{CANDIDATE_NAME}-{run}", plan.judge_model, f"{CANDIDATE_NAME}-{run}.yaml") for run in CANDIDATE_RUNS]
+    if not isinstance(plan.raters, AgentRaters):
+        return candidates
+    raters = [_Rating(f"{CALIBRATION_AGENT_PREFIX}{attempt}-{RATER_NAME}-{run}", plan.raters.rater_model, f"{REFERENCE_PREFIX}{RATER_NAME}-{run}.yaml") for run in RATER_RUNS]
+    return [*candidates, *raters]
+
+
+def _rating_definition(files: SeriesFolder, records: SeriesRecords, brief: bytes, sample_text: str, reader_model: str, folder: str, rating: _Rating) -> bytes:
+    """Return the rating's agent definition, its body the attempt's brief rendered for the sample and the rating's file."""
+    sources = {source.name: files.read_bytes(f"{SOURCE_FOLDER}/{source.name}").decode() for source in records.series().sources}
+    body = render_brief(
+        brief.decode(), sources, records.demands(), frozenset(), sample_text, Path(f"{folder}/{rating.file}"), reader_model, files.root.name
+    )
+    from instruction_eval.reader import AgentKind, render_agent_definition
+
+    return render_agent_definition(rating.agent_type, rating.model, AgentKind.JUDGE, body.encode())
 
 
 def _refuse_calibrated_series(files: SeriesFolder) -> None:
