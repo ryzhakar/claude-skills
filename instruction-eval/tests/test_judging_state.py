@@ -1,9 +1,11 @@
+import hashlib
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
-from instruction_eval.judge import AcceptedJudging, NeedsJudging, PendingJudging, judging_states
+from instruction_eval.judge import AcceptedJudging, AnchorAgreement, AnchorAgreement, NeedsJudging, PendingJudging, judging_states
 from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 from series_fixtures import write_agent_series, write_yaml
@@ -32,12 +34,11 @@ CALIBRATION = {
     "attempt": 1,
     "judge_model": JUDGE_MODEL,
     "raters": ["agent", "agent"],
-    "rater_model": OTHER_MODEL,
     "sample_size": 4,
     "anchors_per_packet": 3,
     "acceptance": ACCEPTANCE,
     "brief_hash": "c" * 64,
-    "agreement": {"demands": {"d-judge": {"breach_difference": 0.1, "self_difference": 0.1}}, "done_agreement": 1.0, "scale": None, "ratings": {}},
+    "agreement": {"inputs": {}, "demands": {"d-judge": {"breach_difference": 0.1, "self_difference": 0.1}}, "done_agreement": 1.0, "scale": None, "ratings": {}},
 }
 PLAN = {
     "judge_model": JUDGE_MODEL,
@@ -78,6 +79,13 @@ def states(files: SeriesFolder, transcripts: list[Transcript] = ()) -> dict:
 
 def verdict_path(files: SeriesFolder, packet: str, judging: int) -> Path:
     return files.root / f"r1/7-verdicts/{packet}/k{judging}.yaml"
+
+
+def write_verdict(files: SeriesFolder, packet: str, judging: int, anchor_breaches: int = 1, anchor_done: bool | None = True) -> None:
+    """Write judging `judging`'s verdict of the packet: its reply counted at 2 breaches, its anchor counted as given."""
+    reply = {"id": REPLY_IDS[packet], "breaches": {"d-judge": 2}, "done": True, "kind": "answer", "notes": ""}
+    anchor = {"id": ANCHOR_IDS[packet], "breaches": {"d-judge": anchor_breaches}, "done": anchor_done, "kind": "answer", "notes": ""}
+    write_yaml(files, f"r1/7-verdicts/{packet}/k{judging}.yaml", {"verdicts": [reply, anchor]})
 
 
 def judge_transcript(
@@ -125,3 +133,25 @@ def test_a_returned_judging_without_a_verdict_file_failed_and_the_next_judging_f
     write_definition(files, "t1", 1)
 
     assert states(files, [judge_transcript(files, "t1", 1)]) == {"t1": NeedsJudging(2), "t1--omissions": NeedsJudging(1)}
+
+
+def test_a_judging_whose_transcript_has_not_ended_in_a_final_message_stays_pending(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+
+    assert states(files, [judge_transcript(files, "t1", 1, final=False)])["t1"] == PendingJudging(1)
+
+
+def test_a_returned_judging_whose_verdict_matches_the_anchors_is_accepted_with_its_transcript_and_anchor_agreement(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1)
+    transcript = judge_transcript(files, "t1", 1)
+
+    assert states(files, [transcript])["t1"] == AcceptedJudging(
+        judging=1,
+        judge_model=JUDGE_MODEL,
+        transcript=transcript.path,
+        transcript_hash=hashlib.sha256(transcript.path.read_bytes()).hexdigest(),
+        anchors=AnchorAgreement(breach_difference={"d-judge": 0.0}, done_agreement=1.0),
+    )

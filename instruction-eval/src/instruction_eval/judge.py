@@ -7,7 +7,10 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
+from statistics import fmean
 from typing import TYPE_CHECKING
+
+import yaml
 
 from instruction_eval.conditions import strip_frontmatter
 from instruction_eval.records import (
@@ -26,7 +29,7 @@ from instruction_eval.records import (
 from instruction_eval.tasks import OMISSION_PREFIX, ExpectedReply
 
 if TYPE_CHECKING:
-    from instruction_eval.reader import Transcript
+    from instruction_eval.reader import Transcript, TranscriptReply
 
 SOURCE_PLACEHOLDER = "{SOURCE}"
 DEMANDS_PLACEHOLDER = "{DEMANDS}"
@@ -224,8 +227,22 @@ AGENTS_FOLDER = ".claude/agents"
 
 
 @dataclass(frozen=True)
+class AnchorAgreement:
+    """How closely a judging counted a packet's anchors: per judge demand the mean breach difference, and the share of anchor `done` values matched."""
+
+    breach_difference: Mapping[str, float]
+    done_agreement: float
+
+
+@dataclass(frozen=True)
 class AcceptedJudging:
-    """The lowest judging of a packet that passed."""
+    """The lowest judging of a packet that passed: its number, judge model, transcript with hash, and anchor agreement."""
+
+    judging: int
+    judge_model: str
+    transcript: Path
+    transcript_hash: str
+    anchors: AnchorAgreement
 
 
 @dataclass(frozen=True)
@@ -247,20 +264,34 @@ JudgingState = AcceptedJudging | PendingJudging | NeedsJudging
 
 @dataclass(frozen=True)
 class _Judgings:
-    """What every judging of one revision is read against: the series files, the revision, and the judge transcripts with a way to read them."""
+    """What every judging of one revision is read against: the series files, the revision, the judge transcripts with a way to read them, the origins, the judge model, the anchors' known counts, and the judge demands."""
 
     files: SeriesFolder
     revision: str
     transcripts: Sequence["Transcript"]
     read_transcript: Callable[[Path], bytes]
+    origins: Record
+    judge_model: str
+    known_anchors: Mapping[str, Record]
+    judge_demand_ids: AbstractSet[str]
 
 
 def judging_states(
     files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]
 ) -> dict[str, JudgingState]:
     """Return each packet of the revision's origins with its judging state, refusing a packet holding three failed judgings."""
-    judgings = _Judgings(files, revision, transcripts, read_transcript)
-    origins = SeriesRecords(files).origins(revision)
+    records = SeriesRecords(files)
+    origins = records.origins(revision)
+    judgings = _Judgings(
+        files=files,
+        revision=revision,
+        transcripts=transcripts,
+        read_transcript=read_transcript,
+        origins=origins,
+        judge_model=records.calibration()["judge_model"],
+        known_anchors={anchor["id"]: anchor for anchor in records.anchors()["anchors"]},
+        judge_demand_ids={demand.id for demand in records.demands().demands if isinstance(demand, JudgeDemand)},
+    )
     return {packet: _packet_state(judgings, packet) for packet in sorted(origins["packets"])}
 
 
@@ -268,6 +299,9 @@ def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
     """Return the judging state of one packet: its lowest passing judging, else its first pending one, else the next judging to write."""
     numbers = _judging_numbers(judgings.files, judgings.revision, packet)
     outcomes = [_judging_outcome(judgings, packet, number) for number in numbers]
+    accepted = [outcome for outcome in outcomes if isinstance(outcome, AcceptedJudging)]
+    if accepted:
+        return accepted[0]
     pending = [outcome for outcome in outcomes if isinstance(outcome, PendingJudging)]
     if pending:
         return pending[0]
@@ -277,9 +311,17 @@ def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
 def _judging_outcome(judgings: _Judgings, packet: str, number: int) -> AcceptedJudging | PendingJudging | None:
     """Return the judging's acceptance, `PendingJudging` while its verdict is awaited, or None when it failed."""
     agent_type = _judging_agent_type(judgings.revision, packet, number)
+    reply = _final_reply(judgings, agent_type)
     if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
-        return None if _has_final_message(judgings, agent_type) else PendingJudging(number)
-    return None
+        return None if reply else PendingJudging(number)
+    verdict = _read_verdict(judgings, packet, number)
+    return AcceptedJudging(
+        judging=number,
+        judge_model=reply.model,
+        transcript=reply.transcript,
+        transcript_hash=reply.transcript_hash,
+        anchors=_anchor_agreement(judgings, packet, verdict),
+    )
 
 
 def _judging_agent_type(revision: str, packet: str, number: int) -> str:
@@ -292,12 +334,43 @@ def _verdict_file(revision: str, packet: str, number: int) -> str:
     return f"{revision}/7-verdicts/{packet}/k{number}.yaml"
 
 
-def _has_final_message(judgings: _Judgings, agent_type: str) -> bool:
-    """Tell whether a transcript of the agent type ends in a final assistant message."""
+def _final_reply(judgings: _Judgings, agent_type: str) -> "TranscriptReply | None":
+    """Return the final reply of the agent type's transcript, or None when no transcript ends in one."""
     from instruction_eval.reader import parse_transcript_replies
 
-    transcripts = [transcript for transcript in judgings.transcripts if transcript.agent_type == agent_type]
-    return any(parse_transcript_replies(transcript.path, judgings.read_transcript(transcript.path)) for transcript in transcripts)
+    replies = [
+        parse_transcript_replies(transcript.path, judgings.read_transcript(transcript.path))
+        for transcript in judgings.transcripts
+        if transcript.agent_type == agent_type
+    ]
+    return next((reply[-1] for reply in replies if reply), None)
+
+
+def _read_verdict(judgings: _Judgings, packet: str, number: int) -> Record:
+    """Return the judging's verdict file parsed against the packet's blind ids and the judge demands."""
+    document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
+    return parse_verdict(document, set(_packet_origins(judgings, packet)), judgings.judge_demand_ids)
+
+
+def _packet_origins(judgings: _Judgings, packet: str) -> dict[str, Record]:
+    """Return the origins of the blind ids the packet holds, by blind id."""
+    return {blind_id: origin for blind_id, origin in judgings.origins["ids"].items() if origin["packet"] == packet}
+
+
+def _anchor_agreement(judgings: _Judgings, packet: str, verdict: Record) -> AnchorAgreement:
+    """Return how closely the verdict counted the packet's anchors against their known counts."""
+    counted = {entry["id"]: entry for entry in verdict["verdicts"]}
+    pairs = [
+        (counted[blind_id], judgings.known_anchors[origin[ANCHOR_KEY]])
+        for blind_id, origin in _packet_origins(judgings, packet).items()
+        if ANCHOR_KEY in origin
+    ]
+    breach_difference = {
+        demand: fmean(abs(entry["breaches"][demand] - known["breaches"][demand]) for entry, known in pairs)
+        for demand in sorted(judgings.judge_demand_ids)
+    }
+    decided = [(entry, known) for entry, known in pairs if known["done"] is not None]
+    return AnchorAgreement(breach_difference, fmean(entry["done"] == known["done"] for entry, known in decided))
 
 
 def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[int]:
