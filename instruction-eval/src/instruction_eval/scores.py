@@ -121,14 +121,14 @@ def measure_noise(
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
     sigma: NoiseSigma = {
-        "breaches": _repeat_variances(task_replies, conditions, partial(_breach_total, demands=gate_demands)),
+        "breaches": _repeat_variances(task_replies, conditions, partial(breach_total, demands=gate_demands)),
         "done": _repeat_variances(task_replies, conditions, _done_value),
         "drift": {
             condition: _mean_repeat_variance(_drift_slopes_by_unit(turn_replies, condition, gate_demands))
             for condition in conditions
         },
         "demands": {
-            demand: _repeat_variances(task_replies, conditions, partial(_breach_total, demands=[demand]))
+            demand: _repeat_variances(task_replies, conditions, partial(breach_total, demands=[demand]))
             for demand in gate_demands
         },
     }
@@ -212,7 +212,7 @@ def _drift_slopes_by_unit(
         if reply["condition"] == condition and (turn := reply["turn"]) is not None:
             turns, totals = turn_totals.setdefault((reply["task"], reply["repeat"]), ([], []))
             turns.append(turn)
-            totals.append(_breach_total(reply, demands))
+            totals.append(breach_total(reply, demands))
     slopes: dict[str, list[float | None]] = {}
     for (conversation, _), (turns, totals) in turn_totals.items():
         slopes.setdefault(conversation, []).append(_least_squares_slope(turns, totals))
@@ -226,7 +226,7 @@ def _least_squares_slope(turns: Sequence[int], totals: Sequence[int]) -> float |
     return linear_regression(turns, totals).slope
 
 
-def _breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
+def breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
     """Return the reply's breaches summed over the demands."""
     return sum(reply["breaches"][demand] for demand in demands)
 
@@ -297,6 +297,21 @@ def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.
         interval=percentile_interval(resample_means, level),
         units=len(differences),
     )
+
+
+def paired_units(instruction_values: Mapping[str, float], other_values: Mapping[str, float]) -> list[PairedUnit]:
+    """Pair each unit's instruction-side mean with its other-side mean, units one side lacks left out."""
+    return [PairedUnit(instruction_values[unit], other_values[unit]) for unit in sorted(instruction_values.keys() & other_values.keys())]
+
+
+def task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callable[[ScoredReply], float | None]) -> dict[str, float]:
+    """Map each task to the mean value of the condition's single-task replies over repeats, tasks without a value left out."""
+    values_by_task: dict[str, list[float]] = {}
+    for row in rows:
+        value = reply_value(row)
+        if row["condition"] == condition and row["turn"] is None and value is not None:
+            values_by_task.setdefault(row["task"], []).append(value)
+    return {task: mean(values) for task, values in values_by_task.items()}
 
 
 def unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:

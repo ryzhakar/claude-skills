@@ -2,7 +2,6 @@ import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
-from statistics import mean
 from typing import Literal, TypedDict
 
 import numpy
@@ -20,7 +19,7 @@ from instruction_eval.records import (
     Record,
     Refusal,
 )
-from instruction_eval.scores import Comparison, Noise, PairedUnit, ScoredReply, compare_paired
+from instruction_eval.scores import Comparison, Noise, ScoredReply, breach_total, compare_paired, paired_units, task_means
 
 LATER_REVISION_COUNT = 4
 LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
@@ -101,15 +100,10 @@ def _refuse_unadmitted_near_source(
     vs_empty: GateCheck, sealed_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, rng: numpy.random.Generator
 ) -> None:
     """Raise Refusal unless `source` minus `empty` over r1's sealed tasks passes the `instruction-vs-empty` check."""
-    gate_breaches = partial(_gate_breaches, gate_demands=gate_demands)
-    units = _paired_units(_task_means(sealed_rows, SOURCE_CONDITION, gate_breaches), _task_means(sealed_rows, EMPTY_CONDITION, gate_breaches))
+    gate_breaches = partial(breach_total, demands=gate_demands)
+    units = paired_units(task_means(sealed_rows, SOURCE_CONDITION, gate_breaches), task_means(sealed_rows, EMPTY_CONDITION, gate_breaches))
     if not check_passes(vs_empty, compare_paired(units, level, rng)):
         raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: source minus empty misses the {_VS_EMPTY_COMPARES} gap on r1's sealed rows")
-
-
-def _gate_breaches(row: ScoredReply, gate_demands: Sequence[str]) -> float:
-    """Return the reply's breaches summed over the gate demands."""
-    return float(sum(row["breaches"][demand] for demand in gate_demands))
 
 
 def least_repeats(check: GateCheck, noise: Noise) -> int | None:
@@ -313,24 +307,9 @@ def compare_with_parent(
 ) -> ParentComparison:
     """Compare the revision's sealed instruction replies with its parent's on the target, a demand id or `completion`."""
     target_value = partial(_reply_value, target=target)
-    units = _paired_units(_task_means(revision_rows, INSTRUCTION_CONDITION, target_value), _task_means(parent_rows, INSTRUCTION_CONDITION, target_value))
+    units = paired_units(task_means(revision_rows, INSTRUCTION_CONDITION, target_value), task_means(parent_rows, INSTRUCTION_CONDITION, target_value))
     comparison = compare_paired(units, level, rng)
     return ParentComparison(target, comparison, _movement_verdict(comparison.interval, direction, predicted_size))
-
-
-def _paired_units(instruction_values: Mapping[str, float], other_values: Mapping[str, float]) -> list[PairedUnit]:
-    """Pair each task's instruction-side mean with its other-side mean, tasks one side lacks left out."""
-    return [PairedUnit(instruction_values[task], other_values[task]) for task in sorted(instruction_values.keys() & other_values.keys())]
-
-
-def _task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callable[[ScoredReply], float | None]) -> dict[str, float]:
-    """Map each task to the mean value of the condition's single-task replies over repeats, tasks without a value left out."""
-    values_by_task: dict[str, list[float]] = {}
-    for row in rows:
-        value = reply_value(row)
-        if row["condition"] == condition and row["turn"] is None and value is not None:
-            values_by_task.setdefault(row["task"], []).append(value)
-    return {task: mean(values) for task, values in values_by_task.items()}
 
 
 def _reply_value(row: ScoredReply, target: str) -> float | None:
