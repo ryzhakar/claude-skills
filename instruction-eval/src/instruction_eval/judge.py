@@ -23,14 +23,17 @@ from instruction_eval.records import (
     ANCHORS_RECORD,
     CALIBRATION_RECORD,
     CONDITIONS_RECORD,
+    DEMANDS_RECORD,
     FIRST_REVISION,
     GATE_RECORD,
     KEY_SEPARATOR,
     OPEN_SPLIT,
+    SERIES_RECORD,
     TASKS_RECORD,
     AgentRaters,
     Demand,
     Demands,
+    Dropped,
     JudgeDemand,
     Plan,
     Record,
@@ -505,6 +508,7 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
 CALIBRATE_COMMAND = "judge calibrate"
 WORKING_BRIEF = "6-judge/brief.md"
 PLAN_FILE = "plan.yaml"
+COVERAGE_FILE = "3-coverage.yaml"
 BRIEF_SNAPSHOT_FILE = "brief.md"
 ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
 FIRST_ATTEMPT = 1
@@ -535,27 +539,45 @@ def calibrate_stage_one(
     _refuse_outside_neutral_login(environ, home, working_dir)
     records = SeriesRecords(files)
     plan = records.plan(attempt)
-    sample = _draw_sample(_open_task_replies(files), _sampled_earlier(records, attempt), attempt, plan.sample_size)
-    replies = {key: _load_reply(files, key.path) for key in sample}
-    origins: dict[str, Record] = {}
-    sample_text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, replies) for key in sample], origins, random)
-    folder = _attempt_folder(attempt)
+    earlier = _earlier_attempts_with_origins(files, attempt)
+    sample = _blind_sample(files, _sampled_by(records, earlier), attempt, plan.sample_size, random)
     ratings = _ratings(attempt, plan)
+    gate_demand_ids = _gate_demand_ids_without_sources(records)
+    folder = _attempt_folder(attempt)
     definitions = {
-        rating.agent_type: _rating_definition(files, records, brief, sample_text, replies[sample[0]]["model"], f"{files.root}/{folder}", rating)
+        rating.agent_type: _rating_definition(files, records, brief, sample, gate_demand_ids, f"{files.root}/{folder}", rating)
         for rating in ratings
     }
     write_file(files, f"{folder}/{BRIEF_SNAPSHOT_FILE}", brief)
-    write_file(files, f"{folder}/{SAMPLE_FILE}", sample_text.encode())
-    write_record(
-        files,
-        f"{folder}/{ATTEMPT_ORIGINS_FILE}",
-        {"ids": origins, "packets": {SAMPLE_PACKET: sha256(sample_text.encode())}},
-        [],
-    )
+    write_file(files, f"{folder}/{SAMPLE_FILE}", sample.text.encode())
+    write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _sample_origins_record(sample), _stage_one_reads(files, records, attempt, sample.replies, earlier))
     for name, definition in definitions.items():
         write_file(files, f"{AGENTS_FOLDER}/{name}.md", definition)
     return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: rating.agent_type} for rating in ratings]}, sort_keys=False)
+
+
+@dataclass(frozen=True)
+class _BlindSample:
+    """An attempt's sample: the replies drawn, the model that served them, the packet text, and the origin of every blind id."""
+
+    replies: tuple[ExpectedReply, ...]
+    reader_model: str
+    text: str
+    origins: Mapping[str, Record]
+
+
+def _blind_sample(files: SeriesFolder, taken: AbstractSet[ExpectedReply], attempt: int, sample_size: int, random: Random) -> _BlindSample:
+    """Draw the attempt's sample of r1's open task replies and blind it into one packet."""
+    drawn = _draw_sample(_open_task_replies(files), taken, attempt, sample_size)
+    records = {key: _load_reply(files, key.path) for key in drawn}
+    origins: dict[str, Record] = {}
+    text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, records) for key in drawn], origins, random)
+    return _BlindSample(replies=tuple(drawn), reader_model=records[drawn[0]]["model"], text=text, origins=origins)
+
+
+def _sample_origins_record(sample: _BlindSample) -> dict[str, object]:
+    """Return the attempt's origins record: every blind id's origin and the sample packet's hash."""
+    return {"ids": sample.origins, "packets": {SAMPLE_PACKET: sha256(sample.text.encode())}}
 
 
 @dataclass(frozen=True)
@@ -576,11 +598,19 @@ def _ratings(attempt: int, plan: Plan) -> list[_Rating]:
     return [*candidates, *raters]
 
 
-def _rating_definition(files: SeriesFolder, records: SeriesRecords, brief: bytes, sample_text: str, reader_model: str, folder: str, rating: _Rating) -> bytes:
+def _rating_definition(
+    files: SeriesFolder,
+    records: SeriesRecords,
+    brief: bytes,
+    sample: _BlindSample,
+    gate_demand_ids: AbstractSet[str],
+    folder: str,
+    rating: _Rating,
+) -> bytes:
     """Return the rating's agent definition, its body the attempt's brief rendered for the sample and the rating's file."""
     sources = {source.name: files.read_bytes(f"{SOURCE_FOLDER}/{source.name}").decode() for source in records.series().sources}
     body = render_brief(
-        brief.decode(), sources, records.demands(), frozenset(), sample_text, Path(f"{folder}/{rating.file}"), reader_model, files.root.name
+        brief.decode(), sources, records.demands(), gate_demand_ids, sample.text, Path(f"{folder}/{rating.file}"), sample.reader_model, files.root.name
     )
     from instruction_eval.reader import AgentKind, render_agent_definition
 
@@ -616,14 +646,43 @@ def _working_brief(files: SeriesFolder, brief_template: Path) -> bytes:
     return files.read_bytes(WORKING_BRIEF)
 
 
-def _sampled_earlier(records: SeriesRecords, attempt: int) -> set[ExpectedReply]:
-    """Return the r1 replies the attempts before `attempt` sampled, read from their origins."""
+def _earlier_attempts_with_origins(files: SeriesFolder, attempt: int) -> list[int]:
+    """Return the numbers of the attempts before `attempt` that wrote origins."""
+    return [earlier for earlier in range(FIRST_ATTEMPT, attempt) if files.holds(f"{_attempt_folder(earlier)}/{ATTEMPT_ORIGINS_FILE}")]
+
+
+def _sampled_by(records: SeriesRecords, attempts: Iterable[int]) -> set[ExpectedReply]:
+    """Return the r1 replies the given attempts sampled, read from their origins."""
     return {
         ExpectedReply(FIRST_REVISION, origin["condition"], origin["task"], origin["repeat"], None)
-        for earlier in range(FIRST_ATTEMPT, attempt)
-        if records.files.holds(f"{_attempt_folder(earlier)}/{ATTEMPT_ORIGINS_FILE}")
-        for origin in records.attempt_origins(earlier)["ids"].values()
+        for attempt in attempts
+        for origin in records.attempt_origins(attempt)["ids"].values()
     }
+
+
+def _gate_demand_ids_without_sources(records: SeriesRecords) -> frozenset[str]:
+    """Return the ids of the demands r1's coverage keeps when the series has no source, none when it has one."""
+    if records.series().sources:
+        return frozenset()
+    return frozenset(demand for demand, coverage in records.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped))
+
+
+def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
+    """Return what stage one reads: the series records, the plan's keys, the brief snapshot, the sample, the sampled replies, and the earlier origins."""
+    folder = _attempt_folder(attempt)
+    sources = records.series().sources
+    plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
+    return [
+        SERIES_RECORD,
+        *(f"{SOURCE_FOLDER}/{source.name}" for source in sources),
+        *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
+        f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        *(f"{folder}/{PLAN_FILE}{KEY_SEPARATOR}{key}" for key in plan_keys),
+        f"{folder}/{BRIEF_SNAPSHOT_FILE}",
+        f"{folder}/{SAMPLE_FILE}",
+        *(reply.path for reply in sample),
+        *(f"{_attempt_folder(number)}/{ATTEMPT_ORIGINS_FILE}" for number in earlier),
+    ]
 
 
 def _open_task_replies(files: SeriesFolder) -> list[ExpectedReply]:

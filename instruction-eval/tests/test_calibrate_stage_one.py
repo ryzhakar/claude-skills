@@ -28,6 +28,7 @@ DEMANDS = {
 }
 COVERAGE = {"demands": {"d-judge": [1], "d-plain": [1], "d-hedge": {"dropped": "Unmeasured here."}}, "sentences": {1: ["d-judge", "d-plain"]}}
 CONDITIONS = ("aim", "empty", "instruction", "placebo", "source")
+UNSOURCED_CONDITIONS = tuple(condition for condition in CONDITIONS if condition != "source")
 OPEN_TASKS = ("t1", "t2")
 SEALED_TASKS = ("t3",)
 ACCEPTANCE = {"breach_difference": 0.5, "self_difference": 0.5, "done_agreement": 0.8}
@@ -66,16 +67,17 @@ def write_reply(files: SeriesFolder, condition: str, task: str, repeat: int, tur
     write_record(files, reply_path("r1", condition, task, repeat, turn), record if turn is None else {**record, "turn": turn}, [])
 
 
-def stage_one_series(tmp_path: Path) -> SeriesFolder:
-    """Write a series with sources, demands, a brief, a plan for attempt 1, and r1 replies of every condition to open, sealed, and conversation tasks, and omissions."""
+def stage_one_series(tmp_path: Path, sourced: bool = True) -> SeriesFolder:
+    """Write a series with demands, a brief, a plan for attempt 1, and r1 replies of every condition to open, sealed, and conversation tasks, and omissions; with sources unless `sourced` is false."""
     files = SeriesFolder(tmp_path / "series")
-    write_record(files, "series.yaml", SERIES, [])
-    write_file(files, f"1-source/{SOURCE_NAME}", SOURCE_TEXT.encode())
+    write_record(files, "series.yaml", SERIES if sourced else {**SERIES, "sources": []}, [])
+    if sourced:
+        write_file(files, f"1-source/{SOURCE_NAME}", SOURCE_TEXT.encode())
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
     write_file(files, "6-judge/brief.md", TEMPLATE.read_bytes())
     write_yaml(files, "6-judge/calibration/attempt-1/plan.yaml", AGENT_PLAN)
-    for condition in CONDITIONS:
+    for condition in CONDITIONS if sourced else UNSOURCED_CONDITIONS:
         write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
         for task in (*OPEN_TASKS, *SEALED_TASKS):
             for repeat in (1, 2):
@@ -283,3 +285,46 @@ def test_a_faulty_brief_refuses_naming_the_fault_and_writes_nothing(tmp_path, br
         calibrate(tmp_path, files)
 
     assert tree(files.root) == before
+
+
+PLAN_KEYS = ("judge_model", "raters", "rater_model", "sample_size", "anchors_per_packet", "acceptance")
+
+
+def reads_of(files: SeriesFolder, attempt: int, earlier: int, sourced: bool = True) -> set[str]:
+    """Return the Commands-table reads of stage one expanded for the attempt: the series records, its plan keys, brief, sample, sampled replies, and earlier origins."""
+    folder = f"6-judge/calibration/attempt-{attempt}"
+    sampled_replies = {reply_path("r1", condition, task, repeat, None) for condition, task, repeat in sampled(files, attempt)}
+    return {
+        "series.yaml",
+        *([f"1-source/{SOURCE_NAME}"] if sourced else ["r1/3-coverage.yaml#demands"]),
+        "2-demands.yaml#demands",
+        *(f"{folder}/plan.yaml#{key}" for key in PLAN_KEYS),
+        f"{folder}/brief.md",
+        f"{folder}/sample.md",
+        *sampled_replies,
+        *(f"6-judge/calibration/attempt-{number}/origins.yaml" for number in range(1, earlier + 1)),
+    }
+
+
+def test_stage_one_records_the_inputs_it_reads_and_the_next_attempt_adds_every_earlier_origins_file(tmp_path):
+    files = stage_one_series(tmp_path)
+    calibrate(tmp_path, files)
+    write_yaml(files, "6-judge/calibration/attempt-2/plan.yaml", AGENT_PLAN)
+    calibrate(tmp_path, files)
+
+    records = SeriesRecords(files)
+    assert set(records.attempt_origins(1)["inputs"]) == reads_of(files, 1, earlier=0)
+    assert set(records.attempt_origins(2)["inputs"]) == reads_of(files, 2, earlier=1)
+
+
+def test_without_sources_the_judge_binds_to_the_gate_demands_of_the_coverage_and_the_inputs_name_the_coverage(tmp_path):
+    files = stage_one_series(tmp_path, sourced=False)
+
+    calibrate(tmp_path, files)
+
+    _, body = definition(files, "ie-calib-1-candidate-1")
+    assert "Source file:" not in body
+    assert "- id: d-judge\n  text: Be terse." in body
+    assert "- id: d-plain\n  text: Use plain words." in body
+    assert "d-hedge" not in body
+    assert set(SeriesRecords(files).attempt_origins(1)["inputs"]) == reads_of(files, 1, earlier=0, sourced=False)
