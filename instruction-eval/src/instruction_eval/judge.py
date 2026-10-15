@@ -1,12 +1,26 @@
 """Judging: the judge brief, verdict validation, and blinded packets."""
 
+import dataclasses
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Container, Iterable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
+from dataclasses import dataclass
 from pathlib import Path
+from random import Random
 
 from instruction_eval.conditions import strip_frontmatter
-from instruction_eval.records import Demand, Demands, JudgeDemand, Record, RecordError, RecordKind, Refusal, parse_record
+from instruction_eval.records import (
+    ANCHOR_KEY,
+    Demand,
+    Demands,
+    JudgeDemand,
+    Record,
+    RecordError,
+    RecordKind,
+    Refusal,
+    parse_record,
+)
+from instruction_eval.tasks import OMISSION_PREFIX, ExpectedReply
 
 SOURCE_PLACEHOLDER = "{SOURCE}"
 DEMANDS_PLACEHOLDER = "{DEMANDS}"
@@ -19,6 +33,10 @@ BRIEF_FORBIDDEN_WORDS = ("empty", "aim", "placebo", "instruction", "omit", "cont
 SOURCE_FOLDER = "1-source"
 SOURCE_SEPARATOR = "\n\n"
 VERDICT_LABEL = RecordKind.VERDICT.value
+OMISSIONS_PACKET_SUFFIX = "--omissions"
+TURN_PACKET_INFIX = "-turn-"
+BLIND_ID_BITS = 32
+SECTION_SEPARATOR = "\n\n"
 
 
 def render_brief(
@@ -101,3 +119,92 @@ def _refuse_other_demands(breaches: Mapping[str, int], path: str, judge_demand_i
     foreign = sorted(breaches.keys() - judge_demand_ids)
     if foreign:
         raise RecordError(f"{path}: {foreign[0]} is not a judge demand")
+
+
+@dataclass(frozen=True)
+class BlindPackets:
+    """A revision's packets by id, each its markdown text, and the origin of every blind id they hold."""
+
+    packets: Mapping[str, str]
+    origins: Mapping[str, Record]
+
+
+@dataclass(frozen=True)
+class _Entry:
+    """One packet entry before blinding: its origin and its exchanges of user message and reply text."""
+
+    origin: Record
+    exchanges: tuple[tuple[str, str], ...]
+
+
+def blind_replies(revision: str, replies: Mapping[ExpectedReply, Record], anchors: Sequence[Record], anchors_per_packet: int, random: Random) -> BlindPackets:
+    """Return the revision's packets of its replies, each with `anchors_per_packet` anchors of other tasks, shuffled under blind ids unique in the revision, refusing a packet with too few such anchors."""
+    packets: dict[str, str] = {}
+    origins: dict[str, Record] = {}
+    for packet, (task, keys) in sorted(_replies_by_packet(replies).items()):
+        entries = [
+            *(_reply_entry(packet, revision, key, replies) for key in keys),
+            *(_anchor_entry(packet, anchor) for anchor in _drawn_anchors(packet, task, anchors, anchors_per_packet, random)),
+        ]
+        random.shuffle(entries)
+        sections = []
+        for entry in entries:
+            blind_id = _fresh_blind_id(origins, random)
+            origins[blind_id] = entry.origin
+            sections.append(_section(blind_id, entry.exchanges))
+        packets[packet] = SECTION_SEPARATOR.join(sections) + "\n"
+    return BlindPackets(packets=packets, origins=origins)
+
+
+def _replies_by_packet(replies: Iterable[ExpectedReply]) -> dict[str, tuple[str, list[ExpectedReply]]]:
+    """Group the replies by packet id, each packet paired with the task or conversation it judges."""
+    groups: dict[str, tuple[str, list[ExpectedReply]]] = {}
+    for key in replies:
+        groups.setdefault(_packet_id(key), (key.task, []))[1].append(key)
+    return groups
+
+
+def _packet_id(key: ExpectedReply) -> str:
+    """Return the packet a reply goes to: its task's omission packet, its conversation turn's packet, or its task's packet."""
+    if key.condition.startswith(OMISSION_PREFIX):
+        return f"{key.task}{OMISSIONS_PACKET_SUFFIX}"
+    if key.turn is not None:
+        return f"{key.task}{TURN_PACKET_INFIX}{key.turn}"
+    return key.task
+
+
+def _reply_entry(packet: str, revision: str, key: ExpectedReply, replies: Mapping[ExpectedReply, Record]) -> _Entry:
+    """Return a reply's entry: its origin, and its exchange preceded by the earlier turns of its repeat."""
+    record = replies[key]
+    origin = {"packet": packet, "condition": key.condition, "task": key.task, "split": record["split"], "repeat": key.repeat}
+    if key.turn is not None:
+        origin["turn"] = key.turn
+    origin["borrowed_from"] = None if key.revision == revision else key.revision
+    earlier = [replies[dataclasses.replace(key, turn=turn)] for turn in range(1, key.turn or 1)]
+    return _Entry(origin=origin, exchanges=tuple((reply["message"], reply["text"]) for reply in (*earlier, record)))
+
+
+def _anchor_entry(packet: str, anchor: Record) -> _Entry:
+    """Return an anchor's entry: its origin and its one exchange."""
+    return _Entry(origin={"packet": packet, ANCHOR_KEY: anchor["id"]}, exchanges=((anchor["message"], anchor["text"]),))
+
+
+def _drawn_anchors(packet: str, task: str, anchors: Sequence[Record], anchors_per_packet: int, random: Random) -> list[Record]:
+    """Draw `anchors_per_packet` anchors of tasks other than `task` at random, refusing the packet when fewer exist."""
+    others = [anchor for anchor in anchors if anchor["task"] != task]
+    if len(others) < anchors_per_packet:
+        raise Refusal(f"too few anchors for {packet}")
+    return random.sample(others, anchors_per_packet)
+
+
+def _fresh_blind_id(taken: Container[str], random: Random) -> str:
+    """Return `b` and 8 random hex digits, drawn again until no taken id equals it."""
+    while (blind_id := f"b{random.getrandbits(BLIND_ID_BITS):08x}") in taken:
+        pass
+    return blind_id
+
+
+def _section(blind_id: str, exchanges: Iterable[tuple[str, str]]) -> str:
+    """Return an entry's markdown section: its blind id heading, then each user message and reply text."""
+    parts = [f"## {blind_id}", *(part for message, text in exchanges for part in (f"### User\n\n{message}", f"### Reply\n\n{text}"))]
+    return SECTION_SEPARATOR.join(parts)
