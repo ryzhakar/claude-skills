@@ -1061,13 +1061,30 @@ RunReader = Callable[[Sequence[str], str, int], ReaderRun]
 def revision_ask(
     files: SeriesFolder, revision: str, conditions: Sequence[str], run_reader: RunReader, run_fingerprint: Callable[[Sequence[str]], str]
 ) -> str:
-    """Answer every missing reply of the revision serially through the command reader and return an empty text, refusing a failing coverage, an edited condition or definition, or a failed reader run."""
+    """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
     guard_series(files, ASK_COMMAND)
     records = SeriesRecords(files)
     reader = records.reader()
     coverage_check(files, revision)
     texts = _verified_condition_texts(files, revision, records, reader)
+    if isinstance(reader, AgentReader):
+        return agent_launch_list(files, revision, conditions)
     asked = _asked_replies(files, revision, records, conditions)
+    _answer_replies(files, revision, records, reader, texts, asked, run_reader, run_fingerprint)
+    return ""
+
+
+def _answer_replies(
+    files: SeriesFolder,
+    revision: str,
+    records: SeriesRecords,
+    reader: CommandReader,
+    texts: Mapping[str, bytes],
+    asked: Sequence[ExpectedReply],
+    run_reader: RunReader,
+    run_fingerprint: Callable[[Sequence[str]], str],
+) -> None:
+    """Run the command reader on each asked reply in turn, writing each reply as soon as its run succeeds."""
     fingerprint = reader_fingerprint(files, run_fingerprint)
     _refuse_changed_fingerprint(files, records, fingerprint.fingerprint_hash)
     reads = _ask_reads(revision, records, reader, texts)
@@ -1075,7 +1092,6 @@ def revision_ask(
         run = run_reader(_reader_command(files, reader, reply), _reader_stdin(records, reply), ASK_TIMEOUT_SECONDS)
         _refuse_failed_run(reply, run)
         write_record(files, reply.path, _command_reply_record(records.tasks(), reply, run, fingerprint), [*reads, *_state_reads(files)])
-    return ""
 
 
 def _ask_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:

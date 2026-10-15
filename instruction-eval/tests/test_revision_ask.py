@@ -6,7 +6,7 @@ import yaml
 
 from instruction_eval.reader import ReaderRun, reader_fingerprint, revision_ask
 from instruction_eval.records import Refusal, SeriesFolder
-from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, write_yaml
+from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, tree, write_yaml
 
 COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
 FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: b1\ntemperature: 0.7\n"
@@ -147,3 +147,21 @@ def test_a_reader_build_differing_from_the_r1_replies_so_far_refuses_while_reord
     reordered = StubReader()
     revision_ask(files, "r1", [], reordered, lambda command: "temperature: 0.7\nbuild: b1\nmodel: gpt-5-mini\n")
     assert len(reordered.calls) == 4 * 2 * 2 - 1
+
+
+def forbidden_run(command: Sequence[str], stdin: str = "", timeout_seconds: int = 0) -> ReaderRun:
+    raise AssertionError(f"ran {command}")
+
+
+def test_an_agent_reader_prints_the_launch_list_of_the_named_conditions_and_runs_nothing(tmp_path):
+    files = prepared_series(tmp_path)
+    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    before = tree(files.root)
+
+    printed = revision_ask(files, "r1", ["instruction"], forbidden_run, forbidden_run)
+
+    launches = yaml.safe_load(printed)["launches"]
+    assert [(launch["agent_type"], launch["task"], launch["repeat"]) for launch in launches] == [
+        ("ie-reader-r1-instruction", task, repeat) for task in ("t-open", "t-sealed") for repeat in (1, 2)
+    ]
+    assert tree(files.root) == before
