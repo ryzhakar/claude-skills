@@ -105,6 +105,7 @@ def expected_reads() -> set[str]:
         "3-tasks.yaml#tasks",
         "3-tasks.yaml#conversations",
         "4-conditions.yaml#aim",
+        "7-gate.yaml#done_by",
         "r1/3-coverage.yaml#demands",
         "r1/3-coverage.yaml#sentences",
         "r1/4-conditions/placebo.md",

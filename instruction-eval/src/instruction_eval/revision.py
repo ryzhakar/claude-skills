@@ -25,7 +25,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE, DEMANDS_AND_TASKS_INPUTS, DETECTORS_FILE, ORIGINS_FILE, Noise, ReplyRow, join_reply_rows
+from instruction_eval.scores import COLLECTED_FILE, DEMANDS_AND_TASKS_INPUTS, DETECTORS_FILE, DONE_BY_INPUT, ORIGINS_FILE, Noise, ReplyRow, join_reply_rows
 from instruction_eval.series import INSTRUCTION_FILE, guard_series, refuse_unclosed_frontmatter, revision_ids
 from instruction_eval.tasks import shared_phrases
 
@@ -298,6 +298,7 @@ def _new_reads(revision: str, parent: str, accepted_verdicts: Sequence[str]) -> 
     return [
         *DEMANDS_AND_TASKS_INPUTS,
         AIM_INPUT,
+        DONE_BY_INPUT,
         *COVERAGE_INPUTS,
         PLACEBO_CONDITION,
         FROZEN_RECORD,
