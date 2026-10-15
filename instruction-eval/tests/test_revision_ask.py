@@ -5,7 +5,7 @@ import yaml
 
 from instruction_eval.reader import ReaderRun, reader_fingerprint, revision_ask
 from instruction_eval.records import SeriesFolder
-from test_reply_collect import COMMAND_READER, CONDITION_NAMES, OPEN_MESSAGE, START, load, prepared_series, stamp, write_yaml
+from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, write_yaml
 
 COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
 FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: b1\ntemperature: 0.7\n"
@@ -82,3 +82,19 @@ def test_a_command_reader_answers_every_missing_reply_serially_each_reply_record
     }
     second = load(files, "r1/5-replies/aim/t-open/repeat-2.yaml")
     assert "r1/5-replies/aim/t-open/repeat-1.yaml" in second["inputs"]
+
+
+def test_each_conversation_turn_is_asked_with_the_repeats_earlier_turns_and_replies(tmp_path):
+    files = prepared_series(tmp_path, CONVERSATION_TASKS, reader=COMMAND_READER)
+    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    reader = StubReader()
+
+    revision_ask(files, "r1", ["instruction"], reader, stub_fingerprint)
+
+    stdins = [yaml.safe_load(stdin) for _, stdin, _ in reader.calls]
+    first_turn = next(stdin for stdin in stdins if stdin["messages"][-1]["text"] == "Plan a trip.")
+    second_turn = next(stdin for stdin in stdins if stdin["messages"][-1]["text"] == "Which week?")
+    assert first_turn == {"messages": [{"role": "user", "text": "Plan a trip."}]}
+    assert second_turn["messages"][:2] == [{"role": "user", "text": "Plan a trip."}, {"role": "assistant", "text": yaml.safe_dump(first_turn, allow_unicode=True)}]
+    assert len(second_turn["messages"]) == 3
+    assert len(reader.calls) == 2 * (2 + 2)
