@@ -493,6 +493,7 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
 CALIBRATE_COMMAND = "judge calibrate"
 WORKING_BRIEF = "6-judge/brief.md"
 PLAN_FILE = "plan.yaml"
+BRIEF_SNAPSHOT_FILE = "brief.md"
 ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
 FIRST_ATTEMPT = 1
 
@@ -505,6 +506,7 @@ def calibrate_stage_one(
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     brief = _working_brief(files, brief_template)
+    write_file(files, f"{_attempt_folder(attempt)}/{BRIEF_SNAPSHOT_FILE}", brief)
     return ""
 
 

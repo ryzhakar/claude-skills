@@ -134,3 +134,14 @@ def test_stage_one_without_the_working_brief_refuses_naming_the_template_it_star
         calibrate(tmp_path, files)
 
     assert tree(files.root) == before
+
+
+ATTEMPT_ONE = "6-judge/calibration/attempt-1"
+
+
+def test_stage_one_snapshots_the_working_brief_into_the_attempt_byte_for_byte(tmp_path):
+    files = stage_one_series(tmp_path)
+
+    calibrate(tmp_path, files)
+
+    assert files.read_bytes(f"{ATTEMPT_ONE}/brief.md") == TEMPLATE.read_bytes()
