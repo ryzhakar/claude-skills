@@ -35,6 +35,12 @@ def command_series(tmp_path) -> SeriesFolder:
     return files
 
 
+def agent_series(tmp_path) -> SeriesFolder:
+    files = prepared_series(tmp_path)
+    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    return files
+
+
 def expected_reads() -> set[str]:
     return {
         "series.yaml",
@@ -154,8 +160,7 @@ def forbidden_run(command: Sequence[str], stdin: str = "", timeout_seconds: int 
 
 
 def test_an_agent_reader_prints_the_launch_list_of_the_named_conditions_and_runs_nothing(tmp_path):
-    files = prepared_series(tmp_path)
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    files = agent_series(tmp_path)
     before = tree(files.root)
 
     printed = revision_ask(files, "r1", ["instruction"], forbidden_run, forbidden_run)
@@ -165,3 +170,25 @@ def test_an_agent_reader_prints_the_launch_list_of_the_named_conditions_and_runs
         ("ie-reader-r1-instruction", task, repeat) for task in ("t-open", "t-sealed") for repeat in (1, 2)
     ]
     assert tree(files.root) == before
+
+
+def test_a_coverage_failing_its_check_refuses_the_ask_before_any_reader_runs(tmp_path):
+    files = command_series(tmp_path)
+    (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump({"demands": {"d-one": [1]}, "sentences": {}}))
+
+    with pytest.raises(Refusal):
+        revision_ask(files, "r1", [], forbidden_run, forbidden_run)
+
+    assert not (files.root / "r1/5-replies").exists()
+
+
+@pytest.mark.parametrize(
+    "series_kind, edited",
+    [("command", "r1/4-conditions/aim.md"), ("agent", "r1/4-conditions/aim.md"), ("agent", ".claude/agents/ie-reader-r1-aim.md")],
+)
+def test_an_edited_condition_text_or_reader_definition_refuses_the_ask_before_any_reader_runs(tmp_path, series_kind, edited):
+    files = command_series(tmp_path) if series_kind == "command" else agent_series(tmp_path)
+    (files.root / edited).write_bytes(b"edited")
+
+    with pytest.raises(Refusal, match=rf"^{edited.replace('.', '[.]')} differs from its recomputation$"):
+        revision_ask(files, "r1", [], forbidden_run, forbidden_run)
