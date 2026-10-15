@@ -804,7 +804,11 @@ def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[s
     """Return the launch list as YAML: per task and per conversation, condition, and repeat, the agent type and the exact messages."""
     guard_series(files, ASK_COMMAND)
     records = SeriesRecords(files)
-    replies = _asked_replies(files, revision, records, conditions)
+    return _launch_list(_asked_replies(files, revision, records, conditions), records)
+
+
+def _launch_list(replies: Sequence[ExpectedReply], records: SeriesRecords) -> str:
+    """Return the launch list of the replies as YAML."""
     return yaml.safe_dump({LAUNCHES_KEY: _launches(replies, records.tasks())}, sort_keys=False, allow_unicode=True)
 
 
@@ -824,7 +828,7 @@ def _gate_repeats(records: SeriesRecords) -> int:
     """Return the repeats the gate holds, refusing them unwritten."""
     repeats = records.gate().repeats
     if repeats is None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}")
     return repeats
 
 
@@ -858,6 +862,19 @@ def _launch(
 COLLECT_COMMAND = "revision collect"
 SURPLUS_NOTICE = "ignored surplus transcript: "
 READER_RECORD_KIND_KEY = "kind"
+REPEATS_KEY = "repeats"
+BUDGET_KEY = "budget"
+SPLIT_KEY = "split"
+TURN_KEY = "turn"
+REPLY_MESSAGE_KEY = "message"
+REPLY_MODEL_KEY = "model"
+READER_KIND_KEY = "reader_kind"
+STARTED_KEY = "started"
+SECONDS_KEY = "seconds"
+TRANSCRIPT_KEY = "transcript"
+TRANSCRIPT_HASH_KEY = "transcript_hash"
+FINGERPRINT_HASH_KEY = "fingerprint_hash"
+COST_KEY = "cost"
 
 
 def revision_collect(
@@ -923,7 +940,7 @@ def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: 
         *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
         PLACEBO_SNAPSHOT_PATH,
         *(f"{READER_RECORD}{KEY_SEPARATOR}{key}" for key in (READER_RECORD_KIND_KEY, *(field.name for field in fields(reader)))),
-        f"{GATE_RECORD}{KEY_SEPARATOR}repeats",
+        f"{GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}",
         f"{revision}/{INSTRUCTION_FILE}",
         *(condition_path(revision, condition) for condition in texts),
     ]
@@ -975,7 +992,7 @@ def _reader_transcripts(
 ) -> list[_ReaderTranscript]:
     """Return the transcripts whose agent type is an expected reader's and whose first user message is the first message of an expected task or conversation."""
     readers = {_reader_agent_type(reply.revision, reply.condition): (reply.revision, reply.condition) for reply in expected}
-    entries = {_turn_messages(entry)[0]: entry for entry in (*tasks.tasks, *tasks.conversations)}
+    entries = _entries_by_first_message(tasks)
     wanted = {(reply.revision, reply.condition, reply.task) for reply in expected}
     matches = []
     for transcript in transcripts:
@@ -988,6 +1005,17 @@ def _reader_transcripts(
         if entry is not None and (revision, condition, entry.id) in wanted:
             matches.append(_ReaderTranscript(revision, condition, entry, transcript, content, replies))
     return matches
+
+
+def _entries_by_first_message(tasks: Tasks) -> dict[str, Task | Conversation]:
+    """Return each task and conversation by the first message its reader receives, refusing two sharing one."""
+    entries: dict[str, Task | Conversation] = {}
+    for entry in (*tasks.tasks, *tasks.conversations):
+        first = _turn_messages(entry)[0]
+        if first in entries:
+            raise Refusal(f"duplicate first message: {first}")
+        entries[first] = entry
+    return entries
 
 
 def _turn_messages(entry: Task | Conversation) -> tuple[str, ...]:
@@ -1023,13 +1051,13 @@ def _transcript_reply_paths(match: _ReaderTranscript, repeat: int) -> dict[str, 
 def _reply_identity(entry: Task | Conversation, condition: str, repeat: int, turn: int | None) -> dict[str, Any]:
     """Return the keys naming one reply and the message it answers: condition, task, split, repeat, message, and for a conversation the turn."""
     identity = {
-        "condition": condition,
-        "task": entry.id,
-        "split": entry.split,
-        "repeat": repeat,
-        "message": _turn_messages(entry)[(turn or 1) - 1],
+        CONDITION_KEY: condition,
+        TASK_KEY: entry.id,
+        SPLIT_KEY: entry.split,
+        REPEAT_KEY: repeat,
+        REPLY_MESSAGE_KEY: _turn_messages(entry)[(turn or 1) - 1],
     }
-    return identity if turn is None else {**identity, "turn": turn}
+    return identity if turn is None else {**identity, TURN_KEY: turn}
 
 
 def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: TranscriptReply) -> dict[str, Any]:
@@ -1037,14 +1065,14 @@ def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: Transcript
     turn = reply.turn if isinstance(match.entry, Conversation) else None
     return {
         **_reply_identity(match.entry, match.condition, repeat, turn),
-        "text": reply.text,
-        "model": reply.model,
-        "reader_kind": AGENT_READER,
-        "started": reply.started.isoformat(),
-        "seconds": reply.seconds,
-        "transcript": str(reply.transcript),
-        "transcript_hash": reply.transcript_hash,
-        "cost": _reply_cost_record(reply.tokens),
+        _TEXT_KEY: reply.text,
+        REPLY_MODEL_KEY: reply.model,
+        READER_KIND_KEY: AGENT_READER,
+        STARTED_KEY: reply.started.isoformat(),
+        SECONDS_KEY: reply.seconds,
+        TRANSCRIPT_KEY: str(reply.transcript),
+        TRANSCRIPT_HASH_KEY: reply.transcript_hash,
+        COST_KEY: _reply_cost_record(reply.tokens),
     }
 
 
@@ -1092,14 +1120,14 @@ def revision_ask(
     coverage_check(files, revision)
     texts = _verified_condition_texts(files, revision, records, reader)
     asked = _asked_replies(files, revision, records, conditions)
-    _refuse_unaffordable_ask(files, records, revision, len(asked))
+    _refuse_unaffordable_later_ask(files, records, revision, len(asked))
     if isinstance(reader, AgentReader):
-        return agent_launch_list(files, revision, conditions)
+        return _launch_list(asked, records)
     _answer_replies(files, revision, records, reader, texts, asked, run_reader, run_fingerprint)
     return ""
 
 
-def _refuse_unaffordable_ask(files: SeriesFolder, records: SeriesRecords, revision: str, ask_reply_count: int) -> None:
+def _refuse_unaffordable_later_ask(files: SeriesFolder, records: SeriesRecords, revision: str, ask_reply_count: int) -> None:
     """Refuse an ask of a later revision whose replies, each at r1's mean cost, take the cost so far past the gate's ceiling."""
     budget = None if revision == FIRST_REVISION else _stop_budget(records.complete_gate().budget)
     if budget is None:
@@ -1149,7 +1177,7 @@ def _later_revision_reads(files: SeriesFolder, revision: str) -> list[str]:
     """Return what an ask of a later revision reads besides an ask of r1: the budget, r1's condition files, and each earlier gated revision's outcome."""
     first_conditions = sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(condition_path(FIRST_REVISION, ANY_CONDITION)))
     earlier = (earlier for earlier in revision_ids(files) if revision_number(earlier) < revision_number(revision))
-    return [f"{GATE_RECORD}{KEY_SEPARATOR}budget", *first_conditions, *(f"{other}/{OUTCOME_FILE}" for other in earlier if files.holds(f"{other}/{OUTCOME_FILE}"))]
+    return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(f"{other}/{OUTCOME_FILE}" for other in earlier if files.holds(f"{other}/{OUTCOME_FILE}"))]
 
 
 def _state_reads(files: SeriesFolder) -> list[str]:
@@ -1167,7 +1195,7 @@ def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fin
     """Refuse a fingerprint hash differing from the freeze's once frozen, else from any r1 reply written so far."""
     if not files.holds(FROZEN_RECORD):
         _refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
-    elif records.frozen().get("fingerprint_hash") != fingerprint_hash:
+    elif records.frozen().get(FINGERPRINT_HASH_KEY) != fingerprint_hash:
         raise Refusal(f"reader fingerprint changed since {FROZEN_RECORD}")
 
 
@@ -1218,11 +1246,11 @@ def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fi
     entry = _entries_by_id(tasks)[reply.task]
     return {
         **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
-        "text": run.stdout,
-        "model": fingerprint.output["model"],
-        "reader_kind": COMMAND_READER,
-        "started": run.started.isoformat(),
-        "seconds": run.seconds,
-        "fingerprint_hash": fingerprint.fingerprint_hash,
-        "cost": _reply_cost_record(None),
+        _TEXT_KEY: run.stdout,
+        REPLY_MODEL_KEY: fingerprint.output[REPLY_MODEL_KEY],
+        READER_KIND_KEY: COMMAND_READER,
+        STARTED_KEY: run.started.isoformat(),
+        SECONDS_KEY: run.seconds,
+        FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash,
+        COST_KEY: _reply_cost_record(None),
     }
