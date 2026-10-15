@@ -1,5 +1,6 @@
-"""Series commands `series new`, `series stop`, and `series keep`, and the guard of every command but `series new` against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
+"""Series commands `series new`, `series freeze`, `series stop`, and `series keep`, and the guard of every command but `series new` against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
 
+import fnmatch
 import itertools
 import os
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -8,11 +9,28 @@ from pathlib import Path
 
 import yaml
 
-from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, UnclosedFrontmatter, strip_frontmatter
+from instruction_eval.conditions import (
+    PLACEBO_SNAPSHOT_PATH,
+    UnclosedFrontmatter,
+    strip_frontmatter,
+)
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
-from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, _gate_demands, _measured_revision, kept_revision, least_repeats
-from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF
+from instruction_eval.gate import (
+    OUTCOME_FILE,
+    REVISION_PREFIX,
+    BudgetRefusal,
+    SeriesShape,
+    _gate_demands,
+    _measured_revision,
+    _reply_cost,
+    _stop_budget,
+    kept_revision,
+    least_repeats,
+    refuse_unaffordable_freeze,
+    refuse_unresolvable_gaps,
+)
+from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF, series_paths
 from instruction_eval.records import (
     ANCHORS_RECORD,
     CALIBRATION_RECORD,
@@ -24,11 +42,14 @@ from instruction_eval.records import (
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
+    KEY_SEPARATOR,
+    OPEN_SPLIT,
     READER_RECORD,
     SERIES_RECORD,
     STOP_RECORD,
     TASKS_RECORD,
     UNRESOLVABLE_STOP,
+    CompleteGate,
     GateCheck,
     ReaderKind,
     Record,
@@ -43,8 +64,22 @@ from instruction_eval.records import (
     write_record,
 )
 from instruction_eval.records import Budget as GateBudget
-from instruction_eval.scores import COLLECTED_FILE, DETECTORS_FILE, ORIGINS_FILE, Noise, measure_noise
-from instruction_eval.tasks import PLACEBO_SNAPSHOT, ExpectedReply, expected_replies, refuse_missing_replies, tasks_check
+from instruction_eval.scores import (
+    COLLECTED_FILE,
+    DETECTORS_FILE,
+    ORIGINS_FILE,
+    BootstrapRng,
+    Noise,
+    measure_noise,
+)
+from instruction_eval.tasks import (
+    EVERY_SENTENCE_OMISSIONS,
+    PLACEBO_SNAPSHOT,
+    ExpectedReply,
+    expected_replies,
+    refuse_missing_replies,
+    tasks_check,
+)
 
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
@@ -366,6 +401,118 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
         raise Refusal(f"{DRIFT_COMPARES} check without conversations ({TASKS_RECORD})")
     if NEAR_SOURCE_COMPARES in compared and not records.series().sources:
         raise Refusal(f"{NEAR_SOURCE_COMPARES} check without sources ({SERIES_RECORD})")
+
+
+FREEZE_COMMAND = "series freeze"
+EVERY_FILE_PATTERN = "**/*"
+ANY_ATTEMPT_FOLDER = "6-judge/calibration/attempt-*"
+FROZEN_PART_PATTERNS = (
+    SERIES_RECORD,
+    f"{SOURCE_FOLDER}/*",
+    DEMANDS_RECORD,
+    TASKS_RECORD,
+    CONDITIONS_RECORD,
+    PLACEBO_SNAPSHOT,
+    READER_RECORD,
+    CALIBRATION_RECORD,
+    ANCHORS_RECORD,
+    "6-judge/calibration/*",
+    GATE_RECORD,
+    f"{FIRST_REVISION}/*",
+)
+USER_RECORD_PATTERNS = (
+    DEMANDS_RECORD,
+    TASKS_RECORD,
+    CONDITIONS_RECORD,
+    READER_RECORD,
+    GATE_RECORD,
+    f"{ANY_ATTEMPT_FOLDER}/plan.yaml",
+    f"{ANY_ATTEMPT_FOLDER}/reference-user.yaml",
+    f"{FIRST_REVISION}/{USER_COVERAGE_FILE}",
+)
+
+
+def series_freeze(
+    files: SeriesFolder,
+    fingerprint_hash: str | None,
+    read_external: Callable[[Path], bytes],
+    bootstrap_rng: BootstrapRng,
+    tool_version: str,
+    now: datetime,
+) -> None:
+    """Write `8-frozen.yaml`: the hash of every series file, r1's noise, a command reader's fresh fingerprint hash, the tool version, and the time, refusing a series not ready to freeze."""
+    guard_series(files, FREEZE_COMMAND)
+    refuse_unready_freeze(files, fingerprint_hash, read_external)
+    records = SeriesRecords(files)
+    gate = records.complete_gate()
+    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    gate_demands = _gate_demands(records)
+    noise = measure_noise(sealed_rows, gate_demands, records.conditions().controls, gate.repeats, gate.level)
+    refuse_unresolvable_gaps(gate.checks, noise, sealed_rows, gate_demands, bool(records.series().sources), bootstrap_rng())
+    _refuse_unaffordable_series(files, records, gate)
+    hashed = _frozen_parts(files)
+    frozen = {**_frozen_record(files, hashed, noise, tool_version, now), **_reader_build(records, fingerprint_hash)}
+    write_record(files, FROZEN_RECORD, frozen, _freeze_reads(files, hashed))
+
+
+def _reader_build(records: SeriesRecords, fingerprint_hash: str | None) -> dict[str, str | None]:
+    """Return the fresh fingerprint hash a command reader's series records, nothing for an agent reader."""
+    if records.series().reader_kind != COMMAND_READER:
+        return {}
+    return {"fingerprint_hash": fingerprint_hash}
+
+
+def _freeze_reads(files: SeriesFolder, hashed: Sequence[str]) -> list[str]:
+    """Return what the freeze reads: every hashed file whole, a user-written record by each top-level key."""
+    return [read for path in hashed for read in (_user_record_keys(files, path) if _matches_any(path, USER_RECORD_PATTERNS) else [path])]
+
+
+def _user_record_keys(files: SeriesFolder, path: str) -> list[str]:
+    """Return a user-written record's reads, one `<path>#<key>` per top-level key."""
+    return [f"{path}{KEY_SEPARATOR}{key}" for key in yaml.safe_load(files.read_bytes(path))]
+
+
+def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gate: CompleteGate) -> None:
+    """Refuse a budget ceiling below the series' cost predicted from r1's replies."""
+    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _first_revision_replies(files, records, gate.repeats)]
+    try:
+        refuse_unaffordable_freeze(_stop_budget(gate.budget), first_replies, _series_shape(files, records, gate.repeats))
+    except BudgetRefusal as unaffordable:
+        raise Refusal(str(unaffordable)) from None
+
+
+def _series_shape(files: SeriesFolder, records: SeriesRecords, repeats: int) -> SeriesShape:
+    """Return the counts the cost prediction scales by: tasks, open tasks, conversation turns, repeats, and r1's omitted sentences."""
+    tasks = records.tasks()
+    omits_sentences = records.conditions().omissions == EVERY_SENTENCE_OMISSIONS
+    return SeriesShape(
+        task_count=len(tasks.tasks),
+        open_task_count=sum(task.split == OPEN_SPLIT for task in tasks.tasks),
+        conversation_turns=sum(len(conversation.turns) for conversation in tasks.conversations),
+        repeats=repeats,
+        omission_sentences=len(split_sentences(files.read_bytes(FIRST_INSTRUCTION))) if omits_sentences else 0,
+    )
+
+
+def _frozen_parts(files: SeriesFolder) -> list[str]:
+    """Return the series path of every file the freeze hashes, each matching a part of the series, in path order."""
+    paths = series_paths(files, EVERY_FILE_PATTERN)
+    return [path for path in paths if _matches_any(path, FROZEN_PART_PATTERNS)]
+
+
+def _matches_any(path: str, patterns: Sequence[str]) -> bool:
+    """Tell whether the series path matches a pattern, `*` spanning folders."""
+    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+
+
+def _frozen_record(files: SeriesFolder, hashed: Sequence[str], noise: Noise, tool_version: str, now: datetime) -> dict[str, object]:
+    """Return `8-frozen.yaml`: each hashed path's hash, the noise, the tool version, and the time."""
+    return {
+        "hashes": {path: sha256(files.read_bytes(path)) for path in hashed},
+        "noise": noise,
+        "tool_version": tool_version,
+        "frozen_at": now.isoformat(),
+    }
 
 
 STATUS_PARTS = (
