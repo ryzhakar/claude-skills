@@ -1,10 +1,12 @@
 """Judging: the judge brief, verdict validation, and blinded packets."""
 
 import dataclasses
+import json
 import re
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from random import Random
 from statistics import fmean
@@ -347,15 +349,20 @@ def _verdict_file(revision: str, packet: str, number: int) -> str:
 
 
 def _final_reply(judgings: _Judgings, agent_type: str) -> "TranscriptReply | None":
-    """Return the final reply of the agent type's transcript, or None when no transcript ends in one."""
+    """Return the final reply of the agent type's latest transcript, or None when that transcript does not end in one."""
     from instruction_eval.reader import parse_transcript_replies
 
-    replies = [
-        parse_transcript_replies(transcript.path, judgings.read_transcript(transcript.path))
-        for transcript in judgings.transcripts
-        if transcript.agent_type == agent_type
-    ]
-    return next((reply[-1] for reply in replies if reply), None)
+    transcripts = [transcript for transcript in judgings.transcripts if transcript.agent_type == agent_type]
+    if not transcripts:
+        return None
+    latest = max(transcripts, key=lambda transcript: _start_time(judgings.read_transcript(transcript.path)))
+    replies = parse_transcript_replies(latest.path, judgings.read_transcript(latest.path))
+    return replies[-1] if replies else None
+
+
+def _start_time(transcript: bytes) -> datetime:
+    """Return the timestamp of the transcript's first line."""
+    return datetime.fromisoformat(json.loads(transcript.splitlines()[0])["timestamp"])
 
 
 def _is_rejected(judgings: _Judgings, reply: "TranscriptReply", packet: str, number: int) -> bool:

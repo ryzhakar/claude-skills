@@ -254,3 +254,33 @@ def test_the_lowest_judging_that_passes_is_accepted_though_a_later_one_passes_to
 
     assert accepted.judging == 2
     assert accepted.transcript == transcripts[1].path
+
+
+OLDER = "2026-10-14T19:00:43.000Z"
+NEWER = "2026-10-14T20:00:43.000Z"
+
+
+def test_a_relaunched_judging_whose_latest_transcript_has_not_ended_is_pending_whatever_an_earlier_transcript_did(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    transcripts = [judge_transcript(files, "t1", 1, started=NEWER, final=False), judge_transcript(files, "t1", 1, started=OLDER)]
+
+    assert states(files, transcripts)["t1"] == PendingJudging(1)
+
+
+def test_the_judge_of_a_judging_is_its_latest_transcript_whatever_the_order_the_transcripts_are_listed_in(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1)
+    wrong_model = judge_transcript(files, "t1", 1, started=OLDER, model=OTHER_MODEL)
+    right_model = judge_transcript(files, "t1", 1, started=NEWER)
+
+    assert states(files, [right_model, wrong_model])["t1"].transcript == right_model.path
+    assert states(files, [wrong_model, right_model])["t1"].transcript == right_model.path
+
+
+def test_a_definition_of_the_omissions_packet_is_not_counted_for_the_task_packet_whose_name_it_begins_with(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1--omissions", 1)
+
+    assert states(files) == {"t1": NeedsJudging(1), "t1--omissions": PendingJudging(1)}
