@@ -1,5 +1,59 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+
+from instruction_eval.gate import COMPLETION_TARGET
+from instruction_eval.records import Hypothesis, Refusal
+from instruction_eval.scores import Noise, ReplyRow
+
+NOISE_MULTIPLE = 2
+
+
+def refuse_unfit_hypothesis(hypothesis: Hypothesis, open_rows: Sequence[ReplyRow], noise: Noise) -> None:
+    """Raise Refusal when the hypothesis reads a reply outside the parent's open replies or none that shows its failing demand, or predicts no more than twice its target's change noise."""
+    _refuse_unopen_replies(hypothesis.replies_read, open_rows)
+    _refuse_unshown_failure(hypothesis.failing_demand, _rows_read(hypothesis.replies_read, open_rows))
+    _refuse_size_within_noise(hypothesis.failing_demand, hypothesis.predicted_movement.size, noise)
+
+
+def _refuse_size_within_noise(failing_demand: str, predicted_size: float, noise: Noise) -> None:
+    """Raise Refusal when the predicted size is at most twice the target's change noise."""
+    limit = NOISE_MULTIPLE * _change_noise(failing_demand, noise)
+    if predicted_size <= limit:
+        raise Refusal(f"predicted size {predicted_size:g} does not exceed twice the change noise of {failing_demand}: {limit:g}")
+
+
+def _change_noise(failing_demand: str, noise: Noise) -> float:
+    """Return the change noise of the demand, or the done change noise for `completion`."""
+    if failing_demand == COMPLETION_TARGET:
+        return noise["done_change"]
+    return noise["demands"][failing_demand]
+
+
+def _rows_read(replies_read: Sequence[str], open_rows: Sequence[ReplyRow]) -> list[ReplyRow]:
+    """Return the open rows whose ids the hypothesis read."""
+    return [row for row in open_rows if row["id"] in replies_read]
+
+
+def _refuse_unshown_failure(failing_demand: str, rows_read: Sequence[ReplyRow]) -> None:
+    """Raise Refusal when no row read breaches the demand, or for `completion` when none has done false."""
+    if not any(_shows_failure(row, failing_demand) for row in rows_read):
+        raise Refusal(f"replies_read shows no failure of {failing_demand}")
+
+
+def _shows_failure(row: ReplyRow, failing_demand: str) -> bool:
+    """Tell whether the row breaches the demand, or for `completion` holds done false."""
+    if failing_demand == COMPLETION_TARGET:
+        return row["done"] is False
+    return row["breaches"][failing_demand] > 0
+
+
+def _refuse_unopen_replies(replies_read: Sequence[str], open_rows: Sequence[ReplyRow]) -> None:
+    """Raise Refusal naming each read reply that is no open reply, a sealed one, an anchor, or an unknown id."""
+    open_ids = {row["id"] for row in open_rows}
+    unopen = [blind_id for blind_id in replies_read if blind_id not in open_ids]
+    if unopen:
+        raise Refusal(f"replies_read holds no open reply: {', '.join(unopen)}")
 
 
 class Action(StrEnum):
