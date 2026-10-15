@@ -127,3 +127,13 @@ def test_the_home_default_login_memory_file_is_no_reason_to_refuse(tmp_path):
     plant(tmp_path / "home/.claude/CLAUDE.md")
 
     new_series(tmp_path)
+
+
+@pytest.mark.parametrize("make_marker", [lambda marker: marker.mkdir(), lambda marker: marker.write_text("gitdir: elsewhere\n")], ids=["clone", "linked-work-tree"])
+def test_a_folder_inside_a_git_work_tree_is_refused(tmp_path, make_marker):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+    make_marker(tmp_path / "work/.git")
+
+    with pytest.raises(Refusal, match=rf"^series folder inside a git work tree: {re.escape(str(tmp_path / 'work'))}$"):
+        new_series(tmp_path, name="runs/terse")

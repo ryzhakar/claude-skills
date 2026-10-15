@@ -26,6 +26,7 @@ from instruction_eval.records import (
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
+GIT_ENTRY = ".git"
 LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
 MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/2-instruction.md"
@@ -47,6 +48,7 @@ def series_new(
     source_paths = [_resolve_against(working_dir, source) for source in sources]
     files = SeriesFolder(_series_folder_path(name, working_dir, home))
     _refuse_folder_under_memory_file(files, home)
+    _refuse_folder_inside_git_work_tree(files)
     _refuse_non_empty_folder(files)
     instruction_bytes = instruction_path.read_bytes()
     write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
@@ -72,11 +74,23 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
 def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a memory file, except the home default login's."""
     login_memory_file = home / LOGIN_MEMORY_FILE
-    for directory in (files.root, *files.root.parents):
+    for directory in _folder_and_ancestors(files):
         for memory_file in MEMORY_FILES:
             candidate = directory / memory_file
             if candidate.is_file() and candidate != login_memory_file:
                 raise Refusal(f"series folder under a memory file: {candidate}")
+
+
+def _refuse_folder_inside_git_work_tree(files: SeriesFolder) -> None:
+    """Refuse a series folder that or whose ancestor up to `/` holds a `.git` entry."""
+    for directory in _folder_and_ancestors(files):
+        if (directory / GIT_ENTRY).exists():
+            raise Refusal(f"series folder inside a git work tree: {directory}")
+
+
+def _folder_and_ancestors(files: SeriesFolder) -> tuple[Path, ...]:
+    """Return the series folder and each ancestor up to `/`, nearest first."""
+    return (files.root, *files.root.parents)
 
 
 def _refuse_non_empty_folder(files: SeriesFolder) -> None:
