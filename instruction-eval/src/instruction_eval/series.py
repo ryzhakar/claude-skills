@@ -41,6 +41,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
+from instruction_eval.records import Budget as GateBudget
 from instruction_eval.tasks import PLACEBO_SNAPSHOT, ExpectedReply, expected_replies, refuse_missing_replies, tasks_check
 
 SERIES_HOME_FOLDER = "instruction-series"
@@ -390,6 +391,7 @@ def series_status(files: SeriesFolder) -> str:
         "parts": [part for part in STATUS_PARTS if files.holds(part)],
         "frozen": files.holds(FROZEN_RECORD),
         "revisions": {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
+        "cost": _cost_standing(files, records),
         "stop": _stop_standing(files, records),
     }
     return yaml.safe_dump(standing, sort_keys=False)
@@ -401,6 +403,31 @@ def _revision_standing(files: SeriesFolder, records: SeriesRecords, revision: st
         return UNGATED_STANDING
     outcome = records.outcome(revision)
     return {key: outcome.get(key) for key in UNGATED_STANDING}
+
+
+def _cost_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object]:
+    """Return the cost every gated revision's asks spent and the gate's budget, null while the gate holds none."""
+    costs = [outcome["cost"] for outcome in _gated_outcomes(files, records).values()]
+    spent = {
+        "replies": sum(cost["replies"] for cost in costs),
+        "input_tokens": _sum_unless_null([cost["input_tokens"] for cost in costs]),
+        "output_tokens": _sum_unless_null([cost["output_tokens"] for cost in costs]),
+        "seconds": sum(cost["seconds"] for cost in costs),
+    }
+    return {"spent": spent, "budget": _written_budget(files, records)}
+
+
+def _sum_unless_null(values: Sequence[int | None]) -> int | None:
+    """Sum the values, or return None when any value is None."""
+    return None if None in values else sum(values)
+
+
+def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[str, object] | None:
+    """Return the gate's budget as written, `none` or its unit and ceiling, or None while the gate or its budget is unwritten."""
+    budget = records.gate().budget if files.holds(GATE_RECORD) else None
+    if isinstance(budget, GateBudget):
+        return {"unit": budget.unit, "ceiling": budget.ceiling}
+    return budget
 
 
 def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object] | None:
