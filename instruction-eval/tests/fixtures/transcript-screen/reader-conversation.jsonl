@@ -1,0 +1,5 @@
+{"type": "user", "message": {"role": "user", "content": "Summarize the release notes in two lines."}, "timestamp": "2026-10-14T19:00:33.000Z"}
+{"type": "attachment", "attachment": {"type": "session_context", "context": {"gitStatus": "clean"}}, "timestamp": "2026-10-14T19:00:34.000Z"}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "id": "msg_A", "role": "assistant", "content": [{"type": "text", "text": "Two lines."}], "usage": {"input_tokens": 3, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "output_tokens": 2}}, "timestamp": "2026-10-14T19:00:35.000Z"}
+{"type": "user", "message": {"role": "user", "content": "The coordinator sent a message while you were working:\nNow list the risks.\n\nAddress this before completing your current task."}, "timestamp": "2026-10-14T19:00:36.000Z", "isMeta": true}
+{"type": "assistant", "message": {"model": "claude-sonnet-5-5", "id": "msg_B", "role": "assistant", "content": [{"type": "text", "text": "Risks."}], "usage": {"input_tokens": 3, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "output_tokens": 2}}, "timestamp": "2026-10-14T19:00:37.000Z"}
