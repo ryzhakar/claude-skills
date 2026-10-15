@@ -1,5 +1,11 @@
+from pathlib import Path
+
+import tempfile
+
 import pytest
 import yaml
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.tasks import tasks_check
@@ -66,7 +72,7 @@ def tasks_series(
 def test_a_task_set_covering_every_demand_and_overreach_in_both_halves_passes(tmp_path):
     files = tasks_series(tmp_path)
 
-    assert tasks_check(files) is None
+    assert tasks_check(files, Path.read_bytes) is None
 
 
 @pytest.mark.parametrize(
@@ -77,7 +83,7 @@ def test_a_demand_or_overreach_absent_from_either_half_refuses_naming_the_target
     files = tasks_series(tmp_path, tasks=[task for task in TASKS if task["id"] != dropped_task])
 
     with pytest.raises(Refusal, match=rf"^no {half} task tempts {target} \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_an_overreach_task_without_an_answer_key_refuses_naming_it(tmp_path):
@@ -85,7 +91,7 @@ def test_an_overreach_task_without_an_answer_key_refuses_naming_it(tmp_path):
     files = tasks_series(tmp_path, tasks=tasks)
 
     with pytest.raises(Refusal, match=r"^overreach task without answer_key: loop-sealed \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_an_answer_key_that_fails_to_compile_refuses_as_a_malformed_record(tmp_path):
@@ -93,13 +99,13 @@ def test_an_answer_key_that_fails_to_compile_refuses_as_a_malformed_record(tmp_p
     files = tasks_series(tmp_path, tasks=tasks)
 
     with pytest.raises(Refusal, match=r"^malformed record: 3-tasks\.yaml \(tasks\[0\]\.answer_key"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_conversations_two_per_half_of_two_turns_each_pass(tmp_path):
     files = tasks_series(tmp_path, conversations=CONVERSATIONS)
 
-    assert tasks_check(files) is None
+    assert tasks_check(files, Path.read_bytes) is None
 
 
 @pytest.mark.parametrize(
@@ -111,7 +117,7 @@ def test_a_half_holding_one_conversation_refuses_naming_the_half(tmp_path, dropp
     files = tasks_series(tmp_path, conversations=conversations)
 
     with pytest.raises(Refusal, match=rf"^{half} half holds fewer than two conversations: {count} \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_half_holding_no_conversation_while_the_other_holds_some_refuses(tmp_path):
@@ -119,7 +125,7 @@ def test_a_half_holding_no_conversation_while_the_other_holds_some_refuses(tmp_p
     files = tasks_series(tmp_path, conversations=conversations)
 
     with pytest.raises(Refusal, match=r"^sealed half holds fewer than two conversations: 0 \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_one_turn_conversation_refuses_naming_it(tmp_path):
@@ -127,7 +133,7 @@ def test_a_one_turn_conversation_refuses_naming_it(tmp_path):
     files = tasks_series(tmp_path, conversations=conversations)
 
     with pytest.raises(Refusal, match=r"^conversation trip-sealed holds fewer than two turns \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def renamed(task_id: str, new_id: str) -> list[dict]:
@@ -146,7 +152,7 @@ def test_an_id_two_entries_hold_refuses_naming_it(tmp_path, tasks, conversations
     files = tasks_series(tmp_path, tasks=tasks, conversations=conversations)
 
     with pytest.raises(Refusal, match=r"^duplicate id: (tide-open|trip-open) \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 @pytest.mark.parametrize(
@@ -157,7 +163,7 @@ def test_an_id_the_reply_paths_cannot_carry_refuses_naming_it(tmp_path, new_id, 
     files = tasks_series(tmp_path, tasks=renamed("tide-open", new_id))
 
     with pytest.raises(Refusal, match=message):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_two_tasks_sharing_a_message_refuse_naming_both(tmp_path):
@@ -165,7 +171,7 @@ def test_two_tasks_sharing_a_message_refuse_naming_both(tmp_path):
     files = tasks_series(tmp_path, tasks=tasks)
 
     with pytest.raises(Refusal, match=r"^shared message: tide-open and tide-sealed \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_task_sharing_a_message_with_a_conversations_first_turn_refuses_naming_both(tmp_path):
@@ -173,14 +179,14 @@ def test_a_task_sharing_a_message_with_a_conversations_first_turn_refuses_naming
     files = tasks_series(tmp_path, tasks=tasks, conversations=CONVERSATIONS)
 
     with pytest.raises(Refusal, match=r"^shared message: tide-open and trip-open \(3-tasks\.yaml\)$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_task_sharing_a_message_with_a_later_turn_passes(tmp_path):
     tasks = [{**task, "message": CONVERSATIONS[0]["turns"][1]} if task["id"] == "tide-open" else task for task in TASKS]
     files = tasks_series(tmp_path, tasks=tasks, conversations=CONVERSATIONS)
 
-    assert tasks_check(files) is None
+    assert tasks_check(files, Path.read_bytes) is None
 
 
 def with_message(task_id: str, message: str) -> list[dict]:
@@ -202,27 +208,27 @@ def test_an_echo_of_a_three_word_sequence_refuses_naming_the_text_and_the_phrase
     files = tasks_series(tmp_path, tasks=tasks, conversations=conversations, aim=aim, instructions=instructions)
 
     with pytest.raises(Refusal, match=refusal):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_placebo_source_sharing_a_three_word_sequence_with_a_source_file_refuses_naming_the_file_and_the_phrase(tmp_path):
     files = tasks_series(tmp_path, source_files={"guide.md": "Gardens need patient hands always.\n"})
 
     with pytest.raises(Refusal, match=r"^placebo source echoes 1-source/guide\.md: gardens need patient$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_source_file_sharing_no_sequence_with_the_placebo_source_passes(tmp_path):
     files = tasks_series(tmp_path, source_files={"guide.md": "Cite every claim.\n"})
 
-    assert tasks_check(files) is None
+    assert tasks_check(files, Path.read_bytes) is None
 
 
 def test_a_missing_placebo_source_refuses_naming_the_path(tmp_path):
     files = tasks_series(tmp_path, placebo=None)
 
     with pytest.raises(Refusal, match=rf"^missing placebo source: {tmp_path}/placebo\.md$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 @pytest.mark.parametrize("placebo", ["", "-- !! ..\n"], ids=["empty", "punctuation-only"])
@@ -230,31 +236,77 @@ def test_a_placebo_source_holding_no_word_refuses_naming_the_path(tmp_path, plac
     files = tasks_series(tmp_path, placebo=placebo)
 
     with pytest.raises(Refusal, match=rf"^placebo source holds no word: {tmp_path}/placebo\.md$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_a_placebo_source_that_is_not_utf_8_refuses_naming_the_path(tmp_path):
     files = tasks_series(tmp_path, placebo=b"\xff\xfe")
 
     with pytest.raises(Refusal, match=rf"^not UTF-8: {tmp_path}/placebo\.md$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_the_series_snapshot_of_the_placebo_source_stands_in_for_the_external_file(tmp_path):
     files = tasks_series(tmp_path, placebo=None, placebo_snapshot=PLACEBO)
 
-    assert tasks_check(files) is None
+    assert tasks_check(files, Path.read_bytes) is None
 
 
 def test_an_echo_of_the_snapshot_refuses_naming_the_snapshot(tmp_path):
     files = tasks_series(tmp_path, tasks=with_message("tide-sealed", "Do gardens need patient care?"), placebo=None, placebo_snapshot=PLACEBO)
 
     with pytest.raises(Refusal, match=r"^task tide-sealed echoes 4-placebo-source\.md: gardens need patient$"):
-        tasks_check(files)
+        tasks_check(files, Path.read_bytes)
 
 
 def test_two_conversations_sharing_a_first_turn_pass(tmp_path):
     conversations = [{**conversation, "turns": [CONVERSATIONS[0]["turns"][0], *conversation["turns"][1:]]} if conversation["id"] == "trip-open-two" else conversation for conversation in CONVERSATIONS]
     files = tasks_series(tmp_path, conversations=conversations)
 
-    assert tasks_check(files) is None
+    assert tasks_check(files, Path.read_bytes) is None
+
+
+def test_the_external_placebo_source_is_read_through_the_handed_reader(tmp_path):
+    files = tasks_series(tmp_path, placebo=None)
+
+    assert tasks_check(files, lambda path: PLACEBO.encode()) is None
+
+
+def test_a_non_utf_8_instruction_refuses_naming_the_path(tmp_path):
+    files = tasks_series(tmp_path)
+    (files.root / "r1/2-instruction.md").write_bytes(b"\xff\xfe")
+
+    with pytest.raises(Refusal, match=r"^not UTF-8: r1/2-instruction\.md$"):
+        tasks_check(files, Path.read_bytes)
+
+
+def test_a_non_utf_8_source_file_refuses_naming_the_path(tmp_path):
+    files = tasks_series(tmp_path, source_files={"guide.md": "Cite every claim.\n"})
+    (files.root / "1-source/guide.md").write_bytes(b"\xff\xfe")
+
+    with pytest.raises(Refusal, match=r"^not UTF-8: 1-source/guide\.md$"):
+        tasks_check(files, Path.read_bytes)
+
+
+def test_a_source_file_missing_from_the_series_refuses_naming_the_path(tmp_path):
+    files = tasks_series(tmp_path, source_files={"guide.md": "Cite every claim.\n"})
+    (files.root / "1-source/guide.md").unlink()
+
+    with pytest.raises(Refusal, match=r"^missing file: 1-source/guide\.md$"):
+        tasks_check(files, Path.read_bytes)
+
+
+def extra_tasks(count: int) -> list[dict]:
+    return [{"id": f"extra-{number}", "tempts": "d-a", "split": "open", "message": f"Query {number} about zebra{number} herds.", "answer_key": None} for number in range(count)]
+
+
+@settings(max_examples=25, deadline=None)
+@given(count=st.integers(min_value=2, max_value=6), pair=st.data())
+def test_tasks_with_distinct_messages_pass_and_two_sharing_one_refuse(count, pair):
+    tasks = [*TASKS, *extra_tasks(count)]
+    with tempfile.TemporaryDirectory() as folder:
+        assert tasks_check(tasks_series(Path(folder), tasks=tasks), Path.read_bytes) is None
+    first, second = pair.draw(st.permutations(range(count)).map(lambda order: order[:2]))
+    shared = [{**task, "message": tasks[len(TASKS) + first]["message"]} if task["id"] == f"extra-{second}" else task for task in tasks]
+    with tempfile.TemporaryDirectory() as folder, pytest.raises(Refusal, match=r"^shared message: "):
+        tasks_check(tasks_series(Path(folder), tasks=shared), Path.read_bytes)
