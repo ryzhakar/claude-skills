@@ -8,6 +8,7 @@ from itertools import accumulate
 from pathlib import Path
 from typing import Any, TypeVar
 
+from instruction_eval.judge import OATH_SKILL
 from instruction_eval.records import Refusal
 
 FRONTMATTER_FENCE = "---\n"
@@ -479,6 +480,11 @@ _HOOK_TEXT_KEYS = ("stdout", "content")
 _SUBAGENT_START_EXPOSURE = "shows SubagentStart text"
 _TOOL_USE_BLOCK_SUFFIX = "tool_use"
 _NAME_KEY = "name"
+_INPUT_KEY = "input"
+_SKILL_TOOL = "Skill"
+_SKILL_INPUT_KEY = "skill"
+_WRITE_TOOL = "Write"
+_FILE_PATH_INPUT_KEY = "file_path"
 
 
 def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Sequence[str], pinned_model: str) -> None:
@@ -492,6 +498,26 @@ def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Se
     )
     if exposures:
         raise Refusal(f"{transcript}: {exposures[0]}")
+
+
+def judge_transcript_rejection(transcript: Path, content: bytes, verdict_path: Path) -> str | None:
+    """Return why a judge transcript rejects its verdict, a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict path, or None when nothing does."""
+    entries = _decoded_entries(transcript, content)
+    exposures = (
+        *_outside_context_exposures(entries),
+        *_tool_use_exposures(entries, lambda tool_use: _is_oath_skill_load(tool_use) or _is_verdict_write(tool_use, verdict_path)),
+    )
+    return exposures[0] if exposures else None
+
+
+def _is_oath_skill_load(tool_use: dict[str, Any]) -> bool:
+    """Tell whether a tool use loads the manifesto oath skill."""
+    return tool_use.get(_NAME_KEY) == _SKILL_TOOL and tool_use.get(_INPUT_KEY, {}).get(_SKILL_INPUT_KEY) == OATH_SKILL
+
+
+def _is_verdict_write(tool_use: dict[str, Any], verdict_path: Path) -> bool:
+    """Tell whether a tool use writes the verdict path."""
+    return tool_use.get(_NAME_KEY) == _WRITE_TOOL and tool_use.get(_INPUT_KEY, {}).get(_FILE_PATH_INPUT_KEY) == str(verdict_path)
 
 
 def _decoded_entries(transcript: Path, content: bytes) -> tuple[dict[str, Any], ...]:

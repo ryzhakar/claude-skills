@@ -2,11 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from instruction_eval.reader import refuse_exposed_reader_transcript
+from instruction_eval.reader import judge_transcript_rejection, refuse_exposed_reader_transcript
 from instruction_eval.records import Refusal
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "transcript-screen"
 PINNED_MODEL = "claude-sonnet-5-5"
+VERDICT_PATH = Path("/series/r1/7-verdicts/t1/k1.yaml")
 TASK = "Summarize the release notes in two lines."
 TURN_TWO = "Now list the risks."
 
@@ -64,3 +65,29 @@ def test_conversation_turn_without_the_send_message_wrapper_is_refused():
 def test_turn_beyond_the_task_turns_is_refused():
     with pytest.raises(Refusal, match="turn 2 message differs from the task's$"):
         screen_reader("reader-conversation")
+
+
+def judge_rejection(fixture_name):
+    transcript = FIXTURES / f"{fixture_name}.jsonl"
+    return judge_transcript_rejection(transcript, transcript.read_bytes(), VERDICT_PATH)
+
+
+def test_judge_transcript_showing_a_read_is_rejected():
+    assert judge_rejection("judge-read") == "shows tool use Read"
+
+
+def test_judge_transcript_loading_only_the_oath_and_writing_its_verdict_is_kept():
+    assert judge_rejection("judge-clean") is None
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "rejection"),
+    [
+        ("judge-other-skill", "shows tool use Skill"),
+        ("judge-write-elsewhere", "shows tool use Write"),
+        ("judge-claude-md", "shows memory file /Users/u/CLAUDE.md"),
+        ("judge-subagent-start", "shows SubagentStart text"),
+    ],
+)
+def test_judge_transcript_exposed_beyond_its_oath_and_verdict_is_rejected(fixture_name, rejection):
+    assert judge_rejection(fixture_name) == rejection
