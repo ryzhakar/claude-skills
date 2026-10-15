@@ -1,5 +1,10 @@
+import tempfile
+from pathlib import Path
+
 import pytest
 import yaml
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from instruction_eval.coverage import coverage_check
 from instruction_eval.records import Refusal, SeriesFolder
@@ -139,3 +144,26 @@ def test_a_later_revision_dropping_other_demands_than_the_first_refuses_naming_t
 
     with pytest.raises(Refusal, match=r"^dropped demands differ from r1: d-a, d-b \(r2/3-coverage\.yaml\)$"):
         coverage_check(files, "r2")
+
+
+@st.composite
+def consistent_coverages(draw):
+    sentence_count = draw(st.integers(min_value=1, max_value=6))
+    demand_ids = [demand["id"] for demand in DEMANDS]
+    sentences = {number: draw(st.lists(st.sampled_from(demand_ids), min_size=1, unique=True)) for number in range(1, sentence_count + 1)}
+    demands = {demand: [number for number, held in sentences.items() if demand in held] or {"dropped": "unmeasurable"} for demand in demand_ids}
+    return sentence_count, {"demands": demands, "sentences": sentences}
+
+
+@settings(max_examples=25, deadline=None)
+@given(coverage=consistent_coverages(), choice=st.data())
+def test_a_consistent_coverage_passes_and_losing_any_pair_from_the_sentence_map_refuses(coverage, choice):
+    sentence_count, document = coverage
+    instruction = " ".join(f"Sentence number {number}." for number in range(1, sentence_count + 1))
+    with tempfile.TemporaryDirectory() as folder:
+        assert coverage_check(covered_series(Path(folder), coverage=document, instruction=instruction), "r1") is None
+    number = choice.draw(st.sampled_from(sorted(document["sentences"])))
+    lost = choice.draw(st.sampled_from(document["sentences"][number]))
+    sentences = {**document["sentences"], number: [demand for demand in document["sentences"][number] if demand != lost]}
+    with tempfile.TemporaryDirectory() as folder, pytest.raises(Refusal):
+        coverage_check(covered_series(Path(folder), coverage={**document, "sentences": sentences}, instruction=instruction), "r1")

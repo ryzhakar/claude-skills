@@ -1,5 +1,10 @@
+import tempfile
+from pathlib import Path
+
 import pytest
 import yaml
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from instruction_eval.demands import demands_check
 from instruction_eval.records import Refusal, SeriesFolder
@@ -52,3 +57,17 @@ def test_an_invalid_demand_refuses_naming_the_offending_key(tmp_path, demand, re
 def test_a_missing_demand_record_refuses(tmp_path):
     with pytest.raises(Refusal):
         demands_check(SeriesFolder(tmp_path))
+
+
+DEMAND_IDS = st.lists(st.from_regex(r"[a-z][a-z0-9]{0,7}", fullmatch=True), min_size=1, max_size=6, unique=True)
+
+
+@settings(max_examples=25, deadline=None)
+@given(ids=DEMAND_IDS, repeated=st.data())
+def test_demand_ids_pass_exactly_when_none_repeats(ids, repeated):
+    demands = [{**JUDGE_DEMAND, "id": demand_id} for demand_id in ids]
+    with tempfile.TemporaryDirectory() as folder:
+        assert demands_check(series_holding(Path(folder), demands)) is None
+    copied = repeated.draw(st.sampled_from(ids))
+    with tempfile.TemporaryDirectory() as folder, pytest.raises(Refusal, match=rf"^duplicate demand id: {copied} "):
+        demands_check(series_holding(Path(folder), [*demands, {**JUDGE_DEMAND, "id": copied}]))
