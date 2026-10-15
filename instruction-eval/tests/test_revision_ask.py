@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 from datetime import timedelta
 
+import pytest
 import yaml
 
 from instruction_eval.reader import ReaderRun, reader_fingerprint, revision_ask
-from instruction_eval.records import SeriesFolder
+from instruction_eval.records import Refusal, SeriesFolder
 from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, write_yaml
 
 COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
@@ -98,3 +99,38 @@ def test_each_conversation_turn_is_asked_with_the_repeats_earlier_turns_and_repl
     assert second_turn["messages"][:2] == [{"role": "user", "text": "Plan a trip."}, {"role": "assistant", "text": yaml.safe_dump(first_turn, allow_unicode=True)}]
     assert len(second_turn["messages"]) == 3
     assert len(reader.calls) == 2 * (2 + 2)
+
+
+class FailingReader(StubReader):
+    """A command reader that fails its second call with the given run."""
+
+    def __init__(self, failure: ReaderRun):
+        super().__init__()
+        self.failure = failure
+
+    def __call__(self, command: Sequence[str], stdin: str, timeout_seconds: int) -> ReaderRun:
+        run = super().__call__(command, stdin, timeout_seconds)
+        return self.failure if len(self.calls) == 2 else run
+
+
+FAILURES = {
+    "nonzero exit": (ReaderRun(START, 0.5, 3, "partial"), "exit 3"),
+    "empty output": (ReaderRun(START, 0.5, 0, ""), "empty output"),
+    "timeout": (ReaderRun(START, 600.0, None, "partial"), "over 600 seconds"),
+    "overlong run": (ReaderRun(START, 601.0, 0, "late"), "over 600 seconds"),
+}
+
+
+@pytest.mark.parametrize("failure, cause", FAILURES.values(), ids=FAILURES.keys())
+def test_a_failed_reader_run_stops_the_ask_writing_nothing_for_that_reply_and_a_rerun_resumes_at_it(tmp_path, failure, cause):
+    files = command_series(tmp_path)
+
+    with pytest.raises(Refusal, match=rf"^reader failed: r1/5-replies/aim/t-open/repeat-2\.yaml \({cause}\)$"):
+        revision_ask(files, "r1", [], FailingReader(failure), stub_fingerprint)
+
+    assert files.holds("r1/5-replies/aim/t-open/repeat-1.yaml")
+    assert not files.holds("r1/5-replies/aim/t-open/repeat-2.yaml")
+    resumed = StubReader()
+    revision_ask(files, "r1", [], resumed, stub_fingerprint)
+    assert len(resumed.calls) == 4 * 2 * 2 - 1
+    assert files.holds("r1/5-replies/aim/t-open/repeat-2.yaml")
