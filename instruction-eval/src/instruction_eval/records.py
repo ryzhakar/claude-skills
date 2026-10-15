@@ -11,6 +11,7 @@ from typing import Final, Literal, TypeVar, get_args
 
 Entry = TypeVar("Entry")
 Key = TypeVar("Key")
+Choice = TypeVar("Choice", bound=str)
 
 DOCUMENT = ""
 DOCUMENT_LABEL = "record"
@@ -605,7 +606,7 @@ def read_keys(value: object, where: str, required: AbstractSet[str], optional: A
     return value
 
 
-def read_variant(value: object, where: str, tag: str, keys_by_variant: Mapping[str, AbstractSet[str]]) -> tuple[str, Mapping[str, object]]:
+def read_variant(value: object, where: str, tag: str, keys_by_variant: Mapping[Choice, AbstractSet[str]]) -> tuple[Choice, Mapping[str, object]]:
     """Return the variant a mapping's `tag` key names and the mapping, which holds exactly that variant's keys."""
     every_key = set().union(*keys_by_variant.values())
     variant = read_choice(read_keys(value, where, required={tag}, optional=every_key)[tag], child(where, tag), tuple(keys_by_variant))
@@ -686,7 +687,7 @@ def read_absolute_path(value: object, where: str) -> Path:
     return path
 
 
-def read_choice(value: object, where: str, choices: tuple[str, ...]) -> str:
+def read_choice(value: object, where: str, choices: tuple[Choice, ...]) -> Choice:
     """Return a value drawn from a closed enum."""
     if value not in choices:
         raise RecordRefused(f"{where}: {value!r} is not one of {', '.join(choices)}")
