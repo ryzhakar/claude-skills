@@ -272,6 +272,7 @@ class _Judgings:
     read_transcript: Callable[[Path], bytes]
     origins: Record
     judge_model: str
+    acceptance: Mapping[str, float]
     known_anchors: Mapping[str, Record]
     judge_demand_ids: AbstractSet[str]
 
@@ -282,13 +283,15 @@ def judging_states(
     """Return each packet of the revision's origins with its judging state, refusing a packet holding three failed judgings."""
     records = SeriesRecords(files)
     origins = records.origins(revision)
+    calibration = records.calibration()
     judgings = _Judgings(
         files=files,
         revision=revision,
         transcripts=transcripts,
         read_transcript=read_transcript,
         origins=origins,
-        judge_model=records.calibration()["judge_model"],
+        judge_model=calibration["judge_model"],
+        acceptance=calibration["acceptance"],
         known_anchors={anchor["id"]: anchor for anchor in records.anchors()["anchors"]},
         judge_demand_ids={demand.id for demand in records.demands().demands if isinstance(demand, JudgeDemand)},
     )
@@ -317,12 +320,15 @@ def _judging_outcome(judgings: _Judgings, packet: str, number: int) -> AcceptedJ
     verdict = _valid_verdict(judgings, packet, number)
     if verdict is None or reply is None or reply.model != judgings.judge_model or _is_rejected(judgings, reply, packet, number):
         return None
+    anchors = _anchor_agreement(judgings, packet, verdict)
+    if not _within_acceptance(anchors, judgings.acceptance):
+        return None
     return AcceptedJudging(
         judging=number,
         judge_model=reply.model,
         transcript=reply.transcript,
         transcript_hash=reply.transcript_hash,
-        anchors=_anchor_agreement(judgings, packet, verdict),
+        anchors=anchors,
     )
 
 
@@ -384,6 +390,14 @@ def _anchor_agreement(judgings: _Judgings, packet: str, verdict: Record) -> Anch
     }
     decided = [(entry, known) for entry, known in pairs if known["done"] is not None]
     return AnchorAgreement(breach_difference, fmean(entry["done"] == known["done"] for entry, known in decided))
+
+
+def _within_acceptance(anchors: AnchorAgreement, acceptance: Mapping[str, float]) -> bool:
+    """Tell whether every judge demand's breach difference stays within the accepted one and the done agreement reaches the accepted one."""
+    return (
+        all(difference <= acceptance["breach_difference"] for difference in anchors.breach_difference.values())
+        and anchors.done_agreement >= acceptance["done_agreement"]
+    )
 
 
 def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[int]:

@@ -199,3 +199,16 @@ def test_a_returned_judging_fails_when_its_judge_ran_another_model_was_rejected_
     transcripts = [] if transcript_options is None else [judge_transcript(files, "t1", 1, **transcript_options)]
 
     assert states(files, transcripts)["t1"] == NeedsJudging(2)
+
+
+@pytest.mark.parametrize(
+    "verdict_options",
+    [{"anchor_breaches": 2}, {"anchor_breaches": 0}, {"anchor_done": False}, {"anchor_done": None}],
+    ids=["breaches-over", "breaches-under", "done-contradicted", "done-undecided"],
+)
+def test_a_returned_judging_fails_when_it_misses_an_anchor_count_or_done_value_by_more_than_the_acceptance(tmp_path, verdict_options):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1, **verdict_options)
+
+    assert states(files, [judge_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
