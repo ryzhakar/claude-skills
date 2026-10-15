@@ -567,10 +567,11 @@ def calibrate_stage_one(
     earlier = _earlier_attempts_with_origins(files, attempt)
     sample = _blind_sample(files, _sampled_by(records, earlier), attempt, plan.sample_size, random)
     ratings = _ratings(attempt, plan)
-    gate_demand_ids = _gate_demand_ids_without_sources(records)
     folder = attempt_folder(attempt)
     definitions = {
-        rating.agent_type: _rating_definition(files, records, brief, sample, gate_demand_ids, f"{files.root}/{folder}", rating)
+        rating.agent_type: _judging_definition(
+            files, records, brief.decode(), sample.text, Path(f"{files.root}/{folder}/{rating.file}"), sample.reader_model, rating.agent_type, rating.model
+        )
         for rating in ratings
     }
     write_file(files, f"{folder}/{BRIEF_SNAPSHOT_FILE}", brief)
@@ -578,7 +579,7 @@ def calibrate_stage_one(
     write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _origins_record(sample.origins, {SAMPLE_PACKET: sample.text}), _stage_one_reads(files, records, attempt, sample.replies, earlier))
     for name, definition in definitions.items():
         write_file(files, f"{AGENTS_FOLDER}/{name}.md", definition)
-    return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: rating.agent_type} for rating in ratings]}, sort_keys=False)
+    return _launch_list(definitions)
 
 
 @dataclass(frozen=True)
@@ -618,23 +619,15 @@ def _ratings(attempt: int, plan: Plan) -> list[_Rating]:
     return [*candidates, *raters]
 
 
-def _rating_definition(
-    files: SeriesFolder,
-    records: SeriesRecords,
-    brief: bytes,
-    sample: _BlindSample,
-    gate_demand_ids: AbstractSet[str],
-    folder: str,
-    rating: _Rating,
+def _judging_definition(
+    files: SeriesFolder, records: SeriesRecords, brief: str, packet: str, verdict_path: Path, reader_model: str, agent_type: str, model: str
 ) -> bytes:
-    """Return the rating's agent definition, its body the attempt's brief rendered for the sample and the rating's file."""
+    """Return the definition of a judge or rater agent running `model`, its body the brief rendered for the packet text and the verdict path."""
     sources = {source.name: files.read_bytes(f"{SOURCE_FOLDER}/{source.name}").decode() for source in records.series().sources}
-    body = render_brief(
-        brief.decode(), sources, records.demands(), gate_demand_ids, sample.text, Path(f"{folder}/{rating.file}"), sample.reader_model, files.root.name
-    )
+    body = render_brief(brief, sources, records.demands(), _gate_demand_ids_without_sources(records), packet, verdict_path, reader_model, files.root.name)
     from instruction_eval.reader import AgentKind, render_agent_definition
 
-    return render_agent_definition(rating.agent_type, rating.model, AgentKind.JUDGE, body.encode())
+    return render_agent_definition(agent_type, model, AgentKind.JUDGE, body.encode())
 
 
 def _refuse_outside_neutral_login(environ: Mapping[str, str], home: Path, working_dir: Path) -> None:
@@ -748,3 +741,63 @@ def _round_robin(queues: Sequence[deque[ExpectedReply]]) -> Iterator[ExpectedRep
         for queue in queues:
             if queue:
                 yield queue.popleft()
+
+
+JUDGE_PREPARE_COMMAND = "judge prepare"
+
+
+def judge_prepare(
+    files: SeriesFolder,
+    revision: str,
+    environ: Mapping[str, str],
+    home: Path,
+    working_dir: Path,
+    transcripts: Sequence["Transcript"],
+    read_transcript: Callable[[Path], bytes],
+) -> str:
+    """Write the next judging of each packet with no accepted or pending judging and return a pending line per packet awaiting its judge, then the launch list of the judgings written."""
+    _refuse_unusable_series(files, JUDGE_PREPARE_COMMAND)
+    _refuse_outside_neutral_login(environ, home, working_dir)
+    states = judging_states(files, revision, transcripts, read_transcript)
+    records = SeriesRecords(files)
+    calibration = records.calibration()
+    brief = _accepted_brief(files, calibration)
+    packets = _blinded_packets(files, revision, records)
+    reader_model = records.reader().model
+    needed = {_judging_agent_type(revision, packet, state.judging): (packet, state.judging) for packet, state in states.items() if isinstance(state, NeedsJudging)}
+    definitions = {
+        agent_type: _judging_definition(
+            files, records, brief, packets[packet], files.root / _verdict_file(revision, packet, judging), reader_model, agent_type, calibration["judge_model"]
+        )
+        for agent_type, (packet, judging) in needed.items()
+    }
+    for agent_type, definition in definitions.items():
+        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+    pending = "".join(f"judging k{state.judging} pending: {packet}\n" for packet, state in states.items() if isinstance(state, PendingJudging))
+    return pending + _launch_list(definitions)
+
+
+def _blinded_packets(files: SeriesFolder, revision: str, records: SeriesRecords) -> dict[str, str]:
+    """Return the text of each packet the revision's origins hash, by packet id, refusing a packet whose bytes no longer hash as blinded."""
+    return {packet: _blinded_packet(files, revision, packet, packet_hash) for packet, packet_hash in records.origins(revision)["packets"].items()}
+
+
+def _blinded_packet(files: SeriesFolder, revision: str, packet: str, packet_hash: str) -> str:
+    """Return the packet's text, refusing it missing, or edited when its bytes differ from the hash its origins hold."""
+    path = f"{revision}/{PACKETS_FOLDER}/{packet}.md"
+    if not files.holds(path):
+        raise Refusal(f"missing packet: {path}")
+    content = files.read_bytes(path)
+    if sha256(content) != packet_hash:
+        raise Refusal(f"edited packet: {path} (hash differs from {revision}/{ORIGINS_FILE})")
+    return content.decode()
+
+
+def _accepted_brief(files: SeriesFolder, calibration: Record) -> str:
+    """Return the brief snapshot of the attempt the calibration accepted."""
+    return files.read_bytes(f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}").decode()
+
+
+def _launch_list(agent_types: Iterable[str]) -> str:
+    """Return the launch list naming each agent type in order."""
+    return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: agent_type} for agent_type in agent_types]}, sort_keys=False)
