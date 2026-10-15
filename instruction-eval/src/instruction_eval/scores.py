@@ -1,3 +1,4 @@
+import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -8,9 +9,11 @@ from typing import NamedTuple, TypedDict
 
 import numpy
 
+from instruction_eval.coverage import split_sentences
 from instruction_eval.records import (
     ANCHOR_KEY,
     DEMANDS_RECORD,
+    DETECTOR_DEMANDS,
     FIRST_REVISION,
     GATE_RECORD,
     OPEN_SPLIT,
@@ -19,6 +22,8 @@ from instruction_eval.records import (
     DoneBy,
     Dropped,
     Gate,
+    LongSentencesDemand,
+    PatternDemand,
     Record,
     Refusal,
     SeriesFolder,
@@ -27,6 +32,7 @@ from instruction_eval.records import (
     reply_path,
     write_record,
 )
+from instruction_eval.tasks import words
 
 _INSTRUCTION = "instruction"
 _SOURCE = "source"
@@ -374,15 +380,70 @@ COLLECTED_FILE = "7-collected.yaml"
 DETECTORS_FILE = "7-detectors.yaml"
 LEVEL_INPUT = f"{GATE_RECORD}#level"
 DONE_BY_INPUT = f"{GATE_RECORD}#done_by"
+DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}#demands", f"{TASKS_RECORD}#tasks", f"{TASKS_RECORD}#conversations")
 SCORE_USER_INPUTS = (
-    f"{DEMANDS_RECORD}#demands",
-    f"{TASKS_RECORD}#tasks",
-    f"{TASKS_RECORD}#conversations",
+    *DEMANDS_AND_TASKS_INPUTS,
     f"{FIRST_REVISION}/3-coverage.yaml#demands",
     f"{FIRST_REVISION}/3-coverage.yaml#sentences",
     LEVEL_INPUT,
     DONE_BY_INPUT,
 )
+FENCE_OPENING = re.compile(r"\s*(`{3,}|~{3,})")
+LINE_BREAK = "\n"
+
+
+def revision_detect(files: SeriesFolder, revision: str) -> None:
+    """Write the revision's `7-detectors.yaml`: per reply, its `pattern` and `long-sentences` breaches outside fenced code and its answer-key match."""
+    records = SeriesRecords(files)
+    detector_demands = [demand for demand in records.demands().demands if isinstance(demand, DETECTOR_DEMANDS)]
+    answer_keys = {task.id: task.answer_key for task in records.tasks().tasks}
+    origins = records.origins(revision)
+    reply_paths = _origin_reply_paths(revision, origins)
+    replies = {blind_id: records.reply(path) for blind_id, path in reply_paths.items()}
+    verdicts = [
+        _detector_entry(blind_id, reply["text"], detector_demands, answer_keys.get(reply["task"])) for blind_id, reply in replies.items()
+    ]
+    write_record(files, f"{revision}/{DETECTORS_FILE}", {"verdicts": verdicts}, [*DEMANDS_AND_TASKS_INPUTS, *reply_paths.values(), f"{revision}/{ORIGINS_FILE}"])
+
+
+def _detector_entry(
+    blind_id: str, text: str, detector_demands: Sequence[PatternDemand | LongSentencesDemand], answer_key: re.Pattern[str] | None
+) -> dict[str, object]:
+    """Return one reply's detector entry: breaches of each detector demand outside fenced code, and the answer key's match on the full text, null without a key."""
+    prose = _without_fenced_code(text)
+    return {
+        "id": blind_id,
+        "breaches": {demand.id: _detected_breaches(demand, prose) for demand in detector_demands},
+        "done_by_answer_key": None if answer_key is None else answer_key.search(text) is not None,
+    }
+
+
+def _detected_breaches(demand: PatternDemand | LongSentencesDemand, prose: str) -> int:
+    """Return the non-overlapping pattern matches, or the sentences holding more words than the limit."""
+    if isinstance(demand, PatternDemand):
+        return sum(1 for _ in demand.pattern.finditer(prose))
+    encoded = prose.encode()
+    return sum(1 for sentence in split_sentences(encoded) if len(words(encoded[sentence.start : sentence.end].decode())) > demand.limit)
+
+
+def _without_fenced_code(text: str) -> str:
+    """Return the text with each fenced code block, through its closing fence or the text's end, replaced by one empty line."""
+    kept: list[str] = []
+    closing: re.Pattern[str] | None = None
+    for line in text.split(LINE_BREAK):
+        if closing is not None:
+            closing = None if closing.match(line) else closing
+        elif opening := FENCE_OPENING.match(line):
+            closing = _closing_fence(opening.group(1))
+            kept.append("")
+        else:
+            kept.append(line)
+    return LINE_BREAK.join(kept)
+
+
+def _closing_fence(fence: str) -> re.Pattern[str]:
+    """Return the pattern of a line closing the fence: its character at least as many times, alone on the line."""
+    return re.compile(rf"\s*{re.escape(fence[0])}{{{len(fence)},}}\s*\Z")
 
 
 def revision_score(files: SeriesFolder, revision: str) -> None:
@@ -415,7 +476,7 @@ def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]
     """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
     return [
         *SCORE_USER_INPUTS,
-        *_origin_reply_paths(revision, origins),
+        *_origin_reply_paths(revision, origins).values(),
         f"{revision}/{ORIGINS_FILE}",
         *(f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()),
         f"{revision}/{COLLECTED_FILE}",
@@ -423,13 +484,13 @@ def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]
     ]
 
 
-def _origin_reply_paths(revision: str, origins: Record) -> list[str]:
-    """Return the reply file of every reply origin, a borrowed one in the revision it names."""
-    return [
-        reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
-        for origin in origins["ids"].values()
+def _origin_reply_paths(revision: str, origins: Record) -> dict[str, str]:
+    """Map each reply origin's blind id to its reply file, a borrowed one in the revision it names."""
+    return {
+        blind_id: reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+        for blind_id, origin in origins["ids"].items()
         if ANCHOR_KEY not in origin
-    ]
+    }
 
 
 def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float) -> dict[str, object]:
