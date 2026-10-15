@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy
 import pytest
-import yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, write_file, write_record
@@ -245,7 +244,7 @@ def test_a_completion_check_without_a_unit_holding_done_on_both_sides_stores_no_
 
     revision_gate(files, "r1", bootstrap_rng)
 
-    outcome = yaml.safe_load(files.read_bytes("r1/9-outcome.yaml"))
+    outcome = SeriesRecords(files).outcome("r1")
     completion = next(check for check in outcome["checks"] if check["compares"] == "completion")
     assert (completion["mean_difference"], completion["interval"], completion["pass"]) == (None, None, False)
     assert (outcome["outcome"], outcome["completion_passed"]) == ("fail", False)
