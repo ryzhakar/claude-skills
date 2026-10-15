@@ -1,7 +1,11 @@
 import hashlib
+import tempfile
+from pathlib import Path
 
 import pytest
 import yaml
+from hypothesis import given
+from hypothesis import strategies as st
 
 from instruction_eval.reader import reader_fingerprint
 from instruction_eval.records import Refusal, SeriesFolder, write_record
@@ -88,14 +92,23 @@ def fingerprint_hash_of(files, output: str) -> str:
     return reader_fingerprint(files, lambda command: output).fingerprint_hash
 
 
-def test_output_with_reordered_keys_hashes_the_same(tmp_path):
-    files = command_series(tmp_path)
-    reordered = "seed: fixed\ntemperature: 0.7\nbuild: 1.2.3\nmodel: gpt-5-mini\n"
-
-    assert fingerprint_hash_of(files, reordered) == fingerprint_hash_of(files, FINGERPRINT_OUTPUT)
+PARSED_OUTPUT = {"model": "gpt-5-mini", "build": "1.2.3", "temperature": 0.7, "seed": "fixed"}
 
 
-def test_output_with_a_changed_build_hashes_differently(tmp_path):
-    files = command_series(tmp_path)
+def output_text(items) -> str:
+    return yaml.safe_dump(dict(items), sort_keys=False)
 
-    assert fingerprint_hash_of(files, FINGERPRINT_OUTPUT.replace("1.2.3", "1.2.4")) != fingerprint_hash_of(files, FINGERPRINT_OUTPUT)
+
+def hash_in_fresh_series(output: str) -> str:
+    with tempfile.TemporaryDirectory() as folder:
+        return fingerprint_hash_of(command_series(Path(folder)), output)
+
+
+@given(items=st.permutations(list(PARSED_OUTPUT.items())))
+def test_output_with_its_keys_in_any_order_hashes_the_same(items):
+    assert hash_in_fresh_series(output_text(items)) == canonical_hash(PARSED_OUTPUT)
+
+
+@given(key=st.sampled_from(sorted(PARSED_OUTPUT)), value=st.integers())
+def test_output_with_any_one_value_changed_hashes_differently(key, value):
+    assert hash_in_fresh_series(output_text({**PARSED_OUTPUT, key: value}.items())) != canonical_hash(PARSED_OUTPUT)
