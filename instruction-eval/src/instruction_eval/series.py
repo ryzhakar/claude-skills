@@ -11,6 +11,7 @@ from instruction_eval.gate import kept_revision
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
     FIRST_REVISION,
+    FAIL_OUTCOME,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
@@ -31,6 +32,7 @@ from instruction_eval.records import (
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
+STOP_COMMAND = "series stop"
 OUTCOME_FILE = "9-outcome.yaml"
 KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
@@ -162,9 +164,20 @@ def _refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
 
 def series_stop(files: SeriesFolder, reason: str) -> None:
     """Write `9-stop.yaml` as `unresolvable` with the reason and the kept revision ranked from every gated revision's outcome."""
+    guard_series(files, STOP_COMMAND)
     outcomes = _gated_outcomes(files, SeriesRecords(files))
+    _refuse_unless_latest_gated_revision_failed(outcomes)
     reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
     write_record(files, STOP_RECORD, {"stop": UNRESOLVABLE_STOP, "kept": kept_revision(outcomes), "reason": reason}, reads)
+
+
+def _refuse_unless_latest_gated_revision_failed(outcomes: Mapping[str, Record]) -> None:
+    """Refuse a series with no gated revision or whose latest gated revision did not fail."""
+    if not outcomes:
+        raise Refusal("no gated revision to stop on")
+    latest, latest_outcome = list(outcomes.items())[-1]
+    if latest_outcome["outcome"] != FAIL_OUTCOME:
+        raise Refusal(f"latest gated revision {latest} did not fail")
 
 
 def _gated_outcomes(files: SeriesFolder, records: SeriesRecords) -> dict[str, Record]:

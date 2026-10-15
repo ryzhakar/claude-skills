@@ -91,3 +91,50 @@ def test_a_failed_latest_gated_revision_stops_the_series_keeping_the_best_estima
     assert stop == {"stop": "unresolvable", "kept": "r2", "reason": REASON}
     assert set(inputs) == {"7-gate.yaml#keep_rule", "8-frozen.yaml", "r1/9-outcome.yaml", "r2/9-outcome.yaml"}
     assert inputs["8-frozen.yaml"] == sha256(files, "8-frozen.yaml")
+
+
+def test_an_ungated_later_revision_is_no_candidate_and_leaves_the_latest_gated_revision_the_latest(tmp_path):
+    files = frozen_series(tmp_path, 3, {1: outcome(False, True, 0.25, 30), 2: outcome(False, True, 0.5, 40)})
+
+    series_stop(files, REASON)
+
+    stop = read_stop(files)
+    assert stop["kept"] == "r1"
+    assert set(stop["inputs"]) == {"7-gate.yaml#keep_rule", "8-frozen.yaml", "r1/9-outcome.yaml", "r2/9-outcome.yaml"}
+
+
+def test_a_series_with_no_revision_passing_completion_stops_keeping_nothing(tmp_path):
+    files = frozen_series(tmp_path, 1, {1: outcome(False, False, 0.0, 10)})
+
+    series_stop(files, REASON)
+
+    assert read_stop(files)["kept"] is None
+
+
+def test_a_series_with_no_gated_revision_refuses(tmp_path):
+    files = frozen_series(tmp_path, 1, {})
+
+    with pytest.raises(Refusal, match=r"^no gated revision to stop on$"):
+        series_stop(files, REASON)
+
+
+def test_a_passed_latest_gated_revision_refuses(tmp_path):
+    files = frozen_series(tmp_path, 2, {1: outcome(False, True, 0.5, 40), 2: outcome(True, True, 0.0, 30)})
+
+    with pytest.raises(Refusal, match=r"^latest gated revision r2 did not fail$"):
+        series_stop(files, REASON)
+
+
+def test_a_stopped_series_refuses_a_second_stop_leaving_the_first(tmp_path):
+    files = frozen_series(tmp_path, 1, {1: outcome(False, True, 0.5, 40)})
+    series_stop(files, REASON)
+    first = read_stop(files)
+
+    with pytest.raises(Refusal, match=r"^series stopped: only series status and series keep run$"):
+        series_stop(files, "another reason")
+    assert read_stop(files) == first
+
+
+def test_a_folder_that_is_no_series_refuses(tmp_path):
+    with pytest.raises(Refusal, match=r"^not a series folder: no series\.yaml$"):
+        series_stop(SeriesFolder(tmp_path), REASON)
