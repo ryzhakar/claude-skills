@@ -402,6 +402,15 @@ def test_scores_record_parses_as_written():
     assert parse_record(RecordKind.SCORES, document) == document
 
 
+@pytest.mark.parametrize("path", [
+    ("by_condition", "instruction", "done_rate"),
+    ("comparisons", "drift", "mean_difference"),
+])
+def test_scores_record_accepts_null_where_no_value_is_defined(path):
+    document = changed(load_fixture(RecordKind.SCORES), path, None)
+    assert parse_record(RecordKind.SCORES, document) == document
+
+
 @pytest.mark.parametrize("path,value", [
     (("split",), "sealed"),
     (("rows", 0, "kind"), "essay"),
