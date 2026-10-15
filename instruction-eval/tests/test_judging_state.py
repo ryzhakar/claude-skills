@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from instruction_eval.judge import AcceptedJudging, AnchorAgreement, AnchorAgreement, NeedsJudging, PendingJudging, judging_states
 from instruction_eval.reader import Transcript
@@ -155,3 +156,29 @@ def test_a_returned_judging_whose_verdict_matches_the_anchors_is_accepted_with_i
         transcript_hash=hashlib.sha256(transcript.path.read_bytes()).hexdigest(),
         anchors=AnchorAgreement(breach_difference={"d-judge": 0.0}, done_agreement=1.0),
     )
+
+
+def reply_entry(blind_id: str, breaches: dict) -> dict:
+    return {"id": blind_id, "breaches": breaches, "done": True, "kind": "answer", "notes": ""}
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        "verdicts: [unclosed",
+        {"verdicts": [reply_entry(REPLY_IDS["t1"], {"d-judge": 2})]},
+        {"verdicts": [reply_entry(REPLY_IDS["t1"], {"d-judge": 2}), reply_entry(ANCHOR_IDS["t1"], {"d-judge": 1}), reply_entry("b0000009f", {"d-judge": 0})]},
+        {"verdicts": [reply_entry(REPLY_IDS["t1"], {"d-judge": 2}), reply_entry(ANCHOR_IDS["t1"], {"d-hedge": 1})]},
+        {"verdicts": [reply_entry(REPLY_IDS["t1"], {"d-judge": 2}), reply_entry(ANCHOR_IDS["t1"], {})]},
+        {"verdicts": [reply_entry(REPLY_IDS["t1"], {"d-judge": 2}), reply_entry(ANCHOR_IDS["t1"], {"d-judge": -1})]},
+    ],
+    ids=["not-yaml", "missing-blind-id", "foreign-blind-id", "not-a-judge-demand", "uncounted-demand", "out-of-range"],
+)
+def test_a_returned_judging_whose_verdict_file_is_invalid_failed(tmp_path, document):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    target = verdict_path(files, "t1", 1)
+    target.parent.mkdir(parents=True)
+    target.write_text(document if isinstance(document, str) else yaml.safe_dump(document))
+
+    assert states(files, [judge_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)

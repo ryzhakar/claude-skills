@@ -314,7 +314,9 @@ def _judging_outcome(judgings: _Judgings, packet: str, number: int) -> AcceptedJ
     reply = _final_reply(judgings, agent_type)
     if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
         return None if reply else PendingJudging(number)
-    verdict = _read_verdict(judgings, packet, number)
+    verdict = _valid_verdict(judgings, packet, number)
+    if verdict is None:
+        return None
     return AcceptedJudging(
         judging=number,
         judge_model=reply.model,
@@ -346,10 +348,13 @@ def _final_reply(judgings: _Judgings, agent_type: str) -> "TranscriptReply | Non
     return next((reply[-1] for reply in replies if reply), None)
 
 
-def _read_verdict(judgings: _Judgings, packet: str, number: int) -> Record:
-    """Return the judging's verdict file parsed against the packet's blind ids and the judge demands."""
-    document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
-    return parse_verdict(document, set(_packet_origins(judgings, packet)), judgings.judge_demand_ids)
+def _valid_verdict(judgings: _Judgings, packet: str, number: int) -> Record | None:
+    """Return the judging's verdict file parsed against the packet's blind ids and the judge demands, or None when it is not valid."""
+    try:
+        document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
+        return parse_verdict(document, set(_packet_origins(judgings, packet)), judgings.judge_demand_ids)
+    except (yaml.YAMLError, RecordError):
+        return None
 
 
 def _packet_origins(judgings: _Judgings, packet: str) -> dict[str, Record]:
