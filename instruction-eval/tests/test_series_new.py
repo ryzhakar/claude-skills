@@ -1,8 +1,11 @@
 import hashlib
+import re
 from datetime import datetime, timezone
 
+import pytest
 import yaml
 
+from instruction_eval.records import Refusal
 from instruction_eval.series import series_new
 
 NOW = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
@@ -71,3 +74,15 @@ def test_a_value_holding_a_slash_is_the_folder_as_given_and_a_relative_one_resol
     assert relative.root == tmp_path / "work/runs/terse"
     assert absolute.root == tmp_path / "elsewhere/terse"
     assert not (tmp_path / "home/instruction-series").exists()
+
+
+def test_a_non_empty_folder_is_refused_and_an_empty_one_is_used(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+    folder = tmp_path / "home/instruction-series/terse"
+    (folder / ".claude").mkdir(parents=True)
+    (folder / ".claude").rmdir()
+
+    new_series(tmp_path)
+    with pytest.raises(Refusal, match=rf"^series folder not empty: {re.escape(str(folder))}$"):
+        new_series(tmp_path)

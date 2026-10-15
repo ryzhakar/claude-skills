@@ -44,6 +44,7 @@ def series_new(
     instruction_path = _resolve_against(working_dir, instruction)
     source_paths = [_resolve_against(working_dir, source) for source in sources]
     files = SeriesFolder(_series_folder_path(name, working_dir, home))
+    _refuse_non_empty_folder(files)
     instruction_bytes = instruction_path.read_bytes()
     write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
     _make_agents_folder(files)
@@ -63,6 +64,13 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
     if PATH_SEPARATOR in name:
         return _resolve_against(working_dir, name)
     return home / SERIES_HOME_FOLDER / name
+
+
+def _refuse_non_empty_folder(files: SeriesFolder) -> None:
+    """Refuse a series folder that exists as a file or holds anything."""
+    root = files.root
+    if root.exists() and (not root.is_dir() or any(root.iterdir())):
+        raise Refusal(f"series folder not empty: {root}")
 
 
 def _series_record(instruction: Path, sources: Sequence[Path], reader_kind: ReaderKind, now: datetime) -> dict[str, object]:
