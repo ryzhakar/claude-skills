@@ -11,14 +11,35 @@ from typing import Any, TypeVar
 import yaml
 
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
-from instruction_eval.coverage import split_sentences
-from instruction_eval.judge import OATH_SKILL, SOURCE_FOLDER
+from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.gate import (
+    OUTCOME_FILE,
+    BudgetRefusal,
+    _cost_so_far,
+    _earlier_outcomes,
+    _reply_cost,
+    _stop_budget,
+    refuse_unaffordable_ask,
+    revision_number,
+)
+from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
 from instruction_eval.records import (
+    AGENT_READER,
+    COMMAND_READER,
+    CONDITIONS_RECORD,
+    DEMANDS_RECORD,
     FIRST_REVISION,
+    FROZEN_RECORD,
     GATE_RECORD,
     KEY_SEPARATOR,
+    READER_RECORD,
+    REPLY_COST_KEYS,
+    SERIES_RECORD,
+    SPENT_INPUT_TOKENS_KEY,
+    TASKS_RECORD,
     AgentReader,
     CommandReader,
+    Conversation,
     Reader,
     Refusal,
     SeriesFolder,
@@ -27,11 +48,14 @@ from instruction_eval.records import (
     Tasks,
     _dump_canonical_yaml,
     condition_path,
+    reply_path,
     sha256,
     write_file,
+    write_record,
 )
-from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, guard_series
-from instruction_eval.tasks import ExpectedReply, expected_replies
+from instruction_eval.scores import COLLECTED_FILE
+from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series, revision_ids
+from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
@@ -747,11 +771,7 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
 
 def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
     """Return the bytes of a revision's instruction snapshot, refusing it absent."""
-    path = f"{revision}/{INSTRUCTION_FILE}"
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
+    return _read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")
 
 
 def _utf8_text(content: bytes, label: str) -> str:
@@ -784,22 +804,31 @@ def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[s
     """Return the launch list as YAML: per task and per conversation, condition, and repeat, the agent type and the exact messages."""
     guard_series(files, ASK_COMMAND)
     records = SeriesRecords(files)
-    replies = _asked_replies(files, revision, records, conditions)
+    return _launch_list(_asked_replies(files, revision, records, conditions), records)
+
+
+def _launch_list(replies: Sequence[ExpectedReply], records: SeriesRecords) -> str:
+    """Return the launch list of the replies as YAML."""
     return yaml.safe_dump({LAUNCHES_KEY: _launches(replies, records.tasks())}, sort_keys=False, allow_unicode=True)
 
 
 def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
     """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named."""
-    sentence_count = len(split_sentences(_revision_instruction(files, revision)))
-    expected = expected_replies(revision, records.tasks(), records.conditions(), _gate_repeats(records), sentence_count)
+    expected = _expected_reply_set(files, revision, records)
     return tuple(reply for reply in expected if (not conditions or reply.condition in conditions) and not files.holds(reply.path))
+
+
+def _expected_reply_set(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
+    """Return the replies the revision expects at the gate's repeats, in path order."""
+    sentence_count = len(split_sentences(_revision_instruction(files, revision)))
+    return expected_replies(revision, records.tasks(), records.conditions(), _gate_repeats(records), sentence_count)
 
 
 def _gate_repeats(records: SeriesRecords) -> int:
     """Return the repeats the gate holds, refusing them unwritten."""
     repeats = records.gate().repeats
     if repeats is None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}")
     return repeats
 
 
@@ -828,3 +857,389 @@ def _launch(
         return {**launch, TASK_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: task_by_id[task].message}
     first_turn, *later_turns = turns_by_conversation[task]
     return {**launch, CONVERSATION_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: first_turn, SEND_MESSAGES_KEY: later_turns}
+
+
+COLLECT_COMMAND = "revision collect"
+SURPLUS_NOTICE = "ignored surplus transcript: "
+READER_RECORD_KIND_KEY = "kind"
+REPEATS_KEY = "repeats"
+BUDGET_KEY = "budget"
+SPLIT_KEY = "split"
+TURN_KEY = "turn"
+REPLY_MESSAGE_KEY = "message"
+REPLY_MODEL_KEY = "model"
+READER_KIND_KEY = "reader_kind"
+STARTED_KEY = "started"
+SECONDS_KEY = "seconds"
+TRANSCRIPT_KEY = "transcript"
+TRANSCRIPT_HASH_KEY = "transcript_hash"
+FINGERPRINT_HASH_KEY = "fingerprint_hash"
+COST_KEY = "cost"
+
+
+def revision_collect(
+    files: SeriesFolder, revision: str, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
+) -> str:
+    """Write the replies the revision's reader transcripts hold and return a line per surplus transcript, a command reader's collect writing nothing, refusing a gap against the expected replies with the surplus lines after the gap."""
+    guard_series(files, COLLECT_COMMAND)
+    records = SeriesRecords(files)
+    reader = records.reader()
+    texts = _verified_condition_texts(files, revision, records, reader)
+    expected = _expected_reply_set(files, revision, records)
+    surplus: tuple[Transcript, ...] = ()
+    if isinstance(reader, AgentReader):
+        reads = [*_reader_reads(revision, records, reader, texts), *(_definition_path(revision, condition) for condition in texts)]
+        surplus = _write_agent_replies(files, records, reader.model, reads, expected, transcripts, read_transcript)
+    listing = "".join(f"{SURPLUS_NOTICE}{transcript.path}\n" for transcript in surplus)
+    try:
+        refuse_missing_replies(files, expected)
+    except Refusal as gap:
+        raise Refusal(f"{gap}\n{listing}".rstrip("\n")) from None
+    return listing
+
+
+def _verified_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader) -> dict[str, bytes]:
+    """Return the text of each condition the revision prepares, recomputed from the series files, refusing a condition file or an agent reader's definition that differs from its recomputation."""
+    placebo_source = _read_series_file(files, PLACEBO_SNAPSHOT_PATH) if revision == FIRST_REVISION else None
+    texts = _condition_texts(files, revision, records, placebo_source)
+    for condition, text in texts.items():
+        _refuse_edited_file(files, condition_path(revision, condition), text)
+        if isinstance(reader, AgentReader):
+            definition = render_agent_definition(_reader_agent_type(revision, condition), reader.model, AgentKind.READER, text)
+            _refuse_edited_file(files, _definition_path(revision, condition), definition)
+    return texts
+
+
+def _refuse_edited_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
+    """Refuse the series file at `path` when its bytes differ from the recomputed bytes."""
+    try:
+        refuse_edited_definition(path, _read_series_file(files, path), recomputed)
+    except DefinitionEdited as edited:
+        raise Refusal(str(edited)) from None
+
+
+def _read_series_file(files: SeriesFolder, path: str) -> bytes:
+    """Return the bytes of the series file at `path`, refusing it absent."""
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
+
+
+def _definition_path(revision: str, condition: str) -> str:
+    """Return the series path of the reader definition of a condition of a revision."""
+    return f"{AGENTS_FOLDER}/{_reader_agent_type(revision, condition)}.md"
+
+
+def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
+    """Return what the reader commands read of every revision: the series, sources, task, condition, and reader keys, the placebo snapshot, the repeats, the instruction, and the condition files."""
+    return [
+        SERIES_RECORD,
+        *_source_paths(records),
+        *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
+        *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
+        PLACEBO_SNAPSHOT_PATH,
+        *(f"{READER_RECORD}{KEY_SEPARATOR}{key}" for key in (READER_RECORD_KIND_KEY, *(field.name for field in fields(reader)))),
+        f"{GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}",
+        f"{revision}/{INSTRUCTION_FILE}",
+        *(condition_path(revision, condition) for condition in texts),
+    ]
+
+
+@dataclass(frozen=True)
+class _ReaderTranscript:
+    """A reader transcript matched to the task or conversation its first message opened, with its replies."""
+
+    revision: str
+    condition: str
+    entry: Task | Conversation
+    transcript: Transcript
+    content: bytes
+    replies: tuple[TranscriptReply, ...]
+
+    @property
+    def started(self) -> datetime:
+        """Return when the transcript's first reply began."""
+        return self.replies[0].started
+
+
+def _write_agent_replies(
+    files: SeriesFolder,
+    records: SeriesRecords,
+    pinned_model: str,
+    reads: Sequence[str],
+    expected: Sequence[ExpectedReply],
+    transcripts: Sequence[Transcript],
+    read_transcript: Callable[[Path], bytes],
+) -> tuple[Transcript, ...]:
+    """Write each expected reply no file holds from the earliest matching transcripts and return the surplus transcripts, refusing an exposed transcript before writing any reply."""
+    matched = _reader_transcripts(expected, records.tasks(), transcripts, read_transcript)
+    numbered, surplus = _numbered_by_start(matched, _gate_repeats(records))
+    expected_paths = {reply.path for reply in expected}
+    writes: list[tuple[str, dict[str, Any]]] = []
+    for repeat, match in numbered:
+        missing = {path: reply for path, reply in _transcript_reply_paths(match, repeat).items() if path in expected_paths and not files.holds(path)}
+        if missing:
+            refuse_exposed_reader_transcript(match.transcript.path, match.content, _turn_messages(match.entry), pinned_model)
+        writes.extend((path, _agent_reply_record(match, repeat, reply)) for path, reply in missing.items())
+    for path, record in writes:
+        write_record(files, path, record, reads)
+    return tuple(match.transcript for match in surplus)
+
+
+def _reader_transcripts(
+    expected: Sequence[ExpectedReply], tasks: Tasks, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
+) -> list[_ReaderTranscript]:
+    """Return the transcripts whose agent type is an expected reader's and whose first user message is the first message of an expected task or conversation."""
+    readers = {_reader_agent_type(reply.revision, reply.condition): (reply.revision, reply.condition) for reply in expected}
+    entries = {_turn_messages(entry)[0]: entry for entry in (*tasks.tasks, *tasks.conversations)}
+    wanted = {(reply.revision, reply.condition, reply.task) for reply in expected}
+    matches = []
+    for transcript in transcripts:
+        if transcript.agent_type not in readers:
+            continue
+        content = read_transcript(transcript.path)
+        replies = parse_transcript_replies(transcript.path, content)
+        revision, condition = readers[transcript.agent_type]
+        entry = entries.get(replies[0].message) if replies and replies[0].turn == 1 else None
+        if entry is not None and (revision, condition, entry.id) in wanted:
+            matches.append(_ReaderTranscript(revision, condition, entry, transcript, content, replies))
+    return matches
+
+
+def _turn_messages(entry: Task | Conversation) -> tuple[str, ...]:
+    """Return the messages the reader receives for a task or conversation, one per turn."""
+    return entry.turns if isinstance(entry, Conversation) else (entry.message,)
+
+
+def _numbered_by_start(matches: Sequence[_ReaderTranscript], repeats: int) -> tuple[list[tuple[int, _ReaderTranscript]], list[_ReaderTranscript]]:
+    """Number the earliest `repeats` transcripts of each condition and task 1.. by start time and return the later ones as surplus."""
+    groups: dict[tuple[str, str, str], list[_ReaderTranscript]] = {}
+    for match in matches:
+        groups.setdefault((match.revision, match.condition, match.entry.id), []).append(match)
+    numbered: list[tuple[int, _ReaderTranscript]] = []
+    surplus: list[_ReaderTranscript] = []
+    for group in groups.values():
+        by_start = sorted(group, key=lambda match: match.started)
+        numbered.extend(enumerate(by_start[:repeats], 1))
+        surplus.extend(by_start[repeats:])
+    return numbered, surplus
+
+
+def _transcript_reply_paths(match: _ReaderTranscript, repeat: int) -> dict[str, TranscriptReply]:
+    """Map the reply file of each turn the entry has, at the repeat, to the transcript's reply to that turn."""
+    turns = len(_turn_messages(match.entry))
+    single = isinstance(match.entry, Task)
+    return {
+        reply_path(match.revision, match.condition, match.entry.id, repeat, None if single else reply.turn): reply
+        for reply in match.replies
+        if reply.turn <= turns
+    }
+
+
+def _reply_identity(entry: Task | Conversation, condition: str, repeat: int, turn: int | None) -> dict[str, Any]:
+    """Return the keys naming one reply and the message it answers: condition, task, split, repeat, message, and for a conversation the turn."""
+    identity = {
+        CONDITION_KEY: condition,
+        TASK_KEY: entry.id,
+        SPLIT_KEY: entry.split,
+        REPEAT_KEY: repeat,
+        REPLY_MESSAGE_KEY: _turn_messages(entry)[(turn or 1) - 1],
+    }
+    return identity if turn is None else {**identity, TURN_KEY: turn}
+
+
+def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: TranscriptReply) -> dict[str, Any]:
+    """Return the reply record of one transcript reply: its text, served model, timing, tokens, and transcript."""
+    turn = reply.turn if isinstance(match.entry, Conversation) else None
+    return {
+        **_reply_identity(match.entry, match.condition, repeat, turn),
+        _TEXT_KEY: reply.text,
+        REPLY_MODEL_KEY: reply.model,
+        READER_KIND_KEY: AGENT_READER,
+        STARTED_KEY: reply.started.isoformat(),
+        SECONDS_KEY: reply.seconds,
+        TRANSCRIPT_KEY: str(reply.transcript),
+        TRANSCRIPT_HASH_KEY: reply.transcript_hash,
+        COST_KEY: _reply_cost_record(reply.tokens),
+    }
+
+
+def _reply_cost_record(tokens: TokenUsage | None) -> dict[str, int | None]:
+    """Return the reply's cost fields from its token usage, every field null without usage."""
+    if tokens is None:
+        return dict.fromkeys(REPLY_COST_KEYS)
+    return {**{field.name: getattr(tokens, field.name) for field in fields(tokens)}, SPENT_INPUT_TOKENS_KEY: tokens.spent_input_tokens}
+
+
+ASK_TIMEOUT_SECONDS = 600
+MESSAGES_KEY = "messages"
+ROLE_KEY = "role"
+USER_ROLE = "user"
+ASSISTANT_ROLE = "assistant"
+CONDITION_PLACEHOLDER = "{condition}"
+TURN_FILE_PREFIX = "/turn-"
+COVERAGE_KEYS = ("demands", "sentences")
+FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/5-replies"
+REPLY_PATTERN = "*.yaml"
+ANY_CONDITION = "*"
+
+
+@dataclass(frozen=True)
+class ReaderRun:
+    """One run of a command reader: when it started, how long it ran, its exit code, None when it exceeded the timeout, and what it wrote to stdout."""
+
+    started: datetime
+    seconds: float
+    exit_code: int | None
+    stdout: str
+
+
+RunReader = Callable[[Sequence[str], str, int], ReaderRun]
+
+
+def revision_ask(
+    files: SeriesFolder, revision: str, conditions: Sequence[str], run_reader: RunReader, run_fingerprint: Callable[[Sequence[str]], str]
+) -> str:
+    """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
+    guard_series(files, ASK_COMMAND)
+    _refuse_collected_revision(files, revision)
+    records = SeriesRecords(files)
+    reader = records.reader()
+    coverage_check(files, revision)
+    texts = _verified_condition_texts(files, revision, records, reader)
+    asked = _asked_replies(files, revision, records, conditions)
+    _refuse_unaffordable_later_ask(files, records, revision, len(asked))
+    if isinstance(reader, AgentReader):
+        return _launch_list(asked, records)
+    _answer_replies(files, revision, records, reader, texts, asked, run_reader, run_fingerprint)
+    return ""
+
+
+def _refuse_unaffordable_later_ask(files: SeriesFolder, records: SeriesRecords, revision: str, ask_reply_count: int) -> None:
+    """Refuse an ask of a later revision whose replies, each at r1's mean cost, take the cost so far past the gate's ceiling."""
+    budget = None if revision == FIRST_REVISION else _stop_budget(records.complete_gate().budget)
+    if budget is None:
+        return
+    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _expected_reply_set(files, FIRST_REVISION, records)]
+    cost_so_far = _cost_so_far(_earlier_outcomes(files, records, revision), budget)
+    try:
+        refuse_unaffordable_ask(budget, first_replies, cost_so_far, ask_reply_count)
+    except BudgetRefusal as unaffordable:
+        raise Refusal(str(unaffordable)) from None
+
+
+def _refuse_collected_revision(files: SeriesFolder, revision: str) -> None:
+    """Refuse asking a revision whose replies are judged and collected, so no ask adds a reply to it."""
+    if files.holds(f"{revision}/{COLLECTED_FILE}"):
+        raise Refusal(f"{revision} already collected: no reply is added")
+
+
+def _answer_replies(
+    files: SeriesFolder,
+    revision: str,
+    records: SeriesRecords,
+    reader: CommandReader,
+    texts: Mapping[str, bytes],
+    asked: Sequence[ExpectedReply],
+    run_reader: RunReader,
+    run_fingerprint: Callable[[Sequence[str]], str],
+) -> None:
+    """Run the command reader on each asked reply in turn, writing each reply as soon as its run succeeds."""
+    fingerprint = reader_fingerprint(files, run_fingerprint)
+    _refuse_changed_fingerprint(files, records, fingerprint.fingerprint_hash)
+    reads = _ask_reads(files, revision, records, reader, texts)
+    for reply in sorted(asked, key=_serial_order):
+        run = run_reader(_reader_command(files, reader, reply), _reader_stdin(records, reply), ASK_TIMEOUT_SECONDS)
+        _refuse_failed_run(reply, run)
+        write_record(files, reply.path, _command_reply_record(records.tasks(), reply, run, fingerprint), [*reads, *_state_reads(files)])
+
+
+def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
+    """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
+    coverage = (f"{coverage_revision}/3-coverage.yaml{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
+    reads = [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
+    return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
+
+
+def _later_revision_reads(files: SeriesFolder, revision: str) -> list[str]:
+    """Return what an ask of a later revision reads besides an ask of r1: the budget, r1's condition files, and each earlier gated revision's outcome."""
+    first_conditions = sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(condition_path(FIRST_REVISION, ANY_CONDITION)))
+    earlier = (earlier for earlier in revision_ids(files) if revision_number(earlier) < revision_number(revision))
+    return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(f"{other}/{OUTCOME_FILE}" for other in earlier if files.holds(f"{other}/{OUTCOME_FILE}"))]
+
+
+def _state_reads(files: SeriesFolder) -> list[str]:
+    """Return the freeze once the series is frozen, else the r1 replies written so far."""
+    return [FROZEN_RECORD] if files.holds(FROZEN_RECORD) else _first_revision_reply_paths(files)
+
+
+def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
+    """Return the series path of every r1 reply file written so far, in path order."""
+    replies = (files.root / FIRST_REVISION_REPLIES_FOLDER).rglob(REPLY_PATTERN)
+    return sorted(reply.relative_to(files.root).as_posix() for reply in replies)
+
+
+def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fingerprint_hash: str) -> None:
+    """Refuse a fingerprint hash differing from the freeze's once frozen, else from any r1 reply written so far."""
+    if not files.holds(FROZEN_RECORD):
+        _refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
+    elif records.frozen().get(FINGERPRINT_HASH_KEY) != fingerprint_hash:
+        raise Refusal(f"reader fingerprint changed since {FROZEN_RECORD}")
+
+
+def _serial_order(reply: ExpectedReply) -> tuple[str, int]:
+    """Return the sort key that orders replies by path, a conversation's turns in numeric order."""
+    return (reply.path.rpartition(TURN_FILE_PREFIX)[0] or reply.path, reply.turn or 0)
+
+
+def _reader_command(files: SeriesFolder, reader: CommandReader, reply: ExpectedReply) -> list[str]:
+    """Return the reader's command with each `{condition}` replaced by the path of the reply's condition file."""
+    condition_file = str(files.root / condition_path(reply.revision, reply.condition))
+    return [part.replace(CONDITION_PLACEHOLDER, condition_file) for part in reader.command]
+
+
+def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
+    """Return the YAML `messages` the reader receives: the turns up to the reply's, with the repeat's earlier replies between them."""
+    turns = _turn_messages(_entries_by_id(records.tasks())[reply.task])
+    last_turn = reply.turn or 1
+    messages: list[dict[str, str]] = []
+    for turn in range(1, last_turn + 1):
+        messages.append({ROLE_KEY: USER_ROLE, _TEXT_KEY: turns[turn - 1]})
+        if turn < last_turn:
+            earlier = reply_path(reply.revision, reply.condition, reply.task, reply.repeat, turn)
+            messages.append({ROLE_KEY: ASSISTANT_ROLE, _TEXT_KEY: records.reply(earlier)[_TEXT_KEY]})
+    return yaml.safe_dump({MESSAGES_KEY: messages}, allow_unicode=True)
+
+
+def _entries_by_id(tasks: Tasks) -> dict[str, Task | Conversation]:
+    """Return every task and conversation by id."""
+    return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
+
+
+def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
+    """Refuse a run with a nonzero exit, no output, or more than the timeout, naming the reply and the cause."""
+    if run.exit_code is None or run.seconds > ASK_TIMEOUT_SECONDS:
+        cause = f"over {ASK_TIMEOUT_SECONDS} seconds"
+    elif run.exit_code != 0:
+        cause = f"exit {run.exit_code}"
+    elif not run.stdout:
+        cause = "empty output"
+    else:
+        return
+    raise Refusal(f"reader failed: {reply.path} ({cause})")
+
+
+def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fingerprint: Fingerprint) -> dict[str, Any]:
+    """Return the reply record of one command reader run: its output, the fingerprint's model and hash, and null token counts."""
+    entry = _entries_by_id(tasks)[reply.task]
+    return {
+        **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
+        _TEXT_KEY: run.stdout,
+        REPLY_MODEL_KEY: fingerprint.output[REPLY_MODEL_KEY],
+        READER_KIND_KEY: COMMAND_READER,
+        STARTED_KEY: run.started.isoformat(),
+        SECONDS_KEY: run.seconds,
+        FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash,
+        COST_KEY: _reply_cost_record(None),
+    }

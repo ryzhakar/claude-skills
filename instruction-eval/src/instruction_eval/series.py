@@ -6,12 +6,15 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 
-from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
+import yaml
+
+from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
-from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, kept_revision
-from instruction_eval.judge import SOURCE_FOLDER
+from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, _gate_demands, _measured_revision, kept_revision, least_repeats
+from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF
 from instruction_eval.records import (
+    ANCHORS_RECORD,
     CALIBRATION_RECORD,
     COMMAND_READER,
     CONDITIONS_RECORD,
@@ -32,12 +35,15 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    attempt_folder,
     load_record,
     revision_record_path,
     sha256,
     write_file,
     write_record,
 )
+from instruction_eval.records import Budget as GateBudget
+from instruction_eval.scores import COLLECTED_FILE, DETECTORS_FILE, ORIGINS_FILE, Noise, measure_noise
 from instruction_eval.tasks import PLACEBO_SNAPSHOT, ExpectedReply, expected_replies, refuse_missing_replies, tasks_check
 
 SERIES_HOME_FOLDER = "instruction-series"
@@ -360,3 +366,151 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
         raise Refusal(f"{DRIFT_COMPARES} check without conversations ({TASKS_RECORD})")
     if NEAR_SOURCE_COMPARES in compared and not records.series().sources:
         raise Refusal(f"{NEAR_SOURCE_COMPARES} check without sources ({SERIES_RECORD})")
+
+
+STATUS_PARTS = (
+    SERIES_RECORD,
+    DEMANDS_RECORD,
+    TASKS_RECORD,
+    CONDITIONS_RECORD,
+    PLACEBO_SNAPSHOT_PATH,
+    READER_RECORD,
+    WORKING_BRIEF,
+    CALIBRATION_RECORD,
+    ANCHORS_RECORD,
+    GATE_RECORD,
+    FROZEN_RECORD,
+    STOP_RECORD,
+)
+PLAN_FILE = "plan.yaml"
+PARTS_KEY = "parts"
+FROZEN_KEY = "frozen"
+REVISIONS_KEY = "revisions"
+COST_KEY = "cost"
+CALIBRATION_KEY = "calibration"
+AWAITING_KEY = "packets_awaiting_judging"
+NOISE_KEY = "noise"
+LEAST_REPEATS_KEY = "least_repeats"
+STOP_KEY = "stop"
+CLONE_KEY = "manifesto_clone"
+SPENT_KEY = "spent"
+BUDGET_KEY = "budget"
+REPLIES_KEY = "replies"
+INPUT_TOKENS_KEY = "input_tokens"
+OUTPUT_TOKENS_KEY = "output_tokens"
+SECONDS_KEY = "seconds"
+ATTEMPTS_KEY = "attempts"
+ATTEMPT_KEY = "attempt"
+ACCEPTED_KEY = "accepted"
+SCALE_KEY = "scale"
+STOP_STANDING_KEYS = ("stop", "kept", "reason")
+MANIFESTO_CLONE_FOLDER = ".claude/manifesto-repo"
+STATUS_DEFAULT_LEVEL = 0.95
+AGREEMENT_FILE = "agreement.yaml"
+UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
+
+
+def series_status(files: SeriesFolder) -> str:
+    """Return the series' standing as YAML, writing nothing: parts present, frozen or not, revision outcomes, cost against budget, calibration, packets awaiting judging, r1's noise, least repeats, the stop, and the manifesto clone."""
+    guard_series(files, STATUS_COMMAND)
+    records = SeriesRecords(files)
+    noise = _first_revision_noise(files, records)
+    standing = {
+        PARTS_KEY: [part for part in STATUS_PARTS if files.holds(part)],
+        FROZEN_KEY: files.holds(FROZEN_RECORD),
+        REVISIONS_KEY: {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
+        COST_KEY: _cost_standing(files, records),
+        CALIBRATION_KEY: _calibration_standing(files, records),
+        AWAITING_KEY: _packets_awaiting_judging(files, records),
+        NOISE_KEY: noise,
+        LEAST_REPEATS_KEY: _least_repeats_per_check(files, records, noise),
+        STOP_KEY: _stop_standing(files, records),
+        CLONE_KEY: (files.root / MANIFESTO_CLONE_FOLDER).is_dir(),
+    }
+    return yaml.safe_dump(standing, sort_keys=False)
+
+
+def _revision_standing(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, object]:
+    """Return a revision's outcome, change from its parent, and keep ranks, each null while the revision is ungated."""
+    if not files.holds(_outcome_path(revision)):
+        return dict(UNGATED_STANDING)
+    outcome = records.outcome(revision)
+    return {key: outcome.get(key) for key in UNGATED_STANDING}
+
+
+def _cost_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object]:
+    """Return the cost every gated revision's asks spent and the gate's budget, null while the gate holds none."""
+    costs = [outcome[COST_KEY] for outcome in _gated_outcomes(files, records).values()]
+    spent = {
+        REPLIES_KEY: sum(cost[REPLIES_KEY] for cost in costs),
+        INPUT_TOKENS_KEY: _sum_unless_null([cost[INPUT_TOKENS_KEY] for cost in costs]),
+        OUTPUT_TOKENS_KEY: _sum_unless_null([cost[OUTPUT_TOKENS_KEY] for cost in costs]),
+        SECONDS_KEY: sum(cost[SECONDS_KEY] for cost in costs),
+    }
+    return {SPENT_KEY: spent, BUDGET_KEY: _written_budget(files, records)}
+
+
+def _sum_unless_null(values: Sequence[int | None]) -> int | None:
+    """Sum the values, or return None when any value is None."""
+    return None if None in values else sum(values)
+
+
+def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[str, object] | None:
+    """Return the gate's budget as written, `none` or its unit and ceiling, or None while the gate or its budget is unwritten."""
+    budget = records.gate().budget if files.holds(GATE_RECORD) else None
+    if isinstance(budget, GateBudget):
+        return {"unit": budget.unit, "ceiling": budget.ceiling}
+    return budget
+
+
+def _calibration_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object]:
+    """Return each calibration attempt with its scale, null until rated, and the accepted attempt, null until one is accepted."""
+    attempts = [{ATTEMPT_KEY: attempt, SCALE_KEY: _attempt_scale(files, records, attempt)} for attempt in _attempt_numbers(files)]
+    accepted = records.calibration()[ATTEMPT_KEY] if files.holds(CALIBRATION_RECORD) else None
+    return {ATTEMPTS_KEY: attempts, ACCEPTED_KEY: accepted}
+
+
+def _attempt_numbers(files: SeriesFolder) -> Iterator[int]:
+    """Return the numbers of the calibration attempts, in order, up to the first without a plan."""
+    numbers = itertools.count(1)
+    return itertools.takewhile(lambda attempt: files.holds(f"{attempt_folder(attempt)}/{PLAN_FILE}"), numbers)
+
+
+def _attempt_scale(files: SeriesFolder, records: SeriesRecords, attempt: int) -> float | None:
+    """Return the scale an attempt's agreement reports, None while the attempt is unrated or its reference mean is zero."""
+    if not files.holds(f"{attempt_folder(attempt)}/{AGREEMENT_FILE}"):
+        return None
+    return records.agreement(attempt)[SCALE_KEY]
+
+
+def _packets_awaiting_judging(files: SeriesFolder, records: SeriesRecords) -> dict[str, list[str]]:
+    """Return, per blinded revision without a collection, its packets in order, the collection existing once every packet is accepted."""
+    blinded = [revision for revision in revision_ids(files) if files.holds(f"{revision}/{ORIGINS_FILE}")]
+    return {revision: sorted(records.origins(revision)["packets"]) for revision in blinded if not files.holds(f"{revision}/{COLLECTED_FILE}")}
+
+
+def _first_revision_noise(files: SeriesFolder, records: SeriesRecords) -> Noise | None:
+    """Return r1's noise from its sealed rows, None until r1 is blinded, judged, and detected and the gate holds `repeats` and `done_by`."""
+    measured = all(files.holds(f"{FIRST_REVISION}/{step}") for step in (ORIGINS_FILE, COLLECTED_FILE, DETECTORS_FILE))
+    gate = records.gate() if measured and files.holds(GATE_RECORD) else None
+    if gate is None or gate.repeats is None or gate.done_by is None:
+        return None
+    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    level = STATUS_DEFAULT_LEVEL if gate.level is None else gate.level
+    return measure_noise(sealed_rows, _gate_demands(records), records.conditions().controls, gate.repeats, level)
+
+
+def _least_repeats_per_check(files: SeriesFolder, records: SeriesRecords, noise: Noise | None) -> dict[str, int | None]:
+    """Return, per gate check, the fewest repeats resolving its gap, empty until r1's noise and the gate's checks exist."""
+    checks = records.gate().checks if files.holds(GATE_RECORD) else None
+    if noise is None or checks is None:
+        return {}
+    return {check.compares: least_repeats(check, noise) for check in checks}
+
+
+def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object] | None:
+    """Return the stop's kind, kept revision, and reason, or None while the series runs."""
+    if not files.holds(STOP_RECORD):
+        return None
+    stop = records.stop()
+    return {key: stop.get(key) for key in STOP_STANDING_KEYS}
