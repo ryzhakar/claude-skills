@@ -1,4 +1,4 @@
-"""Series commands: `series new` makes a series folder, and every other command is guarded against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
+"""Series commands `series new`, `series stop`, and `series keep`, and the guard of every command but `series new` against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
 
 import itertools
 import os
@@ -10,8 +10,8 @@ from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.gate import kept_revision
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
-    FIRST_REVISION,
     FAIL_OUTCOME,
+    FIRST_REVISION,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
@@ -32,6 +32,7 @@ from instruction_eval.records import (
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
+STATUS_COMMAND = "series status"
 STOP_COMMAND = "series stop"
 KEEP_COMMAND = "series keep"
 OUTCOME_FILE = "9-outcome.yaml"
@@ -42,7 +43,7 @@ MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.
 INSTRUCTION_FILE = "2-instruction.md"
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
 
-STOPPED_SERIES_COMMANDS = ("series status", "series keep")
+STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 
 
 def series_new(
