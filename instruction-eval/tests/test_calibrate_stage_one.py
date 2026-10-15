@@ -115,3 +115,22 @@ def test_stage_one_refuses_once_calibration_exists_and_writes_nothing(tmp_path):
         calibrate(tmp_path, files)
 
     assert tree(files.root) == before
+
+
+def test_stage_one_without_any_attempt_plan_refuses_naming_the_first_plan_path(tmp_path):
+    files = stage_one_series(tmp_path)
+    (files.root / "6-judge/calibration/attempt-1/plan.yaml").unlink()
+
+    with pytest.raises(Refusal, match=r"^missing record: 6-judge/calibration/attempt-1/plan\.yaml$"):
+        calibrate(tmp_path, files)
+
+
+def test_stage_one_without_the_working_brief_refuses_naming_the_template_it_starts_from_and_writes_nothing(tmp_path):
+    files = stage_one_series(tmp_path)
+    (files.root / "6-judge/brief.md").unlink()
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=rf"^missing brief: 6-judge/brief\.md, start from {TEMPLATE}$"):
+        calibrate(tmp_path, files)
+
+    assert tree(files.root) == before

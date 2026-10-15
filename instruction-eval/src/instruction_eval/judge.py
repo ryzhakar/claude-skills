@@ -34,6 +34,7 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     parse_record,
+    _attempt_folder,
     sha256,
     write_file,
     write_record,
@@ -490,6 +491,10 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
 
 
 CALIBRATE_COMMAND = "judge calibrate"
+WORKING_BRIEF = "6-judge/brief.md"
+PLAN_FILE = "plan.yaml"
+ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
+FIRST_ATTEMPT = 1
 
 
 def calibrate_stage_one(
@@ -498,6 +503,8 @@ def calibrate_stage_one(
     """Run stage one of `judge calibrate` on the latest attempt: snapshot the brief, blind a sample of r1's open replies, write the rating definitions, and return their launch list."""
     _refuse_unusable_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
+    attempt = _latest_attempt(files)
+    brief = _working_brief(files, brief_template)
     return ""
 
 
@@ -505,3 +512,19 @@ def _refuse_calibrated_series(files: SeriesFolder) -> None:
     """Refuse a series whose judge is already calibrated."""
     if files.holds(CALIBRATION_RECORD):
         raise Refusal(f"already calibrated: {CALIBRATION_RECORD}")
+
+
+def _latest_attempt(files: SeriesFolder) -> int:
+    """Return the highest attempt number holding a plan, refusing a series without one."""
+    folders = (files.root / _attempt_folder(FIRST_ATTEMPT)).parent.glob(f"attempt-*/{PLAN_FILE}")
+    numbers = [int(match.group(1)) for folder in folders if (match := ATTEMPT_PATTERN.fullmatch(folder.parent.name))]
+    if not numbers:
+        raise Refusal(f"missing record: {_attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}")
+    return max(numbers)
+
+
+def _working_brief(files: SeriesFolder, brief_template: Path) -> bytes:
+    """Return the bytes of the user's working brief, refusing it absent and naming the template to start from."""
+    if not files.holds(WORKING_BRIEF):
+        raise Refusal(f"missing brief: {WORKING_BRIEF}, start from {brief_template}")
+    return files.read_bytes(WORKING_BRIEF)
