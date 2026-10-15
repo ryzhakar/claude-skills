@@ -505,7 +505,7 @@ def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: f
             condition: _condition_scores([row for row in task_rows if row["condition"] == condition], gate_demands)
             for condition in _conditions_of(task_rows)
         },
-        "comparisons": _comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng),
+        "comparisons": instruction_comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng),
         "drift": {
             condition: _drift(slopes, level, bootstrap_rng)
             for condition in _conditions_of(turn_rows)
@@ -520,7 +520,7 @@ def _key_and_judge_disagree(row: ReplyRow) -> bool:
     return None not in (row["done_by_answer_key"], row["done_by_judge"]) and row["done_by_answer_key"] != row["done_by_judge"]
 
 
-def _comparisons(
+def instruction_comparisons(
     task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng
 ) -> dict[str, dict[str, object]]:
     """Map each compares the rows define to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""

@@ -49,7 +49,7 @@ from instruction_eval.scores import (
     Noise,
     ReplyRow,
     ScoredReply,
-    _comparisons,
+    instruction_comparisons,
     breach_total,
     compare_paired,
     join_reply_rows,
@@ -501,7 +501,7 @@ def _outcome(
     """Return the outcome of the revision's sealed rows: every check, the keep ranks, and the cost of its asks."""
     task_rows = [row for row in measured.sealed_rows if row["turn"] is None]
     turn_rows = [row for row in measured.sealed_rows if row["turn"] is not None]
-    comparisons = _comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng)
+    comparisons = instruction_comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng)
     gated = [_gated_check(check, comparisons[check.compares]) for check in checks]
     return {
         "outcome": PASS_OUTCOME if all(check["pass"] for check in gated) else FAIL_OUTCOME,
