@@ -6,6 +6,7 @@ import yaml
 from instruction_eval.records import SeriesFolder, write_record
 from instruction_eval.series import series_status
 from series_fixtures import AGENT_SERIES, sha256, write_revision, write_yaml
+from test_revision_gate import first_replies, frozen_series
 
 
 def tree_hash(root: Path) -> str:
@@ -140,3 +141,16 @@ def test_a_stopped_series_reports_each_calibration_attempt_with_its_scale_and_th
         "accepted": 2,
     }
     assert status["stop"] == {"stop": "capped", "kept": "r1", "reason": "budget"}
+
+
+def measured_first_revision(tmp_path) -> SeriesFolder:
+    return frozen_series(tmp_path, first_replies(instruction_judged=1, aim_judged=2))
+
+
+def test_packets_of_a_blinded_revision_await_judging_until_its_collection_exists(tmp_path):
+    files = measured_first_revision(tmp_path)
+    assert status_of(files)["packets_awaiting_judging"] == {}
+
+    (tmp_path / "r1/7-collected.yaml").unlink()
+
+    assert status_of(files)["packets_awaiting_judging"] == {"r1": ["t1", "t2", "t3"]}

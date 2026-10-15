@@ -43,6 +43,7 @@ from instruction_eval.records import (
     write_record,
 )
 from instruction_eval.records import Budget as GateBudget
+from instruction_eval.scores import COLLECTED_FILE, ORIGINS_FILE
 from instruction_eval.tasks import PLACEBO_SNAPSHOT, ExpectedReply, expected_replies, refuse_missing_replies, tasks_check
 
 SERIES_HOME_FOLDER = "instruction-series"
@@ -396,6 +397,7 @@ def series_status(files: SeriesFolder) -> str:
         "revisions": {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
         "cost": _cost_standing(files, records),
         "calibration": _calibration_standing(files, records),
+        "packets_awaiting_judging": _packets_awaiting_judging(files, records),
         "stop": _stop_standing(files, records),
     }
     return yaml.safe_dump(standing, sort_keys=False)
@@ -452,6 +454,12 @@ def _attempt_scale(files: SeriesFolder, records: SeriesRecords, attempt: int) ->
     if not files.holds(f"{attempt_folder(attempt)}/{AGREEMENT_FILE}"):
         return None
     return records.agreement(attempt)["scale"]
+
+
+def _packets_awaiting_judging(files: SeriesFolder, records: SeriesRecords) -> dict[str, list[str]]:
+    """Return, per blinded revision without a collection, its packets in order, the collection existing once every packet is accepted."""
+    blinded = [revision for revision in revision_ids(files) if files.holds(f"{revision}/{ORIGINS_FILE}")]
+    return {revision: sorted(records.origins(revision)["packets"]) for revision in blinded if not files.holds(f"{revision}/{COLLECTED_FILE}")}
 
 
 def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object] | None:
