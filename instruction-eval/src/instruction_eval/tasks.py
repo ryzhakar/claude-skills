@@ -1,15 +1,42 @@
+import itertools
 import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import Final
 
-from instruction_eval.records import FIRST_REVISION, OPEN_SPLIT, Conditions, Omissions, Refusal, SeriesFolder, Tasks, reply_path
+from instruction_eval.records import (
+    FIRST_REVISION,
+    FIRST_REVISION_NUMBER,
+    OPEN_SPLIT,
+    OVERREACH_TARGET,
+    SEALED_SPLIT,
+    TASKS_RECORD,
+    Conditions,
+    Omissions,
+    Refusal,
+    Series,
+    SeriesFolder,
+    SeriesRecords,
+    Tasks,
+    reply_path,
+)
 
+LabelledText = tuple[str, str]
 WORD_PATTERN = re.compile(r"[A-Za-z0-9']+")
 SEQUENCE_LENGTH = 3
 INSTRUCTION_CONDITION = "instruction"
 OMISSION_PREFIX = "omit-"
 EVERY_SENTENCE_OMISSIONS: Final[Omissions] = "every-sentence"
+HALVES = (OPEN_SPLIT, SEALED_SPLIT)
+FEWEST_CONVERSATIONS_PER_HALF = 2
+FEWEST_TURNS = 2
+ID_SEPARATOR_CLASH = "--"
+REVISION_INSTRUCTION_FILE = "2-instruction.md"
+PLACEBO_SNAPSHOT = "4-placebo-source.md"
+AIM_LABEL = "aim"
+PLACEBO_LABEL = "placebo source"
+SOURCE_FOLDER = "1-source"
+TURN_SUFFIX = re.compile(r"-turn-[0-9]+\Z")
 
 
 @dataclass(frozen=True)
@@ -87,3 +114,128 @@ def _word_sequences(word_list: list[str]) -> list[str]:
         " ".join(word_list[start : start + SEQUENCE_LENGTH])
         for start in range(len(word_list) - SEQUENCE_LENGTH + 1)
     ]
+
+
+def tasks_check(files: SeriesFolder) -> None:
+    """Refuse a task set that leaves a demand or `overreach` untempted in a half, lacks an answer key, holds unfit conversations or ids, repeats a message, or echoes an instruction, the aim, or the placebo source."""
+    records = SeriesRecords(files)
+    tasks = records.tasks()
+    _refuse_untempted_halves(tasks, [demand.id for demand in records.demands().demands])
+    _refuse_overreach_without_answer_key(tasks)
+    _refuse_unfit_conversations(tasks)
+    _refuse_unfit_ids(tasks)
+    _refuse_shared_messages(tasks)
+    _refuse_echoes(files, records, tasks)
+
+
+def _refuse_untempted_halves(tasks: Tasks, demand_ids: list[str]) -> None:
+    """Refuse the first demand, then `overreach`, that no task of the open half or no task of the sealed half tempts."""
+    tempted = {(task.tempts, task.split) for task in tasks.tasks}
+    for target in (*demand_ids, OVERREACH_TARGET):
+        for half in HALVES:
+            if (target, half) not in tempted:
+                raise Refusal(f"no {half} task tempts {target} ({TASKS_RECORD})")
+
+
+def _refuse_overreach_without_answer_key(tasks: Tasks) -> None:
+    """Refuse the first task tempting `overreach` that carries no answer key."""
+    keyless = next((task.id for task in tasks.tasks if task.tempts == OVERREACH_TARGET and task.answer_key is None), None)
+    if keyless is not None:
+        raise Refusal(f"overreach task without answer_key: {keyless} ({TASKS_RECORD})")
+
+
+def _refuse_unfit_conversations(tasks: Tasks) -> None:
+    """Refuse conversations unless there are none or each half holds at least two of at least two turns."""
+    if not tasks.conversations:
+        return
+    for half in HALVES:
+        held = sum(1 for conversation in tasks.conversations if conversation.split == half)
+        if held < FEWEST_CONVERSATIONS_PER_HALF:
+            raise Refusal(f"{half} half holds fewer than two conversations: {held} ({TASKS_RECORD})")
+    short = next((conversation.id for conversation in tasks.conversations if len(conversation.turns) < FEWEST_TURNS), None)
+    if short is not None:
+        raise Refusal(f"conversation {short} holds fewer than two turns ({TASKS_RECORD})")
+
+
+def _refuse_unfit_ids(tasks: Tasks) -> None:
+    """Refuse a task or conversation id that another holds, that holds `--`, or that ends in `-turn-<digits>`."""
+    ids = [entry.id for entry in (*tasks.tasks, *tasks.conversations)]
+    for entry_id in ids:
+        if ids.count(entry_id) > 1:
+            raise Refusal(f"duplicate id: {entry_id} ({TASKS_RECORD})")
+        if ID_SEPARATOR_CLASH in entry_id:
+            raise Refusal(f'id holds "{ID_SEPARATOR_CLASH}": {entry_id} ({TASKS_RECORD})')
+        if TURN_SUFFIX.search(entry_id):
+            raise Refusal(f"id ends in -turn-<digits>: {entry_id} ({TASKS_RECORD})")
+
+
+def _refuse_shared_messages(tasks: Tasks) -> None:
+    """Refuse two tasks, or a task and a conversation's first turn, sharing a message."""
+    owners_by_message: dict[str, str] = {}
+    openings = [(task.id, task.message) for task in tasks.tasks] + [(conversation.id, conversation.turns[0]) for conversation in tasks.conversations]
+    for owner, message in openings:
+        if message in owners_by_message:
+            raise Refusal(f"shared message: {owners_by_message[message]} and {owner} ({TASKS_RECORD})")
+        owners_by_message[message] = owner
+
+
+def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks) -> None:
+    """Refuse a task message or turn sharing a three-word sequence with an instruction, the aim, or the placebo source, and the aim sharing one with an instruction."""
+    conditions = records.conditions()
+    instructions = _revision_instructions(files)
+    aim = (AIM_LABEL, conditions.aim)
+    placebo = _placebo_source(files, conditions)
+    _, placebo_text = placebo
+    _refuse_shared_phrases(_task_messages(tasks), [*instructions, aim, placebo])
+    _refuse_shared_phrases([aim], instructions)
+    _refuse_shared_phrases([(PLACEBO_LABEL, placebo_text)], _source_files(files, records.series()))
+
+
+def _revision_instructions(files: SeriesFolder) -> list[LabelledText]:
+    """Return the path and text of each revision's instruction, in revision order, up to the first revision without one."""
+    paths = itertools.takewhile(files.holds, (f"r{number}/{REVISION_INSTRUCTION_FILE}" for number in itertools.count(FIRST_REVISION_NUMBER)))
+    return [(path, files.read_bytes(path).decode()) for path in paths]
+
+
+def _placebo_source(files: SeriesFolder, conditions: Conditions) -> LabelledText:
+    """Return the label and text of the placebo source, the series snapshot when it exists, else the external file, refusing one missing, not UTF-8, or holding no word."""
+    label, content = _placebo_source_bytes(files, conditions)
+    try:
+        text = content.decode()
+    except UnicodeDecodeError:
+        raise Refusal(f"not UTF-8: {label}") from None
+    if not words(text):
+        raise Refusal(f"placebo source holds no word: {label}")
+    return label, text
+
+
+def _placebo_source_bytes(files: SeriesFolder, conditions: Conditions) -> tuple[str, bytes]:
+    """Return the label and bytes of the series snapshot of the placebo source when it exists, else of the external file, refusing the external file missing."""
+    if files.holds(PLACEBO_SNAPSHOT):
+        return PLACEBO_SNAPSHOT, files.read_bytes(PLACEBO_SNAPSHOT)
+    path = conditions.placebo_source
+    try:
+        return str(path), path.read_bytes()
+    except FileNotFoundError:
+        raise Refusal(f"missing placebo source: {path}") from None
+
+
+def _source_files(files: SeriesFolder, series: Series) -> list[LabelledText]:
+    """Return the path and text of each series source file, in `sources` order."""
+    paths = [f"{SOURCE_FOLDER}/{source.name}" for source in series.sources]
+    return [(path, files.read_bytes(path).decode()) for path in paths]
+
+
+def _task_messages(tasks: Tasks) -> list[LabelledText]:
+    """Return the label and text of every task message and every conversation turn."""
+    turns = [(f"conversation {conversation.id} turn {number}", turn) for conversation in tasks.conversations for number, turn in enumerate(conversation.turns, 1)]
+    return [*((f"task {task.id}", task.message) for task in tasks.tasks), *turns]
+
+
+def _refuse_shared_phrases(owners: list[LabelledText], others: list[LabelledText]) -> None:
+    """Refuse the first owner text sharing a three-word sequence with an other text, naming both and the first shared phrase."""
+    for owner, text in owners:
+        for other, other_text in others:
+            phrases = shared_phrases(text, other_text)
+            if phrases:
+                raise Refusal(f"{owner} echoes {other}: {phrases[0]}")
