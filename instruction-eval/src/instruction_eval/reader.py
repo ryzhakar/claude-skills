@@ -8,14 +8,50 @@ from itertools import accumulate
 from pathlib import Path
 from typing import Any, TypeVar
 
-from instruction_eval.judge import OATH_SKILL
-from instruction_eval.records import Refusal
+import yaml
+
+from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
+from instruction_eval.coverage import split_sentences
+from instruction_eval.judge import OATH_SKILL, SOURCE_FOLDER
+from instruction_eval.records import (
+    FIRST_REVISION,
+    GATE_RECORD,
+    KEY_SEPARATOR,
+    AgentReader,
+    CommandReader,
+    Reader,
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    Task,
+    Tasks,
+    _dump_canonical_yaml,
+    condition_path,
+    sha256,
+    write_file,
+)
+from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, guard_series
+from instruction_eval.tasks import ExpectedReply, expected_replies
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
 EMPTY_TOOLSET_LINES = ("tools: Read", "disallowedTools: Read")
 JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
 FRONTMATTER_BREAKERS = ("\n", "\r", ": ")
+PREPARE_COMMAND = "reader prepare"
+ASK_COMMAND = "revision ask"
+READER_AGENT_PREFIX = "ie-reader-"
+LAUNCHES_KEY = "launches"
+AGENT_TYPE_KEY = "agent_type"
+CONDITION_KEY = "condition"
+TASK_KEY = "task"
+CONVERSATION_KEY = "conversation"
+REPEAT_KEY = "repeat"
+LAUNCH_MESSAGE_KEY = "message"
+SEND_MESSAGES_KEY = "send_messages"
+FINGERPRINT_COMMAND = "reader fingerprint"
+FINGERPRINT_KEYS = ("model", "build")
+AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
 
 
 class AgentKind(Enum):
@@ -616,3 +652,179 @@ def _model_exposures(entry: dict[str, Any], pinned_model: str) -> tuple[str, ...
         return ()
     model = _field(entry, (_MESSAGE_KEY, _MODEL_KEY), str)
     return () if model == pinned_model else (f"model {model} is not the pinned {pinned_model}",)
+
+
+@dataclass(frozen=True)
+class Fingerprint:
+    """The parsed output of a command reader's fingerprint with the sha256 of its canonical YAML."""
+
+    output: Mapping[str, Any]
+    fingerprint_hash: str
+
+
+def reader_fingerprint(files: SeriesFolder, run_fingerprint: Callable[[Sequence[str]], str]) -> Fingerprint:
+    """Run the command reader's fingerprint and return its parsed output with the hash of that output as canonical YAML."""
+    guard_series(files, FINGERPRINT_COMMAND)
+    reader = _command_reader(SeriesRecords(files).reader())
+    output = _parse_fingerprint_output(run_fingerprint(reader.fingerprint))
+    _refuse_missing_key(output, (*FINGERPRINT_KEYS, *reader.sampling))
+    return Fingerprint(output=output, fingerprint_hash=sha256(_dump_canonical_yaml(output)))
+
+
+def _command_reader(reader: Reader) -> CommandReader:
+    """Return the reader when it is a command reader, refusing an agent reader."""
+    if isinstance(reader, AgentReader):
+        raise Refusal(AGENT_READER_FINGERPRINT_REFUSAL)
+    return reader
+
+
+def _parse_fingerprint_output(text: str) -> dict[str, Any]:
+    """Parse the fingerprint output as a YAML mapping, refusing any other content."""
+    try:
+        output = yaml.safe_load(text)
+    except yaml.YAMLError:
+        output = None
+    if not isinstance(output, dict):
+        raise Refusal("fingerprint output is not a YAML mapping")
+    return output
+
+
+def _refuse_missing_key(output: Mapping[str, Any], required: Iterable[str]) -> None:
+    """Refuse the first required key the output lacks."""
+    for key in required:
+        if key not in output:
+            raise Refusal(f"fingerprint output lacks {key}")
+
+
+def reader_prepare(
+    files: SeriesFolder,
+    revision: str,
+    read_external: Callable[[Path], bytes],
+    environ: Mapping[str, str],
+    home: Path,
+    working_dir: Path,
+) -> None:
+    """Write the condition files of the revision, the placebo snapshot first for r1."""
+    guard_series(files, PREPARE_COMMAND)
+    records = SeriesRecords(files)
+    reader = records.reader()
+    if isinstance(reader, AgentReader):
+        check_neutral_login(environ, home, working_dir)
+    placebo_source = _external_placebo_source(revision, records, read_external)
+    texts = _condition_texts(files, revision, records, placebo_source)
+    if placebo_source is not None:
+        write_file(files, PLACEBO_SNAPSHOT_PATH, placebo_source)
+    for condition, text in texts.items():
+        write_file(files, condition_path(revision, condition), text)
+    if isinstance(reader, AgentReader):
+        _write_reader_definitions(files, revision, reader.model, texts)
+
+
+def _external_placebo_source(revision: str, records: SeriesRecords, read_external: Callable[[Path], bytes]) -> bytes | None:
+    """Return the bytes of the external placebo source for r1, or None for a later revision, refusing a missing file."""
+    if revision != FIRST_REVISION:
+        return None
+    path = records.conditions().placebo_source
+    try:
+        return read_external(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing placebo source: {path}") from None
+
+
+def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, placebo_source: bytes | None) -> dict[str, bytes]:
+    """Return the text of each condition the revision prepares, by condition."""
+    instruction = _revision_instruction(files, revision)
+    own_texts = revision_condition_texts(instruction, records.conditions().omissions)
+    if placebo_source is None:
+        return own_texts
+    sources = {path: _utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
+    try:
+        controls = control_texts(records.conditions(), instruction, sources, _utf8_text(placebo_source, PLACEBO_SNAPSHOT_PATH))
+    except ValueError as refused:
+        raise Refusal(str(refused)) from None
+    return {**own_texts, **controls}
+
+
+def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
+    """Return the bytes of a revision's instruction snapshot, refusing it absent."""
+    path = f"{revision}/{INSTRUCTION_FILE}"
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
+
+
+def _utf8_text(content: bytes, label: str) -> str:
+    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under the label."""
+    try:
+        return content.decode()
+    except UnicodeDecodeError:
+        raise Refusal(f"not UTF-8: {label}") from None
+
+
+def _source_paths(records: SeriesRecords) -> list[str]:
+    """Return the series path of each source snapshot, in `sources` order."""
+    return [f"{SOURCE_FOLDER}/{source.name}" for source in records.series().sources]
+
+
+def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, texts: Mapping[str, bytes]) -> None:
+    """Write one reader definition per condition, its body the condition's text."""
+    for condition, text in texts.items():
+        agent_type = _reader_agent_type(revision, condition)
+        definition = render_agent_definition(agent_type, model, AgentKind.READER, text)
+        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+
+
+def _reader_agent_type(revision: str, condition: str) -> str:
+    """Return the agent type of the reader that runs a condition of a revision."""
+    return f"{READER_AGENT_PREFIX}{revision}-{condition}"
+
+
+def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> str:
+    """Return the launch list as YAML: per task and per conversation, condition, and repeat, the agent type and the exact messages."""
+    guard_series(files, ASK_COMMAND)
+    records = SeriesRecords(files)
+    replies = _asked_replies(files, revision, records, conditions)
+    return yaml.safe_dump({LAUNCHES_KEY: _launches(replies, records.tasks())}, sort_keys=False, allow_unicode=True)
+
+
+def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
+    """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named."""
+    sentence_count = len(split_sentences(_revision_instruction(files, revision)))
+    expected = expected_replies(revision, records.tasks(), records.conditions(), _gate_repeats(records), sentence_count)
+    return tuple(reply for reply in expected if (not conditions or reply.condition in conditions) and not files.holds(reply.path))
+
+
+def _gate_repeats(records: SeriesRecords) -> int:
+    """Return the repeats the gate holds, refusing them unwritten."""
+    repeats = records.gate().repeats
+    if repeats is None:
+        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+    return repeats
+
+
+def _launches(replies: Sequence[ExpectedReply], tasks: Tasks) -> list[dict[str, Any]]:
+    """Return one launch per task or conversation repeat the replies name, in reply order."""
+    task_by_id = {task.id: task for task in tasks.tasks}
+    turns_by_conversation = {conversation.id: conversation.turns for conversation in tasks.conversations}
+    repeats = dict.fromkeys((reply.revision, reply.condition, reply.task, reply.repeat) for reply in replies)
+    return [
+        _launch(revision, condition, task, repeat, task_by_id, turns_by_conversation)
+        for revision, condition, task, repeat in repeats
+    ]
+
+
+def _launch(
+    revision: str,
+    condition: str,
+    task: str,
+    repeat: int,
+    task_by_id: Mapping[str, Task],
+    turns_by_conversation: Mapping[str, tuple[str, ...]],
+) -> dict[str, Any]:
+    """Return the launch of one task or conversation repeat."""
+    launch = {AGENT_TYPE_KEY: _reader_agent_type(revision, condition), CONDITION_KEY: condition}
+    if task in task_by_id:
+        return {**launch, TASK_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: task_by_id[task].message}
+    first_turn, *later_turns = turns_by_conversation[task]
+    return {**launch, CONVERSATION_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: first_turn, SEND_MESSAGES_KEY: later_turns}
