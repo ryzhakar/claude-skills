@@ -1,14 +1,12 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
 
 import numpy
 import pytest
-import yaml
 
-from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
+from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, write_file, write_record
 from instruction_eval.scores import BOOTSTRAP_SEED, revision_score
+from series_fixtures import Reply, write_agent_series, write_origins, write_yaml
 
-HASH = "a" * 64
 DEMANDS = {
     "demands": [
         {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
@@ -41,60 +39,16 @@ COLLECTED_PACKET = {
     "accepted": 1,
     "judge_model": "claude-opus-4-1",
     "transcript": "/tmp/transcripts/judge.jsonl",
-    "transcript_hash": HASH,
+    "transcript_hash": "a" * 64,
     "anchors": {"breach_difference": {"d-judge": 0.0}, "done_agreement": 1.0},
 }
 
 
-@dataclass(frozen=True)
-class Reply:
-    """One reply of the fixture revision: its origin, its judge verdict, and its detector count."""
-
-    id: str
-    condition: str
-    task: str
-    repeat: int = 1
-    turn: int | None = None
-    split: str = "open"
-    judged: int = 0
-    hedges: int = 0
-    dropped: int = 0
-    done: bool | None = True
-    key: bool | None = None
-    kind: str = "answer"
-    borrowed_from: str | None = None
-
-    @property
-    def packet(self) -> str:
-        """Return the packet the reply sits in: its task, or its conversation turn."""
-        return self.task if self.turn is None else f"{self.task}-turn-{self.turn}"
-
-    def path_in(self, revision: str) -> str:
-        """Return the reply file the origin names, a borrowed reply's in the revision it names."""
-        return reply_path(self.borrowed_from or revision, self.condition, self.task, self.repeat, self.turn)
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document, sort_keys=False))
-
-
-def origin(reply: Reply) -> dict:
-    """Build the reply's origin entry."""
-    entry = {"packet": reply.packet, "condition": reply.condition, "task": reply.task, "split": reply.split, "repeat": reply.repeat, "borrowed_from": reply.borrowed_from}
-    return entry if reply.turn is None else {**entry, "turn": reply.turn}
-
-
 def write_series(files: SeriesFolder, gate: dict) -> None:
     """Write the series records every revision of the fixture shares."""
-    series = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
-    write_record(files, "series.yaml", series, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
-    write_yaml(files, "3-tasks.yaml", TASKS)
+    write_agent_series(files, DEMANDS, TASKS, ANCHORS)
     write_yaml(files, "7-gate.yaml", gate)
     write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
-    write_record(files, "6-judge/anchors.yaml", ANCHORS, [])
     for condition in CONDITIONS:
         write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
 
@@ -104,20 +58,16 @@ def write_revision(files: SeriesFolder, revision: str, replies: Sequence[Reply])
     for reply in replies:
         if reply.borrowed_from is None:
             write_file(files, reply.path_in(revision), f"reply {reply.id}".encode())
-    packets = sorted({reply.packet for reply in replies})
-    ids = {reply.id: origin(reply) for reply in replies}
-    anchor_ids = {packet: f"b{index:04x}a0a0" for index, packet in enumerate(packets)}
-    ids.update({anchor_id: {"packet": packet, "anchor": "a-one"} for packet, anchor_id in anchor_ids.items()})
-    write_record(files, f"{revision}/6-origins.yaml", {"ids": ids, "packets": dict.fromkeys(packets, HASH)}, [])
-    for packet in packets:
+    anchor_ids = write_origins(files, revision, replies, "a-one")
+    for packet, anchor_id in anchor_ids.items():
         entries = [
             {"id": reply.id, "breaches": {"d-judge": reply.judged, "d-dropped": reply.dropped}, "done": reply.done, "kind": reply.kind, "notes": ""}
             for reply in replies
             if reply.packet == packet
         ]
-        anchor_entry = {"id": anchor_ids[packet], "breaches": {"d-judge": 0, "d-dropped": 0}, "done": True, "kind": "answer", "notes": ""}
+        anchor_entry = {"id": anchor_id, "breaches": {"d-judge": 0, "d-dropped": 0}, "done": True, "kind": "answer", "notes": ""}
         write_yaml(files, f"{revision}/7-verdicts/{packet}/k1.yaml", {"verdicts": [*entries, anchor_entry]})
-    write_record(files, f"{revision}/7-collected.yaml", {"packets": dict.fromkeys(packets, COLLECTED_PACKET)}, [])
+    write_record(files, f"{revision}/7-collected.yaml", {"packets": dict.fromkeys(anchor_ids, COLLECTED_PACKET)}, [])
     detectors = [{"id": reply.id, "breaches": {"d-hedge": reply.hedges}, "done_by_answer_key": reply.key} for reply in replies]
     write_record(files, f"{revision}/7-detectors.yaml", {"verdicts": detectors}, [])
 

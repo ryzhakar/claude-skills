@@ -1,15 +1,13 @@
 import re
-from dataclasses import dataclass
 
 import pytest
-import yaml
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
+from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, write_file, write_record
 from instruction_eval.scores import revision_detect
+from series_fixtures import Reply, write_agent_series, write_origins
 
-HASH = "a" * 64
 DEMANDS = {
     "demands": [
         {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
@@ -33,75 +31,39 @@ AGENT_COST = {"input_tokens": 1, "cache_creation_input_tokens": 0, "cache_read_i
 FENCED_REPLY = "aaaa aaa. This sentence has many words. Short one.\n\n```\naa aa aa answer-42 This fenced sentence has many words.\n```\nDone now.\n"
 
 
-@dataclass(frozen=True)
-class Reply:
-    """One reply of the fixture revision: its origin and its text."""
-
-    id: str
-    condition: str
-    task: str
-    text: str
-    repeat: int = 1
-    turn: int | None = None
-    split: str = "open"
-    borrowed_from: str | None = None
-
-    def path_in(self, revision: str) -> str:
-        """Return the reply file the origin names, a borrowed reply's in the revision it names."""
-        return reply_path(self.borrowed_from or revision, self.condition, self.task, self.repeat, self.turn)
-
-    def origin(self) -> dict:
-        """Return the reply's origin entry."""
-        packet = self.task if self.turn is None else f"{self.task}-turn-{self.turn}"
-        entry = {"packet": packet, "condition": self.condition, "task": self.task, "split": self.split, "repeat": self.repeat, "borrowed_from": self.borrowed_from}
-        return entry if self.turn is None else {**entry, "turn": self.turn}
-
-    def record(self) -> dict:
-        """Return the reply record an agent reader's collection writes."""
-        record = {
-            "condition": self.condition,
-            "task": self.task,
-            "split": self.split,
-            "repeat": self.repeat,
-            "message": "Explain.",
-            "text": self.text,
-            "model": "claude-sonnet-4-5",
-            "reader_kind": "agent",
-            "started": "2026-10-14T10:00:00+00:00",
-            "seconds": 1.0,
-            "transcript": "/tmp/transcripts/reader.jsonl",
-            "transcript_hash": HASH,
-            "cost": AGENT_COST,
-        }
-        return record if self.turn is None else {**record, "turn": self.turn}
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document, sort_keys=False))
+def reply_record(reply: Reply) -> dict:
+    """Return the reply record an agent reader's collection writes for the reply."""
+    record = {
+        "condition": reply.condition,
+        "task": reply.task,
+        "split": reply.split,
+        "repeat": reply.repeat,
+        "message": "Explain.",
+        "text": reply.text,
+        "model": "claude-sonnet-4-5",
+        "reader_kind": "agent",
+        "started": "2026-10-14T10:00:00+00:00",
+        "seconds": 1.0,
+        "transcript": "/tmp/transcripts/reader.jsonl",
+        "transcript_hash": "a" * 64,
+        "cost": AGENT_COST,
+    }
+    return record if reply.turn is None else {**record, "turn": reply.turn}
 
 
 def write_series(files: SeriesFolder) -> None:
     """Write the series records every revision of the fixture shares."""
-    series = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
-    write_record(files, "series.yaml", series, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
-    write_yaml(files, "3-tasks.yaml", TASKS)
-    write_record(files, "6-judge/anchors.yaml", ANCHORS, [])
+    write_agent_series(files, DEMANDS, TASKS, ANCHORS)
 
 
 def write_revision(files: SeriesFolder, revision: str, replies: list[Reply]) -> None:
-    """Write the revision's condition texts, its own reply records, and its origins holding one anchor."""
+    """Write the revision's condition texts, its own reply records, and its origins, each packet carrying one anchor."""
     for condition in {reply.condition for reply in replies if reply.borrowed_from is None}:
         write_file(files, f"{revision}/4-conditions/{condition}.md", condition.encode())
     for reply in replies:
         if reply.borrowed_from is None:
-            write_record(files, reply.path_in(revision), reply.record(), [])
-    ids = {reply.id: reply.origin() for reply in replies}
-    ids["b0000a0a0"] = {"packet": replies[0].origin()["packet"], "anchor": "a-one"}
-    packets = {origin["packet"] for origin in ids.values()}
-    write_record(files, f"{revision}/6-origins.yaml", {"ids": ids, "packets": dict.fromkeys(packets, HASH)}, [])
+            write_record(files, reply.path_in(revision), reply_record(reply), [])
+    write_origins(files, revision, replies, "a-one")
 
 
 def detected_series(tmp_path, replies: list[Reply]) -> SeriesFolder:
