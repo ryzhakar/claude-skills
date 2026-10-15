@@ -321,10 +321,20 @@ def judging_states(
 ) -> dict[str, JudgingState]:
     """Return each packet of the revision's origins with its judging state, refusing a packet holding three failed judgings."""
     records = SeriesRecords(files)
-    origins = records.origins(revision)
-    calibration = records.calibration()
+    return _judging_states(records, revision, records.origins(revision), records.calibration(), transcripts, read_transcript)
+
+
+def _judging_states(
+    records: SeriesRecords,
+    revision: str,
+    origins: Record,
+    calibration: Record,
+    transcripts: Sequence["Transcript"],
+    read_transcript: Callable[[Path], bytes],
+) -> dict[str, JudgingState]:
+    """Return each packet of the loaded origins with its judging state under the loaded calibration, refusing a packet holding three failed judgings."""
     judgings = _Judgings(
-        files=files,
+        files=records.files,
         revision=revision,
         transcripts=transcripts,
         read_transcript=read_transcript,
@@ -775,11 +785,12 @@ def judge_prepare(
     """Write the next judging of each packet with no accepted or pending judging and return a pending line per packet awaiting its judge, then the launch list of the judgings written."""
     _refuse_unusable_series(files, JUDGE_PREPARE_COMMAND)
     _refuse_outside_neutral_login(environ, home, working_dir)
-    states = judging_states(files, revision, transcripts, read_transcript)
     records = SeriesRecords(files)
+    origins = records.origins(revision)
     calibration = records.calibration()
+    states = _judging_states(records, revision, origins, calibration, transcripts, read_transcript)
     brief = _accepted_brief(files, calibration)
-    packets = _blinded_packets(files, revision, records)
+    packets = _blinded_packets(files, revision, origins)
     reader_model = records.reader().model
     needed = {_judging_agent_type(revision, packet, state.judging): (packet, state.judging) for packet, state in states.items() if isinstance(state, NeedsJudging)}
     definitions = {
@@ -794,9 +805,9 @@ def judge_prepare(
     return pending + _launch_list(definitions)
 
 
-def _blinded_packets(files: SeriesFolder, revision: str, records: SeriesRecords) -> dict[str, str]:
+def _blinded_packets(files: SeriesFolder, revision: str, origins: Record) -> dict[str, str]:
     """Return the text of each packet the revision's origins hash, by packet id, refusing a packet whose bytes no longer hash as blinded."""
-    return {packet: _blinded_packet(files, revision, packet, packet_hash) for packet, packet_hash in records.origins(revision)["packets"].items()}
+    return {packet: _blinded_packet(files, revision, packet, packet_hash) for packet, packet_hash in origins["packets"].items()}
 
 
 def _blinded_packet(files: SeriesFolder, revision: str, packet: str, packet_hash: str) -> str:
