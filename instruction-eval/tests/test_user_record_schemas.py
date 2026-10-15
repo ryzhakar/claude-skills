@@ -1,3 +1,4 @@
+import math
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -350,7 +351,10 @@ def test_gate_refuses_a_repeated_comparison():
         ({"budget": "unlimited"}, "budget"),
         ({"budget": {"unit": "dollars", "ceiling": 5}}, "budget.unit"),
         ({"budget": {"unit": "seconds", "ceiling": 0}}, "budget.ceiling"),
+        ({"budget": {"unit": "seconds", "ceiling": math.inf}}, "budget.ceiling"),
         ({"checks": [{"compares": "instruction-vs-empty", "gap": 0}]}, "checks[0].gap"),
+        ({"checks": [{"compares": "instruction-vs-empty", "gap": math.nan}]}, "checks[0].gap"),
+        ({"checks": [{"compares": "instruction-vs-empty", "gap": math.inf}]}, "checks[0].gap"),
         ({"checks": [{"compares": "instruction-vs-source", "gap": 1}]}, "checks[0].compares"),
     ],
 )
@@ -444,6 +448,7 @@ def test_hypothesis_refuses_a_cause_inside_the_change():
         ({"change": {"action": "move", "sentence": 4, "to": 0}}, "change.to"),
         ({"predicted_movement": {"direction": "sideways", "size": 1}}, "predicted_movement.direction"),
         ({"predicted_movement": {"direction": "up", "size": 0}}, "predicted_movement.size"),
+        ({"predicted_movement": {"direction": "up", "size": math.nan}}, "predicted_movement.size"),
     ],
 )
 def test_hypothesis_refuses_a_malformed_key(changes, named):

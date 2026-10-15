@@ -1,5 +1,6 @@
 """Typed records of a series, built from parsed YAML documents and refused when malformed."""
 
+import math
 import re
 from collections.abc import Callable, Mapping
 from collections.abc import Set as AbstractSet
@@ -720,10 +721,10 @@ def read_number(value: object, where: str) -> float:
 
 
 def read_positive_number(value: object, where: str) -> float:
-    """Return a number above 0."""
+    """Return a finite number above 0."""
     number = read_number(value, where)
-    if number <= 0:
-        raise RecordRefused(f"{where}: expected a number > 0, got {value!r}")
+    if not 0 < number < math.inf:
+        raise RecordRefused(f"{where}: expected a finite number > 0, got {value!r}")
     return number
 
 
