@@ -267,3 +267,17 @@ def test_a_later_revision_asks_its_own_replies_against_the_frozen_fingerprint_re
     record = load(files, "r2/5-replies/instruction/t-open/repeat-1.yaml")
     assert set(record["inputs"]) == later_reads()
     assert record["fingerprint_hash"] == reader_fingerprint(files, stub_fingerprint).fingerprint_hash
+
+
+@pytest.mark.parametrize("ceiling, refused", [(9, True), (10, False)])
+def test_from_r2_a_ceiling_refuses_an_ask_whose_replies_at_r1s_mean_cost_would_pass_it(tmp_path, ceiling, refused):
+    files = later_revision_series(tmp_path, {"unit": "seconds", "ceiling": ceiling})
+    reader = StubReader()
+
+    if refused:
+        with pytest.raises(Refusal, match=rf"^projected cost 10 exceeds ceiling {ceiling}$"):
+            revision_ask(files, "r2", [], reader, stub_fingerprint)
+        assert reader.calls == []
+    else:
+        revision_ask(files, "r2", [], reader, stub_fingerprint)
+        assert len(reader.calls) == 4

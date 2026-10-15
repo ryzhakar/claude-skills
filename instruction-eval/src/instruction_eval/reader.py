@@ -12,7 +12,16 @@ import yaml
 
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
 from instruction_eval.coverage import coverage_check, split_sentences
-from instruction_eval.gate import OUTCOME_FILE, revision_number
+from instruction_eval.gate import (
+    OUTCOME_FILE,
+    BudgetRefusal,
+    _cost_so_far,
+    _earlier_outcomes,
+    _reply_cost,
+    _stop_budget,
+    refuse_unaffordable_ask,
+    revision_number,
+)
 from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
 from instruction_eval.records import (
     AGENT_READER,
@@ -1071,11 +1080,25 @@ def revision_ask(
     reader = records.reader()
     coverage_check(files, revision)
     texts = _verified_condition_texts(files, revision, records, reader)
+    asked = _asked_replies(files, revision, records, conditions)
+    _refuse_unaffordable_ask(files, records, revision, len(asked))
     if isinstance(reader, AgentReader):
         return agent_launch_list(files, revision, conditions)
-    asked = _asked_replies(files, revision, records, conditions)
     _answer_replies(files, revision, records, reader, texts, asked, run_reader, run_fingerprint)
     return ""
+
+
+def _refuse_unaffordable_ask(files: SeriesFolder, records: SeriesRecords, revision: str, ask_reply_count: int) -> None:
+    """Refuse an ask of a later revision whose replies, each at r1's mean cost, take the cost so far past the gate's ceiling."""
+    budget = None if revision == FIRST_REVISION else _stop_budget(records.complete_gate().budget)
+    if budget is None:
+        return
+    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _expected_reply_set(files, FIRST_REVISION, records)]
+    cost_so_far = _cost_so_far(_earlier_outcomes(files, records, revision), budget)
+    try:
+        refuse_unaffordable_ask(budget, first_replies, cost_so_far, ask_reply_count)
+    except BudgetRefusal as unaffordable:
+        raise Refusal(str(unaffordable)) from None
 
 
 def _refuse_collected_revision(files: SeriesFolder, revision: str) -> None:
