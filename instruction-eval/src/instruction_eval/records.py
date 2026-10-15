@@ -115,8 +115,8 @@ def _hash_input(read_file: Callable[[str], bytes], parse_file: Callable[[str], A
     """Hash a whole series file, or for `<path>#<key>` that key's value dumped as canonical YAML."""
     file_path, separator, key = entry.partition(KEY_SEPARATOR)
     if not separator:
-        return _sha256(read_file(file_path))
-    return _sha256(_dump_canonical_yaml(_read_top_level_value(parse_file(file_path), entry, key)))
+        return sha256(read_file(file_path))
+    return sha256(_dump_canonical_yaml(_read_top_level_value(parse_file(file_path), entry, key)))
 
 
 def _read_top_level_value(document: Any, entry: str, key: str) -> Any:
@@ -154,7 +154,7 @@ def _dump_canonical_yaml(value: Any) -> bytes:
     return yaml.safe_dump(value, sort_keys=True, default_flow_style=False, allow_unicode=True).encode()
 
 
-def _sha256(content: bytes) -> str:
+def sha256(content: bytes) -> str:
     """Return the lowercase sha256 hex digest of the bytes."""
     return hashlib.sha256(content).hexdigest()
 
