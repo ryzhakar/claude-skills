@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "Summarize the release notes in two lines."}, "timestamp": "2026-10-14T19:00:30.000Z"}
+{"type": "attachment", "attachment": {"type": "session_context", "context": {"gitStatus": "clean"}}, "timestamp": "2026-10-14T19:00:31.000Z"}
+{"type": "assistant", "message": {"model": "claude-opus-5-5", "id": "msg_A", "role": "assistant", "content": [{"type": "text", "text": "Two lines."}], "usage": {"input_tokens": 3, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "output_tokens": 2}}, "timestamp": "2026-10-14T19:00:32.000Z"}

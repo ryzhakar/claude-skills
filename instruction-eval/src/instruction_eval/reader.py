@@ -1,12 +1,14 @@
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, fields
 from datetime import datetime
 from enum import Enum
 from itertools import accumulate
 from pathlib import Path
 from typing import Any, TypeVar
+
+from instruction_eval.records import Refusal
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
@@ -128,6 +130,7 @@ _USER_ENTRY_TYPE = "user"
 _ASSISTANT_ENTRY_TYPE = "assistant"
 _TEXT_BLOCK_TYPE = "text"
 _SEND_MESSAGE_WRAPPER_OPENING = "The coordinator sent a message while you were working:\n"
+_SEND_MESSAGE_WRAPPER_CLOSING = "\n\nAddress this before completing your current task."
 _TYPE_KEY = "type"
 _MESSAGE_KEY = "message"
 _CONTENT_KEY = "content"
@@ -221,13 +224,19 @@ def _parse_transcript_line(
     transcript: Path, number: int, raw_line: bytes, end: int
 ) -> _TurnOpening | _AssistantChunk | None:
     """Read one transcript line into what turn pairing uses, refusing with transcript, line, and fault when it cannot."""
-    entry = _decode_transcript_line(transcript, number, raw_line)
-    if not isinstance(entry, dict):
-        raise ValueError(f"{transcript}: line {number} is not a JSON object")
+    entry = _decode_object_line(transcript, number, raw_line)
     try:
         return _entry_from_json(entry, end)
     except _MalformedEntry as fault:
         raise ValueError(f"{transcript}: line {number} {fault}") from fault
+
+
+def _decode_object_line(transcript: Path, number: int, raw_line: bytes) -> dict[str, Any]:
+    """Decode one transcript line as a JSON object, refusing with the transcript and line number when it is not."""
+    entry = _decode_transcript_line(transcript, number, raw_line)
+    if not isinstance(entry, dict):
+        raise ValueError(f"{transcript}: line {number} is not a JSON object")
+    return entry
 
 
 def _decode_transcript_line(transcript: Path, number: int, raw_line: bytes) -> object:
@@ -456,3 +465,103 @@ def _refuse_memory_files_in_ancestry(
             memory_file = folder / relative_path
             if memory_file != user_memory and memory_file.exists():
                 raise NeutralLoginRefused(f"{memory_file} exists")
+
+
+_ATTACHMENT_ENTRY_TYPE = "attachment"
+_ATTACHMENT_KEY = "attachment"
+_INSTRUCTIONS_ATTACHMENT_TYPE = "instructions"
+_NESTED_MEMORY_ATTACHMENT_TYPE = "nested_memory"
+_FILES_KEY = "files"
+_PATH_KEY = "path"
+_HOOK_EVENT_KEY = "hookEvent"
+_SUBAGENT_START_EVENT = "SubagentStart"
+_HOOK_TEXT_KEYS = ("stdout", "content")
+_SUBAGENT_START_EXPOSURE = "shows SubagentStart text"
+_TOOL_USE_BLOCK_SUFFIX = "tool_use"
+_NAME_KEY = "name"
+
+
+def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Sequence[str], pinned_model: str) -> None:
+    """Refuse a reader transcript showing a memory file, SubagentStart text, any tool use, a turn message other than the task's, or a model other than the pinned one."""
+    entries = _decoded_entries(transcript, content)
+    exposures = (
+        *_outside_context_exposures(entries),
+        *_tool_use_exposures(entries, _no_tool_use_allowed),
+        *_turn_message_exposures(transcript, content, turns),
+        *_model_exposures(entries, pinned_model),
+    )
+    if exposures:
+        raise Refusal(f"{transcript}: {exposures[0]}")
+
+
+def _decoded_entries(transcript: Path, content: bytes) -> tuple[dict[str, Any], ...]:
+    """Decode each non-blank transcript line as a JSON object, refusing with the transcript and line number when one is not."""
+    return tuple(
+        _decode_object_line(transcript, number, raw_line)
+        for number, raw_line in enumerate(content.splitlines(), 1)
+        if raw_line.strip()
+    )
+
+
+def _outside_context_exposures(entries: Iterable[dict[str, Any]]) -> tuple[str, ...]:
+    """Name each memory file and each SubagentStart text the transcript's attachments show."""
+    attachments = [entry[_ATTACHMENT_KEY] for entry in entries if entry.get(_TYPE_KEY) == _ATTACHMENT_ENTRY_TYPE]
+    return tuple(exposure for attachment in attachments for exposure in _attachment_exposures(attachment))
+
+
+def _attachment_exposures(attachment: dict[str, Any]) -> tuple[str, ...]:
+    """Name each memory file and each SubagentStart text one attachment shows."""
+    memory_exposures = tuple(f"shows memory file {path}" for path in _memory_file_paths(attachment))
+    return (*memory_exposures, *_subagent_start_exposures(attachment))
+
+
+def _subagent_start_exposures(attachment: dict[str, Any]) -> tuple[str, ...]:
+    """Name the SubagentStart text an attachment shows, when its hook output or added context is non-empty."""
+    shows_text = attachment.get(_HOOK_EVENT_KEY) == _SUBAGENT_START_EVENT and any(
+        attachment.get(key) for key in _HOOK_TEXT_KEYS
+    )
+    return (_SUBAGENT_START_EXPOSURE,) if shows_text else ()
+
+
+def _memory_file_paths(attachment: dict[str, Any]) -> tuple[str, ...]:
+    """Return the path of each memory file an attachment carries into the agent's context."""
+    if attachment.get(_TYPE_KEY) == _INSTRUCTIONS_ATTACHMENT_TYPE:
+        return tuple(file[_PATH_KEY] for file in attachment[_FILES_KEY])
+    if attachment.get(_TYPE_KEY) == _NESTED_MEMORY_ATTACHMENT_TYPE:
+        return (attachment[_PATH_KEY],)
+    return ()
+
+
+def _tool_use_exposures(entries: Iterable[dict[str, Any]], allowed: Callable[[dict[str, Any]], bool]) -> tuple[str, ...]:
+    """Name each tool use of the transcript's assistant messages that the allowance refuses."""
+    return tuple(
+        f"shows tool use {block.get(_NAME_KEY)}"
+        for entry in entries
+        if entry.get(_TYPE_KEY) == _ASSISTANT_ENTRY_TYPE
+        for block in entry[_MESSAGE_KEY][_CONTENT_KEY]
+        if block.get(_TYPE_KEY, "").endswith(_TOOL_USE_BLOCK_SUFFIX) and not allowed(block)
+    )
+
+
+def _no_tool_use_allowed(tool_use: dict[str, Any]) -> bool:
+    """Allow no tool use."""
+    return False
+
+
+def _turn_message_exposures(transcript: Path, content: bytes, turns: Sequence[str]) -> tuple[str, ...]:
+    """Name each turn whose message differs from the task's turn as the reader receives it, the SendMessage wrapper kept on later turns."""
+    received = (*turns[:1], *(_SEND_MESSAGE_WRAPPER_OPENING + turn + _SEND_MESSAGE_WRAPPER_CLOSING for turn in turns[1:]))
+    openings = [entry for entry in _read_transcript_entries(transcript, content) if isinstance(entry, _TurnOpening)]
+    return tuple(
+        f"turn {number} message differs from the task's"
+        for number, opening in enumerate(openings, 1)
+        if number > len(received) or opening.message != received[number - 1]
+    )
+
+
+def _model_exposures(entries: Iterable[dict[str, Any]], pinned_model: str) -> tuple[str, ...]:
+    """Name each assistant message model other than the pinned one."""
+    models = dict.fromkeys(
+        entry[_MESSAGE_KEY][_MODEL_KEY] for entry in entries if entry.get(_TYPE_KEY) == _ASSISTANT_ENTRY_TYPE
+    )
+    return tuple(f"model {model} is not the pinned {pinned_model}" for model in models if model != pinned_model)
