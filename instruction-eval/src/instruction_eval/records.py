@@ -6,9 +6,9 @@ import math
 import os
 import re
 import tempfile
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Container, Iterable, Mapping
 from collections.abc import Set as AbstractSet
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -33,6 +33,10 @@ class SeriesFolder:
     def read_bytes(self, path: str) -> bytes:
         """Return the bytes at `path`, raising FileNotFoundError when it is absent."""
         return (self.root / path).read_bytes()
+
+    def holds(self, path: str) -> bool:
+        """Tell whether a file exists at `path`."""
+        return (self.root / path).is_file()
 
     def write_once(self, path: str, content: bytes) -> None:
         """Write `content` whole to `path`, raising FileExistsError when it exists."""
@@ -81,13 +85,18 @@ def _read_record(files: SeriesFolder, path: str) -> bytes:
 
 def _parse_record(content: bytes, path: str) -> dict[str, Any]:
     """Parse a CLI record, refusing it as malformed unless it is a YAML mapping holding an `inputs` mapping of strings to strings."""
-    try:
-        record = yaml.safe_load(content)
-    except yaml.YAMLError:
-        raise Refusal(f"malformed record: {path} (not YAML)") from None
+    record = _parse_yaml(content, path)
     if not isinstance(record, dict) or not _is_text_map(record.get(INPUTS_KEY)):
         raise Refusal(f"malformed record: {path} (no inputs map)")
     return record
+
+
+def _parse_yaml(content: bytes, path: str) -> Any:
+    """Parse the YAML record at `path`, refusing it as malformed when it is not YAML."""
+    try:
+        return yaml.safe_load(content)
+    except yaml.YAMLError:
+        raise Refusal(f"malformed record: {path} (not YAML)") from None
 
 
 def _is_text_map(value: Any) -> bool:
@@ -1514,3 +1523,334 @@ def read_bounded_number(value: object, where: str, lowest: float, highest: float
     if not lowest <= number <= highest:
         raise RecordRefused(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
     return number
+
+
+Parsed = TypeVar("Parsed")
+
+SERIES_RECORD = "series.yaml"
+DEMANDS_RECORD = "2-demands.yaml"
+TASKS_RECORD = "3-tasks.yaml"
+CONDITIONS_RECORD = "4-conditions.yaml"
+READER_RECORD = "5-reader.yaml"
+GATE_RECORD = "7-gate.yaml"
+FROZEN_RECORD = "8-frozen.yaml"
+STOP_RECORD = "9-stop.yaml"
+CALIBRATION_RECORD = "6-judge/calibration.yaml"
+ANCHORS_RECORD = "6-judge/anchors.yaml"
+FIRST_REVISION = "r1"
+OVERREACH_TARGET = "overreach"
+COMPLETION_TARGET = "completion"
+DEMAND_REFERENCE = "demand"
+GATE_DEMAND_REFERENCE = "gate demand"
+JUDGE_DEMAND_REFERENCE = "judge demand"
+DETECTOR_DEMAND_REFERENCE = "detector demand"
+DETECTOR_DEMANDS = (PatternDemand, LongSentencesDemand)
+TASK_REFERENCE = "task"
+CONDITION_REFERENCE = "condition"
+REVISION_REFERENCE = "revision"
+BLIND_ID_REFERENCE = "blind id"
+ANCHOR_REFERENCE = "anchor"
+PACKET_REFERENCE = "packet"
+REPLY_REFERENCE = "reply"
+ATTEMPT_REFERENCE = "attempt"
+RATING_REFERENCE = "rating"
+
+
+@dataclass(frozen=True)
+class CompleteGate:
+    """The `7-gate.yaml` record with every key written, as `series freeze` and every later command read it."""
+
+    repeats: int
+    level: float
+    done_by: DoneBy
+    checks: tuple[GateCheck, ...]
+    keep_rule: KeepRule
+    budget: Budget | NoBudget
+
+
+@dataclass(frozen=True)
+class SeriesRecords:
+    """The one typed loader of every series record, refusing a record whose schema, inputs, or references break."""
+
+    files: SeriesFolder
+
+    def series(self) -> Series:
+        """Load `series.yaml`."""
+        return _parsed(SERIES_RECORD, parse_series, load_record(self.files, SERIES_RECORD))
+
+    def demands(self) -> Demands:
+        """Load `2-demands.yaml`."""
+        return _parsed(DEMANDS_RECORD, parse_demands, _read_document(self.files, DEMANDS_RECORD))
+
+    def tasks(self) -> Tasks:
+        """Load `3-tasks.yaml`, each task tempting a demand of the series or `overreach`."""
+        tasks = _parsed(TASKS_RECORD, parse_tasks, _read_document(self.files, TASKS_RECORD))
+        _resolve(TASKS_RECORD, DEMAND_REFERENCE, [task.tempts for task in tasks.tasks], {*self._demand_ids(), OVERREACH_TARGET})
+        return tasks
+
+    def conditions(self) -> Conditions:
+        """Load `4-conditions.yaml`, its controls checked against the series sources."""
+        series = self.series()
+        return _parsed(CONDITIONS_RECORD, lambda document: parse_conditions(document, series), _read_document(self.files, CONDITIONS_RECORD))
+
+    def reader(self) -> Reader:
+        """Load `5-reader.yaml`, its kind the series reader kind."""
+        reader = _parsed(READER_RECORD, parse_reader, _read_document(self.files, READER_RECORD))
+        self._refuse_other_reader_kind(READER_RECORD, AGENT_KIND if isinstance(reader, AgentReader) else COMMAND_KIND)
+        return reader
+
+    def gate(self) -> Gate:
+        """Load `7-gate.yaml`, any key still unwritten before freeze and every key written once the series is frozen."""
+        gate = self._written_gate()
+        if self.files.holds(FROZEN_RECORD):
+            _completed(gate)
+        return gate
+
+    def complete_gate(self) -> CompleteGate:
+        """Load `7-gate.yaml`, refusing an absent key."""
+        return _completed(self._written_gate())
+
+    def plan(self, attempt: int) -> Plan:
+        """Load a calibration attempt's `plan.yaml`."""
+        path = f"{_attempt_folder(attempt)}/plan.yaml"
+        return _parsed(path, parse_plan, _read_document(self.files, path))
+
+    def hypothesis(self, revision: str) -> Hypothesis:
+        """Load a revision's `1-hypothesis.yaml`, its failing demand a gate demand or `completion`."""
+        path = f"{revision}/1-hypothesis.yaml"
+        hypothesis = _parsed(path, parse_hypothesis, _read_document(self.files, path))
+        _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self._gate_demand_ids(), COMPLETION_TARGET})
+        _resolve(path, BLIND_ID_REFERENCE, hypothesis.replies_read, self.origins(_parent_revision(revision))["ids"])
+        return hypothesis
+
+    def coverage(self, revision: str) -> Coverage:
+        """Load a revision's `3-coverage.yaml`, every demand it maps one of the series."""
+        path = f"{revision}/3-coverage.yaml"
+        coverage = _parsed(path, parse_coverage, _read_document(self.files, path))
+        sentence_demands = [demand for demands in coverage.sentences.values() for demand in demands]
+        _resolve(path, DEMAND_REFERENCE, [*coverage.demands, *sentence_demands], self._demand_ids())
+        return coverage
+
+    def revision(self, revision: str) -> Record:
+        """Load a revision's `2-revision.yaml`, its parent a revision of the series."""
+        path = revision_record_path(revision)
+        record = self._command_record(path, RecordKind.REVISION)
+        parents = [] if record["parent"] is None else [record["parent"]]
+        self._resolve_files(path, REVISION_REFERENCE, parents, revision_record_path)
+        return record
+
+    def reply(self, path: str) -> Record:
+        """Load the reply record at `path`, its task one of the series, its condition one its revision prepared, its reader kind the series'."""
+        reply = self._command_record(path, RecordKind.REPLY)
+        self._refuse_other_reader_kind(path, reply["reader_kind"])
+        tasks = self.tasks()
+        _resolve(path, TASK_REFERENCE, [reply["task"]], {item.id for item in (*tasks.tasks, *tasks.conversations)})
+        revision = path.partition("/")[0]
+        self._resolve_files(path, CONDITION_REFERENCE, [reply["condition"]], functools.partial(condition_path, revision))
+        return reply
+
+    def origins(self, revision: str) -> Record:
+        """Load a revision's `6-origins.yaml`, each reply origin naming a reply file and each anchor origin an anchor."""
+        return self._origins(f"{revision}/6-origins.yaml", revision)
+
+    def attempt_origins(self, attempt: int) -> Record:
+        """Load a calibration attempt's `origins.yaml`, each origin naming an r1 reply file."""
+        return self._origins(f"{_attempt_folder(attempt)}/origins.yaml", FIRST_REVISION)
+
+    def verdict(self, revision: str, packet: str, judging: int) -> Record:
+        """Load the verdict of judging `judging` of a revision's packet, judging that packet's blind ids on judge demands only."""
+        packet_ids = {blind_id for blind_id, origin in self.origins(revision)["ids"].items() if origin["packet"] == packet}
+        return self._verdict_shaped(f"{revision}/7-verdicts/{packet}/k{judging}.yaml", packet_ids)
+
+    def rating(self, attempt: int, rating: str) -> Record:
+        """Load a calibration attempt's rating file named `rating`, rating the attempt's blind ids on judge demands only."""
+        return self._verdict_shaped(f"{_attempt_folder(attempt)}/{rating}.yaml", self.attempt_origins(attempt)["ids"])
+
+    def agreement(self, attempt: int) -> Record:
+        """Load a calibration attempt's `agreement.yaml`, measuring judge demands only over the attempt's rating files."""
+        path = f"{_attempt_folder(attempt)}/agreement.yaml"
+        agreement = self._command_record(path, RecordKind.AGREEMENT)
+        _resolve(path, JUDGE_DEMAND_REFERENCE, agreement["demands"], self._demand_ids(JudgeDemand))
+        self._resolve_files(path, RATING_REFERENCE, agreement["ratings"], lambda rating: f"{_attempt_folder(attempt)}/{rating}")
+        return agreement
+
+    def calibration(self) -> Record:
+        """Load `6-judge/calibration.yaml`, naming an attempt with a plan and measuring judge demands only."""
+        calibration = self._command_record(CALIBRATION_RECORD, RecordKind.CALIBRATION)
+        _resolve(CALIBRATION_RECORD, JUDGE_DEMAND_REFERENCE, calibration["agreement"]["demands"], self._demand_ids(JudgeDemand))
+        self._resolve_files(CALIBRATION_RECORD, ATTEMPT_REFERENCE, [calibration["attempt"]], lambda attempt: f"{_attempt_folder(attempt)}/plan.yaml")
+        return calibration
+
+    def anchors(self) -> Record:
+        """Load `6-judge/anchors.yaml`, each anchor a task of the series counted on judge demands only."""
+        anchors = self._command_record(ANCHORS_RECORD, RecordKind.ANCHORS)
+        _resolve(ANCHORS_RECORD, JUDGE_DEMAND_REFERENCE, _breach_demands(anchors["anchors"]), self._demand_ids(JudgeDemand))
+        _resolve(ANCHORS_RECORD, TASK_REFERENCE, [anchor["task"] for anchor in anchors["anchors"]], {task.id for task in self.tasks().tasks})
+        return anchors
+
+    def collected(self, revision: str) -> Record:
+        """Load a revision's `7-collected.yaml`, each packet one the revision blinded, its anchor agreement over judge demands only."""
+        path = f"{revision}/7-collected.yaml"
+        collected = self._command_record(path, RecordKind.COLLECTED)
+        anchor_demands = [demand for packet in collected["packets"].values() for demand in packet["anchors"]["breach_difference"]]
+        _resolve(path, JUDGE_DEMAND_REFERENCE, anchor_demands, self._demand_ids(JudgeDemand))
+        _resolve(path, PACKET_REFERENCE, collected["packets"], self.origins(revision)["packets"])
+        return collected
+
+    def detectors(self, revision: str) -> Record:
+        """Load a revision's `7-detectors.yaml`, counting the revision's blind ids on detector demands only."""
+        path = f"{revision}/7-detectors.yaml"
+        detectors = self._command_record(path, RecordKind.DETECTORS)
+        _resolve(path, DETECTOR_DEMAND_REFERENCE, _breach_demands(detectors["verdicts"]), self._demand_ids(*DETECTOR_DEMANDS))
+        _resolve(path, BLIND_ID_REFERENCE, [entry["id"] for entry in detectors["verdicts"]], self.origins(revision)["ids"])
+        return detectors
+
+    def scores(self, revision: str) -> Record:
+        """Load a revision's `8-scores.yaml`, scoring the revision's blind ids on demands of the series."""
+        path = f"{revision}/8-scores.yaml"
+        scores = self._command_record(path, RecordKind.SCORES)
+        condition_demands = [demand for condition in scores["by_condition"].values() for demand in condition["demands"]]
+        _resolve(path, DEMAND_REFERENCE, [*_breach_demands(scores["rows"]), *condition_demands], self._demand_ids())
+        row_ids = [row["id"] for row in scores["rows"]]
+        _resolve(path, BLIND_ID_REFERENCE, [*row_ids, *scores["disagreements"]], self.origins(revision)["ids"])
+        return scores
+
+    def outcome(self, revision: str) -> Record:
+        """Load a revision's `9-outcome.yaml`, its parent comparison targeting a gate demand or `completion`."""
+        path = f"{revision}/9-outcome.yaml"
+        outcome = self._command_record(path, RecordKind.OUTCOME)
+        targets = [outcome["parent_comparison"]["target"]] if "parent_comparison" in outcome else []
+        _resolve(path, GATE_DEMAND_REFERENCE, targets, {*self._gate_demand_ids(), COMPLETION_TARGET})
+        return outcome
+
+    def frozen(self) -> Record:
+        """Load `8-frozen.yaml`, its noise over gate demands only."""
+        frozen = self._command_record(FROZEN_RECORD, RecordKind.FROZEN)
+        noise = frozen["noise"]
+        _resolve(FROZEN_RECORD, GATE_DEMAND_REFERENCE, [*noise["demands"], *noise["sigma"]["demands"]], self._gate_demand_ids())
+        return frozen
+
+    def stop(self) -> Record:
+        """Load `9-stop.yaml`, its kept revision one of the series."""
+        stop = self._command_record(STOP_RECORD, RecordKind.STOP)
+        kept = [] if stop["kept"] is None else [stop["kept"]]
+        self._resolve_files(STOP_RECORD, REVISION_REFERENCE, kept, revision_record_path)
+        return stop
+
+    def _written_gate(self) -> Gate:
+        """Load `7-gate.yaml` as the user has written it so far."""
+        return _parsed(GATE_RECORD, parse_gate, _read_document(self.files, GATE_RECORD))
+
+    def _command_record(self, path: str, kind: RecordKind) -> Record:
+        """Load the CLI record at `path`, its inputs re-hashed and its schema checked."""
+        return _parsed(path, functools.partial(parse_record, kind), load_record(self.files, path))
+
+    def _verdict_shaped(self, path: str, blind_ids: Container[str]) -> Record:
+        """Load a verdict-shaped file written by a judge or rater, judging the given blind ids on judge demands only."""
+        verdict = _parsed(path, functools.partial(parse_record, RecordKind.VERDICT), _read_document(self.files, path))
+        _resolve(path, JUDGE_DEMAND_REFERENCE, _breach_demands(verdict["verdicts"]), self._demand_ids(JudgeDemand))
+        _resolve(path, BLIND_ID_REFERENCE, [entry["id"] for entry in verdict["verdicts"]], blind_ids)
+        return verdict
+
+    def _origins(self, path: str, revision: str) -> Record:
+        """Load an origins record whose unborrowed replies live in `revision`, each origin resolved to its packet and its reply or anchor."""
+        origins = self._command_record(path, RecordKind.ORIGINS)
+        entries = origins["ids"].values()
+        _resolve(path, PACKET_REFERENCE, [origin["packet"] for origin in entries], origins["packets"])
+        anchors = [origin[ANCHOR_KEY] for origin in entries if ANCHOR_KEY in origin]
+        if anchors:
+            _resolve(path, ANCHOR_REFERENCE, anchors, {anchor["id"] for anchor in self.anchors()["anchors"]})
+        replies = [_origin_reply_path(origin, revision) for origin in entries if ANCHOR_KEY not in origin]
+        self._resolve_files(path, REPLY_REFERENCE, replies, str)
+        return origins
+
+    def _refuse_other_reader_kind(self, path: str, reader_kind: ReaderKind) -> None:
+        """Refuse the record at `path` when its reader kind differs from the one `series.yaml` holds."""
+        series_kind = self.series().reader_kind
+        if reader_kind != series_kind:
+            raise Refusal(f"reader kind mismatch: {path} ({reader_kind}, {SERIES_RECORD} {series_kind})")
+
+    def _resolve_files(self, path: str, kind: str, names: Iterable[Any], file_of: Callable[[Any], str]) -> None:
+        """Refuse the record at `path` when a `kind` it names has no file at `file_of(name)`."""
+        for name in names:
+            if not self.files.holds(file_of(name)):
+                raise _unresolved(path, kind, name)
+
+    def _demand_ids(self, *variants: type[Demand]) -> set[str]:
+        """Return the ids of the series demands of the given variants, every variant when none is given."""
+        return {demand.id for demand in self.demands().demands if not variants or isinstance(demand, variants)}
+
+    def _gate_demand_ids(self) -> set[str]:
+        """Return the ids of the gate demands: those r1's coverage does not drop."""
+        return {demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped)}
+
+
+def _completed(gate: Gate) -> CompleteGate:
+    """Return the gate with every key written, refusing the first absent key."""
+    keys = {field.name: getattr(gate, field.name) for field in fields(gate)}
+    absent = next((key for key, value in keys.items() if value is None), None)
+    if absent is not None:
+        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{absent}")
+    return CompleteGate(**keys)
+
+
+def _resolve(path: str, kind: str, names: Iterable[str], known: Container[str]) -> None:
+    """Refuse the record at `path` when it names a `kind` outside the known names."""
+    for name in names:
+        if name not in known:
+            raise _unresolved(path, kind, name)
+
+
+def _unresolved(path: str, kind: str, name: object) -> Refusal:
+    """Return the refusal of the record at `path` naming a `kind` the series lacks."""
+    return Refusal(f"unresolved {kind}: {name} ({path})")
+
+
+def _breach_demands(entries: Iterable[Record]) -> list[str]:
+    """Return every demand id the entries' breach maps name."""
+    return [demand for entry in entries for demand in entry["breaches"]]
+
+
+def revision_record_path(revision: str) -> str:
+    """Return the path of a revision's `2-revision.yaml`."""
+    return f"{revision}/2-revision.yaml"
+
+
+def condition_path(revision: str, condition: str) -> str:
+    """Return the path of the condition text a revision prepared."""
+    return f"{revision}/4-conditions/{condition}.md"
+
+
+def reply_path(revision: str, condition: str, task: str, repeat: int, turn: int | None) -> str:
+    """Return the path of one reply: a task's repeat, or with a turn a conversation turn within a repeat."""
+    repeat_path = f"{revision}/5-replies/{condition}/{task}/repeat-{repeat}"
+    return f"{repeat_path}.yaml" if turn is None else f"{repeat_path}/turn-{turn}.yaml"
+
+
+def _origin_reply_path(origin: Record, revision: str) -> str:
+    """Return the reply file a reply origin names, in its borrowed revision or else in `revision`."""
+    home = origin["borrowed_from"] or revision
+    return reply_path(home, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+
+
+def _parent_revision(revision: str) -> str:
+    """Return the id of the revision before `revision`."""
+    return f"r{int(revision.removeprefix('r')) - 1}"
+
+
+def _attempt_folder(attempt: int) -> str:
+    """Return the folder of a calibration attempt."""
+    return f"6-judge/calibration/attempt-{attempt}"
+
+
+def _read_document(files: SeriesFolder, path: str) -> Any:
+    """Read and parse the YAML record at `path`, refusing it absent or not YAML."""
+    return _parse_yaml(_read_record(files, path), path)
+
+
+def _parsed(path: str, parse: Callable[[Any], Parsed], document: Any) -> Parsed:
+    """Return the document parsed by its schema, refusing a schema break as a malformed record at `path`."""
+    try:
+        return parse(document)
+    except (RecordRefused, RecordError) as error:
+        raise Refusal(f"malformed record: {path} ({error})") from None
