@@ -1,12 +1,11 @@
 import hashlib
-import hashlib
 import json
 from pathlib import Path
 
 import pytest
 import yaml
 
-from instruction_eval.judge import AcceptedJudging, AnchorAgreement, AnchorAgreement, NeedsJudging, PendingJudging, judging_states
+from instruction_eval.judge import AcceptedJudging, AnchorAgreement, NeedsJudging, PendingJudging, judging_states
 from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 from series_fixtures import write_agent_series, write_yaml
