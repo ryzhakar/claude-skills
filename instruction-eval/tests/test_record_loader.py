@@ -6,17 +6,9 @@ import yaml
 
 from instruction_eval.records import (
     AgentReader,
-    Conditions,
-    Coverage,
-    Demands,
-    Gate,
-    Hypothesis,
-    Plan,
     Refusal,
-    Series,
     SeriesFolder,
     SeriesRecords,
-    Tasks,
     write_file,
     write_record,
 )
@@ -276,16 +268,16 @@ def files(tmp_path):
 
 def test_every_record_of_a_consistent_series_loads_typed(files):
     records = SeriesRecords(files)
-    assert isinstance(records.series(), Series)
-    assert isinstance(records.demands(), Demands)
-    assert isinstance(records.tasks(), Tasks)
-    assert isinstance(records.conditions(), Conditions)
+    assert records.series().reader_kind == "agent"
+    assert [demand.id for demand in records.demands().demands] == ["d-judge", "d-pattern"]
+    assert [task.id for task in records.tasks().tasks] == ["t-open", "t-sealed", "t-over"]
+    assert records.conditions().controls == ("empty", "aim", "placebo")
     assert records.reader() == AgentReader(model="claude-sonnet-4-5")
-    assert isinstance(records.gate(), Gate)
+    assert records.gate().keep_rule == GATE["keep_rule"]
     assert records.complete_gate().repeats == GATE["repeats"]
-    assert isinstance(records.plan(1), Plan)
-    assert isinstance(records.hypothesis("r2"), Hypothesis)
-    assert isinstance(records.coverage("r1"), Coverage)
+    assert records.plan(1).sample_size == 1
+    assert records.hypothesis("r2").replies_read == ("b00000001",)
+    assert records.coverage("r1").sentences == {1: ("d-judge",)}
     assert records.revision("r2")["parent"] == "r1"
     assert records.reply(REPLY_PATH)["text"] == REPLY["text"]
     assert records.origins("r1")["ids"] == ORIGINS["ids"]
