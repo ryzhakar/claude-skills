@@ -2,32 +2,43 @@
 
 import itertools
 import os
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 
 from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
+from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.demands import demands_check
 from instruction_eval.gate import kept_revision
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
+    CALIBRATION_RECORD,
+    COMMAND_READER,
+    CONDITIONS_RECORD,
+    DEMANDS_RECORD,
     FAIL_OUTCOME,
     FIRST_REVISION,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
+    READER_RECORD,
     SERIES_RECORD,
     STOP_RECORD,
+    TASKS_RECORD,
     UNRESOLVABLE_STOP,
+    GateCheck,
     ReaderKind,
     Record,
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    load_record,
     revision_record_path,
     sha256,
     write_file,
     write_record,
 )
+from instruction_eval.tasks import PLACEBO_SNAPSHOT, ExpectedReply, expected_replies, refuse_missing_replies, tasks_check
 
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
@@ -264,3 +275,89 @@ def revision_ids(files: SeriesFolder) -> Iterator[str]:
     """Return the ids of the revisions, in order, up to the first without a record."""
     revisions = (f"r{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
     return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
+
+
+FREEZE_PARTS = (DEMANDS_RECORD, TASKS_RECORD, CONDITIONS_RECORD, PLACEBO_SNAPSHOT, READER_RECORD)
+FIRST_REVISION_STEPS = {
+    "blinded": f"{FIRST_REVISION}/6-origins.yaml",
+    "judged": f"{FIRST_REVISION}/7-collected.yaml",
+    "detected": f"{FIRST_REVISION}/7-detectors.yaml",
+}
+RECORD_PATTERN = "*.yaml"
+USER_COVERAGE_FILE = "3-coverage.yaml"
+VERDICTS_FOLDER = "7-verdicts"
+DRIFT_COMPARES = "drift"
+NEAR_SOURCE_COMPARES = "instruction-near-source"
+
+
+def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, read_external: Callable[[Path], bytes]) -> None:
+    """Refuse freezing a series lacking a part or a gate key, failing a check, with r1 unmeasured, stale, or read by another reader build than `fingerprint_hash` (a command reader's fresh hash, None for an agent reader), or with a check it cannot measure."""
+    _refuse_missing_parts(files)
+    records = SeriesRecords(files)
+    gate = records.complete_gate()
+    demands_check(files)
+    tasks_check(files, read_external)
+    coverage_check(files, FIRST_REVISION)
+    _refuse_uncalibrated(files)
+    expected = _first_revision_replies(files, records, gate.repeats)
+    refuse_missing_replies(files, expected)
+    _refuse_unmeasured_first_revision(files)
+    _refuse_stale_first_revision_records(files)
+    if records.series().reader_kind == COMMAND_READER:
+        _refuse_other_reader_build(records, [reply.path for reply in expected], fingerprint_hash)
+    _refuse_unmeasurable_checks(gate.checks, records)
+
+
+def _refuse_missing_parts(files: SeriesFolder) -> None:
+    """Refuse the first of the user's parts 2 to 5 and the placebo snapshot that is absent."""
+    missing = next((path for path in FREEZE_PARTS if not files.holds(path)), None)
+    if missing is not None:
+        raise Refusal(f"missing record: {missing}")
+
+
+def _refuse_uncalibrated(files: SeriesFolder) -> None:
+    """Refuse a series without an accepted judge calibration."""
+    if not files.holds(CALIBRATION_RECORD):
+        raise Refusal(f"no {CALIBRATION_RECORD}")
+
+
+def _first_revision_replies(files: SeriesFolder, records: SeriesRecords, repeats: int) -> tuple[ExpectedReply, ...]:
+    """Return the replies r1 expects at the gate's repeats."""
+    sentence_count = len(split_sentences(files.read_bytes(FIRST_INSTRUCTION)))
+    return expected_replies(FIRST_REVISION, records.tasks(), records.conditions(), repeats, sentence_count)
+
+
+def _refuse_unmeasured_first_revision(files: SeriesFolder) -> None:
+    """Refuse an r1 not yet blinded, judged, or detected, naming the first step whose record is absent."""
+    for step, path in FIRST_REVISION_STEPS.items():
+        if not files.holds(path):
+            raise Refusal(f"{FIRST_REVISION} not {step}: no {path}")
+
+
+def _refuse_stale_first_revision_records(files: SeriesFolder) -> None:
+    """Refuse the first CLI record under r1 whose inputs no longer hash as written."""
+    for path in _first_revision_command_records(files):
+        load_record(files, path)
+
+
+def _first_revision_command_records(files: SeriesFolder) -> list[str]:
+    """Return the series path of every YAML record under r1 a CLI command wrote, in path order."""
+    paths = sorted(path.relative_to(files.root).as_posix() for path in (files.root / FIRST_REVISION).rglob(RECORD_PATTERN))
+    user_and_judge_records = (f"{FIRST_REVISION}/{USER_COVERAGE_FILE}", f"{FIRST_REVISION}/{VERDICTS_FOLDER}/")
+    return [path for path in paths if not path.startswith(user_and_judge_records)]
+
+
+def _refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
+    """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
+    for path in reply_paths:
+        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
+            raise Refusal(f"reader fingerprint changed since {path}")
+
+
+def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesRecords) -> None:
+    """Refuse a `drift` check in a series without conversations and an `instruction-near-source` check in a series without sources."""
+    compared = {check.compares for check in checks}
+    if DRIFT_COMPARES in compared and not records.tasks().conversations:
+        raise Refusal(f"{DRIFT_COMPARES} check without conversations ({TASKS_RECORD})")
+    if NEAR_SOURCE_COMPARES in compared and not records.series().sources:
+        raise Refusal(f"{NEAR_SOURCE_COMPARES} check without sources ({SERIES_RECORD})")
