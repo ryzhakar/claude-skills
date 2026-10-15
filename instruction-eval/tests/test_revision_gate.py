@@ -257,6 +257,14 @@ def assert_refused_writing_nothing(files: SeriesFolder, message: str) -> None:
     assert not files.holds("r1/9-outcome.yaml")
 
 
+def test_a_tokens_budget_over_asks_without_token_counts_is_refused_writing_nothing(tmp_path, monkeypatch):
+    monkeypatch.setitem(globals(), "REPLY_COST", dict.fromkeys(REPLY_COST))
+    files = frozen_series(tmp_path, first_replies(0, 0), {**GATE, "budget": {"unit": "tokens", "ceiling": 1000}})
+
+    assert_refused_writing_nothing(files, r"^tokens budget refused: r1 asked replies without token counts$")
+    assert not files.holds("9-stop.yaml")
+
+
 def test_a_revision_without_its_collection_is_refused(tmp_path):
     files = frozen_series(tmp_path, first_replies(0, 3))
     (files.root / "r1/7-collected.yaml").unlink()

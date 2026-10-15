@@ -434,10 +434,10 @@ def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRn
         parent = _measured_revision(records, _parent_revision(revision), gate.done_by)
         outcome = {**outcome, **_parent_fields(records.hypothesis(revision), measured.sealed_rows, parent.sealed_rows, gate.level, bootstrap_rng)}
         reads = [*reads, *hypothesis_reads(revision), *parent.reads]
-    write_record(files, _outcome_path(revision), outcome, reads)
     outcomes = {**earlier, revision: outcome}
     budget = _stop_budget(gate.budget)
     stop = stop_after(revision, outcomes, budget, _cost_so_far(outcomes, budget))
+    write_record(files, _outcome_path(revision), outcome, reads)
     if stop is not None:
         write_record(files, STOP_RECORD, stop, _stop_reads(outcomes))
 
@@ -565,10 +565,14 @@ def _stop_budget(budget: GateBudget | NoBudget) -> Budget | None:
 
 
 def _cost_so_far(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
-    """Return every gated revision's ask cost summed in the budget unit, zero without a budget."""
+    """Return every gated revision's ask cost summed in the budget unit, zero without a budget, refusing a tokens budget over a revision without token counts."""
     if budget is None:
         return 0
-    return _total_cost([ReplyCost(outcome["cost"]["input_tokens"], outcome["cost"]["output_tokens"], outcome["cost"]["seconds"]) for outcome in outcomes.values()], budget.unit)
+    costs = {revision: ReplyCost(outcome["cost"]["input_tokens"], outcome["cost"]["output_tokens"], outcome["cost"]["seconds"]) for revision, outcome in outcomes.items()}
+    uncounted = next((revision for revision, cost in costs.items() if None in (cost.input_tokens, cost.output_tokens)), None)
+    if budget.unit == TOKENS_UNIT and uncounted is not None:
+        raise Refusal(f"tokens budget refused: {uncounted} asked replies without token counts")
+    return _total_cost(list(costs.values()), budget.unit)
 
 
 def _stop_reads(outcomes: Mapping[str, Record]) -> list[str]:
