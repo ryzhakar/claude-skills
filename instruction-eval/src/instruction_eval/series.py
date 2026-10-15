@@ -9,7 +9,7 @@ from pathlib import Path
 from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
-from instruction_eval.gate import kept_revision
+from instruction_eval.gate import OUTCOME_FILE, kept_revision
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
     CALIBRATION_RECORD,
@@ -46,7 +46,6 @@ PATH_SEPARATOR = "/"
 STATUS_COMMAND = "series status"
 STOP_COMMAND = "series stop"
 KEEP_COMMAND = "series keep"
-OUTCOME_FILE = "9-outcome.yaml"
 KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
 LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
