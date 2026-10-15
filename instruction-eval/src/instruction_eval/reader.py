@@ -11,21 +11,27 @@ from typing import Any, TypeVar
 import yaml
 
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
+from instruction_eval.coverage import split_sentences
 from instruction_eval.judge import OATH_SKILL, SOURCE_FOLDER
 from instruction_eval.records import (
     FIRST_REVISION,
+    GATE_RECORD,
+    KEY_SEPARATOR,
     AgentReader,
     CommandReader,
     Reader,
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    Task,
+    Tasks,
     _dump_canonical_yaml,
     condition_path,
     sha256,
     write_file,
 )
 from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, guard_series
+from instruction_eval.tasks import ExpectedReply, expected_replies
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
@@ -33,6 +39,7 @@ EMPTY_TOOLSET_LINES = ("tools: Read", "disallowedTools: Read")
 JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
 FRONTMATTER_BREAKERS = ("\n", "\r", ": ")
 PREPARE_COMMAND = "reader prepare"
+ASK_COMMAND = "revision ask"
 FINGERPRINT_COMMAND = "reader fingerprint"
 FINGERPRINT_KEYS = ("model", "build")
 AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
@@ -762,3 +769,53 @@ def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, te
 def _reader_agent_type(revision: str, condition: str) -> str:
     """Return the agent type of the reader that runs a condition of a revision."""
     return f"ie-reader-{revision}-{condition}"
+
+
+def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> str:
+    """Return the launch list as YAML: per task and per conversation, condition, and repeat, the agent type and the exact messages."""
+    guard_series(files, ASK_COMMAND)
+    records = SeriesRecords(files)
+    replies = _asked_replies(files, revision, records, conditions)
+    return yaml.safe_dump({"launches": _launches(replies, records.tasks())}, sort_keys=False, allow_unicode=True)
+
+
+def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
+    """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named."""
+    sentence_count = len(split_sentences(_revision_instruction(files, revision)))
+    expected = expected_replies(revision, records.tasks(), records.conditions(), _gate_repeats(records), sentence_count)
+    return tuple(reply for reply in expected if (not conditions or reply.condition in conditions) and not files.holds(reply.path))
+
+
+def _gate_repeats(records: SeriesRecords) -> int:
+    """Return the repeats the gate holds, refusing them unwritten."""
+    repeats = records.gate().repeats
+    if repeats is None:
+        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+    return repeats
+
+
+def _launches(replies: Sequence[ExpectedReply], tasks: Tasks) -> list[dict[str, Any]]:
+    """Return one launch per task or conversation repeat the replies name, in reply order."""
+    task_by_id = {task.id: task for task in tasks.tasks}
+    turns_by_conversation = {conversation.id: conversation.turns for conversation in tasks.conversations}
+    repeats = dict.fromkeys((reply.revision, reply.condition, reply.task, reply.repeat) for reply in replies)
+    return [
+        _launch(revision, condition, task, repeat, task_by_id, turns_by_conversation)
+        for revision, condition, task, repeat in repeats
+    ]
+
+
+def _launch(
+    revision: str,
+    condition: str,
+    task: str,
+    repeat: int,
+    task_by_id: Mapping[str, Task],
+    turns_by_conversation: Mapping[str, tuple[str, ...]],
+) -> dict[str, Any]:
+    """Return the launch of one task or conversation repeat."""
+    launch = {"agent_type": _reader_agent_type(revision, condition), "condition": condition}
+    if task in task_by_id:
+        return {**launch, "task": task, "repeat": repeat, "message": task_by_id[task].message}
+    first_turn, *later_turns = turns_by_conversation[task]
+    return {**launch, "conversation": task, "repeat": repeat, "message": first_turn, "send_messages": later_turns}
