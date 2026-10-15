@@ -6,12 +6,15 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 
-from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
+import yaml
+
+from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
 from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, kept_revision
-from instruction_eval.judge import SOURCE_FOLDER
+from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF
 from instruction_eval.records import (
+    ANCHORS_RECORD,
     CALIBRATION_RECORD,
     COMMAND_READER,
     CONDITIONS_RECORD,
@@ -360,3 +363,49 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
         raise Refusal(f"{DRIFT_COMPARES} check without conversations ({TASKS_RECORD})")
     if NEAR_SOURCE_COMPARES in compared and not records.series().sources:
         raise Refusal(f"{NEAR_SOURCE_COMPARES} check without sources ({SERIES_RECORD})")
+
+
+STATUS_PARTS = (
+    SERIES_RECORD,
+    DEMANDS_RECORD,
+    TASKS_RECORD,
+    CONDITIONS_RECORD,
+    PLACEBO_SNAPSHOT_PATH,
+    READER_RECORD,
+    WORKING_BRIEF,
+    CALIBRATION_RECORD,
+    ANCHORS_RECORD,
+    GATE_RECORD,
+    FROZEN_RECORD,
+    STOP_RECORD,
+)
+UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
+
+
+def series_status(files: SeriesFolder) -> str:
+    """Return the series' standing as YAML: parts present, frozen or not, each revision's outcome, and the stop, writing nothing."""
+    guard_series(files, STATUS_COMMAND)
+    records = SeriesRecords(files)
+    standing = {
+        "parts": [part for part in STATUS_PARTS if files.holds(part)],
+        "frozen": files.holds(FROZEN_RECORD),
+        "revisions": {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
+        "stop": _stop_standing(files, records),
+    }
+    return yaml.safe_dump(standing, sort_keys=False)
+
+
+def _revision_standing(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, object]:
+    """Return a revision's outcome, change from its parent, and keep ranks, each null while the revision is ungated."""
+    if not files.holds(_outcome_path(revision)):
+        return UNGATED_STANDING
+    outcome = records.outcome(revision)
+    return {key: outcome.get(key) for key in UNGATED_STANDING}
+
+
+def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object] | None:
+    """Return the stop's kind, kept revision, and reason, or None while the series runs."""
+    if not files.holds(STOP_RECORD):
+        return None
+    stop = records.stop()
+    return {key: stop.get(key) for key in ("stop", "kept", "reason")}
