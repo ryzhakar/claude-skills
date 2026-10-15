@@ -3,24 +3,60 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 from functools import partial
+from statistics import fmean
 from typing import Literal, TypedDict
 
 import numpy
 
 from instruction_eval.records import (
+    ANCHOR_KEY,
     BUDGET_REASON,
     CAPPED_STOP,
+    FAIL_OUTCOME,
     FEWEST_REPEATS,
+    FIRST_REVISION,
+    FROZEN_RECORD,
+    GATE_RECORD,
+    KEY_SEPARATOR,
     NO_EFFECT_STOP,
     PASS_OUTCOME,
     PASSED_STOP,
+    SEALED_SPLIT,
+    SPENT_INPUT_TOKENS_KEY,
+    STOP_RECORD,
     Compares,
     Direction,
+    DoneBy,
+    Dropped,
     GateCheck,
+    Hypothesis,
+    NoBudget,
     Record,
     Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    reply_path,
+    write_record,
 )
-from instruction_eval.scores import Comparison, Noise, ScoredReply, breach_total, compare_paired, paired_units, task_means
+from instruction_eval.records import Budget as GateBudget
+from instruction_eval.scores import (
+    COLLECTED_FILE,
+    DETECTORS_FILE,
+    ORIGINS_FILE,
+    SCORE_USER_INPUTS,
+    BootstrapRng,
+    Comparison,
+    Noise,
+    ReplyRow,
+    ScoredReply,
+    _comparisons,
+    breach_total,
+    compare_paired,
+    join_reply_rows,
+    paired_units,
+    task_means,
+)
+from instruction_eval.tasks import REVISION_INSTRUCTION_FILE, words
 
 LATER_REVISION_COUNT = 4
 LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
@@ -373,3 +409,168 @@ def _unchanged_from_parent(revision: str, outcomes: Mapping[str, Record]) -> boo
 def _parent_revision(revision: str) -> str:
     """Return the id of the revision before the given one."""
     return f"{REVISION_PREFIX}{_revision_number(revision) - 1}"
+
+
+GATE_COMMAND = "revision gate"
+OUTCOME_FILE = "9-outcome.yaml"
+GATE_KEYS = ("repeats", "level", "done_by", "checks", "keep_rule", "budget")
+STOP_GATE_KEYS = ("keep_rule", "budget")
+HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
+NO_BUDGET: NoBudget = "none"
+
+
+def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
+    """Write the revision's `9-outcome.yaml` from its sealed rows, each bootstrap drawing on a fresh `bootstrap_rng()`, and `9-stop.yaml` when a stop applies."""
+    _refuse_unusable_series(files)
+    records = SeriesRecords(files)
+    gate = records.complete_gate()
+    records.frozen()
+    gate_demands = _gate_demands(records)
+    measured = _measured_revision(records, revision, gate.done_by)
+    outcome = _outcome(files, records, revision, measured, gate_demands, gate.checks, gate.level, bootstrap_rng)
+    earlier = _earlier_outcomes(files, records, revision)
+    reads = _gate_reads(revision, measured, earlier)
+    if revision != FIRST_REVISION:
+        parent = _measured_revision(records, _parent_revision(revision), gate.done_by)
+        outcome = {**outcome, **_parent_fields(records.hypothesis(revision), measured.sealed_rows, parent.sealed_rows, gate.level, bootstrap_rng)}
+        reads = [*reads, *hypothesis_reads(revision), *parent.reads]
+    write_record(files, _outcome_path(revision), outcome, reads)
+    outcomes = {**earlier, revision: outcome}
+    budget = _stop_budget(gate.budget)
+    stop = stop_after(revision, outcomes, budget, _cost_so_far(outcomes, budget))
+    if stop is not None:
+        write_record(files, STOP_RECORD, stop, _stop_reads(outcomes))
+
+
+@dataclass(frozen=True)
+class _MeasuredRevision:
+    """A revision's sealed reply rows, the cost of its own replies, and the files they were read from."""
+
+    sealed_rows: list[ReplyRow]
+    own_replies: list[ReplyCost]
+    reads: list[str]
+
+
+def _refuse_unusable_series(files: SeriesFolder) -> None:
+    """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
+    from instruction_eval.series import guard_series
+
+    guard_series(files, GATE_COMMAND)
+
+
+def _gate_demands(records: SeriesRecords) -> list[str]:
+    """Return the demands r1's coverage does not drop, in coverage order."""
+    return [demand for demand, sentences in records.coverage(FIRST_REVISION).demands.items() if not isinstance(sentences, Dropped)]
+
+
+def _measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> _MeasuredRevision:
+    """Load a revision's sealed rows and own reply costs, refusing a missing collection or a reply origin without its reply file."""
+    collected = records.collected(revision)
+    origins = records.origins(revision)
+    verdict_paths = {packet: f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()}
+    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    reply_paths = {blind_id: _origin_reply_path(origin, revision) for blind_id, origin in origins["ids"].items() if ANCHOR_KEY not in origin}
+    own_paths = [path for path in reply_paths.values() if path.startswith(f"{revision}/")]
+    return _MeasuredRevision(
+        sealed_rows=join_reply_rows(origins, verdicts, records.detectors(revision), done_by, SEALED_SPLIT),
+        own_replies=[_reply_cost(records.reply(path)) for path in own_paths],
+        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *verdict_paths.values(), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
+    )
+
+
+def _origin_reply_path(origin: Record, revision: str) -> str:
+    """Return the reply file a reply origin names, a borrowed one in the revision it names."""
+    return reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+
+
+def _reply_cost(reply: Record) -> ReplyCost:
+    """Return a reply's spent input tokens, output tokens, and seconds."""
+    return ReplyCost(reply["cost"][SPENT_INPUT_TOKENS_KEY], reply["cost"]["output_tokens"], reply["seconds"])
+
+
+def _outcome(
+    files: SeriesFolder,
+    records: SeriesRecords,
+    revision: str,
+    measured: _MeasuredRevision,
+    gate_demands: Sequence[str],
+    checks: Sequence[GateCheck],
+    level: float,
+    bootstrap_rng: BootstrapRng,
+) -> dict[str, object]:
+    """Return the outcome of the revision's sealed rows: every check, the keep ranks, and the cost of its asks."""
+    task_rows = [row for row in measured.sealed_rows if row["turn"] is None]
+    turn_rows = [row for row in measured.sealed_rows if row["turn"] is not None]
+    comparisons = _comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng)
+    gated = [_gated_check(check, comparisons[check.compares]) for check in checks]
+    return {
+        "outcome": PASS_OUTCOME if all(check["pass"] for check in gated) else FAIL_OUTCOME,
+        "checks": gated,
+        "instruction_breaches": fmean(breach_total(row, gate_demands) for row in task_rows if row["condition"] == INSTRUCTION_CONDITION),
+        "completion_passed": next(check["pass"] for check in gated if check["compares"] == COMPLETION_TARGET),
+        "words": len(words(files.read_bytes(f"{revision}/{REVISION_INSTRUCTION_FILE}").decode())),
+        "cost": sum_revision_cost(measured.own_replies),
+    }
+
+
+def _gated_check(check: GateCheck, comparison: Mapping[str, object]) -> dict[str, object]:
+    """Return a check as `9-outcome.yaml` stores it: its compares and gap, the sealed mean difference and interval, and whether it passes."""
+    interval = comparison["interval"]
+    sealed = Comparison(comparison["mean_difference"], None if interval is None else tuple(interval), comparison["units"])
+    return {"compares": check.compares, "gap": check.gap, "mean_difference": sealed.mean_difference, "interval": interval, "pass": check_passes(check, sealed)}
+
+
+def _parent_fields(hypothesis: Hypothesis, rows: Sequence[ScoredReply], parent_rows: Sequence[ScoredReply], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
+    """Return `changed_from_parent` and `parent_comparison`: the revision's sealed instruction minus its parent's on the hypothesis target."""
+    movement = hypothesis.predicted_movement
+    compared = compare_with_parent(rows, parent_rows, hypothesis.failing_demand, movement.direction, movement.size, level, bootstrap_rng())
+    interval = None if compared.comparison.interval is None else list(compared.comparison.interval)
+    return {
+        "changed_from_parent": compared.changed_from_parent,
+        "parent_comparison": {"target": compared.target, "mean_difference": compared.comparison.mean_difference, "interval": interval},
+    }
+
+
+def _earlier_outcomes(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, Record]:
+    """Return the outcome of each gated revision before the given one, by id in order."""
+    earlier = (f"{REVISION_PREFIX}{number}" for number in range(1, _revision_number(revision)))
+    return {other: records.outcome(other) for other in earlier if files.holds(_outcome_path(other))}
+
+
+def _outcome_path(revision: str) -> str:
+    """Return the path of a revision's `9-outcome.yaml`."""
+    return f"{revision}/{OUTCOME_FILE}"
+
+
+def _gate_reads(revision: str, measured: _MeasuredRevision, earlier: Mapping[str, Record]) -> list[str]:
+    """Return what `revision gate` reads of every revision: `revision score`'s reads, every gate key, the freeze, the instruction, and every earlier outcome."""
+    return [
+        *SCORE_USER_INPUTS,
+        *measured.reads,
+        *(f"{GATE_RECORD}{KEY_SEPARATOR}{key}" for key in GATE_KEYS),
+        FROZEN_RECORD,
+        f"{revision}/{REVISION_INSTRUCTION_FILE}",
+        *(_outcome_path(other) for other in earlier),
+    ]
+
+
+def hypothesis_reads(revision: str) -> list[str]:
+    """Return each key of the revision's hypothesis as a read."""
+    return [f"{revision}/1-hypothesis.yaml{KEY_SEPARATOR}{key}" for key in HYPOTHESIS_KEYS]
+
+
+def _stop_budget(budget: GateBudget | NoBudget) -> Budget | None:
+    """Return the gate's budget as the stop rules take it, null without a ceiling."""
+    return None if budget == NO_BUDGET else Budget(budget.unit, budget.ceiling)
+
+
+def _cost_so_far(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
+    """Return every gated revision's ask cost summed in the budget unit, zero without a budget."""
+    if budget is None:
+        return 0
+    return _total_cost([ReplyCost(outcome["cost"]["input_tokens"], outcome["cost"]["output_tokens"], outcome["cost"]["seconds"]) for outcome in outcomes.values()], budget.unit)
+
+
+def _stop_reads(outcomes: Mapping[str, Record]) -> list[str]:
+    """Return what the stop reads: the keep rule and budget, the freeze, and every gated revision's outcome."""
+    return [*(f"{GATE_RECORD}{KEY_SEPARATOR}{key}" for key in STOP_GATE_KEYS), FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
