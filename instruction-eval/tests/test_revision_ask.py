@@ -1,0 +1,84 @@
+from collections.abc import Sequence
+from datetime import timedelta
+
+import yaml
+
+from instruction_eval.reader import ReaderRun, reader_fingerprint, revision_ask
+from instruction_eval.records import SeriesFolder
+from test_reply_collect import COMMAND_READER, CONDITION_NAMES, OPEN_MESSAGE, START, load, prepared_series, stamp, write_yaml
+
+COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
+FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: b1\ntemperature: 0.7\n"
+READER_SECONDS = 0.5
+
+
+class StubReader:
+    """A command reader that answers every call with the stdin it received, recording each call."""
+
+    def __init__(self):
+        self.calls: list[tuple[list[str], str, int]] = []
+
+    def __call__(self, command: Sequence[str], stdin: str, timeout_seconds: int) -> ReaderRun:
+        self.calls.append((list(command), stdin, timeout_seconds))
+        started = START + timedelta(minutes=len(self.calls))
+        return ReaderRun(started=started, seconds=READER_SECONDS, exit_code=0, stdout=stdin)
+
+
+def stub_fingerprint(command: Sequence[str]) -> str:
+    return FINGERPRINT_OUTPUT
+
+
+def command_series(tmp_path) -> SeriesFolder:
+    files = prepared_series(tmp_path, reader=COMMAND_READER)
+    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    return files
+
+
+def expected_reads() -> set[str]:
+    return {
+        "series.yaml",
+        "2-demands.yaml#demands",
+        "3-tasks.yaml#tasks",
+        "3-tasks.yaml#conversations",
+        *(f"4-conditions.yaml#{key}" for key in ("controls", "aim", "placebo_source", "omissions")),
+        "4-placebo-source.md",
+        *(f"5-reader.yaml#{key}" for key in ("kind", "model", "command", "fingerprint", "sampling")),
+        "7-gate.yaml#repeats",
+        "r1/2-instruction.md",
+        "r1/3-coverage.yaml#demands",
+        "r1/3-coverage.yaml#sentences",
+        *(f"r1/4-conditions/{condition}.md" for condition in CONDITION_NAMES),
+    }
+
+
+def test_a_command_reader_answers_every_missing_reply_serially_each_reply_recording_its_reader_run_and_fingerprint(tmp_path):
+    files = command_series(tmp_path)
+    reader = StubReader()
+
+    printed = revision_ask(files, "r1", [], reader, stub_fingerprint)
+
+    assert printed == ""
+    assert len(reader.calls) == 4 * 2 * 2
+    command, stdin, timeout_seconds = reader.calls[0]
+    assert command == ["llm-reply", "--system-file", str(files.root / "r1/4-conditions/aim.md")]
+    assert yaml.safe_load(stdin) == {"messages": [{"role": "user", "text": OPEN_MESSAGE}]}
+    assert timeout_seconds == 600
+    record = load(files, "r1/5-replies/aim/t-open/repeat-1.yaml")
+    inputs = record.pop("inputs")
+    assert set(inputs) == expected_reads()
+    assert record == {
+        "condition": "aim",
+        "task": "t-open",
+        "split": "open",
+        "repeat": 1,
+        "message": OPEN_MESSAGE,
+        "text": stdin,
+        "model": "gpt-5-mini",
+        "reader_kind": "command",
+        "started": stamp(START + timedelta(minutes=1)),
+        "seconds": READER_SECONDS,
+        "fingerprint_hash": reader_fingerprint(files, stub_fingerprint).fingerprint_hash,
+        "cost": dict.fromkeys(("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "spent_input_tokens")),
+    }
+    second = load(files, "r1/5-replies/aim/t-open/repeat-2.yaml")
+    assert "r1/5-replies/aim/t-open/repeat-1.yaml" in second["inputs"]

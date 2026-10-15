@@ -11,12 +11,15 @@ from typing import Any, TypeVar
 import yaml
 
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
-from instruction_eval.coverage import split_sentences
+from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
 from instruction_eval.records import (
     AGENT_READER,
+    COMMAND_READER,
     CONDITIONS_RECORD,
+    DEMANDS_RECORD,
     FIRST_REVISION,
+    FROZEN_RECORD,
     GATE_RECORD,
     KEY_SEPARATOR,
     READER_RECORD,
@@ -1027,3 +1030,124 @@ def _reply_cost_record(tokens: TokenUsage | None) -> dict[str, int | None]:
     if tokens is None:
         return dict.fromkeys(REPLY_COST_KEYS)
     return {**{field.name: getattr(tokens, field.name) for field in fields(tokens)}, SPENT_INPUT_TOKENS_KEY: tokens.spent_input_tokens}
+
+
+ASK_TIMEOUT_SECONDS = 600
+MESSAGES_KEY = "messages"
+ROLE_KEY = "role"
+TEXT_KEY = "text"
+USER_ROLE = "user"
+ASSISTANT_ROLE = "assistant"
+CONDITION_PLACEHOLDER = "{condition}"
+TURN_FILE_PREFIX = "/turn-"
+COVERAGE_KEYS = ("demands", "sentences")
+FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/5-replies"
+REPLY_PATTERN = "*.yaml"
+
+
+@dataclass(frozen=True)
+class ReaderRun:
+    """One run of a command reader: when it started, how long it ran, its exit code, None when it exceeded the timeout, and what it wrote to stdout."""
+
+    started: datetime
+    seconds: float
+    exit_code: int | None
+    stdout: str
+
+
+RunReader = Callable[[Sequence[str], str, int], ReaderRun]
+
+
+def revision_ask(
+    files: SeriesFolder, revision: str, conditions: Sequence[str], run_reader: RunReader, run_fingerprint: Callable[[Sequence[str]], str]
+) -> str:
+    """Answer every missing reply of the revision serially through the command reader and return an empty text, refusing a failing coverage, an edited condition or definition, or a failed reader run."""
+    guard_series(files, ASK_COMMAND)
+    records = SeriesRecords(files)
+    reader = records.reader()
+    coverage_check(files, revision)
+    texts = _verified_condition_texts(files, revision, records, reader)
+    asked = _asked_replies(files, revision, records, conditions)
+    fingerprint = reader_fingerprint(files, run_fingerprint)
+    reads = _ask_reads(revision, records, reader, texts)
+    for reply in sorted(asked, key=_serial_order):
+        run = run_reader(_reader_command(files, reader, reply), _reader_stdin(records, reply), ASK_TIMEOUT_SECONDS)
+        _refuse_failed_run(reply, run)
+        write_record(files, reply.path, _command_reply_record(records.tasks(), reply, run, fingerprint), [*reads, *_state_reads(files)])
+    return ""
+
+
+def _ask_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
+    """Return what `revision ask` reads of every revision: the reader commands' reads, the demands, and the coverage of the revision and of r1."""
+    coverage = (f"{coverage_revision}/3-coverage.yaml{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
+    return [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
+
+
+def _state_reads(files: SeriesFolder) -> list[str]:
+    """Return the freeze once the series is frozen, else the r1 replies written so far."""
+    if files.holds(FROZEN_RECORD):
+        return [FROZEN_RECORD]
+    replies = (files.root / FIRST_REVISION_REPLIES_FOLDER).rglob(REPLY_PATTERN)
+    return sorted(reply.relative_to(files.root).as_posix() for reply in replies)
+
+
+def _serial_order(reply: ExpectedReply) -> tuple[str, int]:
+    """Return the sort key that orders replies by path, a conversation's turns in numeric order."""
+    return (reply.path.rpartition(TURN_FILE_PREFIX)[0] or reply.path, reply.turn or 0)
+
+
+def _reader_command(files: SeriesFolder, reader: CommandReader, reply: ExpectedReply) -> list[str]:
+    """Return the reader's command with each `{condition}` replaced by the path of the reply's condition file."""
+    condition_file = str(files.root / condition_path(reply.revision, reply.condition))
+    return [part.replace(CONDITION_PLACEHOLDER, condition_file) for part in reader.command]
+
+
+def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
+    """Return the YAML `messages` the reader receives: the turns up to the reply's, with the repeat's earlier replies between them."""
+    turns = _turn_messages(_entries_by_id(records.tasks())[reply.task])
+    last_turn = reply.turn or 1
+    messages: list[dict[str, str]] = []
+    for turn in range(1, last_turn + 1):
+        messages.append({ROLE_KEY: USER_ROLE, TEXT_KEY: turns[turn - 1]})
+        if turn < last_turn:
+            earlier = reply_path(reply.revision, reply.condition, reply.task, reply.repeat, turn)
+            messages.append({ROLE_KEY: ASSISTANT_ROLE, TEXT_KEY: records.reply(earlier)[TEXT_KEY]})
+    return yaml.safe_dump({MESSAGES_KEY: messages}, allow_unicode=True)
+
+
+def _entries_by_id(tasks: Tasks) -> dict[str, Task | Conversation]:
+    """Return every task and conversation by id."""
+    return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
+
+
+def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
+    """Refuse a run with a nonzero exit, no output, or more than the timeout, naming the reply and the cause."""
+    if run.exit_code is None or run.seconds > ASK_TIMEOUT_SECONDS:
+        cause = f"over {ASK_TIMEOUT_SECONDS} seconds"
+    elif run.exit_code != 0:
+        cause = f"exit {run.exit_code}"
+    elif not run.stdout:
+        cause = "empty output"
+    else:
+        return
+    raise Refusal(f"reader failed: {reply.path} ({cause})")
+
+
+def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fingerprint: Fingerprint) -> dict[str, Any]:
+    """Return the reply record of one command reader run: its output, the fingerprint's model and hash, and null token counts."""
+    entry = _entries_by_id(tasks)[reply.task]
+    record = {
+        "condition": reply.condition,
+        "task": reply.task,
+        "split": entry.split,
+        "repeat": reply.repeat,
+        "message": _turn_messages(entry)[(reply.turn or 1) - 1],
+        "text": run.stdout,
+        "model": fingerprint.output["model"],
+        "reader_kind": COMMAND_READER,
+        "started": run.started.isoformat(),
+        "seconds": run.seconds,
+        "fingerprint_hash": fingerprint.fingerprint_hash,
+        "cost": _reply_cost_record(None),
+    }
+    return record if reply.turn is None else {**record, "turn": reply.turn}
