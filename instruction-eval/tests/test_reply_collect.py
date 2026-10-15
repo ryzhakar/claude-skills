@@ -162,9 +162,12 @@ def test_a_gap_refuses_after_writing_the_replies_it_could_match_and_a_rerun_fill
     transcripts = task_transcripts(tmp_path)
     withheld = [transcript for transcript in transcripts if transcript.agent_id in ("aim-t-open-2", "aim-t-sealed-1", "aim-t-sealed-2")]
     present = [transcript for transcript in transcripts if transcript not in withheld]
+    late = reader_transcript(tmp_path, "late", "instruction", [OPEN_MESSAGE], ["a late answer"], START + timedelta(minutes=3))
 
-    with pytest.raises(Refusal, match=r"^missing replies: 3, first r1/5-replies/aim/t-open/repeat-2\.yaml$"):
-        collect(files, present)
+    with pytest.raises(Refusal) as refused:
+        collect(files, [*present, late])
+
+    assert str(refused.value) == f"missing replies: 3, first r1/5-replies/aim/t-open/repeat-2.yaml\nignored surplus transcript: {late.path}"
 
     assert load(files, "r1/5-replies/aim/t-open/repeat-1.yaml")["text"] == "answer aim t-open 1"
     written = files.read_bytes("r1/5-replies/aim/t-open/repeat-1.yaml")

@@ -863,7 +863,7 @@ READER_RECORD_KIND_KEY = "kind"
 def revision_collect(
     files: SeriesFolder, revision: str, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
 ) -> str:
-    """Write the replies the revision's reader transcripts hold and return a line per surplus transcript, a command reader's collect writing nothing, refusing a gap against the expected replies."""
+    """Write the replies the revision's reader transcripts hold and return a line per surplus transcript, a command reader's collect writing nothing, refusing a gap against the expected replies with the surplus lines after the gap."""
     guard_series(files, COLLECT_COMMAND)
     records = SeriesRecords(files)
     reader = records.reader()
@@ -873,8 +873,12 @@ def revision_collect(
     if isinstance(reader, AgentReader):
         reads = [*_reader_reads(revision, records, reader, texts), *(_definition_path(revision, condition) for condition in texts)]
         surplus = _write_agent_replies(files, records, reader.model, reads, expected, transcripts, read_transcript)
-    refuse_missing_replies(files, expected)
-    return "".join(f"{SURPLUS_NOTICE}{transcript.path}\n" for transcript in surplus)
+    listing = "".join(f"{SURPLUS_NOTICE}{transcript.path}\n" for transcript in surplus)
+    try:
+        refuse_missing_replies(files, expected)
+    except Refusal as gap:
+        raise Refusal(f"{gap}\n{listing}".rstrip("\n")) from None
+    return listing
 
 
 def _verified_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader) -> dict[str, bytes]:
