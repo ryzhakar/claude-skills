@@ -1,0 +1,2 @@
+{"parentUuid":null,"isSidechain":true,"agentId":"a3","type":"user","message":{"role":"user","content":"Hello."},"uuid":"u1","timestamp":"2026-10-14T19:47:23.988Z"}
+{"parentUuid":"u1","isSidechain":true,"agentId":"a3","type":"assistant","message":{"model":"claude-sonnet-5-5","id":"msg_A","type":"message","role":"assistant","content":[{"type":"text","text":"OK"}],"stop_reason":"end_turn"},"uuid":"r1","timestamp":"2026-10-14T19:47:25.488Z"}

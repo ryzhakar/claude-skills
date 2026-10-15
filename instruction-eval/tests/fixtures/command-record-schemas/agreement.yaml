@@ -1,0 +1,13 @@
+inputs:
+  6-judge/calibration/attempt-1/plan.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+demands:
+  brevity:
+    breach_difference: 0.25
+    self_difference: 0.5
+done_agreement: 0.9
+scale: null
+ratings:
+  candidate-1.yaml:
+    model: claude-opus-4-1
+    transcript: /tmp/transcripts/candidate-1.jsonl
+    transcript_hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

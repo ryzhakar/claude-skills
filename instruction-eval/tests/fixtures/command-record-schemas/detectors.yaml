@@ -1,0 +1,11 @@
+inputs:
+  2-demands.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+verdicts:
+  - id: x7k
+    breaches:
+      hedging: 3
+    done_by_answer_key: true
+  - id: m2q
+    breaches:
+      hedging: 0
+    done_by_answer_key: null
