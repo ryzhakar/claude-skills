@@ -134,3 +134,16 @@ def test_a_failed_reader_run_stops_the_ask_writing_nothing_for_that_reply_and_a_
     revision_ask(files, "r1", [], resumed, stub_fingerprint)
     assert len(resumed.calls) == 4 * 2 * 2 - 1
     assert files.holds("r1/5-replies/aim/t-open/repeat-2.yaml")
+
+
+def test_a_reader_build_differing_from_the_r1_replies_so_far_refuses_while_reordered_keys_do_not(tmp_path):
+    files = command_series(tmp_path)
+    with pytest.raises(Refusal):
+        revision_ask(files, "r1", [], FailingReader(FAILURES["nonzero exit"][0]), stub_fingerprint)
+
+    with pytest.raises(Refusal, match=r"^reader fingerprint changed since r1/5-replies/aim/t-open/repeat-1\.yaml$"):
+        revision_ask(files, "r1", [], StubReader(), lambda command: "model: gpt-5-mini\nbuild: b2\ntemperature: 0.7\n")
+
+    reordered = StubReader()
+    revision_ask(files, "r1", [], reordered, lambda command: "temperature: 0.7\nbuild: b1\nmodel: gpt-5-mini\n")
+    assert len(reordered.calls) == 4 * 2 * 2 - 1

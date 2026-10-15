@@ -43,7 +43,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, guard_series
+from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"
@@ -1069,6 +1069,7 @@ def revision_ask(
     texts = _verified_condition_texts(files, revision, records, reader)
     asked = _asked_replies(files, revision, records, conditions)
     fingerprint = reader_fingerprint(files, run_fingerprint)
+    _refuse_changed_fingerprint(files, records, fingerprint.fingerprint_hash)
     reads = _ask_reads(revision, records, reader, texts)
     for reply in sorted(asked, key=_serial_order):
         run = run_reader(_reader_command(files, reader, reply), _reader_stdin(records, reply), ASK_TIMEOUT_SECONDS)
@@ -1085,10 +1086,21 @@ def _ask_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Map
 
 def _state_reads(files: SeriesFolder) -> list[str]:
     """Return the freeze once the series is frozen, else the r1 replies written so far."""
-    if files.holds(FROZEN_RECORD):
-        return [FROZEN_RECORD]
+    return [FROZEN_RECORD] if files.holds(FROZEN_RECORD) else _first_revision_reply_paths(files)
+
+
+def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
+    """Return the series path of every r1 reply file written so far, in path order."""
     replies = (files.root / FIRST_REVISION_REPLIES_FOLDER).rglob(REPLY_PATTERN)
     return sorted(reply.relative_to(files.root).as_posix() for reply in replies)
+
+
+def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fingerprint_hash: str) -> None:
+    """Refuse a fingerprint hash differing from the freeze's once frozen, else from any r1 reply written so far."""
+    if not files.holds(FROZEN_RECORD):
+        _refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
+    elif records.frozen().get("fingerprint_hash") != fingerprint_hash:
+        raise Refusal(f"reader fingerprint changed since {FROZEN_RECORD}")
 
 
 def _serial_order(reply: ExpectedReply) -> tuple[str, int]:
