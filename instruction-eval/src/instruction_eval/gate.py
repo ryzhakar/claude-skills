@@ -79,8 +79,7 @@ def refuse_unresolvable_gaps(
     if near_source:
         _refuse_near_source_without_sources(series_has_sources)
     _refuse_null_change_noise(noise)
-    for check in checks:
-        _refuse_unresolvable_gap(check, noise)
+    _refuse_unresolvable_gaps(checks, noise)
     if near_source:
         _refuse_unadmitted_near_source(_vs_empty_check(checks), sealed_rows, gate_demands, noise["level"], rng)
 
@@ -123,16 +122,26 @@ def _refuse_null_change_noise(noise: Noise) -> None:
         raise Refusal("null noise: done_change")
 
 
-def _refuse_unresolvable_gap(check: GateCheck, noise: Noise) -> None:
-    """Raise Refusal naming the check when its noise is null, or when it exceeds half its gap, with its least repeats."""
-    half_width = noise["checks"].get(check.compares)
-    if half_width is None:
-        raise Refusal(f"null noise: {check.compares}")
-    resolvable = check.gap / GAP_RESOLUTION_SHARE
-    if half_width > resolvable:
-        raise Refusal(
-            f"unresolvable gap: {check.compares} (noise {half_width:g} > gap / 2 {resolvable:g}; least repeats {least_repeats(check, noise)})"
-        )
+def _refuse_unresolvable_gaps(checks: Sequence[GateCheck], noise: Noise) -> None:
+    """Raise Refusal naming the first check with null noise, else every check whose noise exceeds half its gap with the least repeats resolving every check."""
+    for check in checks:
+        if noise["checks"].get(check.compares) is None:
+            raise Refusal(f"null noise: {check.compares}")
+    unresolvable = [check for check in checks if noise["checks"][check.compares] > check.gap / GAP_RESOLUTION_SHARE]
+    if unresolvable:
+        named = ", ".join(_unresolvable_gap_description(check, noise) for check in unresolvable)
+        raise Refusal(f"unresolvable gap: {named}; least repeats {series_least_repeats(checks, noise)}")
+
+
+def _unresolvable_gap_description(check: GateCheck, noise: Noise) -> str:
+    """Return the check named with its noise against half its gap."""
+    return f"{check.compares} (noise {noise['checks'][check.compares]:g} > gap / 2 {check.gap / GAP_RESOLUTION_SHARE:g})"
+
+
+def series_least_repeats(checks: Sequence[GateCheck], noise: Noise) -> int | None:
+    """Return the fewest repeats at which every check's noise is at most half its gap, null when a check has no noise."""
+    per_check = [least_repeats(check, noise) for check in checks]
+    return None if None in per_check else max(per_check, default=FEWEST_REPEATS)
 
 
 BudgetUnit = Literal["tokens", "seconds"]
