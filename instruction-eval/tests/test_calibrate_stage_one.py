@@ -253,3 +253,33 @@ def test_user_raters_leave_only_the_two_candidate_definitions(tmp_path):
 
     assert yaml.safe_load(launch_list) == {"launches": [{"agent_type": "ie-calib-1-candidate-1"}, {"agent_type": "ie-calib-1-candidate-2"}]}
     assert sorted(path.name for path in (files.root / ".claude/agents").iterdir()) == ["ie-calib-1-candidate-1.md", "ie-calib-1-candidate-2.md"]
+
+
+def test_stage_one_outside_the_neutral_login_refuses_and_writes_nothing(tmp_path):
+    files = stage_one_series(tmp_path)
+    before = tree(files.root)
+
+    with pytest.raises(NeutralLoginRefused):
+        calibrate_stage_one(files, TEMPLATE, {}, tmp_path / "home", files.root, random.Random(7))
+
+    assert tree(files.root) == before
+
+
+@pytest.mark.parametrize(
+    ("brief", "fault"),
+    [
+        (TEMPLATE.read_text().replace("{OUT}", ""), r"brief fault: \{OUT\} appears 0 times, not once"),
+        (TEMPLATE.read_text() + "\nCompare the control group.\n", r"brief fault: names control"),
+        (TEMPLATE.read_text() + f"\nServed by {READER_MODEL}.\n", f"brief fault: names {READER_MODEL}"),
+    ],
+    ids=["lacks-placeholder", "forbidden-word", "reader-model"],
+)
+def test_a_faulty_brief_refuses_naming_the_fault_and_writes_nothing(tmp_path, brief, fault):
+    files = stage_one_series(tmp_path)
+    (files.root / "6-judge/brief.md").write_text(brief)
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=fault):
+        calibrate(tmp_path, files)
+
+    assert tree(files.root) == before

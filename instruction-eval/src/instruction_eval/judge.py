@@ -532,6 +532,7 @@ def calibrate_stage_one(
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     brief = _working_brief(files, brief_template)
+    _refuse_outside_neutral_login(environ, home, working_dir)
     records = SeriesRecords(files)
     plan = records.plan(attempt)
     sample = _draw_sample(_open_task_replies(files), _sampled_earlier(records, attempt), attempt, plan.sample_size)
@@ -584,6 +585,13 @@ def _rating_definition(files: SeriesFolder, records: SeriesRecords, brief: bytes
     from instruction_eval.reader import AgentKind, render_agent_definition
 
     return render_agent_definition(rating.agent_type, rating.model, AgentKind.JUDGE, body.encode())
+
+
+def _refuse_outside_neutral_login(environ: Mapping[str, str], home: Path, working_dir: Path) -> None:
+    """Refuse a session outside the neutral login or a working directory under a memory file."""
+    from instruction_eval.reader import check_neutral_login
+
+    check_neutral_login(environ, home, working_dir)
 
 
 def _refuse_calibrated_series(files: SeriesFolder) -> None:
