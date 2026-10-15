@@ -165,3 +165,56 @@ def test_the_first_attempt_draws_round_robin_from_the_alphabetical_first_conditi
     origins = SeriesRecords(files).attempt_origins(1)
     assert sorted(origins["packets"]) == ["sample"]
     assert origins["packets"]["sample"] == sha256(files.read_bytes(f"{ATTEMPT_ONE}/sample.md"))
+
+
+SECOND_DRAW = {("empty", "t1", 2), ("instruction", "t1", 2), ("placebo", "t1", 2), ("source", "t1", 2), ("aim", "t2", 1), ("empty", "t2", 1)}
+
+
+def test_the_next_attempt_starts_one_condition_later_acts_on_its_own_plan_and_skips_what_earlier_attempts_sampled(tmp_path):
+    files = stage_one_series(tmp_path)
+    calibrate(tmp_path, files)
+    write_yaml(files, "6-judge/calibration/attempt-2/plan.yaml", AGENT_PLAN)
+
+    calibrate(tmp_path, files)
+
+    assert sampled(files, 2) == SECOND_DRAW
+    assert files.read_bytes("6-judge/calibration/attempt-2/brief.md") == TEMPLATE.read_bytes()
+
+
+def test_the_start_condition_wraps_around_the_condition_count(tmp_path):
+    files = stage_one_series(tmp_path)
+    first_conditions = []
+    for attempt in range(1, 7):
+        write_yaml(files, f"6-judge/calibration/attempt-{attempt}/plan.yaml", {**AGENT_PLAN, "sample_size": 1})
+        calibrate(tmp_path, files)
+        ((condition, _, _),) = sampled(files, attempt)
+        first_conditions.append(condition)
+
+    assert first_conditions == ["aim", "empty", "instruction", "placebo", "source", "aim"]
+
+
+EXHAUSTED = r"^calibration pool exhausted: lower sample_size or start a new series with more repeats$"
+
+
+def test_a_sample_larger_than_the_open_task_replies_refuses_as_exhausted_and_writes_nothing(tmp_path):
+    files = stage_one_series(tmp_path)
+    write_yaml(files, "6-judge/calibration/attempt-1/plan.yaml", {**AGENT_PLAN, "sample_size": 21})
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=EXHAUSTED):
+        calibrate(tmp_path, files)
+
+    assert tree(files.root) == before
+
+
+def test_a_later_attempt_refuses_as_exhausted_when_earlier_attempts_left_too_few_unsampled_replies(tmp_path):
+    files = stage_one_series(tmp_path)
+    write_yaml(files, "6-judge/calibration/attempt-1/plan.yaml", {**AGENT_PLAN, "sample_size": 12})
+    calibrate(tmp_path, files)
+    write_yaml(files, "6-judge/calibration/attempt-2/plan.yaml", {**AGENT_PLAN, "sample_size": 9})
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=EXHAUSTED):
+        calibrate(tmp_path, files)
+
+    assert tree(files.root) == before
