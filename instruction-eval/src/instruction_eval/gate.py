@@ -202,7 +202,10 @@ INSTRUCTION_CONDITION = "instruction"
 DOWN: Direction = "down"
 UP: Direction = "up"
 ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
+CHANGED: ChangedFromParent = "changed"
+REVERSED: ChangedFromParent = "reversed"
 UNCHANGED: ChangedFromParent = "unchanged"
+UNRESOLVED: ChangedFromParent = "unresolved"
 
 
 @dataclass(frozen=True)
@@ -260,13 +263,13 @@ def _movement_verdict(
 ) -> ChangedFromParent:
     """Return `changed` or `reversed` when the interval excludes zero, `unchanged` when it holds zero narrower than the predicted size, else `unresolved`."""
     if interval is None:
-        return "unresolved"
+        return UNRESOLVED
     low, high = interval
     if high < 0:
-        return "changed" if direction == DOWN else "reversed"
+        return CHANGED if direction == DOWN else REVERSED
     if low > 0:
-        return "changed" if direction == UP else "reversed"
-    return UNCHANGED if (high - low) / 2 < predicted_size else "unresolved"
+        return CHANGED if direction == UP else REVERSED
+    return UNCHANGED if (high - low) / 2 < predicted_size else UNRESOLVED
 
 
 def stop_after(revision: str, outcomes: Mapping[str, Record], budget: Budget | None, cost_so_far: float) -> Record | None:
