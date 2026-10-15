@@ -92,3 +92,13 @@ def test_an_anchor_entry_carries_the_anchor_message_and_text():
 def test_a_packet_with_fewer_anchors_of_other_tasks_than_the_set_number_is_refused():
     with pytest.raises(Refusal, match="^too few anchors for t-one$"):
         blind(anchors=ANCHORS[:3])
+
+
+class RepeatingRandom(random.Random):
+    def getrandbits(self, bits: int) -> int:
+        return 0
+
+
+def test_a_random_source_that_keeps_drawing_taken_blind_ids_is_refused_rather_than_drawn_forever():
+    with pytest.raises(Refusal, match="^no free blind id$"):
+        blind_replies("r2", REPLIES, ANCHORS, 3, RepeatingRandom(7))

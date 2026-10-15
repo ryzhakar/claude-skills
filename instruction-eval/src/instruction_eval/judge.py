@@ -36,6 +36,7 @@ VERDICT_LABEL = RecordKind.VERDICT.value
 OMISSIONS_PACKET_SUFFIX = "--omissions"
 TURN_PACKET_INFIX = "-turn-"
 BLIND_ID_BITS = 32
+BLIND_ID_DRAWS = 100
 SECTION_SEPARATOR = "\n\n"
 
 
@@ -198,10 +199,12 @@ def _drawn_anchors(packet: str, task: str, anchors: Sequence[Record], anchors_pe
 
 
 def _fresh_blind_id(taken: Container[str], random: Random) -> str:
-    """Return `b` and 8 random hex digits, drawn again until no taken id equals it."""
-    while (blind_id := f"b{random.getrandbits(BLIND_ID_BITS):08x}") in taken:
-        pass
-    return blind_id
+    """Return `b` and 8 random hex digits no taken id equals, refusing after `BLIND_ID_DRAWS` taken draws."""
+    for _ in range(BLIND_ID_DRAWS):
+        blind_id = f"b{random.getrandbits(BLIND_ID_BITS):08x}"
+        if blind_id not in taken:
+            return blind_id
+    raise Refusal("no free blind id")
 
 
 def _section(blind_id: str, exchanges: Iterable[tuple[str, str]]) -> str:
