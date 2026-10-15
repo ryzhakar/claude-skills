@@ -199,3 +199,24 @@ def test_each_turn_of_a_conversation_transcript_becomes_a_reply_of_its_repeat(tm
     assert second["split"] == "open"
     assert second["started"] == stamp(START + timedelta(minutes=2, seconds=10))
     assert load(files, "r1/5-replies/instruction/c-open/repeat-1/turn-1.yaml")["message"] == "Plan a trip."
+
+
+def test_a_transcript_served_by_another_model_refuses_before_any_reply_is_written(tmp_path):
+    files = prepared_series(tmp_path)
+    transcripts = task_transcripts(tmp_path)
+    served_elsewhere = reader_transcript(tmp_path, "other", "aim", [OPEN_MESSAGE], ["x"], START + timedelta(minutes=9), model="claude-other-1")
+    transcripts = [served_elsewhere if transcript.agent_id == "aim-t-open-1" else transcript for transcript in transcripts]
+
+    with pytest.raises(Refusal, match=r"claude-other-1 is not the pinned claude-sonnet-5-5"):
+        collect(files, transcripts)
+
+    assert not (files.root / "r1/5-replies").exists()
+
+
+def test_a_transcript_of_another_agent_type_or_opening_with_another_message_is_no_reply(tmp_path):
+    files = prepared_series(tmp_path)
+    transcripts = task_transcripts(tmp_path)
+    judge = Transcript(path=tmp_path / "transcripts/judge.jsonl", session="s", agent_id="judge", agent_type="ie-judge-r1-t-open-k1")
+    stray = reader_transcript(tmp_path, "stray", "aim", ["Explain snow."], ["x"], START)
+
+    assert collect(files, [judge, stray, *transcripts]) == ""
