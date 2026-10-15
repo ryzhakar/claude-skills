@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from instruction_eval.coverage import split_sentences
-from instruction_eval.gate import COMPLETION_TARGET, REVISION_PREFIX
+from instruction_eval.gate import COMPLETION_TARGET, OUTCOME_FILE, REVISION_PREFIX, hypothesis_reads
 from instruction_eval.records import (
     CONDITIONS_RECORD,
     FAIL_OUTCOME,
@@ -25,8 +25,8 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, Noise, ReplyRow, join_reply_rows
-from instruction_eval.series import INSTRUCTION_FILE, OUTCOME_FILE, guard_series, refuse_unclosed_frontmatter, revision_ids
+from instruction_eval.scores import COLLECTED_FILE, DEMANDS_AND_TASKS_INPUTS, DETECTORS_FILE, ORIGINS_FILE, Noise, ReplyRow, join_reply_rows
+from instruction_eval.series import INSTRUCTION_FILE, guard_series, refuse_unclosed_frontmatter, revision_ids
 from instruction_eval.tasks import shared_phrases
 
 NOISE_MULTIPLE = 2
@@ -160,7 +160,6 @@ _CHECKS = {
 
 
 NEW_COMMAND = "revision new"
-HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
 COVERAGE_INPUTS = (f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}sentences")
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
 AIM_LABEL = "aim"
@@ -302,12 +301,12 @@ def _new_reads(revision: str, parent: str, accepted_verdicts: Sequence[str]) -> 
         *COVERAGE_INPUTS,
         PLACEBO_CONDITION,
         FROZEN_RECORD,
-        *(f"{revision}/1-hypothesis.yaml{KEY_SEPARATOR}{key}" for key in HYPOTHESIS_KEYS),
+        *hypothesis_reads(revision),
         f"{parent}/{INSTRUCTION_FILE}",
         revision_record_path(parent),
-        f"{parent}/6-origins.yaml",
+        f"{parent}/{ORIGINS_FILE}",
         *accepted_verdicts,
-        f"{parent}/7-collected.yaml",
-        f"{parent}/7-detectors.yaml",
+        f"{parent}/{COLLECTED_FILE}",
+        f"{parent}/{DETECTORS_FILE}",
         f"{parent}/{OUTCOME_FILE}",
     ]
