@@ -1,0 +1,7 @@
+- {unit: 1, text: "Run this."}
+- {unit: 1, text: "Then check."}
+- {unit: 2, text: "```python\nx = 1. y = 2.\n\n# not a heading\n```"}
+- {unit: 3, text: "Between."}
+- {unit: 4, text: "~~~~\na. b.\n```\nstill inside\n~~~~"}
+- {unit: 5, text: "Tail."}
+- {unit: 6, text: "```\nopen. fence"}

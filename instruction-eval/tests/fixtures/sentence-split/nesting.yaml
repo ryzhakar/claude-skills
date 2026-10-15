@@ -1,0 +1,8 @@
+- {unit: 1, text: "Outer item."}
+- {unit: 1, text: "Still outer\n  continued outer."}
+- {unit: 2, text: "Nested item."}
+- {unit: 2, text: "Two here."}
+- {unit: 2, text: "nested continuation."}
+- {unit: 3, text: "Deeper item."}
+- {unit: 4, text: "Sibling nested."}
+- {unit: 5, text: "Back out."}

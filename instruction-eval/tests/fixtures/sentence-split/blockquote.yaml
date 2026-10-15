@@ -1,0 +1,5 @@
+- {unit: 1, text: "Before."}
+- {unit: 1, text: "Text."}
+- {unit: 2, text: "> Quoted one. Quoted two."}
+- {unit: 3, text: "> Second quote line."}
+- {unit: 4, text: "After."}
