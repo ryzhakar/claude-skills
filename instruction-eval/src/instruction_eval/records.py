@@ -7,7 +7,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, TypeVar, get_args
+from typing import Final, Literal, TypeVar, get_args
 
 Entry = TypeVar("Entry")
 Key = TypeVar("Key")
@@ -16,7 +16,6 @@ DOCUMENT = ""
 DOCUMENT_LABEL = "record"
 FEWEST_REPEATS = 2
 FEWEST_ANCHORS_PER_PACKET = 3
-MOVE_ACTION = "move"
 HASH_PATTERN = re.compile(r"^[0-9a-f]{64}\Z")
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*\Z")
 BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
@@ -28,6 +27,12 @@ USER_RATERS = ["user"]
 AGENT_RATERS = ["agent", "agent"]
 
 ReaderKind = Literal["agent", "command"]
+AGENT_KIND: Final[ReaderKind] = "agent"
+COMMAND_KIND: Final[ReaderKind] = "command"
+Counter = Literal["judge", "pattern", "long-sentences"]
+JUDGE_COUNTER: Final[Counter] = "judge"
+PATTERN_COUNTER: Final[Counter] = "pattern"
+LONG_SENTENCES_COUNTER: Final[Counter] = "long-sentences"
 Split = Literal["open", "sealed"]
 Control = Literal["empty", "aim", "placebo", "source"]
 CONTROLS_WITHOUT_SOURCES = ("empty", "aim", "placebo")
@@ -39,20 +44,22 @@ KeepRule = Literal["best-estimate-shortest"]
 BudgetUnit = Literal["tokens", "seconds"]
 NoBudget = Literal["none"]
 InPlaceAction = Literal["rewrite", "add", "delete"]
+ChangeAction = InPlaceAction | Literal["move"]
+MOVE_ACTION: Final[ChangeAction] = "move"
 Direction = Literal["down", "up"]
 Scalar = str | int | float | bool
 
 DEMAND_KEYS = {"id", "text", "boundary", "counted_by"}
-DEMAND_KEYS_BY_COUNTER = {
-    "judge": DEMAND_KEYS,
-    "pattern": DEMAND_KEYS | {"pattern"},
-    "long-sentences": DEMAND_KEYS | {"limit"},
+DEMAND_KEYS_BY_COUNTER: Mapping[Counter, AbstractSet[str]] = {
+    JUDGE_COUNTER: DEMAND_KEYS,
+    PATTERN_COUNTER: DEMAND_KEYS | {"pattern"},
+    LONG_SENTENCES_COUNTER: DEMAND_KEYS | {"limit"},
 }
-READER_KEYS_BY_KIND = {
-    "agent": {"kind", "model"},
-    "command": {"kind", "model", "command", "fingerprint", "sampling"},
+READER_KEYS_BY_KIND: Mapping[ReaderKind, AbstractSet[str]] = {
+    AGENT_KIND: {"kind", "model"},
+    COMMAND_KIND: {"kind", "model", "command", "fingerprint", "sampling"},
 }
-CHANGE_KEYS_BY_ACTION = {
+CHANGE_KEYS_BY_ACTION: Mapping[ChangeAction, AbstractSet[str]] = {
     **{action: {"action", "sentence"} for action in get_args(InPlaceAction)},
     MOVE_ACTION: {"action", "sentence", "to"},
 }
@@ -136,9 +143,9 @@ def read_demand(value: object, where: str) -> Demand:
     demand_id = read_demand_id(keys["id"], child(where, "id"))
     text = read_string(keys["text"], child(where, "text"))
     boundary = read_string(keys["boundary"], child(where, "boundary"))
-    if counted_by == "pattern":
+    if counted_by == PATTERN_COUNTER:
         return PatternDemand(id=demand_id, text=text, boundary=boundary, pattern=read_regex(keys["pattern"], child(where, "pattern")))
-    if counted_by == "long-sentences":
+    if counted_by == LONG_SENTENCES_COUNTER:
         return LongSentencesDemand(id=demand_id, text=text, boundary=boundary, limit=read_integer(keys["limit"], child(where, "limit"), minimum=1))
     return JudgeDemand(id=demand_id, text=text, boundary=boundary)
 
@@ -263,7 +270,7 @@ Reader = AgentReader | CommandReader
 def parse_reader(document: object) -> Reader:
     """Build the `5-reader.yaml` record as the variant its `kind` names, refusing the other variant's keys."""
     kind, keys = read_variant(document, DOCUMENT, "kind", READER_KEYS_BY_KIND)
-    if kind == "agent":
+    if kind == AGENT_KIND:
         return AgentReader(model=read_agent_model(keys["model"], "model"))
     return CommandReader(
         model=read_model(keys["model"], "model"),
