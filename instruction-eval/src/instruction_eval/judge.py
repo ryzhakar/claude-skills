@@ -315,7 +315,7 @@ def _judging_outcome(judgings: _Judgings, packet: str, number: int) -> AcceptedJ
     if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
         return None if reply else PendingJudging(number)
     verdict = _valid_verdict(judgings, packet, number)
-    if verdict is None:
+    if verdict is None or reply is None or reply.model != judgings.judge_model or _is_rejected(judgings, reply, packet, number):
         return None
     return AcceptedJudging(
         judging=number,
@@ -346,6 +346,14 @@ def _final_reply(judgings: _Judgings, agent_type: str) -> "TranscriptReply | Non
         if transcript.agent_type == agent_type
     ]
     return next((reply[-1] for reply in replies if reply), None)
+
+
+def _is_rejected(judgings: _Judgings, reply: "TranscriptReply", packet: str, number: int) -> bool:
+    """Tell whether the judge's transcript shows a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict."""
+    from instruction_eval.reader import judge_transcript_rejection
+
+    verdict_path = judgings.files.root / _verdict_file(judgings.revision, packet, number)
+    return judge_transcript_rejection(reply.transcript, judgings.read_transcript(reply.transcript), verdict_path) is not None
 
 
 def _valid_verdict(judgings: _Judgings, packet: str, number: int) -> Record | None:

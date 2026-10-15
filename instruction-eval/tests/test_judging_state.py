@@ -182,3 +182,20 @@ def test_a_returned_judging_whose_verdict_file_is_invalid_failed(tmp_path, docum
     target.write_text(document if isinstance(document, str) else yaml.safe_dump(document))
 
     assert states(files, [judge_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
+
+
+READ_TOOL = ({"type": "tool_use", "id": "toolu_3", "name": "Read", "input": {"file_path": "/series/r1/5-replies"}},)
+
+
+@pytest.mark.parametrize(
+    "transcript_options",
+    [{"model": OTHER_MODEL}, {"tools": READ_TOOL}, None],
+    ids=["wrong-model", "rejected-tool-use", "no-transcript"],
+)
+def test_a_returned_judging_fails_when_its_judge_ran_another_model_was_rejected_or_left_no_transcript(tmp_path, transcript_options):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1)
+    transcripts = [] if transcript_options is None else [judge_transcript(files, "t1", 1, **transcript_options)]
+
+    assert states(files, transcripts)["t1"] == NeedsJudging(2)
