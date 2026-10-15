@@ -259,7 +259,7 @@ def test_completion_compares_done_rates_with_the_best_done_control_over_tasks_bo
     assert read_scores(files)["comparisons"]["completion"] == {"mean_difference": -0.5, "interval": [-0.5, -0.5], "units": 1}
 
 
-def test_completion_without_a_task_both_hold_a_done_for_has_no_comparison_and_a_null_done_rate(tmp_path):
+def test_completion_without_a_task_both_hold_a_done_for_has_no_mean_no_interval_and_a_null_done_rate(tmp_path):
     replies = [
         *per_task_done("instruction", {"t1": (None, None), "t2": (None, None)}, 0x10),
         *per_task_done("empty", {"t1": (True, True), "t2": (True, True)}, 0x20),
@@ -268,8 +268,8 @@ def test_completion_without_a_task_both_hold_a_done_for_has_no_comparison_and_a_
 
     revision_score(files, "r1")
 
-    scores = yaml.safe_load(files.read_bytes("r1/8-scores.yaml"))
-    assert "completion" not in scores["comparisons"]
+    scores = read_scores(files)
+    assert scores["comparisons"]["completion"] == {"mean_difference": None, "interval": None, "units": 0}
     assert scores["by_condition"]["instruction"]["done_rate"] is None
 
 

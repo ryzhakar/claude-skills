@@ -522,7 +522,7 @@ def _key_and_judge_disagree(row: ReplyRow) -> bool:
 def _comparisons(
     task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float
 ) -> dict[str, dict[str, object]]:
-    """Map each compares holding a unit to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
+    """Map each compares the rows define to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
     controls = [condition for condition in (*_VS_CONTROLS, _SOURCE) if condition in _conditions_of(task_rows)]
     task_breaches = partial(_task_means_of, task_rows, partial(breach_total, demands=gate_demands))
     comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level) for control in controls if control != _SOURCE}
@@ -532,7 +532,7 @@ def _comparisons(
     if turn_rows:
         drift_control = _SOURCE if _SOURCE in controls else _EMPTY
         comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level)
-    return {compares: comparison for compares, comparison in comparisons.items() if comparison["units"]}
+    return comparisons
 
 
 def _task_means_of(task_rows: Sequence[ScoredReply], reply_value: Callable[[ScoredReply], float | None], condition: str | None) -> dict[str, float]:
