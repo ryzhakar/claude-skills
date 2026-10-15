@@ -1,9 +1,12 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from statistics import mean
 from typing import Literal, TypedDict
 
-from instruction_eval.records import PASS_OUTCOME, Compares, GateCheck, Record
-from instruction_eval.scores import Comparison
+import numpy
+
+from instruction_eval.records import PASS_OUTCOME, Compares, Direction, GateCheck, Record
+from instruction_eval.scores import Comparison, PairedUnit, ScoredReply, compare_paired
 
 LATER_REVISION_COUNT = 4
 
@@ -181,3 +184,74 @@ def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
 def _revision_number(revision: str) -> int:
     """Return the number a revision id carries."""
     return int(revision.removeprefix(REVISION_PREFIX))
+
+
+COMPLETION_TARGET = "completion"
+INSTRUCTION_CONDITION = "instruction"
+DOWN: Direction = "down"
+UP: Direction = "up"
+ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
+
+
+@dataclass(frozen=True)
+class ParentComparison:
+    """A revision's instruction minus its parent's on the hypothesis target, and what that says about the predicted change."""
+
+    target: str
+    comparison: Comparison
+    changed_from_parent: ChangedFromParent
+
+
+def compare_with_parent(
+    revision_rows: Sequence[ScoredReply],
+    parent_rows: Sequence[ScoredReply],
+    target: str,
+    direction: Direction,
+    predicted_size: float,
+    level: float,
+    rng: numpy.random.Generator,
+) -> ParentComparison:
+    """Compare the revision's sealed instruction replies with its parent's on the target, a demand id or `completion`."""
+    units = _paired_task_values(revision_rows, parent_rows, target)
+    comparison = compare_paired(units, level, rng)
+    return ParentComparison(target, comparison, _movement_verdict(comparison.interval, direction, predicted_size))
+
+
+def _paired_task_values(
+    revision_rows: Sequence[ScoredReply], parent_rows: Sequence[ScoredReply], target: str
+) -> list[PairedUnit]:
+    """Pair each task's mean target value in the revision with its parent's, tasks one side lacks left out."""
+    revision_values = _task_values(revision_rows, target)
+    parent_values = _task_values(parent_rows, target)
+    return [PairedUnit(revision_values[task], parent_values[task]) for task in sorted(revision_values.keys() & parent_values.keys())]
+
+
+def _task_values(rows: Sequence[ScoredReply], target: str) -> dict[str, float]:
+    """Map each task to the mean target value of its instruction replies over repeats, tasks without a value left out."""
+    values_by_task: dict[str, list[float]] = {}
+    for row in rows:
+        value = _reply_value(row, target)
+        if row["condition"] == INSTRUCTION_CONDITION and row["turn"] is None and value is not None:
+            values_by_task.setdefault(row["task"], []).append(value)
+    return {task: mean(values) for task, values in values_by_task.items()}
+
+
+def _reply_value(row: ScoredReply, target: str) -> float | None:
+    """Return the reply's breaches of the target demand, or its done as 1 or 0 for `completion`, null when done is null."""
+    if target == COMPLETION_TARGET:
+        return None if row["done"] is None else float(row["done"])
+    return float(row["breaches"][target])
+
+
+def _movement_verdict(
+    interval: tuple[float, float] | None, direction: Direction, predicted_size: float
+) -> ChangedFromParent:
+    """Return `changed` or `reversed` when the interval excludes zero, `unchanged` when it holds zero narrower than the predicted size, else `unresolved`."""
+    if interval is None:
+        return "unresolved"
+    low, high = interval
+    if high < 0:
+        return "changed" if direction == DOWN else "reversed"
+    if low > 0:
+        return "changed" if direction == UP else "reversed"
+    return "unchanged" if (high - low) / 2 < predicted_size else "unresolved"
