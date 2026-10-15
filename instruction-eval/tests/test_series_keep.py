@@ -1,27 +1,8 @@
-import hashlib
-
 import pytest
 
-from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
+from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.series import series_keep
-
-
-def sha256(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
-
-
-def write_revision(files: SeriesFolder, number: int) -> None:
-    revision = f"r{number}"
-    write_file(files, f"{revision}/2-instruction.md", f"Revision {number}.\n".encode())
-    first = number == 1
-    record = {
-        "number": number,
-        "parent": None if first else f"r{number - 1}",
-        "hash": sha256(files.read_bytes(f"{revision}/2-instruction.md")),
-        "parent_record": None if first else sha256(files.read_bytes(f"r{number - 1}/2-revision.yaml")),
-        "change": None if first else {"action": "rewrite", "sentence": 1, "old": "Old.", "new": "New."},
-    }
-    write_record(files, f"{revision}/2-revision.yaml", record, [] if first else [f"r{number - 1}/2-revision.yaml"])
+from series_fixtures import sha256, tree, write_revision
 
 
 def series(tmp_path, stop: dict | None) -> SeriesFolder:
@@ -35,10 +16,6 @@ def series(tmp_path, stop: dict | None) -> SeriesFolder:
     if stop is not None:
         write_record(files, "9-stop.yaml", stop, [])
     return files
-
-
-def tree(root):
-    return sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
 
 
 def test_a_stopped_series_writes_the_kept_snapshot_to_the_live_instruction_path_leaving_the_series_folder_unchanged(tmp_path):

@@ -3,8 +3,9 @@ import hashlib
 import pytest
 import yaml
 
-from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
+from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.series import series_stop
+from series_fixtures import sha256, write_revision
 
 SERIES = {
     "instruction": "/home/writer/terse.md",
@@ -22,28 +23,14 @@ FROZEN_PARTS = ("series.yaml", "2-demands.yaml", "r1/2-instruction.md", "r1/3-co
 REASON = "no hypothesis clears twice its noise"
 
 
-def sha256(files: SeriesFolder, path: str) -> str:
-    return hashlib.sha256((files.root / path).read_bytes()).hexdigest()
+def file_hash(files: SeriesFolder, path: str) -> str:
+    return sha256(files.read_bytes(path))
 
 
 def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
     target = files.root / path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(yaml.safe_dump(document))
-
-
-def write_revision(files: SeriesFolder, number: int) -> None:
-    revision = f"r{number}"
-    write_file(files, f"{revision}/2-instruction.md", f"Revision {number}.\n".encode())
-    first = number == 1
-    record = {
-        "number": number,
-        "parent": None if first else f"r{number - 1}",
-        "hash": sha256(files, f"{revision}/2-instruction.md"),
-        "parent_record": None if first else sha256(files, f"r{number - 1}/2-revision.yaml"),
-        "change": None if first else {"action": "rewrite", "sentence": 1, "old": "Old.", "new": "New."},
-    }
-    write_record(files, f"{revision}/2-revision.yaml", record, [] if first else [f"r{number - 1}/2-revision.yaml"])
 
 
 def outcome(passed: bool, completion_passed: bool, instruction_breaches: float, words: int) -> dict:
@@ -66,7 +53,7 @@ def frozen_series(tmp_path, revisions: int, outcomes: dict[int, dict]) -> Series
     for number in range(1, revisions + 1):
         write_revision(files, number)
     frozen = {
-        "hashes": {path: sha256(files, path) for path in FROZEN_PARTS},
+        "hashes": {path: file_hash(files, path) for path in FROZEN_PARTS},
         "noise": NOISE,
         "tool_version": "0.1.0",
         "frozen_at": "2026-10-14T10:00:00+00:00",
@@ -90,7 +77,7 @@ def test_a_failed_latest_gated_revision_stops_the_series_keeping_the_best_estima
     inputs = stop.pop("inputs")
     assert stop == {"stop": "unresolvable", "kept": "r2", "reason": REASON}
     assert set(inputs) == {"7-gate.yaml#keep_rule", "8-frozen.yaml", "r1/9-outcome.yaml", "r2/9-outcome.yaml"}
-    assert inputs["8-frozen.yaml"] == sha256(files, "8-frozen.yaml")
+    assert inputs["8-frozen.yaml"] == file_hash(files, "8-frozen.yaml")
 
 
 def test_an_ungated_later_revision_is_no_candidate_and_leaves_the_latest_gated_revision_the_latest(tmp_path):

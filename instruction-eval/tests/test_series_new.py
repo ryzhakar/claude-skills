@@ -1,4 +1,3 @@
-import hashlib
 import re
 from datetime import datetime, timezone
 
@@ -7,17 +6,10 @@ import yaml
 
 from instruction_eval.records import Refusal
 from instruction_eval.series import Disk, series_new
+from series_fixtures import sha256, tree
 
 NOW = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
 INSTRUCTION = b"Be terse. Skip greetings.\n"
-
-
-def tree(root):
-    return sorted(f"{path.relative_to(root).as_posix()}{'/' if path.is_dir() else ''}" for path in root.rglob("*"))
-
-
-def sha256(content):
-    return hashlib.sha256(content).hexdigest()
 
 
 def new_series(tmp_path, name="terse", instruction="live.md", sources=(), reader_kind="agent"):
