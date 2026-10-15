@@ -4,6 +4,16 @@ import re
 from dataclasses import dataclass
 from itertools import accumulate
 
+from instruction_eval.records import (
+    FIRST_REVISION,
+    Coverage,
+    Demands,
+    Dropped,
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+)
+
 _SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
 _WORD_RUN = re.compile(r"(?:[^\W\d_]|\.)*")
 _ABBREVIATIONS = {"e.g", "i.e", "etc", "vs", "cf", "Mr", "Mrs", "Dr", "St", "No"}
@@ -164,3 +174,80 @@ def _is_abbreviation(text_before_end: bytes) -> bool:
 def _first_non_space(text: bytes, position: int, end: int) -> int:
     """Return the position of the first non-whitespace byte between a position and an end."""
     return _LEADING_SPACE.match(text, position, end).end()
+
+
+def coverage_check(files: SeriesFolder, revision: str) -> None:
+    """Refuse a revision's coverage that leaves a demand or sentence unmapped, maps a number outside the text, disagrees between its two maps, or in a later revision drops other demands than the first."""
+    records = SeriesRecords(files)
+    coverage = records.coverage(revision)
+    path = _coverage_path(revision)
+    sentence_count = len(split_sentences(_read_instruction(files, revision)))
+    _refuse_unmapped_demands(records.demands(), coverage, path)
+    _refuse_numbers_outside_text(coverage, sentence_count, path)
+    _refuse_sentences_without_demand(coverage, sentence_count)
+    _refuse_disagreeing_maps(coverage, path)
+    _refuse_dropped_set_other_than_first(records, coverage, revision, path)
+
+
+def _coverage_path(revision: str) -> str:
+    """Return the path of a revision's `3-coverage.yaml`."""
+    return f"{revision}/3-coverage.yaml"
+
+
+def _read_instruction(files: SeriesFolder, revision: str) -> bytes:
+    """Return the bytes of a revision's `2-instruction.md`, refusing it absent."""
+    path = f"{revision}/2-instruction.md"
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
+
+
+def _refuse_unmapped_demands(demands: Demands, coverage: Coverage, path: str) -> None:
+    """Refuse the first demand of the series, in file order, the coverage does not map."""
+    unmapped = next((demand.id for demand in demands.demands if demand.id not in coverage.demands), None)
+    if unmapped is not None:
+        raise Refusal(f"unmapped demand: {unmapped} ({path})")
+
+
+def _refuse_numbers_outside_text(coverage: Coverage, sentence_count: int, path: str) -> None:
+    """Refuse a sentence number beyond the text's sentence count in either map."""
+    numbers = {*(number for number, _ in _demand_side_pairs(coverage)), *coverage.sentences}
+    outside = next((number for number in sorted(numbers) if number > sentence_count), None)
+    if outside is not None:
+        raise Refusal(f"sentence number outside the text: {outside} ({path})")
+
+
+def _refuse_sentences_without_demand(coverage: Coverage, sentence_count: int) -> None:
+    """Refuse the first sentence of the text the sentence map lacks."""
+    bare = next((number for number in range(1, sentence_count + 1) if number not in coverage.sentences), None)
+    if bare is not None:
+        raise Refusal(f"sentence {bare} carries no demand (imported)")
+
+
+def _refuse_disagreeing_maps(coverage: Coverage, path: str) -> None:
+    """Refuse a demand and a sentence one map pairs and the other does not."""
+    sentence_side = {(number, demand) for number, demands in coverage.sentences.items() for demand in demands}
+    unpaired = sorted(_demand_side_pairs(coverage) ^ sentence_side)
+    if unpaired:
+        number, demand = unpaired[0]
+        raise Refusal(f"coverage maps disagree: demand {demand} and sentence {number} ({path})")
+
+
+def _refuse_dropped_set_other_than_first(records: SeriesRecords, coverage: Coverage, revision: str, path: str) -> None:
+    """Refuse a later revision dropping other demands than the first revision's coverage drops."""
+    if revision == FIRST_REVISION:
+        return
+    differing = _dropped_demands(coverage) ^ _dropped_demands(records.coverage(FIRST_REVISION))
+    if differing:
+        raise Refusal(f"dropped demands differ from {FIRST_REVISION}: {', '.join(sorted(differing))} ({path})")
+
+
+def _demand_side_pairs(coverage: Coverage) -> set[tuple[int, str]]:
+    """Return each (sentence number, demand id) pair the demand map holds, a dropped demand holding none."""
+    return {(number, demand) for demand, sentences in coverage.demands.items() if not isinstance(sentences, Dropped) for number in sentences}
+
+
+def _dropped_demands(coverage: Coverage) -> set[str]:
+    """Return the ids of the demands a coverage drops."""
+    return {demand for demand, sentences in coverage.demands.items() if isinstance(sentences, Dropped)}
