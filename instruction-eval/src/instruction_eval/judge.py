@@ -3,10 +3,12 @@
 import dataclasses
 import json
 import re
-from collections.abc import Callable, Container, Iterable, Mapping, Sequence
+from collections import deque
+from collections.abc import Callable, Container, Iterable, Iterator, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import datetime
+from itertools import islice
 from pathlib import Path
 from random import Random
 from statistics import fmean
@@ -21,6 +23,7 @@ from instruction_eval.records import (
     ANCHORS_RECORD,
     CALIBRATION_RECORD,
     CONDITIONS_RECORD,
+    FIRST_REVISION,
     GATE_RECORD,
     KEY_SEPARATOR,
     TASKS_RECORD,
@@ -32,7 +35,9 @@ from instruction_eval.records import (
     RecordKind,
     Refusal,
     SeriesFolder,
+    OPEN_SPLIT,
     SeriesRecords,
+    load_record,
     parse_record,
     _attempt_folder,
     sha256,
@@ -501,6 +506,12 @@ PLAN_FILE = "plan.yaml"
 BRIEF_SNAPSHOT_FILE = "brief.md"
 ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
 FIRST_ATTEMPT = 1
+SAMPLE_PACKET = "sample"
+SAMPLE_FILE = "sample.md"
+ATTEMPT_ORIGINS_FILE = "origins.yaml"
+POOL_EXHAUSTED_REFUSAL = "calibration pool exhausted: lower sample_size or start a new series with more repeats"
+OPEN_TASK_REPLY_PATTERN = f"{FIRST_REVISION}/5-replies/*/*/repeat-*.yaml"
+REPEAT_FILE_PATTERN = re.compile(r"repeat-([0-9]+)\.yaml")
 
 
 def calibrate_stage_one(
@@ -511,7 +522,21 @@ def calibrate_stage_one(
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     brief = _working_brief(files, brief_template)
-    write_file(files, f"{_attempt_folder(attempt)}/{BRIEF_SNAPSHOT_FILE}", brief)
+    records = SeriesRecords(files)
+    plan = records.plan(attempt)
+    sample = _draw_sample(_open_task_replies(files), _sampled_earlier(records, attempt), attempt, plan.sample_size)
+    replies = {key: _load_reply(files, key.path) for key in sample}
+    origins: dict[str, Record] = {}
+    sample_text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, replies) for key in sample], origins, random)
+    folder = _attempt_folder(attempt)
+    write_file(files, f"{folder}/{BRIEF_SNAPSHOT_FILE}", brief)
+    write_file(files, f"{folder}/{SAMPLE_FILE}", sample_text.encode())
+    write_record(
+        files,
+        f"{folder}/{ATTEMPT_ORIGINS_FILE}",
+        {"ids": origins, "packets": {SAMPLE_PACKET: sha256(sample_text.encode())}},
+        [],
+    )
     return ""
 
 
@@ -535,3 +560,55 @@ def _working_brief(files: SeriesFolder, brief_template: Path) -> bytes:
     if not files.holds(WORKING_BRIEF):
         raise Refusal(f"missing brief: {WORKING_BRIEF}, start from {brief_template}")
     return files.read_bytes(WORKING_BRIEF)
+
+
+def _sampled_earlier(records: SeriesRecords, attempt: int) -> set[ExpectedReply]:
+    """Return the r1 replies the attempts before `attempt` sampled, read from their origins."""
+    return {
+        ExpectedReply(FIRST_REVISION, origin["condition"], origin["task"], origin["repeat"], None)
+        for earlier in range(FIRST_ATTEMPT, attempt)
+        if records.files.holds(f"{_attempt_folder(earlier)}/{ATTEMPT_ORIGINS_FILE}")
+        for origin in records.attempt_origins(earlier)["ids"].values()
+    }
+
+
+def _open_task_replies(files: SeriesFolder) -> list[ExpectedReply]:
+    """Return every open task reply of r1 other than an omission's, conversation turns excluded."""
+    replies = (_reply_of_file(path.relative_to(files.root)) for path in sorted(files.root.glob(OPEN_TASK_REPLY_PATTERN)))
+    return [reply for reply in replies if not reply.condition.startswith(OMISSION_PREFIX) and _load_reply(files, reply.path)["split"] == OPEN_SPLIT]
+
+
+def _reply_of_file(path: Path) -> ExpectedReply:
+    """Return the r1 reply a task reply file at the series path holds."""
+    _, _, condition, task, name = path.parts
+    return ExpectedReply(FIRST_REVISION, condition, task, int(REPEAT_FILE_PATTERN.fullmatch(name).group(1)), None)
+
+
+def _load_reply(files: SeriesFolder, path: str) -> Record:
+    """Return the reply record at the path, refusing it stale or malformed."""
+    try:
+        return parse_record(RecordKind.REPLY, load_record(files, path))
+    except RecordError as error:
+        raise Refusal(f"malformed record: {path} ({error})") from None
+
+
+def _draw_sample(candidates: Sequence[ExpectedReply], taken: AbstractSet[ExpectedReply], attempt: int, sample_size: int) -> list[ExpectedReply]:
+    """Draw `sample_size` unsampled candidates round-robin over their conditions in alphabetical order from index `attempt - 1` modulo the condition count, each condition in task then repeat order, refusing a pool too small."""
+    unused = [reply for reply in candidates if reply not in taken]
+    if len(unused) < sample_size:
+        raise Refusal(POOL_EXHAUSTED_REFUSAL)
+    conditions = sorted({reply.condition for reply in candidates})
+    start = (attempt - 1) % len(conditions)
+    queues = [
+        deque(sorted((reply for reply in unused if reply.condition == condition), key=lambda reply: (reply.task, reply.repeat)))
+        for condition in (*conditions[start:], *conditions[:start])
+    ]
+    return list(islice(_round_robin(queues), sample_size))
+
+
+def _round_robin(queues: Sequence[deque[ExpectedReply]]) -> Iterator[ExpectedReply]:
+    """Yield one reply from each queue in turn, skipping an emptied queue, until every queue is empty."""
+    while any(queues):
+        for queue in queues:
+            if queue:
+                yield queue.popleft()
