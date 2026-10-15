@@ -1,5 +1,7 @@
 import hashlib
 import re
+from collections import Counter
+from dataclasses import dataclass, field
 
 import pytest
 import yaml
@@ -293,6 +295,26 @@ def test_every_record_of_a_consistent_series_loads_typed(files):
     assert records.outcome("r2")["parent_comparison"] == R2_OUTCOME["parent_comparison"]
     assert records.frozen()["noise"] == FROZEN["noise"]
     assert records.stop()["kept"] == "r1"
+
+
+@dataclass(frozen=True)
+class ReadCountingFolder(SeriesFolder):
+    reads: Counter = field(default_factory=Counter)
+
+    def read_bytes(self, path):
+        self.reads[path] += 1
+        return super().read_bytes(path)
+
+
+@pytest.mark.parametrize(
+    "load",
+    [lambda records: records.scores("r1"), lambda records: records.hypothesis("r2"), lambda records: records.reply(REPLY_PATH)],
+)
+def test_one_loader_reads_each_shared_record_once_however_many_records_reference_it(files, load):
+    counting = ReadCountingFolder(files.root)
+    load(SeriesRecords(counting))
+    shared = {path: counting.reads[path] for path in ("2-demands.yaml", "r1/3-coverage.yaml") if counting.reads[path]}
+    assert shared == dict.fromkeys(shared, 1)
 
 
 def at(*keys: object, value: object):

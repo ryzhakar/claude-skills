@@ -1579,14 +1579,29 @@ class SeriesRecords:
     files: SeriesFolder
 
     def series(self) -> Series:
+        """Load `series.yaml`, once per loader."""
+        return self._series
+
+    def demands(self) -> Demands:
+        """Load `2-demands.yaml`, once per loader."""
+        return self._demands
+
+    def tasks(self) -> Tasks:
+        """Load `3-tasks.yaml`, once per loader, each task tempting a demand of the series or `overreach`."""
+        return self._tasks
+
+    @functools.cached_property
+    def _series(self) -> Series:
         """Load `series.yaml`."""
         return _parsed(SERIES_RECORD, parse_series, load_record(self.files, SERIES_RECORD))
 
-    def demands(self) -> Demands:
+    @functools.cached_property
+    def _demands(self) -> Demands:
         """Load `2-demands.yaml`."""
         return _parsed(DEMANDS_RECORD, parse_demands, _read_document(self.files, DEMANDS_RECORD))
 
-    def tasks(self) -> Tasks:
+    @functools.cached_property
+    def _tasks(self) -> Tasks:
         """Load `3-tasks.yaml`, each task tempting a demand of the series or `overreach`."""
         tasks = _parsed(TASKS_RECORD, parse_tasks, _read_document(self.files, TASKS_RECORD))
         _resolve(TASKS_RECORD, DEMAND_REFERENCE, [task.tempts for task in tasks.tasks], {*self._demand_ids(), OVERREACH_TARGET})
