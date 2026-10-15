@@ -10,15 +10,29 @@ from typing import Any, TypeVar
 
 import yaml
 
-from instruction_eval.judge import OATH_SKILL
-from instruction_eval.records import AgentReader, CommandReader, Reader, Refusal, SeriesFolder, SeriesRecords, _dump_canonical_yaml, sha256
-from instruction_eval.series import guard_series
+from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
+from instruction_eval.judge import OATH_SKILL, SOURCE_FOLDER
+from instruction_eval.records import (
+    FIRST_REVISION,
+    AgentReader,
+    CommandReader,
+    Reader,
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    _dump_canonical_yaml,
+    condition_path,
+    sha256,
+    write_file,
+)
+from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, guard_series
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
 EMPTY_TOOLSET_LINES = ("tools: Read", "disallowedTools: Read")
 JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
 FRONTMATTER_BREAKERS = ("\n", "\r", ": ")
+PREPARE_COMMAND = "reader prepare"
 FINGERPRINT_COMMAND = "reader fingerprint"
 FINGERPRINT_KEYS = ("model", "build")
 AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
@@ -664,3 +678,87 @@ def _refuse_missing_key(output: Mapping[str, Any], required: Iterable[str]) -> N
     for key in required:
         if key not in output:
             raise Refusal(f"fingerprint output lacks {key}")
+
+
+def reader_prepare(
+    files: SeriesFolder,
+    revision: str,
+    read_external: Callable[[Path], bytes],
+    environ: Mapping[str, str],
+    home: Path,
+    working_dir: Path,
+) -> None:
+    """Write the condition files of the revision, the placebo snapshot first for r1."""
+    guard_series(files, PREPARE_COMMAND)
+    records = SeriesRecords(files)
+    reader = records.reader()
+    if isinstance(reader, AgentReader):
+        check_neutral_login(environ, home, working_dir)
+    placebo_source = _external_placebo_source(revision, records, read_external)
+    texts = _condition_texts(files, revision, records, placebo_source)
+    if placebo_source is not None:
+        write_file(files, PLACEBO_SNAPSHOT_PATH, placebo_source)
+    for condition, text in texts.items():
+        write_file(files, condition_path(revision, condition), text)
+    if isinstance(reader, AgentReader):
+        _write_reader_definitions(files, revision, reader.model, texts)
+
+
+def _external_placebo_source(revision: str, records: SeriesRecords, read_external: Callable[[Path], bytes]) -> bytes | None:
+    """Return the bytes of the external placebo source for r1, or None for a later revision, refusing a missing file."""
+    if revision != FIRST_REVISION:
+        return None
+    path = records.conditions().placebo_source
+    try:
+        return read_external(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing placebo source: {path}") from None
+
+
+def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, placebo_source: bytes | None) -> dict[str, bytes]:
+    """Return the text of each condition the revision prepares, by condition."""
+    instruction = _revision_instruction(files, revision)
+    own_texts = revision_condition_texts(instruction, records.conditions().omissions)
+    if placebo_source is None:
+        return own_texts
+    sources = {path: _utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
+    try:
+        controls = control_texts(records.conditions(), instruction, sources, _utf8_text(placebo_source, PLACEBO_SNAPSHOT_PATH))
+    except ValueError as refused:
+        raise Refusal(str(refused)) from None
+    return {**own_texts, **controls}
+
+
+def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
+    """Return the bytes of a revision's instruction snapshot, refusing it absent."""
+    path = f"{revision}/{INSTRUCTION_FILE}"
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
+
+
+def _utf8_text(content: bytes, label: str) -> str:
+    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under the label."""
+    try:
+        return content.decode()
+    except UnicodeDecodeError:
+        raise Refusal(f"not UTF-8: {label}") from None
+
+
+def _source_paths(records: SeriesRecords) -> list[str]:
+    """Return the series path of each source snapshot, in `sources` order."""
+    return [f"{SOURCE_FOLDER}/{source.name}" for source in records.series().sources]
+
+
+def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, texts: Mapping[str, bytes]) -> None:
+    """Write one reader definition per condition, its body the condition's text."""
+    for condition, text in texts.items():
+        agent_type = _reader_agent_type(revision, condition)
+        definition = render_agent_definition(agent_type, model, AgentKind.READER, text)
+        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+
+
+def _reader_agent_type(revision: str, condition: str) -> str:
+    """Return the agent type of the reader that runs a condition of a revision."""
+    return f"ie-reader-{revision}-{condition}"
