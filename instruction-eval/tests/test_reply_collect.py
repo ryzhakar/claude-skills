@@ -37,17 +37,18 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
     write_file(files, path, yaml.safe_dump(document).encode())
 
 
-def prepared_series(tmp_path, tasks: dict = TASKS) -> SeriesFolder:
+def prepared_series(tmp_path, tasks: dict = TASKS, reader: dict = READER) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
-    write_record(files, "series.yaml", SERIES, [])
+    write_record(files, "series.yaml", {**SERIES, "reader_kind": reader["kind"]}, [])
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "3-tasks.yaml", tasks)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
-    write_yaml(files, "5-reader.yaml", READER)
+    write_yaml(files, "5-reader.yaml", reader)
     write_yaml(files, "7-gate.yaml", GATE)
     write_revision(files, 1)
     home = tmp_path / "home"
-    reader_prepare(files, "r1", {PLACEBO_PATH: b"Gardens bloom early\n"}.__getitem__, NeutralLogin(home).environ(), home, files.root)
+    environ = NeutralLogin(home).environ() if reader["kind"] == "agent" else {}
+    reader_prepare(files, "r1", {PLACEBO_PATH: b"Gardens bloom early\n"}.__getitem__, environ, home, files.root)
     return files
 
 
@@ -220,3 +221,57 @@ def test_a_transcript_of_another_agent_type_or_opening_with_another_message_is_n
     stray = reader_transcript(tmp_path, "stray", "aim", ["Explain snow."], ["x"], START)
 
     assert collect(files, [judge, stray, *transcripts]) == ""
+
+
+COMMAND_READER = {
+    "kind": "command",
+    "model": "gpt-5-mini",
+    "command": ["llm-reply", "--system-file", "{condition}"],
+    "fingerprint": ["llm-reply", "--version"],
+    "sampling": {"temperature": 0.7},
+}
+
+
+def tree(root: Path) -> list[str]:
+    return sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
+
+
+def write_command_replies(files: SeriesFolder, conditions=CONDITION_NAMES) -> None:
+    for condition in conditions:
+        for task, message in MESSAGES.items():
+            for repeat in (1, 2):
+                reply = {
+                    "condition": condition,
+                    "task": task,
+                    "split": "open" if task == "t-open" else "sealed",
+                    "repeat": repeat,
+                    "message": message,
+                    "text": "a reply",
+                    "model": "gpt-5-mini",
+                    "reader_kind": "command",
+                    "started": stamp(START),
+                    "seconds": 1.0,
+                    "fingerprint_hash": "a" * 64,
+                    "cost": dict.fromkeys(("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "spent_input_tokens")),
+                }
+                write_record(files, f"r1/5-replies/{condition}/{task}/repeat-{repeat}.yaml", reply, [])
+
+
+def test_a_command_reader_collects_nothing_and_refuses_a_gap_whatever_transcripts_exist(tmp_path):
+    files = prepared_series(tmp_path, reader=COMMAND_READER)
+    write_command_replies(files, conditions=("empty", "instruction", "placebo"))
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=r"^missing replies: 4, first r1/5-replies/aim/t-open/repeat-1\.yaml$"):
+        collect(files, task_transcripts(tmp_path))
+
+    assert tree(files.root) == before
+
+
+def test_a_command_reader_with_every_reply_written_collects_cleanly_without_writing(tmp_path):
+    files = prepared_series(tmp_path, reader=COMMAND_READER)
+    write_command_replies(files)
+    before = tree(files.root)
+
+    assert collect(files, []) == ""
+    assert tree(files.root) == before
