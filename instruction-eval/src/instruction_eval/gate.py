@@ -5,10 +5,21 @@ from typing import Literal, TypedDict
 
 import numpy
 
-from instruction_eval.records import PASS_OUTCOME, Compares, Direction, GateCheck, Record
+from instruction_eval.records import (
+    BUDGET_REASON,
+    CAPPED_STOP,
+    NO_EFFECT_STOP,
+    PASS_OUTCOME,
+    PASSED_STOP,
+    Compares,
+    Direction,
+    GateCheck,
+    Record,
+)
 from instruction_eval.scores import Comparison, PairedUnit, ScoredReply, compare_paired
 
 LATER_REVISION_COUNT = 4
+LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
 
 PassRule = Callable[[float, tuple[float, float], float], bool]
 
@@ -191,6 +202,7 @@ INSTRUCTION_CONDITION = "instruction"
 DOWN: Direction = "down"
 UP: Direction = "up"
 ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
+UNCHANGED: ChangedFromParent = "unchanged"
 
 
 @dataclass(frozen=True)
@@ -254,4 +266,35 @@ def _movement_verdict(
         return "changed" if direction == DOWN else "reversed"
     if low > 0:
         return "changed" if direction == UP else "reversed"
-    return "unchanged" if (high - low) / 2 < predicted_size else "unresolved"
+    return UNCHANGED if (high - low) / 2 < predicted_size else "unresolved"
+
+
+def stop_after(revision: str, outcomes: Mapping[str, Record], budget: Budget | None, cost_so_far: float) -> Record | None:
+    """Return the `9-stop.yaml` content the gated revision's stop earns, first match winning, null when the series goes on."""
+    stop = _first_matching_stop(revision, outcomes, budget, cost_so_far)
+    return None if stop is None else {**stop, "kept": kept_revision(outcomes)}
+
+
+def _first_matching_stop(
+    revision: str, outcomes: Mapping[str, Record], budget: Budget | None, cost_so_far: float
+) -> Record | None:
+    """Return the stop and its reason of the first rule the revision meets, null when it meets none."""
+    if outcomes[revision]["outcome"] == PASS_OUTCOME:
+        return {"stop": PASSED_STOP}
+    if _unchanged_from_parent(revision, outcomes) and _unchanged_from_parent(_parent_revision(revision), outcomes):
+        return {"stop": NO_EFFECT_STOP}
+    if _revision_number(revision) >= LAST_REVISION_NUMBER:
+        return {"stop": CAPPED_STOP}
+    if budget is not None and cost_so_far >= budget.ceiling:
+        return {"stop": CAPPED_STOP, "reason": BUDGET_REASON}
+    return None
+
+
+def _unchanged_from_parent(revision: str, outcomes: Mapping[str, Record]) -> bool:
+    """Tell whether the revision's outcome holds `unchanged` as its `changed_from_parent`, a missing outcome or value being no."""
+    return outcomes.get(revision, {}).get("changed_from_parent") == UNCHANGED
+
+
+def _parent_revision(revision: str) -> str:
+    """Return the id of the revision before the given one."""
+    return f"{REVISION_PREFIX}{_revision_number(revision) - 1}"
