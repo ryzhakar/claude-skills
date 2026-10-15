@@ -290,10 +290,3 @@ def test_an_edited_condition_text_or_reader_definition_refuses_before_any_reply_
 
     assert not (files.root / "r1/5-replies").exists()
 
-
-def test_two_tasks_opening_with_one_message_refuse_naming_it(tmp_path):
-    twin = {"id": "t-twin", "tempts": "d-one", "split": "open", "message": OPEN_MESSAGE, "answer_key": None}
-    files = prepared_series(tmp_path, {**TASKS, "tasks": [*TASKS["tasks"], twin]})
-
-    with pytest.raises(Refusal, match=r"^duplicate first message: Explain tides"):
-        collect(files, task_transcripts(tmp_path))

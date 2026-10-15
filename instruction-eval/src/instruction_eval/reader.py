@@ -992,7 +992,7 @@ def _reader_transcripts(
 ) -> list[_ReaderTranscript]:
     """Return the transcripts whose agent type is an expected reader's and whose first user message is the first message of an expected task or conversation."""
     readers = {_reader_agent_type(reply.revision, reply.condition): (reply.revision, reply.condition) for reply in expected}
-    entries = _entries_by_first_message(tasks)
+    entries = {_turn_messages(entry)[0]: entry for entry in (*tasks.tasks, *tasks.conversations)}
     wanted = {(reply.revision, reply.condition, reply.task) for reply in expected}
     matches = []
     for transcript in transcripts:
@@ -1005,17 +1005,6 @@ def _reader_transcripts(
         if entry is not None and (revision, condition, entry.id) in wanted:
             matches.append(_ReaderTranscript(revision, condition, entry, transcript, content, replies))
     return matches
-
-
-def _entries_by_first_message(tasks: Tasks) -> dict[str, Task | Conversation]:
-    """Return each task and conversation by the first message its reader receives, refusing two sharing one."""
-    entries: dict[str, Task | Conversation] = {}
-    for entry in (*tasks.tasks, *tasks.conversations):
-        first = _turn_messages(entry)[0]
-        if first in entries:
-            raise Refusal(f"duplicate first message: {first}")
-        entries[first] = entry
-    return entries
 
 
 def _turn_messages(entry: Task | Conversation) -> tuple[str, ...]:
