@@ -35,6 +35,7 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    attempt_folder,
     load_record,
     revision_record_path,
     sha256,
@@ -380,6 +381,8 @@ STATUS_PARTS = (
     FROZEN_RECORD,
     STOP_RECORD,
 )
+PLAN_FILE = "plan.yaml"
+AGREEMENT_FILE = "agreement.yaml"
 UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
 
 
@@ -392,6 +395,7 @@ def series_status(files: SeriesFolder) -> str:
         "frozen": files.holds(FROZEN_RECORD),
         "revisions": {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
         "cost": _cost_standing(files, records),
+        "calibration": _calibration_standing(files, records),
         "stop": _stop_standing(files, records),
     }
     return yaml.safe_dump(standing, sort_keys=False)
@@ -428,6 +432,26 @@ def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[s
     if isinstance(budget, GateBudget):
         return {"unit": budget.unit, "ceiling": budget.ceiling}
     return budget
+
+
+def _calibration_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object]:
+    """Return each calibration attempt with its scale, null until rated, and the accepted attempt, null until one is accepted."""
+    attempts = [{"attempt": attempt, "scale": _attempt_scale(files, records, attempt)} for attempt in _attempt_numbers(files)]
+    accepted = records.calibration()["attempt"] if files.holds(CALIBRATION_RECORD) else None
+    return {"attempts": attempts, "accepted": accepted}
+
+
+def _attempt_numbers(files: SeriesFolder) -> Iterator[int]:
+    """Return the numbers of the calibration attempts, in order, up to the first without a plan."""
+    numbers = itertools.count(1)
+    return itertools.takewhile(lambda attempt: files.holds(f"{attempt_folder(attempt)}/{PLAN_FILE}"), numbers)
+
+
+def _attempt_scale(files: SeriesFolder, records: SeriesRecords, attempt: int) -> float | None:
+    """Return the scale an attempt's agreement reports, None while the attempt is unrated or its reference mean is zero."""
+    if not files.holds(f"{attempt_folder(attempt)}/{AGREEMENT_FILE}"):
+        return None
+    return records.agreement(attempt)["scale"]
 
 
 def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object] | None:

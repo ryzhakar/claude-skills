@@ -100,3 +100,43 @@ def test_a_frozen_series_reports_each_gated_revisions_ranks_and_the_cost_so_far_
         "r2": {"outcome": "pass", "changed_from_parent": "changed", "instruction_breaches": 0.5, "completion_passed": True, "words": 30},
     }
     assert status["cost"] == {"spent": {"replies": 6, "input_tokens": 150, "output_tokens": 30, "seconds": 2.0}, "budget": budget}
+
+
+PLAN = {
+    "judge_model": "claude-opus-4-1",
+    "raters": ["agent", "agent"],
+    "rater_model": "claude-sonnet-4-5",
+    "sample_size": 12,
+    "anchors_per_packet": 3,
+    "acceptance": {"breach_difference": 0.5, "self_difference": 0.25, "done_agreement": 0.8},
+}
+UNRATED = "unrated"
+
+
+def agreement(scale: float | None) -> dict:
+    return {"demands": {"d-judge": {"breach_difference": 0.25, "self_difference": 0.5}}, "done_agreement": 0.9, "scale": scale, "ratings": {}}
+
+
+def write_attempt(files: SeriesFolder, number: int, scale: float | None | str) -> None:
+    folder = f"6-judge/calibration/attempt-{number}"
+    write_yaml(files, f"{folder}/plan.yaml", PLAN)
+    if scale != UNRATED:
+        write_record(files, f"{folder}/agreement.yaml", agreement(scale), [])
+
+
+def test_a_stopped_series_reports_each_calibration_attempt_with_its_scale_and_the_accepted_one_and_the_stop(tmp_path):
+    files = gated_series(tmp_path, GATE, {1: outcome(False, 1.5, 40, FIRST_COST)})
+    write_attempt(files, 1, 1.2)
+    write_attempt(files, 2, None)
+    write_attempt(files, 3, UNRATED)
+    accepted = {**{key: value for key, value in PLAN.items() if key != "rater_model"}, "attempt": 2, "brief_hash": "c" * 64, "agreement": {**agreement(None), "inputs": {}}}
+    write_record(files, "6-judge/calibration.yaml", accepted, ["6-judge/calibration/attempt-2/plan.yaml"])
+    write_record(files, "9-stop.yaml", {"stop": "capped", "kept": "r1", "reason": "budget"}, [])
+
+    status = status_of(files)
+
+    assert status["calibration"] == {
+        "attempts": [{"attempt": 1, "scale": 1.2}, {"attempt": 2, "scale": None}, {"attempt": 3, "scale": None}],
+        "accepted": 2,
+    }
+    assert status["stop"] == {"stop": "capped", "kept": "r1", "reason": "budget"}
