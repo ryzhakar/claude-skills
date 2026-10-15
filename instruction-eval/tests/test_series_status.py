@@ -1,6 +1,8 @@
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 
+import pytest
 import yaml
 
 from instruction_eval.records import SeriesFolder, write_record
@@ -154,3 +156,20 @@ def test_packets_of_a_blinded_revision_await_judging_until_its_collection_exists
     (tmp_path / "r1/7-collected.yaml").unlink()
 
     assert status_of(files)["packets_awaiting_judging"] == {"r1": ["t1", "t2", "t3"]}
+
+
+def test_a_measured_first_revision_reports_its_noise_and_the_least_repeats_each_check_needs(tmp_path):
+    replies = [replace(reply, judged=3) if reply.condition == "instruction" and reply.repeat == 2 and reply.split == "sealed" else reply for reply in first_replies(0, 2)]
+    files = frozen_series(tmp_path, replies)
+
+    status = status_of(files)
+
+    assert status["noise"]["repeats"] == 2
+    assert status["noise"]["sigma"]["breaches"]["instruction"] == pytest.approx(4.5)
+    assert status["noise"]["sigma"]["breaches"]["empty"] == 0
+    assert status["least_repeats"] == {
+        "instruction-vs-empty": 35,
+        "instruction-vs-aim": 35,
+        "instruction-vs-placebo": 35,
+        "completion": 2,
+    }

@@ -11,7 +11,7 @@ import yaml
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
-from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, kept_revision
+from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, _gate_demands, _measured_revision, kept_revision, least_repeats
 from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF
 from instruction_eval.records import (
     ANCHORS_RECORD,
@@ -43,7 +43,7 @@ from instruction_eval.records import (
     write_record,
 )
 from instruction_eval.records import Budget as GateBudget
-from instruction_eval.scores import COLLECTED_FILE, ORIGINS_FILE
+from instruction_eval.scores import COLLECTED_FILE, DETECTORS_FILE, ORIGINS_FILE, Noise, measure_noise
 from instruction_eval.tasks import PLACEBO_SNAPSHOT, ExpectedReply, expected_replies, refuse_missing_replies, tasks_check
 
 SERIES_HOME_FOLDER = "instruction-series"
@@ -383,6 +383,7 @@ STATUS_PARTS = (
     STOP_RECORD,
 )
 PLAN_FILE = "plan.yaml"
+STATUS_DEFAULT_LEVEL = 0.95
 AGREEMENT_FILE = "agreement.yaml"
 UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
 
@@ -391,6 +392,7 @@ def series_status(files: SeriesFolder) -> str:
     """Return the series' standing as YAML: parts present, frozen or not, each revision's outcome, and the stop, writing nothing."""
     guard_series(files, STATUS_COMMAND)
     records = SeriesRecords(files)
+    noise = _first_revision_noise(files, records)
     standing = {
         "parts": [part for part in STATUS_PARTS if files.holds(part)],
         "frozen": files.holds(FROZEN_RECORD),
@@ -398,6 +400,8 @@ def series_status(files: SeriesFolder) -> str:
         "cost": _cost_standing(files, records),
         "calibration": _calibration_standing(files, records),
         "packets_awaiting_judging": _packets_awaiting_judging(files, records),
+        "noise": noise,
+        "least_repeats": _least_repeats_per_check(files, records, noise),
         "stop": _stop_standing(files, records),
     }
     return yaml.safe_dump(standing, sort_keys=False)
@@ -460,6 +464,25 @@ def _packets_awaiting_judging(files: SeriesFolder, records: SeriesRecords) -> di
     """Return, per blinded revision without a collection, its packets in order, the collection existing once every packet is accepted."""
     blinded = [revision for revision in revision_ids(files) if files.holds(f"{revision}/{ORIGINS_FILE}")]
     return {revision: sorted(records.origins(revision)["packets"]) for revision in blinded if not files.holds(f"{revision}/{COLLECTED_FILE}")}
+
+
+def _first_revision_noise(files: SeriesFolder, records: SeriesRecords) -> Noise | None:
+    """Return r1's noise from its sealed rows, None until r1 is blinded, judged, and detected and the gate holds `repeats` and `done_by`."""
+    measured = all(files.holds(f"{FIRST_REVISION}/{step}") for step in (ORIGINS_FILE, COLLECTED_FILE, DETECTORS_FILE))
+    gate = records.gate() if measured and files.holds(GATE_RECORD) else None
+    if gate is None or gate.repeats is None or gate.done_by is None:
+        return None
+    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    level = STATUS_DEFAULT_LEVEL if gate.level is None else gate.level
+    return measure_noise(sealed_rows, _gate_demands(records), records.conditions().controls, gate.repeats, level)
+
+
+def _least_repeats_per_check(files: SeriesFolder, records: SeriesRecords, noise: Noise | None) -> dict[str, int | None]:
+    """Return, per gate check, the fewest repeats resolving its gap, empty until r1's noise and the gate's checks exist."""
+    checks = records.gate().checks if files.holds(GATE_RECORD) else None
+    if noise is None or checks is None:
+        return {}
+    return {check.compares: least_repeats(check, noise) for check in checks}
 
 
 def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object] | None:
