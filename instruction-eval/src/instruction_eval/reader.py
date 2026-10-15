@@ -12,13 +12,21 @@ import yaml
 
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
 from instruction_eval.coverage import split_sentences
-from instruction_eval.judge import OATH_SKILL, SOURCE_FOLDER
+from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
 from instruction_eval.records import (
+    AGENT_READER,
+    CONDITIONS_RECORD,
     FIRST_REVISION,
     GATE_RECORD,
     KEY_SEPARATOR,
+    READER_RECORD,
+    REPLY_COST_KEYS,
+    SERIES_RECORD,
+    SPENT_INPUT_TOKENS_KEY,
+    TASKS_RECORD,
     AgentReader,
     CommandReader,
+    Conversation,
     Reader,
     Refusal,
     SeriesFolder,
@@ -27,11 +35,13 @@ from instruction_eval.records import (
     Tasks,
     _dump_canonical_yaml,
     condition_path,
+    reply_path,
     sha256,
     write_file,
+    write_record,
 )
 from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, guard_series
-from instruction_eval.tasks import ExpectedReply, expected_replies
+from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
@@ -790,9 +800,14 @@ def agent_launch_list(files: SeriesFolder, revision: str, conditions: Sequence[s
 
 def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
     """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named."""
-    sentence_count = len(split_sentences(_revision_instruction(files, revision)))
-    expected = expected_replies(revision, records.tasks(), records.conditions(), _gate_repeats(records), sentence_count)
+    expected = _expected_reply_set(files, revision, records)
     return tuple(reply for reply in expected if (not conditions or reply.condition in conditions) and not files.holds(reply.path))
+
+
+def _expected_reply_set(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
+    """Return the replies the revision expects at the gate's repeats, in path order."""
+    sentence_count = len(split_sentences(_revision_instruction(files, revision)))
+    return expected_replies(revision, records.tasks(), records.conditions(), _gate_repeats(records), sentence_count)
 
 
 def _gate_repeats(records: SeriesRecords) -> int:
@@ -828,3 +843,169 @@ def _launch(
         return {**launch, TASK_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: task_by_id[task].message}
     first_turn, *later_turns = turns_by_conversation[task]
     return {**launch, CONVERSATION_KEY: task, REPEAT_KEY: repeat, LAUNCH_MESSAGE_KEY: first_turn, SEND_MESSAGES_KEY: later_turns}
+
+
+COLLECT_COMMAND = "revision collect"
+SURPLUS_NOTICE = "ignored surplus transcript: "
+READER_RECORD_KIND_KEY = "kind"
+
+
+def revision_collect(
+    files: SeriesFolder, revision: str, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
+) -> str:
+    """Write the replies the revision's reader transcripts hold and return a line per surplus transcript, a command reader's collect writing nothing, refusing a gap against the expected replies."""
+    guard_series(files, COLLECT_COMMAND)
+    records = SeriesRecords(files)
+    reader = records.reader()
+    texts = _recomputed_condition_texts(files, revision, records)
+    expected = _expected_reply_set(files, revision, records)
+    surplus: tuple[Transcript, ...] = ()
+    if isinstance(reader, AgentReader):
+        reads = [*_reader_reads(revision, records, reader, texts), *(_definition_path(revision, condition) for condition in texts)]
+        surplus = _write_agent_replies(files, records, reader.model, reads, expected, transcripts, read_transcript)
+    refuse_missing_replies(files, expected)
+    return "".join(f"{SURPLUS_NOTICE}{transcript.path}\n" for transcript in surplus)
+
+
+def _recomputed_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords) -> dict[str, bytes]:
+    """Return the text of each condition the revision prepares, recomputed from the series files."""
+    placebo_source = files.read_bytes(PLACEBO_SNAPSHOT_PATH) if revision == FIRST_REVISION else None
+    return _condition_texts(files, revision, records, placebo_source)
+
+
+def _definition_path(revision: str, condition: str) -> str:
+    """Return the series path of the reader definition of a condition of a revision."""
+    return f"{AGENTS_FOLDER}/{_reader_agent_type(revision, condition)}.md"
+
+
+def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
+    """Return what the reader commands read of every revision: the series, sources, task, condition, and reader keys, the placebo snapshot, the repeats, the instruction, and the condition files."""
+    return [
+        SERIES_RECORD,
+        *_source_paths(records),
+        *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
+        *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
+        PLACEBO_SNAPSHOT_PATH,
+        *(f"{READER_RECORD}{KEY_SEPARATOR}{key}" for key in (READER_RECORD_KIND_KEY, *(field.name for field in fields(reader)))),
+        f"{GATE_RECORD}{KEY_SEPARATOR}repeats",
+        f"{revision}/{INSTRUCTION_FILE}",
+        *(condition_path(revision, condition) for condition in texts),
+    ]
+
+
+@dataclass(frozen=True)
+class _ReaderTranscript:
+    """A reader transcript matched to the task or conversation its first message opened, with its replies."""
+
+    revision: str
+    condition: str
+    entry: Task | Conversation
+    transcript: Transcript
+    content: bytes
+    replies: tuple[TranscriptReply, ...]
+
+    @property
+    def started(self) -> datetime:
+        """Return when the transcript's first reply began."""
+        return self.replies[0].started
+
+
+def _write_agent_replies(
+    files: SeriesFolder,
+    records: SeriesRecords,
+    pinned_model: str,
+    reads: Sequence[str],
+    expected: Sequence[ExpectedReply],
+    transcripts: Sequence[Transcript],
+    read_transcript: Callable[[Path], bytes],
+) -> tuple[Transcript, ...]:
+    """Write each expected reply no file holds from the earliest matching transcripts and return the surplus transcripts, refusing an exposed transcript before writing any reply."""
+    matched = _reader_transcripts(expected, records.tasks(), transcripts, read_transcript)
+    numbered, surplus = _numbered_by_start(matched, _gate_repeats(records))
+    expected_paths = {reply.path for reply in expected}
+    writes: list[tuple[str, dict[str, Any]]] = []
+    for repeat, match in numbered:
+        missing = {path: reply for path, reply in _transcript_reply_paths(match, repeat).items() if path in expected_paths and not files.holds(path)}
+        if missing:
+            refuse_exposed_reader_transcript(match.transcript.path, match.content, _turn_messages(match.entry), pinned_model)
+        writes.extend((path, _agent_reply_record(match, repeat, reply)) for path, reply in missing.items())
+    for path, record in writes:
+        write_record(files, path, record, reads)
+    return tuple(match.transcript for match in surplus)
+
+
+def _reader_transcripts(
+    expected: Sequence[ExpectedReply], tasks: Tasks, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
+) -> list[_ReaderTranscript]:
+    """Return the transcripts whose agent type is an expected reader's and whose first user message is the first message of an expected task or conversation."""
+    readers = {_reader_agent_type(reply.revision, reply.condition): (reply.revision, reply.condition) for reply in expected}
+    entries = {_turn_messages(entry)[0]: entry for entry in (*tasks.tasks, *tasks.conversations)}
+    wanted = {(reply.revision, reply.condition, reply.task) for reply in expected}
+    matches = []
+    for transcript in transcripts:
+        if transcript.agent_type not in readers:
+            continue
+        content = read_transcript(transcript.path)
+        replies = parse_transcript_replies(transcript.path, content)
+        revision, condition = readers[transcript.agent_type]
+        entry = entries.get(replies[0].message) if replies and replies[0].turn == 1 else None
+        if entry is not None and (revision, condition, entry.id) in wanted:
+            matches.append(_ReaderTranscript(revision, condition, entry, transcript, content, replies))
+    return matches
+
+
+def _turn_messages(entry: Task | Conversation) -> tuple[str, ...]:
+    """Return the messages the reader receives for a task or conversation, one per turn."""
+    return entry.turns if isinstance(entry, Conversation) else (entry.message,)
+
+
+def _numbered_by_start(matches: Sequence[_ReaderTranscript], repeats: int) -> tuple[list[tuple[int, _ReaderTranscript]], list[_ReaderTranscript]]:
+    """Number the earliest `repeats` transcripts of each condition and task 1.. by start time and return the later ones as surplus."""
+    groups: dict[tuple[str, str, str], list[_ReaderTranscript]] = {}
+    for match in matches:
+        groups.setdefault((match.revision, match.condition, match.entry.id), []).append(match)
+    numbered: list[tuple[int, _ReaderTranscript]] = []
+    surplus: list[_ReaderTranscript] = []
+    for group in groups.values():
+        by_start = sorted(group, key=lambda match: match.started)
+        numbered.extend(enumerate(by_start[:repeats], 1))
+        surplus.extend(by_start[repeats:])
+    return numbered, surplus
+
+
+def _transcript_reply_paths(match: _ReaderTranscript, repeat: int) -> dict[str, TranscriptReply]:
+    """Map the reply file of each turn the entry has, at the repeat, to the transcript's reply to that turn."""
+    turns = len(_turn_messages(match.entry))
+    single = isinstance(match.entry, Task)
+    return {
+        reply_path(match.revision, match.condition, match.entry.id, repeat, None if single else reply.turn): reply
+        for reply in match.replies
+        if reply.turn <= turns
+    }
+
+
+def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: TranscriptReply) -> dict[str, Any]:
+    """Return the reply record of one transcript reply: its text, served model, timing, tokens, and transcript."""
+    record = {
+        "condition": match.condition,
+        "task": match.entry.id,
+        "split": match.entry.split,
+        "repeat": repeat,
+        "message": _turn_messages(match.entry)[reply.turn - 1],
+        "text": reply.text,
+        "model": reply.model,
+        "reader_kind": AGENT_READER,
+        "started": reply.started.isoformat(),
+        "seconds": reply.seconds,
+        "transcript": str(reply.transcript),
+        "transcript_hash": reply.transcript_hash,
+        "cost": _reply_cost_record(reply.tokens),
+    }
+    return {**record, "turn": reply.turn} if isinstance(match.entry, Conversation) else record
+
+
+def _reply_cost_record(tokens: TokenUsage | None) -> dict[str, int | None]:
+    """Return the reply's cost fields from its token usage, every field null without usage."""
+    if tokens is None:
+        return dict.fromkeys(REPLY_COST_KEYS)
+    return {**{field.name: getattr(tokens, field.name) for field in fields(tokens)}, SPENT_INPUT_TOKENS_KEY: tokens.spent_input_tokens}
