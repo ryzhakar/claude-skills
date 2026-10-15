@@ -12,6 +12,7 @@ import yaml
 
 from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
 from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.gate import OUTCOME_FILE, revision_number
 from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
 from instruction_eval.records import (
     AGENT_READER,
@@ -44,7 +45,7 @@ from instruction_eval.records import (
     write_record,
 )
 from instruction_eval.scores import COLLECTED_FILE
-from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series
+from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series, revision_ids
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"
@@ -1044,6 +1045,7 @@ TURN_FILE_PREFIX = "/turn-"
 COVERAGE_KEYS = ("demands", "sentences")
 FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/5-replies"
 REPLY_PATTERN = "*.yaml"
+ANY_CONDITION = "*"
 
 
 @dataclass(frozen=True)
@@ -1095,17 +1097,25 @@ def _answer_replies(
     """Run the command reader on each asked reply in turn, writing each reply as soon as its run succeeds."""
     fingerprint = reader_fingerprint(files, run_fingerprint)
     _refuse_changed_fingerprint(files, records, fingerprint.fingerprint_hash)
-    reads = _ask_reads(revision, records, reader, texts)
+    reads = _ask_reads(files, revision, records, reader, texts)
     for reply in sorted(asked, key=_serial_order):
         run = run_reader(_reader_command(files, reader, reply), _reader_stdin(records, reply), ASK_TIMEOUT_SECONDS)
         _refuse_failed_run(reply, run)
         write_record(files, reply.path, _command_reply_record(records.tasks(), reply, run, fingerprint), [*reads, *_state_reads(files)])
 
 
-def _ask_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
-    """Return what `revision ask` reads of every revision: the reader commands' reads, the demands, and the coverage of the revision and of r1."""
+def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
+    """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
     coverage = (f"{coverage_revision}/3-coverage.yaml{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
-    return [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
+    reads = [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
+    return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
+
+
+def _later_revision_reads(files: SeriesFolder, revision: str) -> list[str]:
+    """Return what an ask of a later revision reads besides an ask of r1: the budget, r1's condition files, and each earlier gated revision's outcome."""
+    first_conditions = sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(condition_path(FIRST_REVISION, ANY_CONDITION)))
+    earlier = (earlier for earlier in revision_ids(files) if revision_number(earlier) < revision_number(revision))
+    return [f"{GATE_RECORD}{KEY_SEPARATOR}budget", *first_conditions, *(f"{other}/{OUTCOME_FILE}" for other in earlier if files.holds(f"{other}/{OUTCOME_FILE}"))]
 
 
 def _state_reads(files: SeriesFolder) -> list[str]:

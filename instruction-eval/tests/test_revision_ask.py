@@ -4,8 +4,9 @@ from datetime import timedelta
 import pytest
 import yaml
 
-from instruction_eval.reader import ReaderRun, reader_fingerprint, revision_ask
-from instruction_eval.records import Refusal, SeriesFolder, write_file
+from instruction_eval.reader import ReaderRun, reader_fingerprint, reader_prepare, revision_ask
+from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
+from series_fixtures import write_revision
 from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, tree, write_yaml
 
 COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
@@ -204,3 +205,65 @@ def test_a_collected_revision_is_never_asked_again_whatever_the_gate_repeats_now
         revision_ask(files, "r1", [], forbidden_run, forbidden_run)
 
     assert not (files.root / "r1/5-replies").exists()
+
+
+CHECKS = [{"compares": compares, "gap": 1.0} for compares in ("instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion")]
+FULL_GATE = {"repeats": 2, "level": 0.95, "done_by": "judge", "checks": CHECKS, "keep_rule": "best-estimate-shortest", "budget": "none"}
+SIGMA = {"breaches": {}, "done": {}, "drift": {}, "demands": {}}
+NOISE = {"repeats": 2, "level": 0.95, "z": 1.96, "sigma": SIGMA, "checks": {}, "demands": {}, "done_change": None}
+FIRST_OUTCOME = {
+    "outcome": "fail",
+    "checks": [],
+    "instruction_breaches": 1.0,
+    "completion_passed": True,
+    "words": 2,
+    "cost": {"replies": 16, "input_tokens": None, "output_tokens": None, "seconds": 8.0},
+}
+
+
+def forbidden_read(path):
+    raise AssertionError(f"read external file {path}")
+
+
+def later_revision_series(tmp_path, budget) -> SeriesFolder:
+    """Build a frozen command series whose r1 is asked and gated as failed and whose r2 is prepared."""
+    files = prepared_series(tmp_path, reader=COMMAND_READER, gate={**FULL_GATE, "budget": budget})
+    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    revision_ask(files, "r1", [], StubReader(), stub_fingerprint)
+    write_record(files, "r1/9-outcome.yaml", FIRST_OUTCOME, [])
+    frozen = {"hashes": {}, "noise": NOISE, "tool_version": "0.1.0", "frozen_at": "2026-10-14T10:00:00+00:00", "fingerprint_hash": reader_fingerprint(files, stub_fingerprint).fingerprint_hash}
+    write_record(files, "8-frozen.yaml", frozen, [])
+    write_revision(files, 2)
+    write_yaml(files, "r2/3-coverage.yaml", COVERAGE)
+    reader_prepare(files, "r2", forbidden_read, {}, files.root, files.root)
+    return files
+
+
+def later_reads() -> set[str]:
+    return {
+        *(read for read in expected_reads() if not read.startswith("r1/2-instruction") and not read.startswith("r1/4-conditions")),
+        "r2/2-instruction.md",
+        "r2/3-coverage.yaml#demands",
+        "r2/3-coverage.yaml#sentences",
+        "r2/4-conditions/instruction.md",
+        "8-frozen.yaml",
+        "7-gate.yaml#budget",
+        *(f"r1/4-conditions/{condition}.md" for condition in CONDITION_NAMES),
+        "r1/9-outcome.yaml",
+    }
+
+
+def test_a_later_revision_asks_its_own_replies_against_the_frozen_fingerprint_reading_the_budget_and_earlier_outcomes(tmp_path):
+    files = later_revision_series(tmp_path, "none")
+    changed = "model: gpt-5-mini\nbuild: b2\ntemperature: 0.7\n"
+
+    with pytest.raises(Refusal, match=r"^reader fingerprint changed since 8-frozen\.yaml$"):
+        revision_ask(files, "r2", [], forbidden_run, lambda command: changed)
+
+    reader = StubReader()
+    revision_ask(files, "r2", [], reader, stub_fingerprint)
+
+    assert len(reader.calls) == 2 * 2
+    record = load(files, "r2/5-replies/instruction/t-open/repeat-1.yaml")
+    assert set(record["inputs"]) == later_reads()
+    assert record["fingerprint_hash"] == reader_fingerprint(files, stub_fingerprint).fingerprint_hash

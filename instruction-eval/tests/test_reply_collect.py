@@ -37,14 +37,14 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
     write_file(files, path, yaml.safe_dump(document).encode())
 
 
-def prepared_series(tmp_path, tasks: dict = TASKS, reader: dict = READER) -> SeriesFolder:
+def prepared_series(tmp_path, tasks: dict = TASKS, reader: dict = READER, gate: dict = GATE) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
     write_record(files, "series.yaml", {**SERIES, "reader_kind": reader["kind"]}, [])
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "3-tasks.yaml", tasks)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
     write_yaml(files, "5-reader.yaml", reader)
-    write_yaml(files, "7-gate.yaml", GATE)
+    write_yaml(files, "7-gate.yaml", gate)
     write_revision(files, 1)
     home = tmp_path / "home"
     environ = NeutralLogin(home).environ() if reader["kind"] == "agent" else {}
