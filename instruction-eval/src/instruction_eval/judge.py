@@ -224,6 +224,8 @@ def _section(blind_id: str, exchanges: Iterable[tuple[str, str]]) -> str:
 
 JUDGE_DEFINITION_PREFIX = "ie-judge-"
 AGENTS_FOLDER = ".claude/agents"
+FAILED_JUDGINGS_BEFORE_RECALIBRATION = 3
+RECALIBRATE_REFUSAL = "recalibrate in a new series"
 
 
 @dataclass(frozen=True)
@@ -308,6 +310,8 @@ def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
     pending = [outcome for outcome in outcomes if isinstance(outcome, PendingJudging)]
     if pending:
         return pending[0]
+    if outcomes.count(None) >= FAILED_JUDGINGS_BEFORE_RECALIBRATION:
+        raise Refusal(RECALIBRATE_REFUSAL)
     return NeedsJudging(len(numbers) + 1)
 
 

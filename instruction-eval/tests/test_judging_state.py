@@ -212,3 +212,45 @@ def test_a_returned_judging_fails_when_it_misses_an_anchor_count_or_done_value_b
     write_verdict(files, "t1", 1, **verdict_options)
 
     assert states(files, [judge_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
+
+
+def returned_without_verdict(files: SeriesFolder, packet: str, judging: int) -> Transcript:
+    write_definition(files, packet, judging)
+    return judge_transcript(files, packet, judging)
+
+
+def test_a_packet_holding_two_failed_judgings_needs_a_third(tmp_path):
+    files = series_folder(tmp_path)
+    transcripts = [returned_without_verdict(files, "t1", judging) for judging in (1, 2)]
+
+    assert states(files, transcripts)["t1"] == NeedsJudging(3)
+
+
+def test_a_packet_holding_three_failed_judgings_refuses_to_recalibrate_in_a_new_series(tmp_path):
+    files = series_folder(tmp_path)
+    transcripts = [returned_without_verdict(files, "t1", judging) for judging in (1, 2, 3)]
+
+    with pytest.raises(Refusal, match="recalibrate in a new series"):
+        states(files, transcripts)
+
+
+def test_a_pending_judging_after_two_failures_blocks_a_new_one(tmp_path):
+    files = series_folder(tmp_path)
+    transcripts = [returned_without_verdict(files, "t1", judging) for judging in (1, 2)]
+    write_definition(files, "t1", 3)
+
+    assert states(files, transcripts)["t1"] == PendingJudging(3)
+
+
+def test_the_lowest_judging_that_passes_is_accepted_though_a_later_one_passes_too(tmp_path):
+    files = series_folder(tmp_path)
+    transcripts = [returned_without_verdict(files, "t1", 1)]
+    for judging in (2, 3):
+        write_definition(files, "t1", judging)
+        write_verdict(files, "t1", judging)
+        transcripts.append(judge_transcript(files, "t1", judging))
+
+    accepted = states(files, transcripts)["t1"]
+
+    assert accepted.judging == 2
+    assert accepted.transcript == transcripts[1].path
