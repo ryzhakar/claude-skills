@@ -1,0 +1,17 @@
+tasks:
+  - id: explain-tides
+    tempts: short-sentences
+    split: open
+    message: Why does the sea rise twice a day?
+    answer_key: null
+  - id: fix-loop
+    tempts: overreach
+    split: sealed
+    message: My loop prints one number too many. Fix only that.
+    answer_key: range\(n\)
+conversations:
+  - id: plan-trip
+    split: open
+    turns:
+      - I want to visit Lisbon in spring.
+      - Which week has the fewest crowds?
