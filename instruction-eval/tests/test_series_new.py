@@ -137,3 +137,34 @@ def test_a_folder_inside_a_git_work_tree_is_refused(tmp_path, make_marker):
 
     with pytest.raises(Refusal, match=rf"^series folder inside a git work tree: {re.escape(str(tmp_path / 'work'))}$"):
         new_series(tmp_path, name="runs/terse")
+
+
+UNCLOSED = b"---\nname: terse\nBe terse.\n"
+
+
+@pytest.mark.parametrize(
+    ("instruction", "sources", "refusal"),
+    [
+        (INSTRUCTION, ["one/facts.md", "two/facts.md"], "duplicate source basename: facts.md"),
+        (UNCLOSED, [], "unclosed frontmatter: {work}/live.md"),
+        (INSTRUCTION, ["one/facts.md", "unclosed.md"], "unclosed frontmatter: {work}/unclosed.md"),
+        (None, [], "missing file: {work}/live.md"),
+        (INSTRUCTION, ["gone.md"], "missing file: {work}/gone.md"),
+    ],
+    ids=["duplicate-basename", "unclosed-instruction", "unclosed-source", "missing-instruction", "missing-source"],
+)
+def test_an_input_the_snapshots_cannot_take_is_refused_before_anything_is_written(tmp_path, instruction, sources, refusal):
+    work = tmp_path / "work"
+    (work / "one").mkdir(parents=True)
+    (work / "two").mkdir()
+    (work / "one/facts.md").write_bytes(b"Tides.\n")
+    (work / "two/facts.md").write_bytes(b"Rain.\n")
+    (work / "unclosed.md").write_bytes(UNCLOSED)
+    if instruction is not None:
+        (work / "live.md").write_bytes(instruction)
+
+    with pytest.raises(Refusal) as refused:
+        new_series(tmp_path, sources=sources)
+
+    assert str(refused.value) == refusal.format(work=work)
+    assert not (tmp_path / "home/instruction-series").exists()

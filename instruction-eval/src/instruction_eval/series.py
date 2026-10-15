@@ -2,10 +2,11 @@
 
 import itertools
 import os
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 
+from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
     FIRST_REVISION,
@@ -50,12 +51,14 @@ def series_new(
     _refuse_folder_under_memory_file(files, home)
     _refuse_folder_inside_git_work_tree(files)
     _refuse_non_empty_folder(files)
-    instruction_bytes = instruction_path.read_bytes()
+    _refuse_duplicate_basenames(source_paths)
+    texts = {path: _read_external_file(path) for path in (instruction_path, *source_paths)}
+    _refuse_unclosed_frontmatter(texts)
     write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
     _make_agents_folder(files)
-    _snapshot_sources(files, source_paths)
-    write_file(files, FIRST_INSTRUCTION, instruction_bytes)
-    write_record(files, revision_record_path(FIRST_REVISION), _first_revision_record(instruction_bytes), [])
+    _snapshot_sources(files, source_paths, texts)
+    write_file(files, FIRST_INSTRUCTION, texts[instruction_path])
+    write_record(files, revision_record_path(FIRST_REVISION), _first_revision_record(texts[instruction_path]), [])
     return files
 
 
@@ -120,10 +123,35 @@ def _make_agents_folder(files: SeriesFolder) -> None:
     (files.root / AGENTS_FOLDER).mkdir(parents=True, exist_ok=True)
 
 
-def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path]) -> None:
+def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path], texts: Mapping[Path, bytes]) -> None:
     """Copy each source's bytes to `1-source/<basename>`."""
     for source in sources:
-        write_file(files, f"{SOURCE_FOLDER}/{source.name}", source.read_bytes())
+        write_file(files, f"{SOURCE_FOLDER}/{source.name}", texts[source])
+
+
+def _refuse_duplicate_basenames(sources: Sequence[Path]) -> None:
+    """Refuse two sources sharing a basename."""
+    basenames = [source.name for source in sources]
+    for basename in basenames:
+        if basenames.count(basename) > 1:
+            raise Refusal(f"duplicate source basename: {basename}")
+
+
+def _read_external_file(path: Path) -> bytes:
+    """Return the bytes of a file outside the series, refusing it when absent."""
+    try:
+        return path.read_bytes()
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
+
+
+def _refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
+    """Refuse a file whose first line is `---` with no later line exactly `---`."""
+    for path, text in texts.items():
+        try:
+            strip_frontmatter(text.decode(), str(path))
+        except UnclosedFrontmatter as unclosed:
+            raise Refusal(str(unclosed)) from None
 
 
 def guard_series(files: SeriesFolder, command: str) -> None:
