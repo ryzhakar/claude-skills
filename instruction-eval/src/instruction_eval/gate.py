@@ -1,11 +1,25 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from statistics import mean
 from typing import Literal, TypedDict
 
-from instruction_eval.records import PASS_OUTCOME, Compares, GateCheck, Record
-from instruction_eval.scores import Comparison
+import numpy
+
+from instruction_eval.records import (
+    BUDGET_REASON,
+    CAPPED_STOP,
+    NO_EFFECT_STOP,
+    PASS_OUTCOME,
+    PASSED_STOP,
+    Compares,
+    Direction,
+    GateCheck,
+    Record,
+)
+from instruction_eval.scores import Comparison, PairedUnit, ScoredReply, compare_paired
 
 LATER_REVISION_COUNT = 4
+LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
 
 PassRule = Callable[[float, tuple[float, float], float], bool]
 
@@ -181,3 +195,109 @@ def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
 def _revision_number(revision: str) -> int:
     """Return the number a revision id carries."""
     return int(revision.removeprefix(REVISION_PREFIX))
+
+
+COMPLETION_TARGET = "completion"
+INSTRUCTION_CONDITION = "instruction"
+DOWN: Direction = "down"
+UP: Direction = "up"
+ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
+CHANGED: ChangedFromParent = "changed"
+REVERSED: ChangedFromParent = "reversed"
+UNCHANGED: ChangedFromParent = "unchanged"
+UNRESOLVED: ChangedFromParent = "unresolved"
+
+
+@dataclass(frozen=True)
+class ParentComparison:
+    """A revision's instruction minus its parent's on the hypothesis target, and what that says about the predicted change."""
+
+    target: str
+    comparison: Comparison
+    changed_from_parent: ChangedFromParent
+
+
+def compare_with_parent(
+    revision_rows: Sequence[ScoredReply],
+    parent_rows: Sequence[ScoredReply],
+    target: str,
+    direction: Direction,
+    predicted_size: float,
+    level: float,
+    rng: numpy.random.Generator,
+) -> ParentComparison:
+    """Compare the revision's sealed instruction replies with its parent's on the target, a demand id or `completion`."""
+    units = _paired_task_values(revision_rows, parent_rows, target)
+    comparison = compare_paired(units, level, rng)
+    return ParentComparison(target, comparison, _movement_verdict(comparison.interval, direction, predicted_size))
+
+
+def _paired_task_values(
+    revision_rows: Sequence[ScoredReply], parent_rows: Sequence[ScoredReply], target: str
+) -> list[PairedUnit]:
+    """Pair each task's mean target value in the revision with its parent's, tasks one side lacks left out."""
+    revision_values = _task_values(revision_rows, target)
+    parent_values = _task_values(parent_rows, target)
+    return [PairedUnit(revision_values[task], parent_values[task]) for task in sorted(revision_values.keys() & parent_values.keys())]
+
+
+def _task_values(rows: Sequence[ScoredReply], target: str) -> dict[str, float]:
+    """Map each task to the mean target value of its instruction replies over repeats, tasks without a value left out."""
+    values_by_task: dict[str, list[float]] = {}
+    for row in rows:
+        value = _reply_value(row, target)
+        if row["condition"] == INSTRUCTION_CONDITION and row["turn"] is None and value is not None:
+            values_by_task.setdefault(row["task"], []).append(value)
+    return {task: mean(values) for task, values in values_by_task.items()}
+
+
+def _reply_value(row: ScoredReply, target: str) -> float | None:
+    """Return the reply's breaches of the target demand, or its done as 1 or 0 for `completion`, null when done is null."""
+    if target == COMPLETION_TARGET:
+        return None if row["done"] is None else float(row["done"])
+    return float(row["breaches"][target])
+
+
+def _movement_verdict(
+    interval: tuple[float, float] | None, direction: Direction, predicted_size: float
+) -> ChangedFromParent:
+    """Return `changed` or `reversed` when the interval excludes zero, `unchanged` when it holds zero narrower than the predicted size, else `unresolved`."""
+    if interval is None:
+        return UNRESOLVED
+    low, high = interval
+    if high < 0:
+        return CHANGED if direction == DOWN else REVERSED
+    if low > 0:
+        return CHANGED if direction == UP else REVERSED
+    return UNCHANGED if (high - low) / 2 < predicted_size else UNRESOLVED
+
+
+def stop_after(revision: str, outcomes: Mapping[str, Record], budget: Budget | None, cost_so_far: float) -> Record | None:
+    """Return the `9-stop.yaml` content the gated revision's stop earns, first match winning, null when the series goes on."""
+    stop = _first_matching_stop(revision, outcomes, budget, cost_so_far)
+    return None if stop is None else {**stop, "kept": kept_revision(outcomes)}
+
+
+def _first_matching_stop(
+    revision: str, outcomes: Mapping[str, Record], budget: Budget | None, cost_so_far: float
+) -> Record | None:
+    """Return the stop and its reason of the first rule the revision meets, null when it meets none."""
+    if outcomes[revision]["outcome"] == PASS_OUTCOME:
+        return {"stop": PASSED_STOP}
+    if _unchanged_from_parent(revision, outcomes) and _unchanged_from_parent(_parent_revision(revision), outcomes):
+        return {"stop": NO_EFFECT_STOP}
+    if _revision_number(revision) >= LAST_REVISION_NUMBER:
+        return {"stop": CAPPED_STOP}
+    if budget is not None and cost_so_far >= budget.ceiling:
+        return {"stop": CAPPED_STOP, "reason": BUDGET_REASON}
+    return None
+
+
+def _unchanged_from_parent(revision: str, outcomes: Mapping[str, Record]) -> bool:
+    """Tell whether the revision's outcome holds `unchanged` as its `changed_from_parent`, a missing outcome or value being no."""
+    return outcomes.get(revision, {}).get("changed_from_parent") == UNCHANGED
+
+
+def _parent_revision(revision: str) -> str:
+    """Return the id of the revision before the given one."""
+    return f"{REVISION_PREFIX}{_revision_number(revision) - 1}"
