@@ -757,11 +757,7 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
 
 def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
     """Return the bytes of a revision's instruction snapshot, refusing it absent."""
-    path = f"{revision}/{INSTRUCTION_FILE}"
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
+    return _read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")
 
 
 def _utf8_text(content: bytes, label: str) -> str:
@@ -857,7 +853,7 @@ def revision_collect(
     guard_series(files, COLLECT_COMMAND)
     records = SeriesRecords(files)
     reader = records.reader()
-    texts = _recomputed_condition_texts(files, revision, records)
+    texts = _verified_condition_texts(files, revision, records, reader)
     expected = _expected_reply_set(files, revision, records)
     surplus: tuple[Transcript, ...] = ()
     if isinstance(reader, AgentReader):
@@ -867,10 +863,32 @@ def revision_collect(
     return "".join(f"{SURPLUS_NOTICE}{transcript.path}\n" for transcript in surplus)
 
 
-def _recomputed_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords) -> dict[str, bytes]:
-    """Return the text of each condition the revision prepares, recomputed from the series files."""
-    placebo_source = files.read_bytes(PLACEBO_SNAPSHOT_PATH) if revision == FIRST_REVISION else None
-    return _condition_texts(files, revision, records, placebo_source)
+def _verified_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader) -> dict[str, bytes]:
+    """Return the text of each condition the revision prepares, recomputed from the series files, refusing a condition file or an agent reader's definition that differs from its recomputation."""
+    placebo_source = _read_series_file(files, PLACEBO_SNAPSHOT_PATH) if revision == FIRST_REVISION else None
+    texts = _condition_texts(files, revision, records, placebo_source)
+    for condition, text in texts.items():
+        _refuse_edited_file(files, condition_path(revision, condition), text)
+        if isinstance(reader, AgentReader):
+            definition = render_agent_definition(_reader_agent_type(revision, condition), reader.model, AgentKind.READER, text)
+            _refuse_edited_file(files, _definition_path(revision, condition), definition)
+    return texts
+
+
+def _refuse_edited_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
+    """Refuse the series file at `path` when its bytes differ from the recomputed bytes."""
+    try:
+        refuse_edited_definition(path, _read_series_file(files, path), recomputed)
+    except DefinitionEdited as edited:
+        raise Refusal(str(edited)) from None
+
+
+def _read_series_file(files: SeriesFolder, path: str) -> bytes:
+    """Return the bytes of the series file at `path`, refusing it absent."""
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
 
 
 def _definition_path(revision: str, condition: str) -> str:

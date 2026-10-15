@@ -275,3 +275,14 @@ def test_a_command_reader_with_every_reply_written_collects_cleanly_without_writ
 
     assert collect(files, []) == ""
     assert tree(files.root) == before
+
+
+@pytest.mark.parametrize("edited", ["r1/4-conditions/aim.md", ".claude/agents/ie-reader-r1-aim.md"])
+def test_an_edited_condition_text_or_reader_definition_refuses_before_any_reply_is_written(tmp_path, edited):
+    files = prepared_series(tmp_path)
+    (files.root / edited).write_bytes(b"edited")
+
+    with pytest.raises(Refusal, match=rf"^{edited.replace('.', r'[.]')} differs from its recomputation$"):
+        collect(files, task_transcripts(tmp_path))
+
+    assert not (files.root / "r1/5-replies").exists()
