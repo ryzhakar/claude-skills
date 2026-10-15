@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from instruction_eval.records import Refusal
-from instruction_eval.series import series_new
+from instruction_eval.series import Disk, series_new
 
 NOW = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
 INSTRUCTION = b"Be terse. Skip greetings.\n"
@@ -23,7 +23,7 @@ def sha256(content):
 def new_series(tmp_path, name="terse", instruction="live.md", sources=(), reader_kind="agent"):
     (tmp_path / "home").mkdir(exist_ok=True)
     (tmp_path / "work").mkdir(exist_ok=True)
-    return series_new(name, instruction, list(sources), reader_kind, tmp_path / "work", tmp_path / "home", NOW)
+    return series_new(name, instruction, list(sources), reader_kind, tmp_path / "work", tmp_path / "home", NOW, Disk())
 
 
 def test_a_bare_name_makes_the_series_folder_under_the_home_series_directory_holding_exactly_the_first_snapshots(tmp_path):
@@ -150,8 +150,10 @@ UNCLOSED = b"---\nname: terse\nBe terse.\n"
         (INSTRUCTION, ["one/facts.md", "unclosed.md"], "unclosed frontmatter: {work}/unclosed.md"),
         (None, [], "missing file: {work}/live.md"),
         (INSTRUCTION, ["gone.md"], "missing file: {work}/gone.md"),
+        (INSTRUCTION, ["one"], "unreadable file: {work}/one"),
+        (INSTRUCTION, ["binary.md"], "not UTF-8: {work}/binary.md"),
     ],
-    ids=["duplicate-basename", "unclosed-instruction", "unclosed-source", "missing-instruction", "missing-source"],
+    ids=["duplicate-basename", "unclosed-instruction", "unclosed-source", "missing-instruction", "missing-source", "unreadable-source", "binary-source"],
 )
 def test_an_input_the_snapshots_cannot_take_is_refused_before_anything_is_written(tmp_path, instruction, sources, refusal):
     work = tmp_path / "work"
@@ -160,6 +162,7 @@ def test_an_input_the_snapshots_cannot_take_is_refused_before_anything_is_writte
     (work / "one/facts.md").write_bytes(b"Tides.\n")
     (work / "two/facts.md").write_bytes(b"Rain.\n")
     (work / "unclosed.md").write_bytes(UNCLOSED)
+    (work / "binary.md").write_bytes(b"\xff\xfe")
     if instruction is not None:
         (work / "live.md").write_bytes(instruction)
 

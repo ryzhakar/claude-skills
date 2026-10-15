@@ -3,6 +3,7 @@
 import itertools
 import os
 from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -46,6 +47,35 @@ FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
 STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 
 
+@dataclass(frozen=True)
+class Disk:
+    """The file system `series new` checks and reads outside the series folder, and makes the folder on."""
+
+    def holds_file(self, path: Path) -> bool:
+        """Tell whether a file exists at `path`."""
+        return path.is_file()
+
+    def holds_entry(self, path: Path) -> bool:
+        """Tell whether a file or folder exists at `path`."""
+        return path.exists()
+
+    def holds_anything(self, path: Path) -> bool:
+        """Tell whether `path` is a file or a folder holding an entry."""
+        return path.exists() and (not path.is_dir() or any(path.iterdir()))
+
+    def read_bytes(self, path: Path) -> bytes:
+        """Return the bytes at `path`."""
+        return path.read_bytes()
+
+    def make_folder(self, path: Path) -> None:
+        """Make the folder at `path` with its parents, leaving an existing one."""
+        path.mkdir(parents=True, exist_ok=True)
+
+    def series_folder(self, path: Path) -> SeriesFolder:
+        """Return the series folder rooted at `path`."""
+        return SeriesFolder(path)
+
+
 def series_new(
     name: str,
     instruction: str,
@@ -54,19 +84,20 @@ def series_new(
     working_dir: Path,
     home: Path,
     now: datetime,
+    disk: Disk,
 ) -> SeriesFolder:
     """Make the series folder `name` names, holding the snapshots of the live instruction and the sources, and return it."""
     instruction_path = _resolve_against(working_dir, instruction)
     source_paths = [_resolve_against(working_dir, source) for source in sources]
-    files = SeriesFolder(_series_folder_path(name, working_dir, home))
-    _refuse_folder_under_memory_file(files, home)
-    _refuse_folder_inside_git_work_tree(files)
-    _refuse_non_empty_folder(files)
+    files = disk.series_folder(_series_folder_path(name, working_dir, home))
+    _refuse_folder_under_memory_file(files, home, disk)
+    _refuse_folder_inside_git_work_tree(files, disk)
+    _refuse_non_empty_folder(files, disk)
     _refuse_duplicate_basenames(source_paths)
-    texts = {path: _read_external_file(path) for path in (instruction_path, *source_paths)}
+    texts = {path: _read_external_file(path, disk) for path in (instruction_path, *source_paths)}
     _refuse_unclosed_frontmatter(texts)
     write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
-    _make_agents_folder(files)
+    _make_agents_folder(files, disk)
     _snapshot_sources(files, source_paths, texts)
     write_file(files, FIRST_INSTRUCTION, texts[instruction_path])
     write_record(files, revision_record_path(FIRST_REVISION), _first_revision_record(texts[instruction_path]), [])
@@ -85,20 +116,20 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
     return home / SERIES_HOME_FOLDER / name
 
 
-def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
+def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path, disk: Disk) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a memory file, except the home default login's."""
     login_memory_file = home / LOGIN_MEMORY_FILE
     for directory in _folder_and_ancestors(files):
         for memory_file in MEMORY_FILES:
             candidate = directory / memory_file
-            if candidate.is_file() and candidate != login_memory_file:
+            if disk.holds_file(candidate) and candidate != login_memory_file:
                 raise Refusal(f"series folder under a memory file: {candidate}")
 
 
-def _refuse_folder_inside_git_work_tree(files: SeriesFolder) -> None:
+def _refuse_folder_inside_git_work_tree(files: SeriesFolder, disk: Disk) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a `.git` entry."""
     for directory in _folder_and_ancestors(files):
-        if (directory / GIT_ENTRY).exists():
+        if disk.holds_entry(directory / GIT_ENTRY):
             raise Refusal(f"series folder inside a git work tree: {directory}")
 
 
@@ -107,11 +138,10 @@ def _folder_and_ancestors(files: SeriesFolder) -> tuple[Path, ...]:
     return (files.root, *files.root.parents)
 
 
-def _refuse_non_empty_folder(files: SeriesFolder) -> None:
+def _refuse_non_empty_folder(files: SeriesFolder, disk: Disk) -> None:
     """Refuse a series folder that exists as a file or holds anything."""
-    root = files.root
-    if root.exists() and (not root.is_dir() or any(root.iterdir())):
-        raise Refusal(f"series folder not empty: {root}")
+    if disk.holds_anything(files.root):
+        raise Refusal(f"series folder not empty: {files.root}")
 
 
 def _series_record(instruction: Path, sources: Sequence[Path], reader_kind: ReaderKind, now: datetime) -> dict[str, object]:
@@ -129,9 +159,9 @@ def _first_revision_record(instruction: bytes) -> dict[str, object]:
     return {"number": FIRST_REVISION_NUMBER, "parent": None, "hash": sha256(instruction), "parent_record": None, "change": None}
 
 
-def _make_agents_folder(files: SeriesFolder) -> None:
+def _make_agents_folder(files: SeriesFolder, disk: Disk) -> None:
     """Make the empty folder the neutral session's agent definitions go in."""
-    (files.root / AGENTS_FOLDER).mkdir(parents=True, exist_ok=True)
+    disk.make_folder(files.root / AGENTS_FOLDER)
 
 
 def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path], texts: Mapping[Path, bytes]) -> None:
@@ -142,18 +172,21 @@ def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path], texts: Mappi
 
 def _refuse_duplicate_basenames(sources: Sequence[Path]) -> None:
     """Refuse two sources sharing a basename."""
-    basenames = [source.name for source in sources]
-    for basename in basenames:
-        if basenames.count(basename) > 1:
-            raise Refusal(f"duplicate source basename: {basename}")
+    seen: set[str] = set()
+    for source in sources:
+        if source.name in seen:
+            raise Refusal(f"duplicate source basename: {source.name}")
+        seen.add(source.name)
 
 
-def _read_external_file(path: Path) -> bytes:
-    """Return the bytes of a file outside the series, refusing it when absent."""
+def _read_external_file(path: Path, disk: Disk) -> bytes:
+    """Return the bytes of a file outside the series, refusing it when absent or unreadable."""
     try:
-        return path.read_bytes()
+        return disk.read_bytes(path)
     except FileNotFoundError:
         raise Refusal(f"missing file: {path}") from None
+    except OSError:
+        raise Refusal(f"unreadable file: {path}") from None
 
 
 def _refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
@@ -161,6 +194,8 @@ def _refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
     for path, text in texts.items():
         try:
             strip_frontmatter(text.decode(), str(path))
+        except UnicodeDecodeError:
+            raise Refusal(f"not UTF-8: {path}") from None
         except UnclosedFrontmatter as unclosed:
             raise Refusal(str(unclosed)) from None
 
