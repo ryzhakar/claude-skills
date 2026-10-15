@@ -328,3 +328,14 @@ def test_without_sources_the_judge_binds_to_the_gate_demands_of_the_coverage_and
     assert "- id: d-plain\n  text: Use plain words." in body
     assert "d-hedge" not in body
     assert set(SeriesRecords(files).attempt_origins(1)["inputs"]) == reads_of(files, 1, earlier=0, sourced=False)
+
+
+def test_a_task_reply_file_with_a_non_numeric_repeat_refuses_naming_the_file_and_writes_nothing(tmp_path):
+    files = stage_one_series(tmp_path)
+    (files.root / "r1/5-replies/aim/t1/repeat-x.yaml").write_text("")
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=r"^malformed reply file: r1/5-replies/aim/t1/repeat-x\.yaml$"):
+        calibrate(tmp_path, files)
+
+    assert tree(files.root) == before

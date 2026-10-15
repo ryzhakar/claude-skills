@@ -7,7 +7,7 @@ from collections import deque
 from collections.abc import Callable, Container, Iterable, Iterator, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import islice
 from pathlib import Path
 from random import Random
@@ -331,7 +331,8 @@ def judging_states(
 def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
     """Return the judging state of one packet: its lowest passing judging, else its first pending one, else the next judging to write."""
     numbers = _judging_numbers(judgings.files, judgings.revision, packet)
-    outcomes = [_judging_outcome(judgings, packet, number) for number in numbers]
+    packet_origins = _packet_origins(judgings, packet)
+    outcomes = [_judging_outcome(judgings, packet, packet_origins, number) for number in numbers]
     accepted = [outcome for outcome in outcomes if isinstance(outcome, AcceptedJudging)]
     if accepted:
         return accepted[0]
@@ -343,23 +344,26 @@ def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
     return NeedsJudging(len(numbers) + 1)
 
 
-def _judging_outcome(judgings: _Judgings, packet: str, number: int) -> AcceptedJudging | PendingJudging | None:
-    """Return the judging's acceptance, `PendingJudging` while its verdict is awaited, or None when it failed."""
-    agent_type = _judging_agent_type(judgings.revision, packet, number)
-    reply = _final_reply(judgings, agent_type)
+def _judging_outcome(
+    judgings: _Judgings, packet: str, packet_origins: Mapping[str, Record], number: int
+) -> AcceptedJudging | PendingJudging | None:
+    """Return the judging's acceptance, `PendingJudging` while its verdict or final message is awaited, or None when it failed."""
+    run = _latest_run(judgings, _judging_agent_type(judgings.revision, packet, number))
+    if run is not None and run.reply is None:
+        return PendingJudging(number)
     if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
-        return None if reply else PendingJudging(number)
-    verdict = _valid_verdict(judgings, packet, number)
-    if verdict is None or reply is None or reply.model != judgings.judge_model or _is_rejected(judgings, reply, packet, number):
+        return None if run else PendingJudging(number)
+    verdict = _valid_verdict(judgings, packet_origins, packet, number)
+    if verdict is None or run is None or run.reply.model != judgings.judge_model or _is_rejected(judgings, run, packet, number):
         return None
-    anchors = _anchor_agreement(judgings, packet, verdict)
+    anchors = _anchor_agreement(judgings, packet, packet_origins, verdict)
     if not _within_acceptance(anchors, judgings.acceptance):
         return None
     return AcceptedJudging(
         judging=number,
-        judge_model=reply.model,
-        transcript=reply.transcript,
-        transcript_hash=reply.transcript_hash,
+        judge_model=run.reply.model,
+        transcript=run.reply.transcript,
+        transcript_hash=run.reply.transcript_hash,
         anchors=anchors,
     )
 
@@ -374,36 +378,49 @@ def _verdict_file(revision: str, packet: str, number: int) -> str:
     return f"{revision}/7-verdicts/{packet}/k{number}.yaml"
 
 
-def _final_reply(judgings: _Judgings, agent_type: str) -> "TranscriptReply | None":
-    """Return the final reply of the agent type's latest transcript, or None when that transcript does not end in one."""
+@dataclass(frozen=True)
+class _Run:
+    """The latest transcript of a judging: its path, its bytes, and its final reply when it has ended in one."""
+
+    path: Path
+    content: bytes
+    reply: "TranscriptReply | None"
+
+
+def _latest_run(judgings: _Judgings, agent_type: str) -> _Run | None:
+    """Return the agent type's latest transcript read once, or None when it has no transcript."""
     from instruction_eval.reader import parse_transcript_replies
 
     transcripts = [transcript for transcript in judgings.transcripts if transcript.agent_type == agent_type]
-    if not transcripts:
+    contents = {transcript.path: judgings.read_transcript(transcript.path) for transcript in transcripts}
+    if not contents:
         return None
-    latest = max(transcripts, key=lambda transcript: _start_time(judgings.read_transcript(transcript.path)))
-    replies = parse_transcript_replies(latest.path, judgings.read_transcript(latest.path))
-    return replies[-1] if replies else None
+    latest = max(contents, key=lambda path: _start_time(contents[path]))
+    replies = parse_transcript_replies(latest, contents[latest])
+    return _Run(path=latest, content=contents[latest], reply=replies[-1] if replies else None)
 
 
 def _start_time(transcript: bytes) -> datetime:
-    """Return the timestamp of the transcript's first line."""
-    return datetime.fromisoformat(json.loads(transcript.splitlines()[0])["timestamp"])
+    """Return the timestamp of the transcript's first line, the earliest time for an empty transcript."""
+    lines = transcript.splitlines()
+    if not lines:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(json.loads(lines[0])["timestamp"])
 
 
-def _is_rejected(judgings: _Judgings, reply: "TranscriptReply", packet: str, number: int) -> bool:
+def _is_rejected(judgings: _Judgings, run: _Run, packet: str, number: int) -> bool:
     """Tell whether the judge's transcript shows a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict."""
     from instruction_eval.reader import judge_transcript_rejection
 
     verdict_path = judgings.files.root / _verdict_file(judgings.revision, packet, number)
-    return judge_transcript_rejection(reply.transcript, judgings.read_transcript(reply.transcript), verdict_path) is not None
+    return judge_transcript_rejection(run.path, run.content, verdict_path) is not None
 
 
-def _valid_verdict(judgings: _Judgings, packet: str, number: int) -> Record | None:
+def _valid_verdict(judgings: _Judgings, packet_origins: Mapping[str, Record], packet: str, number: int) -> Record | None:
     """Return the judging's verdict file parsed against the packet's blind ids and the judge demands, or None when it is not valid."""
     try:
         document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
-        return parse_verdict(document, set(_packet_origins(judgings, packet)), judgings.judge_demand_ids)
+        return parse_verdict(document, set(packet_origins), judgings.judge_demand_ids)
     except (yaml.YAMLError, RecordError):
         return None
 
@@ -413,19 +430,23 @@ def _packet_origins(judgings: _Judgings, packet: str) -> dict[str, Record]:
     return {blind_id: origin for blind_id, origin in judgings.origins["ids"].items() if origin["packet"] == packet}
 
 
-def _anchor_agreement(judgings: _Judgings, packet: str, verdict: Record) -> AnchorAgreement:
-    """Return how closely the verdict counted the packet's anchors against their known counts."""
+def _anchor_agreement(judgings: _Judgings, packet: str, packet_origins: Mapping[str, Record], verdict: Record) -> AnchorAgreement:
+    """Return how closely the verdict counted the packet's anchors against their known counts, refusing a packet with no anchor or none of known done value."""
     counted = {entry["id"]: entry for entry in verdict["verdicts"]}
     pairs = [
         (counted[blind_id], judgings.known_anchors[origin[ANCHOR_KEY]])
-        for blind_id, origin in _packet_origins(judgings, packet).items()
+        for blind_id, origin in packet_origins.items()
         if ANCHOR_KEY in origin
     ]
+    if not pairs:
+        raise Refusal(f"no anchor in {packet}")
+    decided = [(entry, known) for entry, known in pairs if known["done"] is not None]
+    if not decided:
+        raise Refusal(f"no anchor with a known done value in {packet}")
     breach_difference = {
         demand: fmean(abs(entry["breaches"][demand] - known["breaches"][demand]) for entry, known in pairs)
         for demand in sorted(judgings.judge_demand_ids)
     }
-    decided = [(entry, known) for entry, known in pairs if known["done"] is not None]
     return AnchorAgreement(breach_difference, fmean(entry["done"] == known["done"] for entry, known in decided))
 
 

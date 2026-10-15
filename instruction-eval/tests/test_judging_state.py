@@ -283,3 +283,44 @@ def test_a_definition_of_the_omissions_packet_is_not_counted_for_the_task_packet
     write_definition(files, "t1--omissions", 1)
 
     assert states(files) == {"t1": NeedsJudging(1), "t1--omissions": PendingJudging(1)}
+
+
+def test_a_judge_that_wrote_its_verdict_but_has_not_sent_its_final_message_is_pending(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1)
+
+    assert states(files, [judge_transcript(files, "t1", 1, final=False)])["t1"] == PendingJudging(1)
+
+
+def test_an_empty_transcript_is_a_judging_not_yet_returned(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+    transcript = judge_transcript(files, "t1", 1)
+    transcript.path.write_text("")
+
+    assert states(files, [transcript])["t1"] == PendingJudging(1)
+
+
+def test_a_packet_whose_anchors_all_lack_a_known_done_value_refuses_naming_the_packet(tmp_path):
+    files = series_folder(tmp_path)
+    (files.root / "6-judge/anchors.yaml").unlink()
+    write_record(files, "6-judge/anchors.yaml", {"anchors": [{**ANCHORS["anchors"][0], "done": None}]}, [])
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1)
+
+    with pytest.raises(Refusal, match="no anchor with a known done value in t1"):
+        states(files, [judge_transcript(files, "t1", 1)])
+
+
+def test_a_packet_without_anchors_refuses_naming_the_packet(tmp_path):
+    files = series_folder(tmp_path)
+    (files.root / "r1/6-origins.yaml").unlink()
+    ids = {REPLY_IDS["t1"]: {"split": "open", "repeat": 1, "task": "t1", "borrowed_from": None, "packet": "t1", "condition": "instruction"}}
+    write_record(files, "r1/6-origins.yaml", {"ids": ids, "packets": {"t1": HASH}}, [])
+    write_definition(files, "t1", 1)
+    write_verdict(files, "t1", 1)
+    (files.root / "r1/7-verdicts/t1/k1.yaml").write_text(yaml.safe_dump({"verdicts": [{"id": REPLY_IDS["t1"], "breaches": {"d-judge": 2}, "done": True, "kind": "answer", "notes": ""}]}))
+
+    with pytest.raises(Refusal, match="no anchor in t1"):
+        states(files, [judge_transcript(files, "t1", 1)])
