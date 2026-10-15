@@ -846,6 +846,23 @@ class _Reference:
     done: bool | None
 
 
+@dataclass(frozen=True)
+class _Differences:
+    """How far one judge demand's candidate counts lie from the reference and from each other, named as the acceptance names its limits."""
+
+    breach_difference: float
+    self_difference: float
+
+
+@dataclass(frozen=True)
+class _Measures:
+    """An attempt's agreement: the differences per judge demand, the done agreement, and the scale, null when the reference counts no breach."""
+
+    demands: Mapping[str, _Differences]
+    done_agreement: float
+    scale: float | None
+
+
 def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
     """Run stage two of `judge calibrate` on the latest attempt: score its candidate ratings against the raters' reference, write its agreement, and on acceptance the calibration and the anchors, returning the attempt's acceptance or rejection."""
     _refuse_unusable_series(files, CALIBRATE_COMMAND)
@@ -868,7 +885,7 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence["Transcript"]
     measures = _agreement([entries[rating.file] for rating in candidates], reference, judge_demand_ids)
     anchors = _anchors(reference, replies)
     reads = _stage_two_reads(files, records, attempt, list(sampled.values()), agent_ratings, reference_files)
-    write_record(files, f"{folder}/{AGREEMENT_FILE}", {**measures, "ratings": runs}, reads)
+    write_record(files, f"{folder}/{AGREEMENT_FILE}", {**dataclasses.asdict(measures), "ratings": runs}, reads)
     rejection = _threshold_miss(measures, plan.acceptance) or _anchor_shortfall(anchors, records.tasks().tasks, plan.anchors_per_packet)
     if rejection:
         return f"rejected: attempt {attempt} ({rejection})\n"
@@ -938,21 +955,21 @@ def _common_value(values: Sequence[bool | None]) -> bool | None:
     return values[0] if len(set(values)) == 1 else None
 
 
-def _agreement(candidates: Sequence[Mapping[str, Record]], reference: Mapping[str, _Reference], judge_demand_ids: Sequence[str]) -> dict[str, object]:
+def _agreement(candidates: Sequence[Mapping[str, Record]], reference: Mapping[str, _Reference], judge_demand_ids: Sequence[str]) -> _Measures:
     """Return how closely the candidate's two runs match the reference and each other per judge demand, their done agreement, and their scale, refusing a sample without a reference done value."""
     decided = [blind_id for blind_id, known in reference.items() if known.done is not None]
     if not decided:
         raise Refusal(NO_REFERENCE_DONE_REFUSAL)
     first, second = candidates
     demands = {
-        demand: {
-            "breach_difference": fmean(abs(fmean(run[blind_id]["breaches"][demand] for run in candidates) - known.breaches[demand]) for blind_id, known in reference.items()),
-            "self_difference": fmean(abs(first[blind_id]["breaches"][demand] - second[blind_id]["breaches"][demand]) for blind_id in reference),
-        }
+        demand: _Differences(
+            breach_difference=fmean(abs(fmean(run[blind_id]["breaches"][demand] for run in candidates) - known.breaches[demand]) for blind_id, known in reference.items()),
+            self_difference=fmean(abs(first[blind_id]["breaches"][demand] - second[blind_id]["breaches"][demand]) for blind_id in reference),
+        )
         for demand in judge_demand_ids
     }
     done_agreement = fmean(fmean(run[blind_id]["done"] == reference[blind_id].done for blind_id in decided) for run in candidates)
-    return {"demands": demands, "done_agreement": done_agreement, "scale": _scale(candidates, reference, judge_demand_ids)}
+    return _Measures(demands=demands, done_agreement=done_agreement, scale=_scale(candidates, reference, judge_demand_ids))
 
 
 def _scale(candidates: Sequence[Mapping[str, Record]], reference: Mapping[str, _Reference], judge_demand_ids: Sequence[str]) -> float | None:
@@ -984,14 +1001,15 @@ def _rounded_half_away_from_zero(value: float) -> int:
     return int(math.copysign(math.floor(abs(value) + HALF), value))
 
 
-def _threshold_miss(measures: Mapping[str, object], acceptance: Acceptance) -> str | None:
+def _threshold_miss(measures: _Measures, acceptance: Acceptance) -> str | None:
     """Return the first measure that misses the acceptance, or None when every one meets it."""
-    for demand, differences in measures["demands"].items():
-        for measure, limit in (("breach_difference", acceptance.breach_difference), ("self_difference", acceptance.self_difference)):
-            if differences[measure] > limit:
-                return f"{measure} of {demand} {differences[measure]} over {limit}"
-    if measures["done_agreement"] < acceptance.done_agreement:
-        return f"done_agreement {measures['done_agreement']} under {acceptance.done_agreement}"
+    for demand, differences in measures.demands.items():
+        for measure in dataclasses.fields(_Differences):
+            value, limit = getattr(differences, measure.name), getattr(acceptance, measure.name)
+            if value > limit:
+                return f"{measure.name} of {demand} {value} over {limit}"
+    if measures.done_agreement < acceptance.done_agreement:
+        return f"done_agreement {measures.done_agreement} under {acceptance.done_agreement}"
     return None
 
 
