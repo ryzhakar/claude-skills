@@ -169,14 +169,19 @@ def blind_replies(revision: str, replies: Mapping[ExpectedReply, Record], anchor
             *(_reply_entry(packet, revision, key, replies) for key in keys),
             *(_anchor_entry(packet, anchor) for anchor in _drawn_anchors(packet, task, anchors, anchors_per_packet, random)),
         ]
-        random.shuffle(entries)
-        sections = []
-        for entry in entries:
-            blind_id = _fresh_blind_id(origins, random)
-            origins[blind_id] = entry.origin
-            sections.append(_section(blind_id, entry.exchanges))
-        packets[packet] = SECTION_SEPARATOR.join(sections) + "\n"
+        packets[packet] = _packet_text(entries, origins, random)
     return BlindPackets(packets=packets, origins=origins)
+
+
+def _packet_text(entries: list[_Entry], origins: dict[str, Record], random: Random) -> str:
+    """Return the entries shuffled into a packet's markdown under fresh blind ids, recording each id's origin in `origins`."""
+    random.shuffle(entries)
+    sections = []
+    for entry in entries:
+        blind_id = _fresh_blind_id(origins, random)
+        origins[blind_id] = entry.origin
+        sections.append(_section(blind_id, entry.exchanges))
+    return SECTION_SEPARATOR.join(sections) + "\n"
 
 
 def _replies_by_packet(replies: Iterable[ExpectedReply]) -> dict[str, tuple[str, list[ExpectedReply]]]:

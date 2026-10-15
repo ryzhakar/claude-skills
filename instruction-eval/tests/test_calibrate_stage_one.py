@@ -145,3 +145,23 @@ def test_stage_one_snapshots_the_working_brief_into_the_attempt_byte_for_byte(tm
     calibrate(tmp_path, files)
 
     assert files.read_bytes(f"{ATTEMPT_ONE}/brief.md") == TEMPLATE.read_bytes()
+
+
+FIRST_DRAW = {("aim", "t1", 1), ("empty", "t1", 1), ("instruction", "t1", 1), ("placebo", "t1", 1), ("source", "t1", 1), ("aim", "t1", 2)}
+
+
+def sampled(files: SeriesFolder, attempt: int) -> set[tuple[str, str, int]]:
+    """Return the condition, task, and repeat of each reply the attempt's origins name."""
+    origins = SeriesRecords(files).attempt_origins(attempt)["ids"].values()
+    return {(origin["condition"], origin["task"], origin["repeat"]) for origin in origins}
+
+
+def test_the_first_attempt_draws_round_robin_from_the_alphabetical_first_condition_over_open_task_replies_alone(tmp_path):
+    files = stage_one_series(tmp_path)
+
+    calibrate(tmp_path, files)
+
+    assert sampled(files, 1) == FIRST_DRAW
+    origins = SeriesRecords(files).attempt_origins(1)
+    assert sorted(origins["packets"]) == ["sample"]
+    assert origins["packets"]["sample"] == sha256(files.read_bytes(f"{ATTEMPT_ONE}/sample.md"))
