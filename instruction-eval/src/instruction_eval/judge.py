@@ -2,11 +2,12 @@
 
 import dataclasses
 import re
-from collections.abc import Container, Iterable, Mapping, Sequence
+from collections.abc import Callable, Container, Iterable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
+from typing import TYPE_CHECKING
 
 from instruction_eval.conditions import strip_frontmatter
 from instruction_eval.records import (
@@ -18,9 +19,14 @@ from instruction_eval.records import (
     RecordError,
     RecordKind,
     Refusal,
+    SeriesFolder,
+    SeriesRecords,
     parse_record,
 )
 from instruction_eval.tasks import OMISSION_PREFIX, ExpectedReply
+
+if TYPE_CHECKING:
+    from instruction_eval.reader import Transcript
 
 SOURCE_PLACEHOLDER = "{SOURCE}"
 DEMANDS_PLACEHOLDER = "{DEMANDS}"
@@ -211,3 +217,49 @@ def _section(blind_id: str, exchanges: Iterable[tuple[str, str]]) -> str:
     """Return an entry's markdown section: its blind id heading, then each user message and reply text."""
     parts = [f"## {blind_id}", *(part for message, text in exchanges for part in (f"### User\n\n{message}", f"### Reply\n\n{text}"))]
     return SECTION_SEPARATOR.join(parts)
+
+
+JUDGE_DEFINITION_PREFIX = "ie-judge-"
+AGENTS_FOLDER = ".claude/agents"
+
+
+@dataclass(frozen=True)
+class AcceptedJudging:
+    """The lowest judging of a packet that passed."""
+
+
+@dataclass(frozen=True)
+class PendingJudging:
+    """A judging launched whose verdict is still to come."""
+
+    judging: int
+
+
+@dataclass(frozen=True)
+class NeedsJudging:
+    """A packet with no accepted or pending judging, the next judging to write being `judging`."""
+
+    judging: int
+
+
+JudgingState = AcceptedJudging | PendingJudging | NeedsJudging
+
+
+def judging_states(
+    files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]
+) -> dict[str, JudgingState]:
+    """Return each packet of the revision's origins with its judging state, refusing a packet holding three failed judgings."""
+    origins = SeriesRecords(files).origins(revision)
+    return {packet: _packet_state(files, revision, packet) for packet in sorted(origins["packets"])}
+
+
+def _packet_state(files: SeriesFolder, revision: str, packet: str) -> JudgingState:
+    """Return the judging state of one packet."""
+    return NeedsJudging(len(_judging_numbers(files, revision, packet)) + 1)
+
+
+def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[int]:
+    """Return the numbers of the packet's judgings, counted from the definition files whose names match its pattern, ascending."""
+    pattern = re.compile(rf"^{JUDGE_DEFINITION_PREFIX}{re.escape(revision)}-{re.escape(packet)}-k([0-9]+)\.md$")
+    matches = (pattern.match(path.name) for path in (files.root / AGENTS_FOLDER).glob("*.md"))
+    return sorted(int(match.group(1)) for match in matches if match)
