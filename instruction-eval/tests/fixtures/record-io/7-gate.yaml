@@ -1,0 +1,6 @@
+repeats: 3
+level: 0.9
+done_by: judge
+keep_rule:
+  rank: [completion, overreach]
+  tie: earliest
