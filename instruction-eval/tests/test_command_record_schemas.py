@@ -469,7 +469,7 @@ def test_first_revision_outcome_omits_parent_fields():
     (("checks", 0, "interval"), [1, 0]),
     (("changed_from_parent",), "improved"),
     (("parent_comparison", "target"), "Bad Target"),
-    (("parent_comparison", "interval"), None),
+    (("parent_comparison", "interval"), [1, 0]),
     (("instruction_breaches"), "none"),
     (("completion_passed",), None),
     (("words",), -1),
@@ -486,6 +486,13 @@ def test_outcome_record_refuses_bad_value(path, value):
 
 def test_outcome_target_accepts_completion():
     document = changed(load_fixture(RecordKind.OUTCOME), ("parent_comparison", "target"), "completion")
+    assert parse_record(RecordKind.OUTCOME, document) == document
+
+
+def test_outcome_without_paired_units_accepts_null_means_and_intervals():
+    document = load_fixture(RecordKind.OUTCOME)
+    for path in (("checks", 0, "mean_difference"), ("checks", 0, "interval"), ("parent_comparison", "mean_difference"), ("parent_comparison", "interval")):
+        document = changed(document, path, None)
     assert parse_record(RecordKind.OUTCOME, document) == document
 
 

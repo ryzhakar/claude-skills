@@ -610,13 +610,13 @@ _OUTCOME_CHECK = _mapping(
     {
         "compares": _COMPARES,
         "gap": _POSITIVE,
-        "mean_difference": _ANY_NUMBER,
+        "mean_difference": _nullable(_ANY_NUMBER),
         "interval": _nullable(_interval),
         "pass": _boolean,
     }
 )
 _PARENT_COMPARISON = _mapping(
-    {"target": _IDENTIFIER, "mean_difference": _ANY_NUMBER, "interval": _interval}
+    {"target": _IDENTIFIER, "mean_difference": _nullable(_ANY_NUMBER), "interval": _nullable(_interval)}
 )
 _OUTCOME_COST = _mapping(
     {
