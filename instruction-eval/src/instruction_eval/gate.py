@@ -1,5 +1,6 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from statistics import mean
 from typing import Literal, TypedDict
 
@@ -227,26 +228,23 @@ def compare_with_parent(
     rng: numpy.random.Generator,
 ) -> ParentComparison:
     """Compare the revision's sealed instruction replies with its parent's on the target, a demand id or `completion`."""
-    units = _paired_task_values(revision_rows, parent_rows, target)
+    target_value = partial(_reply_value, target=target)
+    units = _paired_units(_task_means(revision_rows, INSTRUCTION_CONDITION, target_value), _task_means(parent_rows, INSTRUCTION_CONDITION, target_value))
     comparison = compare_paired(units, level, rng)
     return ParentComparison(target, comparison, _movement_verdict(comparison.interval, direction, predicted_size))
 
 
-def _paired_task_values(
-    revision_rows: Sequence[ScoredReply], parent_rows: Sequence[ScoredReply], target: str
-) -> list[PairedUnit]:
-    """Pair each task's mean target value in the revision with its parent's, tasks one side lacks left out."""
-    revision_values = _task_values(revision_rows, target)
-    parent_values = _task_values(parent_rows, target)
-    return [PairedUnit(revision_values[task], parent_values[task]) for task in sorted(revision_values.keys() & parent_values.keys())]
+def _paired_units(instruction_values: Mapping[str, float], other_values: Mapping[str, float]) -> list[PairedUnit]:
+    """Pair each task's instruction-side mean with its other-side mean, tasks one side lacks left out."""
+    return [PairedUnit(instruction_values[task], other_values[task]) for task in sorted(instruction_values.keys() & other_values.keys())]
 
 
-def _task_values(rows: Sequence[ScoredReply], target: str) -> dict[str, float]:
-    """Map each task to the mean target value of its instruction replies over repeats, tasks without a value left out."""
+def _task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callable[[ScoredReply], float | None]) -> dict[str, float]:
+    """Map each task to the mean value of the condition's single-task replies over repeats, tasks without a value left out."""
     values_by_task: dict[str, list[float]] = {}
     for row in rows:
-        value = _reply_value(row, target)
-        if row["condition"] == INSTRUCTION_CONDITION and row["turn"] is None and value is not None:
+        value = reply_value(row)
+        if row["condition"] == condition and row["turn"] is None and value is not None:
             values_by_task.setdefault(row["task"], []).append(value)
     return {task: mean(values) for task, values in values_by_task.items()}
 
