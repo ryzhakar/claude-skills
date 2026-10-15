@@ -105,6 +105,15 @@ def test_a_frozen_series_reports_each_gated_revisions_ranks_and_the_cost_so_far_
     assert status["cost"] == {"spent": {"replies": 6, "input_tokens": 150, "output_tokens": 30, "seconds": 2.0}, "budget": budget}
 
 
+def test_a_revision_whose_replies_carry_no_token_counts_leaves_the_summed_tokens_null(tmp_path):
+    uncounted = {"replies": 2, "input_tokens": None, "output_tokens": None, "seconds": 0.5}
+    files = gated_series(tmp_path, GATE, {1: outcome(False, 1.5, 40, FIRST_COST), 2: outcome(True, 0.5, 30, uncounted, "changed")})
+
+    spent = status_of(files)["cost"]["spent"]
+
+    assert spent == {"replies": 6, "input_tokens": None, "output_tokens": None, "seconds": 2.0}
+
+
 PLAN = {
     "judge_model": "claude-opus-4-1",
     "raters": ["agent", "agent"],
