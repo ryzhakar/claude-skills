@@ -53,6 +53,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
+from instruction_eval.scores import COLLECTED_FILE
 from instruction_eval.tasks import (
     OMISSION_PREFIX,
     ExpectedReply,
@@ -789,20 +790,27 @@ def judge_prepare(
     origins = records.origins(revision)
     calibration = records.calibration()
     states = _judging_states(records, revision, origins, calibration, transcripts, read_transcript)
-    brief = _accepted_brief(files, calibration)
-    packets = _blinded_packets(files, revision, origins)
-    reader_model = records.reader().model
-    needed = {_judging_agent_type(revision, packet, state.judging): (packet, state.judging) for packet, state in states.items() if isinstance(state, NeedsJudging)}
-    definitions = {
-        agent_type: _judging_definition(
-            files, records, brief, packets[packet], files.root / _verdict_file(revision, packet, judging), reader_model, agent_type, calibration["judge_model"]
-        )
-        for agent_type, (packet, judging) in needed.items()
-    }
+    needed = [(packet, state.judging) for packet, state in states.items() if isinstance(state, NeedsJudging)]
+    definitions = _judge_definitions(files, records, revision, origins, calibration, needed)
     for agent_type, definition in definitions.items():
         write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
     pending = "".join(f"judging k{state.judging} pending: {packet}\n" for packet, state in states.items() if isinstance(state, PendingJudging))
     return pending + _launch_list(definitions)
+
+
+def _judge_definitions(
+    files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record, judgings: Iterable[tuple[str, int]]
+) -> dict[str, bytes]:
+    """Return by agent type the definition of each given judging of a packet, its body the accepted brief rendered for the packet and the judging's verdict path."""
+    brief = _accepted_brief(files, calibration)
+    packets = _blinded_packets(files, revision, origins)
+    reader_model = records.reader().model
+    definitions = {}
+    for packet, judging in judgings:
+        agent_type = _judging_agent_type(revision, packet, judging)
+        verdict_path = files.root / _verdict_file(revision, packet, judging)
+        definitions[agent_type] = _judging_definition(files, records, brief, packets[packet], verdict_path, reader_model, agent_type, calibration["judge_model"])
+    return definitions
 
 
 def _blinded_packets(files: SeriesFolder, revision: str, origins: Record) -> dict[str, str]:
@@ -824,6 +832,80 @@ def _blinded_packet(files: SeriesFolder, revision: str, packet: str, packet_hash
 def _accepted_brief(files: SeriesFolder, calibration: Record) -> str:
     """Return the brief snapshot of the attempt the calibration accepted."""
     return files.read_bytes(f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}").decode()
+
+
+JUDGE_COLLECT_COMMAND = "judge collect"
+VERDICTS_FOLDER = "7-verdicts"
+
+
+def judge_collect(files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
+    """Write the revision's collection of every packet's accepted judging and return nothing, or return the packets to re-judge, refusing a pending judging."""
+    _refuse_unusable_series(files, JUDGE_COLLECT_COMMAND)
+    records = SeriesRecords(files)
+    origins = records.origins(revision)
+    calibration = records.calibration()
+    _refuse_edited_judge_definitions(files, records, revision, origins, calibration)
+    states = _judging_states(records, revision, origins, calibration, transcripts, read_transcript)
+    _refuse_pending_judgings(states)
+    unjudged = [packet for packet, state in states.items() if isinstance(state, NeedsJudging)]
+    if unjudged:
+        return "".join(f"re-judge: {packet}\n" for packet in unjudged)
+    accepted = {packet: state for packet, state in states.items() if isinstance(state, AcceptedJudging)}
+    write_record(files, f"{revision}/{COLLECTED_FILE}", _collected_record(accepted), _collect_reads(files, records, revision, origins, calibration))
+    return ""
+
+
+def _refuse_edited_judge_definitions(files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record) -> None:
+    """Refuse a judge definition of the revision whose bytes differ from its recomputation from the accepted brief and its packet."""
+    from instruction_eval.reader import _refuse_edited_file
+
+    written = [(packet, judging) for packet in origins["packets"] for judging in _judging_numbers(files, revision, packet)]
+    for agent_type, recomputed in _judge_definitions(files, records, revision, origins, calibration, written).items():
+        _refuse_edited_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", recomputed)
+
+
+def _refuse_pending_judgings(states: Mapping[str, JudgingState]) -> None:
+    """Refuse naming the first packet whose judging is pending."""
+    pending = next((packet for packet, state in states.items() if isinstance(state, PendingJudging)), None)
+    if pending is not None:
+        raise Refusal(f"judging pending: {pending}")
+
+
+def _collected_record(accepted: Mapping[str, AcceptedJudging]) -> dict[str, object]:
+    """Return the collection: per packet its accepted judging's number, judge model, transcript with hash, and anchor agreement."""
+    return {
+        "packets": {
+            packet: {
+                "accepted": judging.judging,
+                "judge_model": judging.judge_model,
+                "transcript": str(judging.transcript),
+                "transcript_hash": judging.transcript_hash,
+                "anchors": dataclasses.asdict(judging.anchors),
+            }
+            for packet, judging in accepted.items()
+        }
+    }
+
+
+def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record) -> list[str]:
+    """Return what `judge collect` reads, as `judge prepare` does: the series, its sources, the demands, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
+    return [
+        SERIES_RECORD,
+        *(f"{SOURCE_FOLDER}/{source.name}" for source in records.series().sources),
+        f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        CALIBRATION_RECORD,
+        f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}",
+        ANCHORS_RECORD,
+        *(f"{revision}/{PACKETS_FOLDER}/{packet}.md" for packet in origins["packets"]),
+        f"{revision}/{ORIGINS_FILE}",
+        *_series_paths(files, f"{revision}/{VERDICTS_FOLDER}/**/*.yaml"),
+        *_series_paths(files, f"{AGENTS_FOLDER}/{JUDGE_DEFINITION_PREFIX}{revision}-*.md"),
+    ]
+
+
+def _series_paths(files: SeriesFolder, pattern: str) -> list[str]:
+    """Return the series path of every file the glob pattern matches, in path order."""
+    return sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(pattern) if path.is_file())
 
 
 def _launch_list(agent_types: Iterable[str]) -> str:
