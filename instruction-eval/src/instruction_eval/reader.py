@@ -1016,14 +1016,23 @@ def _transcript_reply_paths(match: _ReaderTranscript, repeat: int) -> dict[str, 
     }
 
 
+def _reply_identity(entry: Task | Conversation, condition: str, repeat: int, turn: int | None) -> dict[str, Any]:
+    """Return the keys naming one reply and the message it answers: condition, task, split, repeat, message, and for a conversation the turn."""
+    identity = {
+        "condition": condition,
+        "task": entry.id,
+        "split": entry.split,
+        "repeat": repeat,
+        "message": _turn_messages(entry)[(turn or 1) - 1],
+    }
+    return identity if turn is None else {**identity, "turn": turn}
+
+
 def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: TranscriptReply) -> dict[str, Any]:
     """Return the reply record of one transcript reply: its text, served model, timing, tokens, and transcript."""
-    record = {
-        "condition": match.condition,
-        "task": match.entry.id,
-        "split": match.entry.split,
-        "repeat": repeat,
-        "message": _turn_messages(match.entry)[reply.turn - 1],
+    turn = reply.turn if isinstance(match.entry, Conversation) else None
+    return {
+        **_reply_identity(match.entry, match.condition, repeat, turn),
         "text": reply.text,
         "model": reply.model,
         "reader_kind": AGENT_READER,
@@ -1033,7 +1042,6 @@ def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: Transcript
         "transcript_hash": reply.transcript_hash,
         "cost": _reply_cost_record(reply.tokens),
     }
-    return {**record, "turn": reply.turn} if isinstance(match.entry, Conversation) else record
 
 
 def _reply_cost_record(tokens: TokenUsage | None) -> dict[str, int | None]:
@@ -1046,7 +1054,6 @@ def _reply_cost_record(tokens: TokenUsage | None) -> dict[str, int | None]:
 ASK_TIMEOUT_SECONDS = 600
 MESSAGES_KEY = "messages"
 ROLE_KEY = "role"
-TEXT_KEY = "text"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
 CONDITION_PLACEHOLDER = "{condition}"
@@ -1177,10 +1184,10 @@ def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
     last_turn = reply.turn or 1
     messages: list[dict[str, str]] = []
     for turn in range(1, last_turn + 1):
-        messages.append({ROLE_KEY: USER_ROLE, TEXT_KEY: turns[turn - 1]})
+        messages.append({ROLE_KEY: USER_ROLE, _TEXT_KEY: turns[turn - 1]})
         if turn < last_turn:
             earlier = reply_path(reply.revision, reply.condition, reply.task, reply.repeat, turn)
-            messages.append({ROLE_KEY: ASSISTANT_ROLE, TEXT_KEY: records.reply(earlier)[TEXT_KEY]})
+            messages.append({ROLE_KEY: ASSISTANT_ROLE, _TEXT_KEY: records.reply(earlier)[_TEXT_KEY]})
     return yaml.safe_dump({MESSAGES_KEY: messages}, allow_unicode=True)
 
 
@@ -1205,12 +1212,8 @@ def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
 def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fingerprint: Fingerprint) -> dict[str, Any]:
     """Return the reply record of one command reader run: its output, the fingerprint's model and hash, and null token counts."""
     entry = _entries_by_id(tasks)[reply.task]
-    record = {
-        "condition": reply.condition,
-        "task": reply.task,
-        "split": entry.split,
-        "repeat": reply.repeat,
-        "message": _turn_messages(entry)[(reply.turn or 1) - 1],
+    return {
+        **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
         "text": run.stdout,
         "model": fingerprint.output["model"],
         "reader_kind": COMMAND_READER,
@@ -1219,4 +1222,3 @@ def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fi
         "fingerprint_hash": fingerprint.fingerprint_hash,
         "cost": _reply_cost_record(None),
     }
-    return record if reply.turn is None else {**record, "turn": reply.turn}
