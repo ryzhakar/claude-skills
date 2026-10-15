@@ -7,14 +7,18 @@ from datetime import datetime
 from pathlib import Path
 
 from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
+from instruction_eval.gate import kept_revision
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
     FIRST_REVISION,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
+    GATE_RECORD,
     SERIES_RECORD,
     STOP_RECORD,
+    UNRESOLVABLE_STOP,
     ReaderKind,
+    Record,
     Refusal,
     SeriesFolder,
     SeriesRecords,
@@ -27,6 +31,8 @@ from instruction_eval.records import (
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
+OUTCOME_FILE = "9-outcome.yaml"
+KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
 LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
 MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
@@ -154,6 +160,23 @@ def _refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
             raise Refusal(str(unclosed)) from None
 
 
+def series_stop(files: SeriesFolder, reason: str) -> None:
+    """Write `9-stop.yaml` as `unresolvable` with the reason and the kept revision ranked from every gated revision's outcome."""
+    outcomes = _gated_outcomes(files, SeriesRecords(files))
+    reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
+    write_record(files, STOP_RECORD, {"stop": UNRESOLVABLE_STOP, "kept": kept_revision(outcomes), "reason": reason}, reads)
+
+
+def _gated_outcomes(files: SeriesFolder, records: SeriesRecords) -> dict[str, Record]:
+    """Return the outcome of each gated revision by id, in order."""
+    return {revision: records.outcome(revision) for revision in _revisions(files) if files.holds(_outcome_path(revision))}
+
+
+def _outcome_path(revision: str) -> str:
+    """Return the path of a revision's `9-outcome.yaml`."""
+    return f"{revision}/{OUTCOME_FILE}"
+
+
 def guard_series(files: SeriesFolder, command: str) -> None:
     """Refuse running `command` in a folder lacking `series.yaml`, in a stopped series, after a frozen part changed, or past a broken revision chain."""
     _refuse_missing_series(files)
@@ -195,5 +218,10 @@ def _refuse_broken_revision_chain(files: SeriesFolder, records: SeriesRecords) -
 
 def _later_revisions(files: SeriesFolder) -> Iterator[str]:
     """Return the ids of the revisions after the first, in order, up to the first without a record."""
-    revisions = (f"r{number}" for number in itertools.count(FIRST_REVISION_NUMBER + 1))
+    return itertools.islice(_revisions(files), 1, None)
+
+
+def _revisions(files: SeriesFolder) -> Iterator[str]:
+    """Return the ids of the revisions, in order, up to the first without a record."""
+    revisions = (f"r{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
     return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
