@@ -383,6 +383,27 @@ STATUS_PARTS = (
     STOP_RECORD,
 )
 PLAN_FILE = "plan.yaml"
+PARTS_KEY = "parts"
+FROZEN_KEY = "frozen"
+REVISIONS_KEY = "revisions"
+COST_KEY = "cost"
+CALIBRATION_KEY = "calibration"
+AWAITING_KEY = "packets_awaiting_judging"
+NOISE_KEY = "noise"
+LEAST_REPEATS_KEY = "least_repeats"
+STOP_KEY = "stop"
+CLONE_KEY = "manifesto_clone"
+SPENT_KEY = "spent"
+BUDGET_KEY = "budget"
+REPLIES_KEY = "replies"
+INPUT_TOKENS_KEY = "input_tokens"
+OUTPUT_TOKENS_KEY = "output_tokens"
+SECONDS_KEY = "seconds"
+ATTEMPTS_KEY = "attempts"
+ATTEMPT_KEY = "attempt"
+ACCEPTED_KEY = "accepted"
+SCALE_KEY = "scale"
+STOP_STANDING_KEYS = ("stop", "kept", "reason")
 MANIFESTO_CLONE_FOLDER = ".claude/manifesto-repo"
 STATUS_DEFAULT_LEVEL = 0.95
 AGREEMENT_FILE = "agreement.yaml"
@@ -395,16 +416,16 @@ def series_status(files: SeriesFolder) -> str:
     records = SeriesRecords(files)
     noise = _first_revision_noise(files, records)
     standing = {
-        "parts": [part for part in STATUS_PARTS if files.holds(part)],
-        "frozen": files.holds(FROZEN_RECORD),
-        "revisions": {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
-        "cost": _cost_standing(files, records),
-        "calibration": _calibration_standing(files, records),
-        "packets_awaiting_judging": _packets_awaiting_judging(files, records),
-        "noise": noise,
-        "least_repeats": _least_repeats_per_check(files, records, noise),
-        "stop": _stop_standing(files, records),
-        "manifesto_clone": (files.root / MANIFESTO_CLONE_FOLDER).is_dir(),
+        PARTS_KEY: [part for part in STATUS_PARTS if files.holds(part)],
+        FROZEN_KEY: files.holds(FROZEN_RECORD),
+        REVISIONS_KEY: {revision: _revision_standing(files, records, revision) for revision in revision_ids(files)},
+        COST_KEY: _cost_standing(files, records),
+        CALIBRATION_KEY: _calibration_standing(files, records),
+        AWAITING_KEY: _packets_awaiting_judging(files, records),
+        NOISE_KEY: noise,
+        LEAST_REPEATS_KEY: _least_repeats_per_check(files, records, noise),
+        STOP_KEY: _stop_standing(files, records),
+        CLONE_KEY: (files.root / MANIFESTO_CLONE_FOLDER).is_dir(),
     }
     return yaml.safe_dump(standing, sort_keys=False)
 
@@ -412,21 +433,21 @@ def series_status(files: SeriesFolder) -> str:
 def _revision_standing(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, object]:
     """Return a revision's outcome, change from its parent, and keep ranks, each null while the revision is ungated."""
     if not files.holds(_outcome_path(revision)):
-        return UNGATED_STANDING
+        return dict(UNGATED_STANDING)
     outcome = records.outcome(revision)
     return {key: outcome.get(key) for key in UNGATED_STANDING}
 
 
 def _cost_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object]:
     """Return the cost every gated revision's asks spent and the gate's budget, null while the gate holds none."""
-    costs = [outcome["cost"] for outcome in _gated_outcomes(files, records).values()]
+    costs = [outcome[COST_KEY] for outcome in _gated_outcomes(files, records).values()]
     spent = {
-        "replies": sum(cost["replies"] for cost in costs),
-        "input_tokens": _sum_unless_null([cost["input_tokens"] for cost in costs]),
-        "output_tokens": _sum_unless_null([cost["output_tokens"] for cost in costs]),
-        "seconds": sum(cost["seconds"] for cost in costs),
+        REPLIES_KEY: sum(cost[REPLIES_KEY] for cost in costs),
+        INPUT_TOKENS_KEY: _sum_unless_null([cost[INPUT_TOKENS_KEY] for cost in costs]),
+        OUTPUT_TOKENS_KEY: _sum_unless_null([cost[OUTPUT_TOKENS_KEY] for cost in costs]),
+        SECONDS_KEY: sum(cost[SECONDS_KEY] for cost in costs),
     }
-    return {"spent": spent, "budget": _written_budget(files, records)}
+    return {SPENT_KEY: spent, BUDGET_KEY: _written_budget(files, records)}
 
 
 def _sum_unless_null(values: Sequence[int | None]) -> int | None:
@@ -444,9 +465,9 @@ def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[s
 
 def _calibration_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, object]:
     """Return each calibration attempt with its scale, null until rated, and the accepted attempt, null until one is accepted."""
-    attempts = [{"attempt": attempt, "scale": _attempt_scale(files, records, attempt)} for attempt in _attempt_numbers(files)]
-    accepted = records.calibration()["attempt"] if files.holds(CALIBRATION_RECORD) else None
-    return {"attempts": attempts, "accepted": accepted}
+    attempts = [{ATTEMPT_KEY: attempt, SCALE_KEY: _attempt_scale(files, records, attempt)} for attempt in _attempt_numbers(files)]
+    accepted = records.calibration()[ATTEMPT_KEY] if files.holds(CALIBRATION_RECORD) else None
+    return {ATTEMPTS_KEY: attempts, ACCEPTED_KEY: accepted}
 
 
 def _attempt_numbers(files: SeriesFolder) -> Iterator[int]:
@@ -459,7 +480,7 @@ def _attempt_scale(files: SeriesFolder, records: SeriesRecords, attempt: int) ->
     """Return the scale an attempt's agreement reports, None while the attempt is unrated or its reference mean is zero."""
     if not files.holds(f"{attempt_folder(attempt)}/{AGREEMENT_FILE}"):
         return None
-    return records.agreement(attempt)["scale"]
+    return records.agreement(attempt)[SCALE_KEY]
 
 
 def _packets_awaiting_judging(files: SeriesFolder, records: SeriesRecords) -> dict[str, list[str]]:
@@ -492,4 +513,4 @@ def _stop_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, obj
     if not files.holds(STOP_RECORD):
         return None
     stop = records.stop()
-    return {key: stop.get(key) for key in ("stop", "kept", "reason")}
+    return {key: stop.get(key) for key in STOP_STANDING_KEYS}
