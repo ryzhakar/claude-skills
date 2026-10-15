@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
@@ -9,6 +10,7 @@ import numpy
 from instruction_eval.records import (
     BUDGET_REASON,
     CAPPED_STOP,
+    FEWEST_REPEATS,
     NO_EFFECT_STOP,
     PASS_OUTCOME,
     PASSED_STOP,
@@ -16,8 +18,9 @@ from instruction_eval.records import (
     Direction,
     GateCheck,
     Record,
+    Refusal,
 )
-from instruction_eval.scores import Comparison, PairedUnit, ScoredReply, compare_paired
+from instruction_eval.scores import Comparison, Noise, PairedUnit, ScoredReply, compare_paired
 
 LATER_REVISION_COUNT = 4
 LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
@@ -55,6 +58,87 @@ def check_passes(check: GateCheck, comparison: Comparison) -> bool:
     if comparison.mean_difference is None or comparison.interval is None:
         return False
     return _PASS_RULES[check.compares](comparison.mean_difference, comparison.interval, check.gap)
+
+
+GAP_RESOLUTION_SHARE = 2
+SOURCE_CONDITION = "source"
+EMPTY_CONDITION = "empty"
+_NEAR_SOURCE_COMPARES: Compares = "instruction-near-source"
+_VS_EMPTY_COMPARES: Compares = "instruction-vs-empty"
+
+
+def refuse_unresolvable_gaps(
+    checks: Sequence[GateCheck],
+    noise: Noise,
+    sealed_rows: Sequence[ScoredReply],
+    gate_demands: Sequence[str],
+    series_has_sources: bool,
+    rng: numpy.random.Generator,
+) -> None:
+    """Raise Refusal on a null noise, a check whose noise exceeds half its gap, or an `instruction-near-source` check r1's sealed rows do not admit."""
+    near_source = _NEAR_SOURCE_COMPARES in {check.compares for check in checks}
+    if near_source:
+        _refuse_near_source_without_sources(series_has_sources)
+    _refuse_null_change_noise(noise)
+    for check in checks:
+        _refuse_unresolvable_gap(check, noise)
+    if near_source:
+        _refuse_unadmitted_near_source(_vs_empty_check(checks), sealed_rows, gate_demands, noise["level"], rng)
+
+
+def _refuse_near_source_without_sources(series_has_sources: bool) -> None:
+    """Raise Refusal when an `instruction-near-source` check stands in a series without sources."""
+    if not series_has_sources:
+        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: the series has no sources")
+
+
+def _vs_empty_check(checks: Sequence[GateCheck]) -> GateCheck:
+    """Return the `instruction-vs-empty` check, which every gate holds."""
+    return next(check for check in checks if check.compares == _VS_EMPTY_COMPARES)
+
+
+def _refuse_unadmitted_near_source(
+    vs_empty: GateCheck, sealed_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, rng: numpy.random.Generator
+) -> None:
+    """Raise Refusal unless `source` minus `empty` over r1's sealed tasks passes the `instruction-vs-empty` check."""
+    gate_breaches = partial(_gate_breaches, gate_demands=gate_demands)
+    units = _paired_units(_task_means(sealed_rows, SOURCE_CONDITION, gate_breaches), _task_means(sealed_rows, EMPTY_CONDITION, gate_breaches))
+    if not check_passes(vs_empty, compare_paired(units, level, rng)):
+        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: source minus empty misses the {_VS_EMPTY_COMPARES} gap on r1's sealed rows")
+
+
+def _gate_breaches(row: ScoredReply, gate_demands: Sequence[str]) -> float:
+    """Return the reply's breaches summed over the gate demands."""
+    return float(sum(row["breaches"][demand] for demand in gate_demands))
+
+
+def least_repeats(check: GateCheck, noise: Noise) -> int | None:
+    """Return the fewest repeats, at least two, at which the check's noise scaled from r1's repeats is at most half its gap, null without noise."""
+    half_width = noise["checks"].get(check.compares)
+    if half_width is None:
+        return None
+    return max(FEWEST_REPEATS, math.ceil(noise["repeats"] * (GAP_RESOLUTION_SHARE * half_width / check.gap) ** 2))
+
+
+def _refuse_null_change_noise(noise: Noise) -> None:
+    """Raise Refusal naming the first gate demand whose change noise is null, then a null done change noise."""
+    null_demand = next((demand for demand, half_width in noise["demands"].items() if half_width is None), None)
+    if null_demand is not None:
+        raise Refusal(f"null noise: demands.{null_demand}")
+    if noise["done_change"] is None:
+        raise Refusal("null noise: done_change")
+
+
+def _refuse_unresolvable_gap(check: GateCheck, noise: Noise) -> None:
+    """Raise Refusal naming the check when its noise is null, or when it exceeds half its gap, with its least repeats."""
+    half_width = noise["checks"].get(check.compares)
+    if half_width is None:
+        raise Refusal(f"null noise: {check.compares}")
+    resolvable = check.gap / GAP_RESOLUTION_SHARE
+    if half_width > resolvable:
+        raise Refusal(
+            f"unresolvable gap: {check.compares} (noise {half_width:g} > gap / 2 {resolvable:g}; least repeats {least_repeats(check, noise)})"
+        )
 
 
 BudgetUnit = Literal["tokens", "seconds"]
