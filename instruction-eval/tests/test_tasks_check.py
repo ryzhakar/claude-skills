@@ -251,3 +251,10 @@ def test_an_echo_of_the_snapshot_refuses_naming_the_snapshot(tmp_path):
 
     with pytest.raises(Refusal, match=r"^task tide-sealed echoes 4-placebo-source\.md: gardens need patient$"):
         tasks_check(files)
+
+
+def test_two_conversations_sharing_a_first_turn_pass(tmp_path):
+    conversations = [{**conversation, "turns": [CONVERSATIONS[0]["turns"][0], *conversation["turns"][1:]]} if conversation["id"] == "trip-open-two" else conversation for conversation in CONVERSATIONS]
+    files = tasks_series(tmp_path, conversations=conversations)
+
+    assert tasks_check(files) is None

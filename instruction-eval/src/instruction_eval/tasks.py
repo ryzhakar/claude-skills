@@ -171,12 +171,18 @@ def _refuse_unfit_ids(tasks: Tasks) -> None:
 
 def _refuse_shared_messages(tasks: Tasks) -> None:
     """Refuse two tasks, or a task and a conversation's first turn, sharing a message."""
-    owners_by_message: dict[str, str] = {}
-    openings = [(task.id, task.message) for task in tasks.tasks] + [(conversation.id, conversation.turns[0]) for conversation in tasks.conversations]
-    for owner, message in openings:
-        if message in owners_by_message:
-            raise Refusal(f"shared message: {owners_by_message[message]} and {owner} ({TASKS_RECORD})")
-        owners_by_message[message] = owner
+    task_by_message: dict[str, str] = {}
+    for task in tasks.tasks:
+        _refuse_message_held_by(task_by_message, task.message, task.id)
+        task_by_message[task.message] = task.id
+    for conversation in tasks.conversations:
+        _refuse_message_held_by(task_by_message, conversation.turns[0], conversation.id)
+
+
+def _refuse_message_held_by(task_by_message: dict[str, str], message: str, owner: str) -> None:
+    """Refuse a message a task already holds, naming that task and the owner."""
+    if message in task_by_message:
+        raise Refusal(f"shared message: {task_by_message[message]} and {owner} ({TASKS_RECORD})")
 
 
 def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks) -> None:
