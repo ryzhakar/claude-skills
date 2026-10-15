@@ -9,6 +9,7 @@ _FENCE = "---"
 _NEWLINE = b"\n"
 SOURCE_SEPARATOR = "\n\n"
 PLACEBO_WORD_SEPARATOR = " "
+PLACEBO_SNAPSHOT_PATH = "4-placebo-source.md"
 EMPTY_CONTROL: Control = "empty"
 AIM_CONTROL: Control = "aim"
 PLACEBO_CONTROL: Control = "placebo"
@@ -32,9 +33,12 @@ def control_texts(conditions: Conditions, first_instruction: bytes, sources: Map
 
 
 def _placebo_text(placebo_source: str, first_instruction: bytes) -> bytes:
-    """Return the placebo source's words, case kept, repeated from its start to r1's word count and joined by single spaces."""
+    """Return the placebo source's words, case kept, repeated from its start to r1's word count and joined by single spaces, refusing a wordless source while r1 has words."""
     word_count = len(words(first_instruction.decode()))
-    repeated = islice(cycle(WORD_PATTERN.findall(placebo_source)), word_count)
+    placebo_words = WORD_PATTERN.findall(placebo_source)
+    if word_count and not placebo_words:
+        raise ValueError(f"placebo source holds no word: {PLACEBO_SNAPSHOT_PATH}")
+    repeated = islice(cycle(placebo_words), word_count)
     return PLACEBO_WORD_SEPARATOR.join(repeated).encode()
 
 

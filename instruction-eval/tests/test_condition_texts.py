@@ -59,6 +59,11 @@ def test_placebo_word_count_equals_r1_word_count_on_every_recompute(first_instru
     assert control_texts(conditions, first_bytes, {}, placebo_source)["placebo"] == placebo
 
 
+def test_placebo_wordless_source_is_refused_while_r1_has_words():
+    with pytest.raises(ValueError, match="^placebo source holds no word: 4-placebo-source.md$"):
+        control_texts(conditions_with(("placebo",)), b"Write briefly.\n", {}, " -- \n")
+
+
 def test_aim_control_is_the_aim_line():
     texts = control_texts(conditions_with(("aim",)), b"Write briefly.\n", {}, "Filler words.")
     assert texts == {"aim": b"Answers stay short."}
