@@ -1,8 +1,8 @@
-import math
+from fractions import Fraction
 
 import numpy
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 
 from instruction_eval.gate import least_repeats, refuse_unresolvable_gaps, series_least_repeats
@@ -87,9 +87,10 @@ def test_a_null_done_change_noise_refuses():
 
 def resolves_at(repeats: int, half_width: float, measured_repeats: int, gap: float) -> bool:
     """Tell whether the half-width measured at some repeats, scaled to other repeats, is at most half the gap."""
-    return half_width * math.sqrt(measured_repeats / repeats) <= gap / 2
+    return Fraction(half_width) ** 2 * measured_repeats <= repeats * (Fraction(gap) / 2) ** 2
 
 
+@example(measured_repeats=2, half_width=25.0, gap=0.3333333333333333)
 @given(
     measured_repeats=st.integers(min_value=2, max_value=20),
     half_width=st.floats(min_value=0, max_value=50, allow_nan=False),

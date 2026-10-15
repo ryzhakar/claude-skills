@@ -1,6 +1,7 @@
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from fractions import Fraction
 from functools import partial
 from typing import Literal, TypedDict
 
@@ -110,7 +111,8 @@ def least_repeats(check: GateCheck, noise: Noise) -> int | None:
     half_width = noise["checks"].get(check.compares)
     if half_width is None:
         return None
-    return max(FEWEST_REPEATS, math.ceil(noise["repeats"] * (GAP_RESOLUTION_SHARE * half_width / check.gap) ** 2))
+    exact_repeats = noise["repeats"] * (GAP_RESOLUTION_SHARE * Fraction(half_width) / Fraction(check.gap)) ** 2
+    return max(FEWEST_REPEATS, math.ceil(exact_repeats))
 
 
 def _refuse_null_change_noise(noise: Noise) -> None:
