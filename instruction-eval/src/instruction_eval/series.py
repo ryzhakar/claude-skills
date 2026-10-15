@@ -33,12 +33,14 @@ SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
 STOP_COMMAND = "series stop"
+KEEP_COMMAND = "series keep"
 OUTCOME_FILE = "9-outcome.yaml"
 KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
 LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
 MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
-FIRST_INSTRUCTION = f"{FIRST_REVISION}/2-instruction.md"
+INSTRUCTION_FILE = "2-instruction.md"
+FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
 
 STOPPED_SERIES_COMMANDS = ("series status", "series keep")
 
@@ -169,6 +171,24 @@ def series_stop(files: SeriesFolder, reason: str) -> None:
     _refuse_unless_latest_gated_revision_failed(outcomes)
     reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
     write_record(files, STOP_RECORD, {"stop": UNRESOLVABLE_STOP, "kept": kept_revision(outcomes), "reason": reason}, reads)
+
+
+def series_keep(files: SeriesFolder) -> None:
+    """Write the kept revision's instruction snapshot over the live instruction file, refusing a series not stopped or keeping nothing."""
+    guard_series(files, KEEP_COMMAND)
+    records = SeriesRecords(files)
+    kept = _kept_revision(files, records)
+    records.series().instruction.write_bytes(files.read_bytes(f"{kept}/{INSTRUCTION_FILE}"))
+
+
+def _kept_revision(files: SeriesFolder, records: SeriesRecords) -> str:
+    """Return the revision the stop keeps, refusing a series not stopped and a stop keeping nothing."""
+    if not files.holds(STOP_RECORD):
+        raise Refusal("series not stopped")
+    kept = records.stop()["kept"]
+    if kept is None:
+        raise Refusal("no revision passed completion")
+    return kept
 
 
 def _refuse_unless_latest_gated_revision_failed(outcomes: Mapping[str, Record]) -> None:
