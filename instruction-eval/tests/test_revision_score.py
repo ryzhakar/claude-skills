@@ -1,11 +1,12 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+import numpy
 import pytest
 import yaml
 
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
-from instruction_eval.scores import revision_score
+from instruction_eval.scores import BOOTSTRAP_SEED, revision_score
 
 HASH = "a" * 64
 DEMANDS = {
@@ -129,6 +130,11 @@ def scored_series(tmp_path, replies: Sequence[Reply], done_by: str = "judge") ->
     return files
 
 
+def bootstrap_rng() -> numpy.random.Generator:
+    """Return the fresh seeded random source the composition root hands each bootstrap."""
+    return numpy.random.default_rng(BOOTSTRAP_SEED)
+
+
 def read_scores(files: SeriesFolder, revision: str = "r1") -> dict:
     """Read the scores record through the series loader."""
     return SeriesRecords(files).scores(revision)
@@ -160,7 +166,7 @@ def test_the_scores_hold_open_rows_only_and_name_no_sealed_blind_id(tmp_path):
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     scores = read_scores(files)
     assert scores["split"] == "open"
@@ -193,7 +199,7 @@ def test_each_condition_scores_its_single_task_replies_summing_gate_demands_and_
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     by_condition = read_scores(files)["by_condition"]
     assert by_condition == {
@@ -226,7 +232,7 @@ def test_each_vs_comparison_averages_instruction_minus_its_control_per_task_with
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     comparisons = read_scores(files)["comparisons"]
     assert set(comparisons) == {"instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion"}
@@ -254,7 +260,7 @@ def test_completion_compares_done_rates_with_the_best_done_control_over_tasks_bo
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     assert read_scores(files)["comparisons"]["completion"] == {"mean_difference": -0.5, "interval": [-0.5, -0.5], "units": 1}
 
@@ -266,7 +272,7 @@ def test_completion_without_a_task_both_hold_a_done_for_has_no_mean_no_interval_
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     scores = read_scores(files)
     assert scores["comparisons"]["completion"] == {"mean_difference": None, "interval": None, "units": 0}
@@ -281,7 +287,7 @@ def test_a_series_with_a_source_compares_instruction_near_source_and_no_vs_sourc
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     comparisons = read_scores(files)["comparisons"]
     assert set(comparisons) == {"instruction-vs-empty", "instruction-near-source", "completion"}
@@ -310,7 +316,7 @@ def test_drift_is_each_conversations_breach_slope_over_turns_compared_with_empty
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     scores = read_scores(files)
     assert scores["drift"] == {
@@ -333,7 +339,7 @@ def test_drift_compares_instruction_with_source_when_the_series_has_one(tmp_path
     ]
     files = scored_series(tmp_path, replies)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     assert read_scores(files)["comparisons"]["drift"] == {"mean_difference": 1.0, "interval": [1.0, 1.0], "units": 2}
 
@@ -349,7 +355,7 @@ DONE_MODE_REPLIES = [
 def test_done_follows_the_done_mode_with_key_and_judge_side_by_side_and_disagreements_listed(tmp_path, done_by, dones):
     files = scored_series(tmp_path, DONE_MODE_REPLIES, done_by=done_by)
 
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     scores = read_scores(files)
     assert [row["done"] for row in scores["rows"]] == dones
@@ -366,7 +372,7 @@ def test_a_later_revision_scores_its_own_instruction_against_control_rows_borrow
     later = [Reply("b00000011", "instruction", "t1", judged=0), Reply("b00000012", "empty", "t1", judged=2, borrowed_from="r1")]
     write_revision(files, "r2", later)
 
-    revision_score(files, "r2")
+    revision_score(files, "r2", bootstrap_rng)
 
     scores = read_scores(files, "r2")
     assert [(row["condition"], row["borrowed_from"]) for row in scores["rows"]] == [("instruction", None), ("empty", "r1")]
@@ -384,13 +390,13 @@ def test_a_gate_without_the_level_or_done_mode_refuses_writing_nothing(tmp_path,
     write_revision(files, "r1", [Reply("b00000001", "instruction", "t1")])
 
     with pytest.raises(Refusal, match=rf"^missing key: 7-gate\.yaml#{key}$"):
-        revision_score(files, "r1")
+        revision_score(files, "r1", bootstrap_rng)
     assert not files.holds("r1/8-scores.yaml")
 
 
 def test_a_revision_already_scored_refuses_a_second_score(tmp_path):
     files = scored_series(tmp_path, [Reply("b00000001", "instruction", "t1")])
-    revision_score(files, "r1")
+    revision_score(files, "r1", bootstrap_rng)
 
     with pytest.raises(Refusal, match=r"^already written: r1/8-scores\.yaml$"):
-        revision_score(files, "r1")
+        revision_score(files, "r1", bootstrap_rng)

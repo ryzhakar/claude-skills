@@ -375,6 +375,7 @@ def require_valid_level(level: float) -> None:
 
 
 SCORES_FILE = "8-scores.yaml"
+BootstrapRng = Callable[[], numpy.random.Generator]
 ORIGINS_FILE = "6-origins.yaml"
 COLLECTED_FILE = "7-collected.yaml"
 DETECTORS_FILE = "7-detectors.yaml"
@@ -446,15 +447,15 @@ def _closing_fence(fence: str) -> re.Pattern[str]:
     return re.compile(rf"\s*{re.escape(fence[0])}{{{len(fence)},}}\s*\Z")
 
 
-def revision_score(files: SeriesFolder, revision: str) -> None:
-    """Write the revision's `8-scores.yaml` from its open replies: their rows, per-condition means, comparisons, drift, and done disagreements."""
+def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
+    """Write the revision's `8-scores.yaml` from its open replies, each bootstrap drawing on a fresh `bootstrap_rng()`: rows, per-condition means, comparisons, drift, and done disagreements."""
     records = SeriesRecords(files)
     level, done_by = _scoring_keys(records.gate())
     origins = records.origins(revision)
     collected = records.collected(revision)
     verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
     rows = join_reply_rows(origins, verdicts, records.detectors(revision), done_by, OPEN_SPLIT)
-    scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level)
+    scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level, bootstrap_rng)
     write_record(files, f"{revision}/{SCORES_FILE}", scores, _score_reads(revision, origins, collected))
 
 
@@ -493,7 +494,7 @@ def _origin_reply_paths(revision: str, origins: Record) -> dict[str, str]:
     }
 
 
-def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float) -> dict[str, object]:
+def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return the scores record of the open rows: the rows, per-condition means, comparisons, drift, and done disagreements."""
     task_rows = [row for row in rows if row["turn"] is None]
     turn_rows = [row for row in rows if row["turn"] is not None]
@@ -504,9 +505,9 @@ def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: f
             condition: _condition_scores([row for row in task_rows if row["condition"] == condition], gate_demands)
             for condition in _conditions_of(task_rows)
         },
-        "comparisons": _comparisons(task_rows, turn_rows, gate_demands, level),
+        "comparisons": _comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng),
         "drift": {
-            condition: _drift(slopes, level)
+            condition: _drift(slopes, level, bootstrap_rng)
             for condition in _conditions_of(turn_rows)
             if (slopes := _conversation_slopes(turn_rows, gate_demands, condition))
         },
@@ -520,18 +521,18 @@ def _key_and_judge_disagree(row: ReplyRow) -> bool:
 
 
 def _comparisons(
-    task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float
+    task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng
 ) -> dict[str, dict[str, object]]:
     """Map each compares the rows define to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
     controls = [condition for condition in (*_VS_CONTROLS, _SOURCE) if condition in _conditions_of(task_rows)]
     task_breaches = partial(_task_means_of, task_rows, partial(breach_total, demands=gate_demands))
-    comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level) for control in controls if control != _SOURCE}
+    comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != _SOURCE}
     if _SOURCE in controls:
-        comparisons[_NEAR_SOURCE] = _instruction_minus(task_breaches, _SOURCE, level)
-    comparisons[_COMPLETION] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level)
+        comparisons[_NEAR_SOURCE] = _instruction_minus(task_breaches, _SOURCE, level, bootstrap_rng)
+    comparisons[_COMPLETION] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
     if turn_rows:
         drift_control = _SOURCE if _SOURCE in controls else _EMPTY
-        comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level)
+        comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level, bootstrap_rng)
     return comparisons
 
 
@@ -549,16 +550,16 @@ def _conversation_slopes(turn_rows: Sequence[ScoredReply], gate_demands: Sequenc
     }
 
 
-def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], other: str | None, level: float) -> dict[str, object]:
+def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], other: str | None, level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return the comparison record of instruction minus the other condition over the units both hold a mean for."""
     units = paired_units(unit_means(_INSTRUCTION), unit_means(other))
-    return _comparison_record(compare_paired(units, level, _bootstrap_rng()))
+    return _comparison_record(compare_paired(units, level, bootstrap_rng()))
 
 
-def _drift(conversation_slopes: Mapping[str, float], level: float) -> dict[str, object]:
+def _drift(conversation_slopes: Mapping[str, float], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return a condition's mean drift slope over conversations and its percentile bootstrap interval."""
     slopes = numpy.array(list(conversation_slopes.values()))
-    resample_means = bootstrap_resample_means(slopes, _bootstrap_rng())
+    resample_means = bootstrap_resample_means(slopes, bootstrap_rng())
     return {"slope": float(slopes.mean()), "interval": list(percentile_interval(resample_means, level))}
 
 
@@ -566,11 +567,6 @@ def _comparison_record(comparison: Comparison) -> dict[str, object]:
     """Return a comparison as `8-scores.yaml` stores it: mean difference, interval as a list or null, and unit count."""
     interval = None if comparison.interval is None else list(comparison.interval)
     return {"mean_difference": comparison.mean_difference, "interval": interval, "units": comparison.units}
-
-
-def _bootstrap_rng() -> numpy.random.Generator:
-    """Return a fresh PCG64 generator at the series bootstrap seed, so each comparison resamples alike."""
-    return numpy.random.default_rng(BOOTSTRAP_SEED)
 
 
 def _conditions_of(rows: Sequence[ScoredReply]) -> list[str]:
