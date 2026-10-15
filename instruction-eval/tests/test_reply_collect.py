@@ -3,10 +3,11 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 import yaml
 
 from instruction_eval.reader import Transcript, reader_prepare, revision_collect
-from instruction_eval.records import SeriesFolder, write_file, write_record
+from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 from series_fixtures import write_revision
 from test_reader_prepare import NeutralLogin
 
@@ -141,3 +142,31 @@ def test_the_earliest_transcripts_of_each_condition_and_task_become_its_repeats_
         "cost": {**USAGE, "spent_input_tokens": 8},
     }
     assert load(files, "r1/5-replies/placebo/t-sealed/repeat-2.yaml")["text"] == "answer placebo t-sealed 2"
+
+
+def test_transcripts_beyond_the_repeats_are_listed_and_ignored(tmp_path):
+    files = prepared_series(tmp_path)
+    transcripts = task_transcripts(tmp_path)
+    late = reader_transcript(tmp_path, "late", "instruction", [OPEN_MESSAGE], ["a late answer"], START + timedelta(minutes=3))
+
+    surplus = collect(files, [*transcripts, late])
+
+    assert surplus == f"ignored surplus transcript: {late.path}\n"
+    assert not files.holds("r1/5-replies/instruction/t-open/repeat-3.yaml")
+    assert load(files, "r1/5-replies/instruction/t-open/repeat-2.yaml")["text"] == "answer instruction t-open 2"
+
+
+def test_a_gap_refuses_after_writing_the_replies_it_could_match_and_a_rerun_fills_only_the_gap(tmp_path):
+    files = prepared_series(tmp_path)
+    transcripts = task_transcripts(tmp_path)
+    withheld = [transcript for transcript in transcripts if transcript.agent_id in ("aim-t-open-2", "aim-t-sealed-1", "aim-t-sealed-2")]
+    present = [transcript for transcript in transcripts if transcript not in withheld]
+
+    with pytest.raises(Refusal, match=r"^missing replies: 3, first r1/5-replies/aim/t-open/repeat-2\.yaml$"):
+        collect(files, present)
+
+    assert load(files, "r1/5-replies/aim/t-open/repeat-1.yaml")["text"] == "answer aim t-open 1"
+    written = files.read_bytes("r1/5-replies/aim/t-open/repeat-1.yaml")
+    assert collect(files, transcripts) == ""
+    assert files.read_bytes("r1/5-replies/aim/t-open/repeat-1.yaml") == written
+    assert load(files, "r1/5-replies/aim/t-sealed/repeat-2.yaml")["text"] == "answer aim t-sealed 2"
