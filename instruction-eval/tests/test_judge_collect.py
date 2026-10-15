@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import pytest
-from series_fixtures import tree
+from series_fixtures import tree, write_yaml
 from test_judge_prepare import (
     JUDGE_MODEL,
     PACKETS,
+    SERIES,
+    SOURCE_NAME,
     judge_transcript,
     prepare,
     series_folder,
@@ -13,7 +15,7 @@ from test_judge_prepare import (
 
 from instruction_eval.judge import judge_collect
 from instruction_eval.reader import Transcript
-from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, sha256
+from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, sha256, write_record
 
 
 def collect(files: SeriesFolder, transcripts: list[Transcript]) -> str:
@@ -70,7 +72,7 @@ def test_a_returned_judging_without_a_verdict_prints_its_packet_to_re_judge_and_
     assert tree(files.root) == before
 
 
-def test_the_collection_names_as_inputs_exactly_what_judge_prepare_reads(tmp_path):
+def test_the_collection_names_as_inputs_exactly_what_it_reads_the_reader_model_included(tmp_path):
     files, transcripts = judged_series(tmp_path)
     for packet in PACKETS:
         write_verdict(files, packet, 1)
@@ -81,6 +83,7 @@ def test_the_collection_names_as_inputs_exactly_what_judge_prepare_reads(tmp_pat
         "series.yaml",
         "1-source/policy.md",
         "2-demands.yaml#demands",
+        "5-reader.yaml#model",
         "6-judge/calibration.yaml",
         "6-judge/calibration/attempt-1/brief.md",
         "6-judge/anchors.yaml",
@@ -92,6 +95,24 @@ def test_the_collection_names_as_inputs_exactly_what_judge_prepare_reads(tmp_pat
         ".claude/agents/ie-judge-r1-t1-k1.md",
         ".claude/agents/ie-judge-r1-t1--omissions-k1.md",
     }
+
+
+def test_a_series_without_sources_names_as_inputs_the_first_coverage_demands_its_judges_bind_to(tmp_path):
+    files = series_folder(tmp_path)
+    (files.root / "series.yaml").unlink()
+    write_record(files, "series.yaml", {**SERIES, "sources": []}, [])
+    (files.root / f"1-source/{SOURCE_NAME}").unlink()
+    write_yaml(files, "r1/3-coverage.yaml", {"demands": {"d-judge": [1], "d-hedge": [1]}, "sentences": {1: ["d-judge", "d-hedge"]}})
+    prepare(tmp_path, files)
+    transcripts = [judge_transcript(files, packet, 1) for packet in PACKETS]
+    for packet in PACKETS:
+        write_verdict(files, packet, 1)
+
+    collect(files, transcripts)
+
+    inputs = set(SeriesRecords(files).collected("r1")["inputs"])
+    assert "r1/3-coverage.yaml#demands" in inputs
+    assert not any(read.startswith("1-source/") for read in inputs)
 
 
 def test_a_judge_definition_edited_since_judge_prepare_refuses_naming_it_and_writes_nothing(tmp_path):

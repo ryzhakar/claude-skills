@@ -29,6 +29,7 @@ from instruction_eval.records import (
     GATE_RECORD,
     KEY_SEPARATOR,
     OPEN_SPLIT,
+    READER_RECORD,
     SERIES_RECORD,
     TASKS_RECORD,
     USER_RATER,
@@ -888,11 +889,14 @@ def _collected_record(accepted: Mapping[str, AcceptedJudging]) -> dict[str, obje
 
 
 def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record) -> list[str]:
-    """Return what `judge collect` reads, as `judge prepare` does: the series, its sources, the demands, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
+    """Return what `judge collect` reads: the series, its sources or without one r1's coverage demands, the demands, the reader model, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
+    sources = records.series().sources
     return [
         SERIES_RECORD,
-        *(f"{SOURCE_FOLDER}/{source.name}" for source in records.series().sources),
+        *(f"{SOURCE_FOLDER}/{source.name}" for source in sources),
+        *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
         f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        f"{READER_RECORD}{KEY_SEPARATOR}model",
         CALIBRATION_RECORD,
         f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}",
         ANCHORS_RECORD,
