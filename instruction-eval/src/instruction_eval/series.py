@@ -64,7 +64,7 @@ def series_new(
     _refuse_non_empty_folder(files)
     _refuse_duplicate_basenames(source_paths)
     texts = {path: _read_external_file(path) for path in (instruction_path, *source_paths)}
-    _refuse_unclosed_frontmatter(texts)
+    refuse_unclosed_frontmatter(texts)
     write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
     _make_agents_folder(files)
     _snapshot_sources(files, source_paths, texts)
@@ -159,7 +159,7 @@ def _read_external_file(path: Path) -> bytes:
         raise Refusal(f"unreadable file: {path}") from None
 
 
-def _refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
+def refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
     """Refuse a file whose first line is `---` with no later line exactly `---`."""
     for path, text in texts.items():
         try:
