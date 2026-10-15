@@ -76,6 +76,37 @@ def states(files: SeriesFolder, transcripts: list[Transcript] = ()) -> dict:
     return judging_states(files, "r1", list(transcripts), Path.read_bytes)
 
 
+def verdict_path(files: SeriesFolder, packet: str, judging: int) -> Path:
+    return files.root / f"r1/7-verdicts/{packet}/k{judging}.yaml"
+
+
+def judge_transcript(
+    files: SeriesFolder,
+    packet: str,
+    judging: int,
+    model: str = JUDGE_MODEL,
+    final: bool = True,
+    started: str = "2026-10-14T19:00:43.000Z",
+    tools: tuple[dict, ...] = (),
+) -> Transcript:
+    """Write the transcript of a judging that loaded the oath skill and wrote its verdict path, and return its location."""
+    agent_type = f"ie-judge-r1-{packet}-k{judging}"
+    uses = tools or (
+        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": "manifesto:manifesto-oath"}},
+        {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": str(verdict_path(files, packet, judging))}},
+    )
+    blocks = [*uses, *([{"type": "text", "text": "Done."}] if final else [])]
+    usage = {"input_tokens": 3, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "output_tokens": 2}
+    lines = [
+        {"type": "user", "message": {"role": "user", "content": "Judge the packet."}, "timestamp": started},
+        {"type": "assistant", "message": {"model": model, "id": "msg_A", "role": "assistant", "content": blocks, "usage": usage}, "timestamp": started},
+    ]
+    path = files.root.parent / f"transcripts/{agent_type}-{started}/subagents/agent-{agent_type}.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    return Transcript(path=path, session=path.parent.parent.name, agent_id=agent_type, agent_type=agent_type)
+
+
 def test_a_packet_with_no_judging_needs_judging_one(tmp_path):
     files = series_folder(tmp_path)
 
@@ -87,3 +118,10 @@ def test_a_judging_without_verdict_or_transcript_is_pending_and_blocks_a_new_one
     write_definition(files, "t1", 1)
 
     assert states(files) == {"t1": PendingJudging(1), "t1--omissions": NeedsJudging(1)}
+
+
+def test_a_returned_judging_without_a_verdict_file_failed_and_the_next_judging_follows_it(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+
+    assert states(files, [judge_transcript(files, "t1", 1)]) == {"t1": NeedsJudging(2), "t1--omissions": NeedsJudging(1)}

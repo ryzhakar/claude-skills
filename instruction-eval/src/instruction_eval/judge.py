@@ -245,28 +245,59 @@ class NeedsJudging:
 JudgingState = AcceptedJudging | PendingJudging | NeedsJudging
 
 
+@dataclass(frozen=True)
+class _Judgings:
+    """What every judging of one revision is read against: the series files, the revision, and the judge transcripts with a way to read them."""
+
+    files: SeriesFolder
+    revision: str
+    transcripts: Sequence["Transcript"]
+    read_transcript: Callable[[Path], bytes]
+
+
 def judging_states(
     files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]
 ) -> dict[str, JudgingState]:
     """Return each packet of the revision's origins with its judging state, refusing a packet holding three failed judgings."""
+    judgings = _Judgings(files, revision, transcripts, read_transcript)
     origins = SeriesRecords(files).origins(revision)
-    return {packet: _packet_state(files, revision, packet) for packet in sorted(origins["packets"])}
+    return {packet: _packet_state(judgings, packet) for packet in sorted(origins["packets"])}
 
 
-def _packet_state(files: SeriesFolder, revision: str, packet: str) -> JudgingState:
+def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
     """Return the judging state of one packet: its lowest passing judging, else its first pending one, else the next judging to write."""
-    numbers = _judging_numbers(files, revision, packet)
-    outcomes = [_judging_outcome(files, revision, packet, number) for number in numbers]
+    numbers = _judging_numbers(judgings.files, judgings.revision, packet)
+    outcomes = [_judging_outcome(judgings, packet, number) for number in numbers]
     pending = [outcome for outcome in outcomes if isinstance(outcome, PendingJudging)]
     if pending:
         return pending[0]
     return NeedsJudging(len(numbers) + 1)
 
 
-def _judging_outcome(files: SeriesFolder, revision: str, packet: str, number: int) -> AcceptedJudging | PendingJudging | None:
+def _judging_outcome(judgings: _Judgings, packet: str, number: int) -> AcceptedJudging | PendingJudging | None:
     """Return the judging's acceptance, `PendingJudging` while its verdict is awaited, or None when it failed."""
-    return PendingJudging(number)
+    agent_type = _judging_agent_type(judgings.revision, packet, number)
+    if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
+        return None if _has_final_message(judgings, agent_type) else PendingJudging(number)
+    return None
 
+
+def _judging_agent_type(revision: str, packet: str, number: int) -> str:
+    """Return the agent type of judging `number` of a revision's packet."""
+    return f"{JUDGE_DEFINITION_PREFIX}{revision}-{packet}-k{number}"
+
+
+def _verdict_file(revision: str, packet: str, number: int) -> str:
+    """Return the series path of judging `number`'s verdict file."""
+    return f"{revision}/7-verdicts/{packet}/k{number}.yaml"
+
+
+def _has_final_message(judgings: _Judgings, agent_type: str) -> bool:
+    """Tell whether a transcript of the agent type ends in a final assistant message."""
+    from instruction_eval.reader import parse_transcript_replies
+
+    transcripts = [transcript for transcript in judgings.transcripts if transcript.agent_type == agent_type]
+    return any(parse_transcript_replies(transcript.path, judgings.read_transcript(transcript.path)) for transcript in transcripts)
 
 
 def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[int]:
