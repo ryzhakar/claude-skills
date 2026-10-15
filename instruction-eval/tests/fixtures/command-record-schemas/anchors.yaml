@@ -1,0 +1,19 @@
+inputs:
+  6-judge/calibration/attempt-1/agreement.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+anchors:
+  - id: anchor-1
+    task: greet
+    message: Say hello.
+    text: Hello.
+    breaches:
+      brevity: 0
+      tone: 1
+    done: true
+  - id: anchor-2
+    task: chat
+    message: Tell me a story.
+    text: ""
+    breaches:
+      brevity: 2
+      tone: 0
+    done: null

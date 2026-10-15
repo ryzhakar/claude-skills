@@ -1,0 +1,8 @@
+controls:
+  - empty
+  - aim
+  - placebo
+  - source
+aim: Make every reply terse.
+placebo_source: /home/writer/placebo/gardening.md
+omissions: every-sentence

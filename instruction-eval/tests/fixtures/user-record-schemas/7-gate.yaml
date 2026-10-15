@@ -1,0 +1,18 @@
+repeats: 5
+level: 0.95
+done_by: answer-key
+checks:
+  - compares: instruction-vs-empty
+    gap: 0.5
+  - compares: instruction-vs-aim
+    gap: 0.5
+  - compares: instruction-vs-placebo
+    gap: 0.25
+  - compares: completion
+    gap: 0.1
+  - compares: drift
+    gap: 1
+keep_rule: best-estimate-shortest
+budget:
+  unit: tokens
+  ceiling: 2000000

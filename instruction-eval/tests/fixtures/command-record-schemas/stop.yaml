@@ -1,0 +1,4 @@
+inputs:
+  7-gate.yaml#checks: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+stop: passed
+kept: r2
