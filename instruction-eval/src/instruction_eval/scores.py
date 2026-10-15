@@ -1,13 +1,32 @@
+from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from math import sqrt
-from statistics import NormalDist, linear_regression, mean, variance
+from statistics import NormalDist, fmean, linear_regression, mean, variance
 from typing import NamedTuple, TypedDict
 
 import numpy
 
-from instruction_eval.records import ANCHOR_KEY, DoneBy, Record, Split
+from instruction_eval.records import (
+    ANCHOR_KEY,
+    DEMANDS_RECORD,
+    FIRST_REVISION,
+    GATE_RECORD,
+    OPEN_SPLIT,
+    TASKS_RECORD,
+    Coverage,
+    DoneBy,
+    Dropped,
+    Gate,
+    Record,
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    Split,
+    reply_path,
+    write_record,
+)
 
 _INSTRUCTION = "instruction"
 _SOURCE = "source"
@@ -239,9 +258,9 @@ def _done_value(reply: ScoredReply) -> float | None:
 def _best_done_control(replies: Sequence[ScoredReply], controls: Sequence[str]) -> str | None:
     """Return the control with the highest done rate over non-null done values, or null when no control has one."""
     done_rates = {
-        control: mean(present)
+        control: done_rate
         for control in controls
-        if (present := [reply["done"] for reply in replies if reply["condition"] == control and reply["done"] is not None])
+        if (done_rate := _done_rate([reply for reply in replies if reply["condition"] == control])) is not None
     }
     return max(done_rates, key=done_rates.__getitem__, default=None)
 
@@ -347,3 +366,168 @@ def require_valid_level(level: float) -> None:
     """Raise ValueError naming `level` unless it lies strictly between 0 and 1."""
     if not 0 < level < 1:
         raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
+
+
+SCORES_FILE = "8-scores.yaml"
+ORIGINS_FILE = "6-origins.yaml"
+COLLECTED_FILE = "7-collected.yaml"
+DETECTORS_FILE = "7-detectors.yaml"
+LEVEL_INPUT = f"{GATE_RECORD}#level"
+DONE_BY_INPUT = f"{GATE_RECORD}#done_by"
+SCORE_USER_INPUTS = (
+    f"{DEMANDS_RECORD}#demands",
+    f"{TASKS_RECORD}#tasks",
+    f"{TASKS_RECORD}#conversations",
+    f"{FIRST_REVISION}/3-coverage.yaml#demands",
+    f"{FIRST_REVISION}/3-coverage.yaml#sentences",
+    LEVEL_INPUT,
+    DONE_BY_INPUT,
+)
+
+
+def revision_score(files: SeriesFolder, revision: str) -> None:
+    """Write the revision's `8-scores.yaml` from its open replies: their rows, per-condition means, comparisons, drift, and done disagreements."""
+    records = SeriesRecords(files)
+    level, done_by = _scoring_keys(records.gate())
+    origins = records.origins(revision)
+    collected = records.collected(revision)
+    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    rows = join_reply_rows(origins, verdicts, records.detectors(revision), done_by, OPEN_SPLIT)
+    scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level)
+    write_record(files, f"{revision}/{SCORES_FILE}", scores, _score_reads(revision, origins, collected))
+
+
+def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
+    """Return the gate's level and done mode, refusing either key unwritten."""
+    if gate.level is None:
+        raise Refusal(f"missing key: {LEVEL_INPUT}")
+    if gate.done_by is None:
+        raise Refusal(f"missing key: {DONE_BY_INPUT}")
+    return gate.level, gate.done_by
+
+
+def _gate_demands(coverage: Coverage) -> list[str]:
+    """Return the demands r1's coverage does not drop, in coverage order."""
+    return [demand for demand, sentences in coverage.demands.items() if not isinstance(sentences, Dropped)]
+
+
+def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]:
+    """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
+    return [
+        *SCORE_USER_INPUTS,
+        *_origin_reply_paths(revision, origins),
+        f"{revision}/{ORIGINS_FILE}",
+        *(f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()),
+        f"{revision}/{COLLECTED_FILE}",
+        f"{revision}/{DETECTORS_FILE}",
+    ]
+
+
+def _origin_reply_paths(revision: str, origins: Record) -> list[str]:
+    """Return the reply file of every reply origin, a borrowed one in the revision it names."""
+    return [
+        reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+        for origin in origins["ids"].values()
+        if ANCHOR_KEY not in origin
+    ]
+
+
+def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float) -> dict[str, object]:
+    """Return the scores record of the open rows: the rows, per-condition means, comparisons, drift, and done disagreements."""
+    task_rows = [row for row in rows if row["turn"] is None]
+    turn_rows = [row for row in rows if row["turn"] is not None]
+    return {
+        "split": OPEN_SPLIT,
+        "rows": list(rows),
+        "by_condition": {
+            condition: _condition_scores([row for row in task_rows if row["condition"] == condition], gate_demands)
+            for condition in _conditions_of(task_rows)
+        },
+        "comparisons": _comparisons(task_rows, turn_rows, gate_demands, level),
+        "drift": {
+            condition: _drift(slopes, level)
+            for condition in _conditions_of(turn_rows)
+            if (slopes := _conversation_slopes(turn_rows, gate_demands, condition))
+        },
+        "disagreements": [row["id"] for row in rows if _key_and_judge_disagree(row)],
+    }
+
+
+def _key_and_judge_disagree(row: ReplyRow) -> bool:
+    """Tell whether the reply holds both a key verdict and a judge verdict on done and they differ."""
+    return None not in (row["done_by_answer_key"], row["done_by_judge"]) and row["done_by_answer_key"] != row["done_by_judge"]
+
+
+def _comparisons(
+    task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float
+) -> dict[str, dict[str, object]]:
+    """Map each compares holding a unit to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
+    controls = [condition for condition in (*_VS_CONTROLS, _SOURCE) if condition in _conditions_of(task_rows)]
+    task_breaches = partial(_task_means_of, task_rows, partial(breach_total, demands=gate_demands))
+    comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level) for control in controls if control != _SOURCE}
+    if _SOURCE in controls:
+        comparisons[_NEAR_SOURCE] = _instruction_minus(task_breaches, _SOURCE, level)
+    comparisons[_COMPLETION] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level)
+    if turn_rows:
+        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
+        comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level)
+    return {compares: comparison for compares, comparison in comparisons.items() if comparison["units"]}
+
+
+def _task_means_of(task_rows: Sequence[ScoredReply], reply_value: Callable[[ScoredReply], float | None], condition: str | None) -> dict[str, float]:
+    """Map each task to the condition's mean reply value, no task without a condition."""
+    return task_means(task_rows, condition, reply_value) if condition else {}
+
+
+def _conversation_slopes(turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], condition: str) -> dict[str, float]:
+    """Map each conversation to the condition's drift slope averaged over repeats, conversations without a slope left out."""
+    return {
+        conversation: fmean(present)
+        for conversation, slopes in _drift_slopes_by_unit(turn_rows, condition, gate_demands).items()
+        if (present := [slope for slope in slopes if slope is not None])
+    }
+
+
+def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], other: str | None, level: float) -> dict[str, object]:
+    """Return the comparison record of instruction minus the other condition over the units both hold a mean for."""
+    units = paired_units(unit_means(_INSTRUCTION), unit_means(other))
+    return _comparison_record(compare_paired(units, level, _bootstrap_rng()))
+
+
+def _drift(conversation_slopes: Mapping[str, float], level: float) -> dict[str, object]:
+    """Return a condition's mean drift slope over conversations and its percentile bootstrap interval."""
+    slopes = numpy.array(list(conversation_slopes.values()))
+    resample_means = bootstrap_resample_means(slopes, _bootstrap_rng())
+    return {"slope": float(slopes.mean()), "interval": list(percentile_interval(resample_means, level))}
+
+
+def _comparison_record(comparison: Comparison) -> dict[str, object]:
+    """Return a comparison as `8-scores.yaml` stores it: mean difference, interval as a list or null, and unit count."""
+    interval = None if comparison.interval is None else list(comparison.interval)
+    return {"mean_difference": comparison.mean_difference, "interval": interval, "units": comparison.units}
+
+
+def _bootstrap_rng() -> numpy.random.Generator:
+    """Return a fresh PCG64 generator at the series bootstrap seed, so each comparison resamples alike."""
+    return numpy.random.default_rng(BOOTSTRAP_SEED)
+
+
+def _conditions_of(rows: Sequence[ScoredReply]) -> list[str]:
+    """Return the conditions the rows hold, in order of first appearance."""
+    return list(dict.fromkeys(row["condition"] for row in rows))
+
+
+def _condition_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str]) -> dict[str, object]:
+    """Return one condition's mean breaches per reply over gate demands, mean breaches per demand, done rate, and kind counts."""
+    return {
+        "breaches_per_reply": fmean(breach_total(row, gate_demands) for row in rows),
+        "demands": {demand: fmean(row["breaches"][demand] for row in rows) for demand in rows[0]["breaches"]},
+        "done_rate": _done_rate(rows),
+        "kinds": dict(Counter(row["kind"] for row in rows)),
+    }
+
+
+def _done_rate(rows: Sequence[ScoredReply]) -> float | None:
+    """Return the share of rows done among those whose done is not null, null when every done is null."""
+    present = [row["done"] for row in rows if row["done"] is not None]
+    return fmean(present) if present else None
