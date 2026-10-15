@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from instruction_eval.coverage import split_sentences
-from instruction_eval.gate import COMPLETION_TARGET
+from instruction_eval.gate import COMPLETION_TARGET, REVISION_PREFIX
 from instruction_eval.records import (
     CONDITIONS_RECORD,
     FAIL_OUTCOME,
@@ -160,7 +160,6 @@ _CHECKS = {
 
 
 NEW_COMMAND = "revision new"
-REVISION_PREFIX = "r"
 HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
 COVERAGE_INPUTS = (f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}sentences")
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
