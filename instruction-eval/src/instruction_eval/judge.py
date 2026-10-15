@@ -6,7 +6,7 @@ from collections.abc import Set as AbstractSet
 from pathlib import Path
 
 from instruction_eval.conditions import strip_frontmatter
-from instruction_eval.records import Demand, Demands, JudgeDemand, Refusal
+from instruction_eval.records import Demand, Demands, JudgeDemand, Record, RecordError, RecordKind, Refusal, parse_record
 
 SOURCE_PLACEHOLDER = "{SOURCE}"
 DEMANDS_PLACEHOLDER = "{DEMANDS}"
@@ -18,6 +18,7 @@ OATH_SKILL = "manifesto:manifesto-oath"
 BRIEF_FORBIDDEN_WORDS = ("empty", "aim", "placebo", "instruction", "omit", "control", "condition", "revision", "reader", "digest")
 SOURCE_FOLDER = "1-source"
 SOURCE_SEPARATOR = "\n\n"
+VERDICT_LABEL = RecordKind.VERDICT.value
 
 
 def render_brief(
@@ -70,3 +71,33 @@ def _source_file_text(basename: str, text: str) -> str:
 def _demand_list(demands: Iterable[Demand]) -> str:
     """Return one entry per demand holding its id, text, and boundary."""
     return "\n".join(f"- id: {demand.id}\n  text: {demand.text}\n  boundary: {demand.boundary}" for demand in demands)
+
+
+def parse_verdict(document: object, blind_ids: AbstractSet[str], judge_demand_ids: AbstractSet[str]) -> Record:
+    """Return the verdict document when it holds every blind id of its packet once, each counting every judge demand, values in range, and raise RecordError otherwise."""
+    verdict = parse_record(RecordKind.VERDICT, document)
+    _refuse_other_blind_ids(verdict, blind_ids)
+    for index, entry in enumerate(verdict["verdicts"]):
+        _refuse_other_demands(entry["breaches"], f"{VERDICT_LABEL}.verdicts[{index}].breaches", judge_demand_ids)
+    return verdict
+
+
+def _refuse_other_blind_ids(verdict: Record, blind_ids: AbstractSet[str]) -> None:
+    """Raise RecordError when the verdict misses a blind id of the packet or judges one outside it."""
+    judged = {entry["id"] for entry in verdict["verdicts"]}
+    missing = sorted(blind_ids - judged)
+    if missing:
+        raise RecordError(f"{VERDICT_LABEL}: missing blind id {missing[0]}")
+    foreign = sorted(judged - blind_ids)
+    if foreign:
+        raise RecordError(f"{VERDICT_LABEL}: blind id {foreign[0]} is not in the packet")
+
+
+def _refuse_other_demands(breaches: Mapping[str, int], path: str, judge_demand_ids: AbstractSet[str]) -> None:
+    """Raise RecordError when a breaches map misses a judge demand or counts another demand."""
+    missing = sorted(judge_demand_ids - breaches.keys())
+    if missing:
+        raise RecordError(f"{path}: missing judge demand {missing[0]}")
+    foreign = sorted(breaches.keys() - judge_demand_ids)
+    if foreign:
+        raise RecordError(f"{path}: {foreign[0]} is not a judge demand")
