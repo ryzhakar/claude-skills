@@ -26,6 +26,8 @@ from instruction_eval.records import (
 SERIES_HOME_FOLDER = "instruction-series"
 AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
+LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
+MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/2-instruction.md"
 
 STOPPED_SERIES_COMMANDS = ("series status", "series keep")
@@ -44,6 +46,7 @@ def series_new(
     instruction_path = _resolve_against(working_dir, instruction)
     source_paths = [_resolve_against(working_dir, source) for source in sources]
     files = SeriesFolder(_series_folder_path(name, working_dir, home))
+    _refuse_folder_under_memory_file(files, home)
     _refuse_non_empty_folder(files)
     instruction_bytes = instruction_path.read_bytes()
     write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
@@ -64,6 +67,16 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
     if PATH_SEPARATOR in name:
         return _resolve_against(working_dir, name)
     return home / SERIES_HOME_FOLDER / name
+
+
+def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
+    """Refuse a series folder that or whose ancestor up to `/` holds a memory file, except the home default login's."""
+    login_memory_file = home / LOGIN_MEMORY_FILE
+    for directory in (files.root, *files.root.parents):
+        for memory_file in MEMORY_FILES:
+            candidate = directory / memory_file
+            if candidate.is_file() and candidate != login_memory_file:
+                raise Refusal(f"series folder under a memory file: {candidate}")
 
 
 def _refuse_non_empty_folder(files: SeriesFolder) -> None:

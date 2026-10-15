@@ -86,3 +86,44 @@ def test_a_non_empty_folder_is_refused_and_an_empty_one_is_used(tmp_path):
     new_series(tmp_path)
     with pytest.raises(Refusal, match=rf"^series folder not empty: {re.escape(str(folder))}$"):
         new_series(tmp_path)
+
+
+MEMORY_FILES = ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md", ".manifestos.yaml"]
+PLACES = [
+    ("work/terse", "work/terse"),
+    ("work/a/b/c/terse", "work/a"),
+    ("home/instruction-series/terse", "home"),
+    ("elsewhere/terse", "elsewhere"),
+    ("home/instruction-series/terse", ""),
+]
+REFUSED_CASES = [
+    (memory_file, folder, holder)
+    for memory_file in MEMORY_FILES
+    for folder, holder in PLACES
+    if (holder, memory_file) != ("home", ".claude/CLAUDE.md")
+]
+
+
+def plant(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"memory\n")
+
+
+@pytest.mark.parametrize(("memory_file", "folder", "holder"), REFUSED_CASES)
+def test_a_folder_that_or_whose_ancestor_holds_a_memory_file_is_refused_naming_it(tmp_path, memory_file, folder, holder):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+    planted = tmp_path / holder / memory_file
+    plant(planted)
+    name = str(tmp_path / folder)
+
+    with pytest.raises(Refusal, match=rf"^series folder under a memory file: {re.escape(str(planted))}$"):
+        new_series(tmp_path, name=name)
+
+
+def test_the_home_default_login_memory_file_is_no_reason_to_refuse(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+    plant(tmp_path / "home/.claude/CLAUDE.md")
+
+    new_series(tmp_path)
