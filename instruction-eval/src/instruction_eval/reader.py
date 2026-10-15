@@ -8,14 +8,20 @@ from itertools import accumulate
 from pathlib import Path
 from typing import Any, TypeVar
 
+import yaml
+
 from instruction_eval.judge import OATH_SKILL
-from instruction_eval.records import Refusal
+from instruction_eval.records import AgentReader, CommandReader, Reader, Refusal, SeriesFolder, SeriesRecords, _dump_canonical_yaml, sha256
+from instruction_eval.series import guard_series
 
 FRONTMATTER_FENCE = "---\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
 EMPTY_TOOLSET_LINES = ("tools: Read", "disallowedTools: Read")
 JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
 FRONTMATTER_BREAKERS = ("\n", "\r", ": ")
+FINGERPRINT_COMMAND = "reader fingerprint"
+FINGERPRINT_KEYS = ("model", "build")
+AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
 
 
 class AgentKind(Enum):
@@ -616,3 +622,45 @@ def _model_exposures(entry: dict[str, Any], pinned_model: str) -> tuple[str, ...
         return ()
     model = _field(entry, (_MESSAGE_KEY, _MODEL_KEY), str)
     return () if model == pinned_model else (f"model {model} is not the pinned {pinned_model}",)
+
+
+@dataclass(frozen=True)
+class Fingerprint:
+    """The parsed output of a command reader's fingerprint with the sha256 of its canonical YAML."""
+
+    output: Mapping[str, Any]
+    fingerprint_hash: str
+
+
+def reader_fingerprint(files: SeriesFolder, run_fingerprint: Callable[[Sequence[str]], str]) -> Fingerprint:
+    """Run the command reader's fingerprint and return its parsed output with the hash of that output as canonical YAML."""
+    guard_series(files, FINGERPRINT_COMMAND)
+    reader = _command_reader(SeriesRecords(files).reader())
+    output = _parse_fingerprint_output(run_fingerprint(reader.fingerprint))
+    _refuse_missing_key(output, (*FINGERPRINT_KEYS, *reader.sampling))
+    return Fingerprint(output=output, fingerprint_hash=sha256(_dump_canonical_yaml(output)))
+
+
+def _command_reader(reader: Reader) -> CommandReader:
+    """Return the reader when it is a command reader, refusing an agent reader."""
+    if isinstance(reader, AgentReader):
+        raise Refusal(AGENT_READER_FINGERPRINT_REFUSAL)
+    return reader
+
+
+def _parse_fingerprint_output(text: str) -> dict[str, Any]:
+    """Parse the fingerprint output as a YAML mapping, refusing any other content."""
+    try:
+        output = yaml.safe_load(text)
+    except yaml.YAMLError:
+        output = None
+    if not isinstance(output, dict):
+        raise Refusal("fingerprint output is not a YAML mapping")
+    return output
+
+
+def _refuse_missing_key(output: Mapping[str, Any], required: Iterable[str]) -> None:
+    """Refuse the first required key the output lacks."""
+    for key in required:
+        if key not in output:
+            raise Refusal(f"fingerprint output lacks {key}")
