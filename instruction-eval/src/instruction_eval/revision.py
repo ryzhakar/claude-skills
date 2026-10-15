@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from instruction_eval.coverage import split_sentences
-from instruction_eval.gate import COMPLETION_TARGET, OUTCOME_FILE, REVISION_PREFIX, hypothesis_reads
+from instruction_eval.gate import COMPLETION_TARGET, OUTCOME_FILE, REVISION_PREFIX, hypothesis_reads, revision_number
 from instruction_eval.records import (
     CONDITIONS_RECORD,
     FAIL_OUTCOME,
@@ -201,14 +201,9 @@ def _refuse_ungated_or_passed(files: SeriesFolder, records: SeriesRecords, revis
         raise Refusal(f"latest revision {revision} did not fail")
 
 
-def _revision_number(revision: str) -> int:
-    """Return the number a revision id carries."""
-    return int(revision.removeprefix(REVISION_PREFIX))
-
-
 def _next_revision(revision: str) -> str:
     """Return the id of the revision after the given one."""
-    return f"{REVISION_PREFIX}{_revision_number(revision) + 1}"
+    return f"{REVISION_PREFIX}{revision_number(revision) + 1}"
 
 
 def _live_instruction(path: Path, read_external: Callable[[Path], bytes]) -> bytes:
@@ -285,7 +280,7 @@ def _change_record(parent: list[str], child: list[str], change: Change) -> dict[
 def _revision_record(files: SeriesFolder, revision: str, parent: str, instruction: bytes, change: dict[str, object]) -> dict[str, object]:
     """Return the `2-revision.yaml` record of the instruction snapshot, chained to the parent's record."""
     return {
-        "number": _revision_number(revision),
+        "number": revision_number(revision),
         "parent": parent,
         "hash": sha256(instruction),
         "parent_record": sha256(files.read_bytes(revision_record_path(parent))),

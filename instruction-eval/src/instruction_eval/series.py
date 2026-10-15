@@ -9,7 +9,7 @@ from pathlib import Path
 from instruction_eval.conditions import UnclosedFrontmatter, strip_frontmatter
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
-from instruction_eval.gate import OUTCOME_FILE, kept_revision
+from instruction_eval.gate import OUTCOME_FILE, REVISION_PREFIX, kept_revision
 from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
     CALIBRATION_RECORD,
@@ -272,7 +272,7 @@ def _later_revisions(files: SeriesFolder) -> Iterator[str]:
 
 def revision_ids(files: SeriesFolder) -> Iterator[str]:
     """Return the ids of the revisions, in order, up to the first without a record."""
-    revisions = (f"r{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
+    revisions = (f"{REVISION_PREFIX}{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
     return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
 
 

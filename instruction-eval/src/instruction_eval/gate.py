@@ -315,10 +315,10 @@ def kept_revision(outcomes: Mapping[str, Record]) -> str | None:
 
 def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
     """Return a candidate's rank, lowest first: a pass, then fewer instruction breaches, then fewer words, then the lower number."""
-    return (outcome["outcome"] != PASS_OUTCOME, outcome["instruction_breaches"], outcome["words"], _revision_number(revision))
+    return (outcome["outcome"] != PASS_OUTCOME, outcome["instruction_breaches"], outcome["words"], revision_number(revision))
 
 
-def _revision_number(revision: str) -> int:
+def revision_number(revision: str) -> int:
     """Return the number a revision id carries."""
     return int(revision.removeprefix(REVISION_PREFIX))
 
@@ -394,7 +394,7 @@ def _first_matching_stop(
         return {"stop": PASSED_STOP}
     if _unchanged_from_parent(revision, outcomes) and _unchanged_from_parent(_parent_revision(revision), outcomes):
         return {"stop": NO_EFFECT_STOP}
-    if _revision_number(revision) >= LAST_REVISION_NUMBER:
+    if revision_number(revision) >= LAST_REVISION_NUMBER:
         return {"stop": CAPPED_STOP}
     if budget is not None and cost_so_far >= budget.ceiling:
         return {"stop": CAPPED_STOP, "reason": BUDGET_REASON}
@@ -408,7 +408,7 @@ def _unchanged_from_parent(revision: str, outcomes: Mapping[str, Record]) -> boo
 
 def _parent_revision(revision: str) -> str:
     """Return the id of the revision before the given one."""
-    return f"{REVISION_PREFIX}{_revision_number(revision) - 1}"
+    return f"{REVISION_PREFIX}{revision_number(revision) - 1}"
 
 
 GATE_COMMAND = "revision gate"
@@ -533,7 +533,7 @@ def _parent_fields(hypothesis: Hypothesis, rows: Sequence[ScoredReply], parent_r
 
 def _earlier_outcomes(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, Record]:
     """Return the outcome of each gated revision before the given one, by id in order."""
-    earlier = (f"{REVISION_PREFIX}{number}" for number in range(1, _revision_number(revision)))
+    earlier = (f"{REVISION_PREFIX}{number}" for number in range(1, revision_number(revision)))
     return {other: records.outcome(other) for other in earlier if files.holds(_outcome_path(other))}
 
 
