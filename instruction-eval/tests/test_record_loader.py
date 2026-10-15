@@ -187,7 +187,7 @@ TASKS = {
         {"id": "t-sealed", "tempts": "d-pattern", "split": "sealed", "message": "Explain rain.", "answer_key": None},
         {"id": "t-over", "tempts": "overreach", "split": "open", "message": "Add two and two.", "answer_key": "4"},
     ],
-    "conversations": [],
+    "conversations": [{"id": "c-open", "split": "open", "turns": ["Plan a trip.", "Which week?"]}],
 }
 COVERAGE = {"demands": {"d-judge": [1], "d-pattern": {"dropped": "Unmeasured here."}}, "sentences": {1: ["d-judge"]}}
 
@@ -377,6 +377,12 @@ def test_a_record_naming_a_demand_the_series_lacks_refuses_naming_it(files, path
         ("r2/1-hypothesis.yaml", at("replies_read", value=["b00000009"]), lambda records: records.hypothesis("r2"), "blind id", "b00000009"),
         ("6-judge/calibration.yaml", at("attempt", value=2), lambda records: records.calibration(), "attempt", "2"),
         (f"{ATTEMPT}/agreement.yaml", at("ratings", value={"candidate-2.yaml": AGREEMENT["ratings"]["candidate-1.yaml"]}), lambda records: records.agreement(1), "rating", "candidate-2.yaml"),
+        ("8-frozen.yaml", at("hashes", value={"r1/gone.md": HASH}), lambda records: records.frozen(), "frozen part", "r1/gone.md"),
+        (REPLY_PATH, at("turn", value=1), lambda records: records.reply(REPLY_PATH), "turn", "1"),
+        (REPLY_PATH, at("split", value="sealed"), lambda records: records.reply(REPLY_PATH), "split", "sealed"),
+        ("r1/8-scores.yaml", at("rows", 0, "condition", value="omit-9"), lambda records: records.scores("r1"), "condition", "omit-9"),
+        ("r1/8-scores.yaml", at("rows", 0, "task", value="t-gone"), lambda records: records.scores("r1"), "task", "t-gone"),
+        ("r1/8-scores.yaml", at("by_condition", value={"omit-9": SCORES["by_condition"]["instruction"]}), lambda records: records.scores("r1"), "condition", "omit-9"),
     ],
 )
 def test_a_record_naming_an_entry_the_series_lacks_refuses_naming_it(files, path, change, load, kind, name):
@@ -391,6 +397,31 @@ def test_a_verdict_naming_a_blind_id_of_another_packet_refuses_naming_it(files):
     path = "r1/7-verdicts/t-open/k1.yaml"
     with pytest.raises(Refusal, match=refusal(path, "blind id", "b00000002")):
         SeriesRecords(files).verdict("r1", "t-open", 1)
+
+
+TURN_PATH = "r1/5-replies/instruction/c-open/repeat-1/turn-2.yaml"
+TURN_REPLY = {**REPLY, "task": "c-open", "turn": 2}
+
+
+def test_a_conversation_turn_reply_within_its_turns_loads(files):
+    write_record(files, TURN_PATH, TURN_REPLY, REPLY_READS)
+    assert SeriesRecords(files).reply(TURN_PATH)["turn"] == 2
+
+
+@pytest.mark.parametrize(("reply", "name"), [({**TURN_REPLY, "turn": 3}, "3"), ({k: v for k, v in TURN_REPLY.items() if k != "turn"}, "absent")])
+def test_a_conversation_reply_naming_no_turn_or_a_turn_past_its_last_refuses_naming_it(files, reply, name):
+    write_record(files, TURN_PATH, reply, REPLY_READS)
+    with pytest.raises(Refusal, match=refusal(TURN_PATH, "turn", name)):
+        SeriesRecords(files).reply(TURN_PATH)
+
+
+def test_scores_holding_a_control_row_borrowed_from_r1_load(files):
+    write_file(files, "r2/4-conditions/instruction.md", b"instruction")
+    borrowed_row = {**SCORES["rows"][0], "condition": "empty", "borrowed_from": "r1"}
+    write_record(files, "r2/6-origins.yaml", {"ids": {"b00000001": {**REPLY_ORIGIN, "borrowed_from": "r1"}}, "packets": {"t-open": HASH}}, [])
+    by_condition = {"instruction": SCORES["by_condition"]["instruction"], "empty": SCORES["by_condition"]["instruction"]}
+    write_record(files, "r2/8-scores.yaml", {**SCORES, "rows": [borrowed_row], "by_condition": by_condition}, [])
+    assert SeriesRecords(files).scores("r2")["rows"] == [borrowed_row]
 
 
 COMMAND_READER = {

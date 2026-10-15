@@ -101,7 +101,7 @@ def test_a_frozen_series_whose_part_changed_a_byte_refuses_naming_it(files, part
 
 def test_a_frozen_series_whose_part_was_deleted_refuses_naming_it(files):
     (files.root / "r1/2-instruction.md").unlink()
-    with pytest.raises(Refusal, match=r"^frozen part changed: r1/2-instruction\.md$"):
+    with pytest.raises(Refusal, match=r"^unresolved frozen part: r1/2-instruction\.md \(8-frozen\.yaml\)$"):
         guard_series(files, "revision ask")
 
 

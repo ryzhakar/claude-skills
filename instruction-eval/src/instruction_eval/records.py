@@ -1554,6 +1554,10 @@ PACKET_REFERENCE = "packet"
 REPLY_REFERENCE = "reply"
 ATTEMPT_REFERENCE = "attempt"
 RATING_REFERENCE = "rating"
+FROZEN_PART_REFERENCE = "frozen part"
+SPLIT_REFERENCE = "split"
+TURN_REFERENCE = "turn"
+ABSENT_TURN = "absent"
 
 
 @dataclass(frozen=True)
@@ -1640,11 +1644,14 @@ class SeriesRecords:
         return record
 
     def reply(self, path: str) -> Record:
-        """Load the reply record at `path`, its task one of the series, its condition one its revision prepared, its reader kind the series'."""
+        """Load the reply record at `path`, its task or conversation one of the series with its split and turns, its condition one its revision prepared, its reader kind the series'."""
         reply = self._command_record(path, RecordKind.REPLY)
         self._refuse_other_reader_kind(path, reply["reader_kind"])
-        tasks = self.tasks()
-        _resolve(path, TASK_REFERENCE, [reply["task"]], {item.id for item in (*tasks.tasks, *tasks.conversations)})
+        entries = self._task_entries()
+        _resolve(path, TASK_REFERENCE, [reply["task"]], entries)
+        entry = entries[reply["task"]]
+        _resolve(path, SPLIT_REFERENCE, [reply["split"]], {entry.split})
+        _resolve(path, TURN_REFERENCE, [reply.get("turn", ABSENT_TURN)], _turns(entry))
         revision = path.partition("/")[0]
         self._resolve_files(path, CONDITION_REFERENCE, [reply["condition"]], functools.partial(condition_path, revision))
         return reply
@@ -1706,13 +1713,17 @@ class SeriesRecords:
         return detectors
 
     def scores(self, revision: str) -> Record:
-        """Load a revision's `8-scores.yaml`, scoring the revision's blind ids on demands of the series."""
+        """Load a revision's `8-scores.yaml`, scoring the revision's blind ids on demands, tasks, and prepared conditions of the series."""
         path = f"{revision}/8-scores.yaml"
         scores = self._command_record(path, RecordKind.SCORES)
         condition_demands = [demand for condition in scores["by_condition"].values() for demand in condition["demands"]]
         _resolve(path, DEMAND_REFERENCE, [*_breach_demands(scores["rows"]), *condition_demands], self._demand_ids())
         row_ids = [row["id"] for row in scores["rows"]]
         _resolve(path, BLIND_ID_REFERENCE, [*row_ids, *scores["disagreements"]], self.origins(revision)["ids"])
+        _resolve(path, TASK_REFERENCE, [row["task"] for row in scores["rows"]], self._task_entries())
+        for row in scores["rows"]:
+            self._resolve_files(path, CONDITION_REFERENCE, [row["condition"]], functools.partial(condition_path, row["borrowed_from"] or revision))
+        self._resolve_files(path, CONDITION_REFERENCE, scores["by_condition"], functools.partial(self._prepared_condition_path, revision))
         return scores
 
     def outcome(self, revision: str) -> Record:
@@ -1724,8 +1735,9 @@ class SeriesRecords:
         return outcome
 
     def frozen(self) -> Record:
-        """Load `8-frozen.yaml`, its noise over gate demands only."""
+        """Load `8-frozen.yaml`, each hashed path a series file and its noise over gate demands only."""
         frozen = self._command_record(FROZEN_RECORD, RecordKind.FROZEN)
+        self._resolve_files(FROZEN_RECORD, FROZEN_PART_REFERENCE, frozen["hashes"], str)
         noise = frozen["noise"]
         _resolve(FROZEN_RECORD, GATE_DEMAND_REFERENCE, [*noise["demands"], *noise["sigma"]["demands"]], self._gate_demand_ids())
         return frozen
@@ -1776,6 +1788,16 @@ class SeriesRecords:
             if not self.files.holds(file_of(name)):
                 raise _unresolved(path, kind, name)
 
+    def _task_entries(self) -> dict[str, Task | Conversation]:
+        """Return every task and conversation of the series by id."""
+        tasks = self.tasks()
+        return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
+
+    def _prepared_condition_path(self, revision: str, condition: str) -> str:
+        """Return the condition text `revision` prepared, or else the r1 text a later revision borrows."""
+        own = condition_path(revision, condition)
+        return own if self.files.holds(own) else condition_path(FIRST_REVISION, condition)
+
     def _demand_ids(self, *variants: type[Demand]) -> set[str]:
         """Return the ids of the series demands of the given variants, every variant when none is given."""
         return {demand.id for demand in self.demands().demands if not variants or isinstance(demand, variants)}
@@ -1804,6 +1826,13 @@ def _resolve(path: str, kind: str, names: Iterable[str], known: Container[str]) 
 def _unresolved(path: str, kind: str, name: object) -> Refusal:
     """Return the refusal of the record at `path` naming a `kind` the series lacks."""
     return Refusal(f"unresolved {kind}: {name} ({path})")
+
+
+def _turns(entry: Task | Conversation) -> set[int | str]:
+    """Return the turns a reply to the entry may name: a conversation's turn numbers, or for a task no turn."""
+    if isinstance(entry, Conversation):
+        return set(range(1, len(entry.turns) + 1))
+    return {ABSENT_TURN}
 
 
 def _breach_demands(entries: Iterable[Record]) -> list[str]:
