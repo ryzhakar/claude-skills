@@ -1,21 +1,94 @@
-"""Guards every command but `series new` against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
+"""Series commands: `series new` makes a series folder, and every other command is guarded against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
 
 import itertools
-from collections.abc import Iterator
+import os
+from collections.abc import Iterator, Sequence
+from datetime import datetime
+from pathlib import Path
 
+from instruction_eval.judge import SOURCE_FOLDER
 from instruction_eval.records import (
+    FIRST_REVISION,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     SERIES_RECORD,
     STOP_RECORD,
+    ReaderKind,
     Refusal,
     SeriesFolder,
     SeriesRecords,
     revision_record_path,
     sha256,
+    write_file,
+    write_record,
 )
 
+SERIES_HOME_FOLDER = "instruction-series"
+AGENTS_FOLDER = ".claude/agents"
+PATH_SEPARATOR = "/"
+FIRST_INSTRUCTION = f"{FIRST_REVISION}/2-instruction.md"
+
 STOPPED_SERIES_COMMANDS = ("series status", "series keep")
+
+
+def series_new(
+    name: str,
+    instruction: str,
+    sources: Sequence[str],
+    reader_kind: ReaderKind,
+    working_dir: Path,
+    home: Path,
+    now: datetime,
+) -> SeriesFolder:
+    """Make the series folder `name` names, holding the snapshots of the live instruction and the sources, and return it."""
+    instruction_path = _resolve_against(working_dir, instruction)
+    source_paths = [_resolve_against(working_dir, source) for source in sources]
+    files = SeriesFolder(_series_folder_path(name, working_dir, home))
+    instruction_bytes = instruction_path.read_bytes()
+    write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
+    _make_agents_folder(files)
+    _snapshot_sources(files, source_paths)
+    write_file(files, FIRST_INSTRUCTION, instruction_bytes)
+    write_record(files, revision_record_path(FIRST_REVISION), _first_revision_record(instruction_bytes), [])
+    return files
+
+
+def _resolve_against(working_dir: Path, path: str) -> Path:
+    """Return the absolute path `path` names, a relative one taken from the working directory."""
+    return Path(os.path.normpath(working_dir / path))
+
+
+def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
+    """Return the folder a bare name puts under the home series directory, and any value holding `/` as given."""
+    if PATH_SEPARATOR in name:
+        return _resolve_against(working_dir, name)
+    return home / SERIES_HOME_FOLDER / name
+
+
+def _series_record(instruction: Path, sources: Sequence[Path], reader_kind: ReaderKind, now: datetime) -> dict[str, object]:
+    """Return the `series.yaml` record of the live instruction and sources."""
+    return {
+        "instruction": str(instruction),
+        "sources": [str(source) for source in sources],
+        "reader_kind": reader_kind,
+        "created": now.isoformat(),
+    }
+
+
+def _first_revision_record(instruction: bytes) -> dict[str, object]:
+    """Return the `r1/2-revision.yaml` record of the first instruction snapshot."""
+    return {"number": FIRST_REVISION_NUMBER, "parent": None, "hash": sha256(instruction), "parent_record": None, "change": None}
+
+
+def _make_agents_folder(files: SeriesFolder) -> None:
+    """Make the empty folder the neutral session's agent definitions go in."""
+    (files.root / AGENTS_FOLDER).mkdir(parents=True, exist_ok=True)
+
+
+def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path]) -> None:
+    """Copy each source's bytes to `1-source/<basename>`."""
+    for source in sources:
+        write_file(files, f"{SOURCE_FOLDER}/{source.name}", source.read_bytes())
 
 
 def guard_series(files: SeriesFolder, command: str) -> None:

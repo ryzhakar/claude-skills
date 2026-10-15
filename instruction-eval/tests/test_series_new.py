@@ -1,0 +1,73 @@
+import hashlib
+from datetime import datetime, timezone
+
+import yaml
+
+from instruction_eval.series import series_new
+
+NOW = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
+INSTRUCTION = b"Be terse. Skip greetings.\n"
+
+
+def tree(root):
+    return sorted(f"{path.relative_to(root).as_posix()}{'/' if path.is_dir() else ''}" for path in root.rglob("*"))
+
+
+def sha256(content):
+    return hashlib.sha256(content).hexdigest()
+
+
+def new_series(tmp_path, name="terse", instruction="live.md", sources=(), reader_kind="agent"):
+    (tmp_path / "home").mkdir(exist_ok=True)
+    (tmp_path / "work").mkdir(exist_ok=True)
+    return series_new(name, instruction, list(sources), reader_kind, tmp_path / "work", tmp_path / "home", NOW)
+
+
+def test_a_bare_name_makes_the_series_folder_under_the_home_series_directory_holding_exactly_the_first_snapshots(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+    (tmp_path / "work/facts.md").write_bytes(b"Tides.\n")
+
+    files = new_series(tmp_path, sources=["facts.md"])
+
+    root = tmp_path / "home/instruction-series/terse"
+    assert files.root == root
+    assert tree(root) == [
+        ".claude/",
+        ".claude/agents/",
+        "1-source/",
+        "1-source/facts.md",
+        "r1/",
+        "r1/2-instruction.md",
+        "r1/2-revision.yaml",
+        "series.yaml",
+    ]
+    assert (root / "1-source/facts.md").read_bytes() == b"Tides.\n"
+    assert (root / "r1/2-instruction.md").read_bytes() == INSTRUCTION
+    assert yaml.safe_load((root / "series.yaml").read_bytes()) == {
+        "instruction": str(tmp_path / "work/live.md"),
+        "sources": [str(tmp_path / "work/facts.md")],
+        "reader_kind": "agent",
+        "created": NOW.isoformat(),
+        "inputs": {},
+    }
+    assert yaml.safe_load((root / "r1/2-revision.yaml").read_bytes()) == {
+        "number": 1,
+        "parent": None,
+        "hash": sha256(INSTRUCTION),
+        "parent_record": None,
+        "change": None,
+        "inputs": {},
+    }
+
+
+def test_a_value_holding_a_slash_is_the_folder_as_given_and_a_relative_one_resolves_against_the_working_directory(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+
+    relative = new_series(tmp_path, name="runs/terse")
+    absolute = new_series(tmp_path, name=str(tmp_path / "elsewhere/terse"))
+
+    assert relative.root == tmp_path / "work/runs/terse"
+    assert absolute.root == tmp_path / "elsewhere/terse"
+    assert not (tmp_path / "home/instruction-series").exists()
