@@ -11,6 +11,7 @@ FIXTURE_NAMES = sorted(path.stem for path in FIXTURE_DIR.glob("*.md"))
 ABBREVIATION_RUN_LENGTH = 20_000
 SPLIT_SECONDS_LIMIT = 2
 SENTENCE_PROBE_SIZE = 20_000
+WORD_PROBE_SIZE = 5_000
 GROWTH_FACTOR = 4
 LINEAR_GROWTH_LIMIT = 8
 TIMING_RUNS = 3
@@ -53,3 +54,7 @@ def split_time_growth(make_text, size):
 
 def test_many_sentence_paragraph_splits_in_linear_time():
     assert split_time_growth(lambda size: b"Go. " * size, SENTENCE_PROBE_SIZE) < LINEAR_GROWTH_LIMIT
+
+
+def test_long_word_before_terminator_splits_in_linear_time():
+    assert split_time_growth(lambda size: b"a" * size + b" b.", WORD_PROBE_SIZE) < LINEAR_GROWTH_LIMIT

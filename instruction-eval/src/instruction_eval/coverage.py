@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from itertools import accumulate
 
 _SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
-_WORD_BEFORE_END = re.compile(r"(?:[^\W\d_]|\.)*\Z")
+_WORD_RUN = re.compile(r"(?:[^\W\d_]|\.)*")
 _ABBREVIATIONS = {"e.g", "i.e", "etc", "vs", "cf", "Mr", "Mrs", "Dr", "St", "No"}
 _SINGLE_LETTER = re.compile(r"[^\W\d_]")
 _WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
@@ -156,7 +156,8 @@ def _last_non_space_end(text: bytes, unit: _Unit) -> int:
 
 def _is_abbreviation(text_before_end: bytes) -> bool:
     """Tell whether the word ending a text is an abbreviation or a single letter, which ends no sentence."""
-    word = _WORD_BEFORE_END.search(text_before_end.decode(errors="replace")).group()
+    reversed_text = text_before_end.decode(errors="replace")[::-1]
+    word = _WORD_RUN.match(reversed_text).group()[::-1]
     return word in _ABBREVIATIONS or bool(_SINGLE_LETTER.fullmatch(word))
 
 
