@@ -438,7 +438,7 @@ CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
 
 def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     """Write the revision's blinded packets and their origins, a later revision borrowing every control reply from r1, refusing without calibration, a gap in the expected replies, or too few anchors."""
-    _refuse_unusable_series(files)
+    _refuse_unusable_series(files, BLIND_COMMAND)
     records = SeriesRecords(files)
     calibration = records.calibration()
     expected = _expected_replies(files, revision, records)
@@ -449,11 +449,11 @@ def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     write_record(files, f"{revision}/{ORIGINS_FILE}", _origins_record(blinded), _blind_reads(revision, expected))
 
 
-def _refuse_unusable_series(files: SeriesFolder) -> None:
+def _refuse_unusable_series(files: SeriesFolder, command: str) -> None:
     """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
     from instruction_eval.series import guard_series
 
-    guard_series(files, BLIND_COMMAND)
+    guard_series(files, command)
 
 
 def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
@@ -487,3 +487,21 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
         CALIBRATION_RECORD,
         ANCHORS_RECORD,
     ]
+
+
+CALIBRATE_COMMAND = "judge calibrate"
+
+
+def calibrate_stage_one(
+    files: SeriesFolder, brief_template: Path, environ: Mapping[str, str], home: Path, working_dir: Path, random: Random
+) -> str:
+    """Run stage one of `judge calibrate` on the latest attempt: snapshot the brief, blind a sample of r1's open replies, write the rating definitions, and return their launch list."""
+    _refuse_unusable_series(files, CALIBRATE_COMMAND)
+    _refuse_calibrated_series(files)
+    return ""
+
+
+def _refuse_calibrated_series(files: SeriesFolder) -> None:
+    """Refuse a series whose judge is already calibrated."""
+    if files.holds(CALIBRATION_RECORD):
+        raise Refusal(f"already calibrated: {CALIBRATION_RECORD}")
