@@ -80,3 +80,10 @@ def test_a_packet_with_no_judging_needs_judging_one(tmp_path):
     files = series_folder(tmp_path)
 
     assert states(files) == {"t1": NeedsJudging(1), "t1--omissions": NeedsJudging(1)}
+
+
+def test_a_judging_without_verdict_or_transcript_is_pending_and_blocks_a_new_one_for_its_packet_alone(tmp_path):
+    files = series_folder(tmp_path)
+    write_definition(files, "t1", 1)
+
+    assert states(files) == {"t1": PendingJudging(1), "t1--omissions": NeedsJudging(1)}

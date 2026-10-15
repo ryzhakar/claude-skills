@@ -254,8 +254,19 @@ def judging_states(
 
 
 def _packet_state(files: SeriesFolder, revision: str, packet: str) -> JudgingState:
-    """Return the judging state of one packet."""
-    return NeedsJudging(len(_judging_numbers(files, revision, packet)) + 1)
+    """Return the judging state of one packet: its lowest passing judging, else its first pending one, else the next judging to write."""
+    numbers = _judging_numbers(files, revision, packet)
+    outcomes = [_judging_outcome(files, revision, packet, number) for number in numbers]
+    pending = [outcome for outcome in outcomes if isinstance(outcome, PendingJudging)]
+    if pending:
+        return pending[0]
+    return NeedsJudging(len(numbers) + 1)
+
+
+def _judging_outcome(files: SeriesFolder, revision: str, packet: str, number: int) -> AcceptedJudging | PendingJudging | None:
+    """Return the judging's acceptance, `PendingJudging` while its verdict is awaited, or None when it failed."""
+    return PendingJudging(number)
+
 
 
 def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[int]:
