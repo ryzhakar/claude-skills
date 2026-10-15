@@ -1,7 +1,46 @@
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal, TypedDict
 
+from instruction_eval.records import Compares, GateCheck
+from instruction_eval.scores import Comparison
+
 LATER_REVISION_COUNT = 4
+
+PassRule = Callable[[float, tuple[float, float], float], bool]
+
+
+def _undercuts_control_by_gap(mean_difference: float, interval: tuple[float, float], gap: float) -> bool:
+    """Tell whether the instruction undercuts its control by the gap on average and the interval lies wholly below zero."""
+    return mean_difference <= -gap and interval[1] < 0
+
+
+def _upper_bound_within_gap(mean_difference: float, interval: tuple[float, float], gap: float) -> bool:
+    """Tell whether the interval's upper bound stays at or below the gap."""
+    return interval[1] <= gap
+
+
+def _lower_bound_within_gap(mean_difference: float, interval: tuple[float, float], gap: float) -> bool:
+    """Tell whether the interval's lower bound stays at or above minus the gap."""
+    return interval[0] >= -gap
+
+
+_PASS_RULES: Mapping[Compares, PassRule] = {
+    "instruction-vs-empty": _undercuts_control_by_gap,
+    "instruction-vs-aim": _undercuts_control_by_gap,
+    "instruction-vs-placebo": _undercuts_control_by_gap,
+    "instruction-near-source": _upper_bound_within_gap,
+    "drift": _upper_bound_within_gap,
+    "completion": _lower_bound_within_gap,
+}
+
+
+def check_passes(check: GateCheck, comparison: Comparison) -> bool:
+    """Tell whether a sealed comparison passes the check's pass rule at its gap, a comparison without units failing."""
+    if comparison.mean_difference is None or comparison.interval is None:
+        return False
+    return _PASS_RULES[check.compares](comparison.mean_difference, comparison.interval, check.gap)
+
 
 BudgetUnit = Literal["tokens", "seconds"]
 TOKENS_UNIT: BudgetUnit = "tokens"
