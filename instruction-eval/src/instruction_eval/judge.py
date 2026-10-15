@@ -352,23 +352,22 @@ def _packet_state(judgings: _Judgings, packet: str) -> JudgingState:
 def _judging_outcome(
     judgings: _Judgings, packet: str, packet_origins: Mapping[str, Record], number: int
 ) -> AcceptedJudging | PendingJudging | None:
-    """Return the judging's acceptance, `PendingJudging` while its verdict or final message is awaited, or None when it failed."""
+    """Return the judging's acceptance, `PendingJudging` while its verdict file is absent and its transcript has not ended, or None when it failed."""
     run = _latest_run(judgings, _judging_agent_type(judgings.revision, packet, number))
-    if run is not None and run.reply is None:
-        return PendingJudging(number)
+    reply = run.reply if run else None
     if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
-        return None if run else PendingJudging(number)
+        return None if reply else PendingJudging(number)
     verdict = _valid_verdict(judgings, packet_origins, packet, number)
-    if verdict is None or run is None or run.reply.model != judgings.judge_model or _is_rejected(judgings, run, packet, number):
+    if verdict is None or run is None or reply is None or reply.model != judgings.judge_model or _is_rejected(judgings, run, packet, number):
         return None
     anchors = _anchor_agreement(judgings, packet, packet_origins, verdict)
     if not _within_acceptance(anchors, judgings.acceptance):
         return None
     return AcceptedJudging(
         judging=number,
-        judge_model=run.reply.model,
-        transcript=run.reply.transcript,
-        transcript_hash=run.reply.transcript_hash,
+        judge_model=reply.model,
+        transcript=reply.transcript,
+        transcript_hash=reply.transcript_hash,
         anchors=anchors,
     )
 

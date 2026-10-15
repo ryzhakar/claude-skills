@@ -285,12 +285,12 @@ def test_a_definition_of_the_omissions_packet_is_not_counted_for_the_task_packet
     assert states(files) == {"t1": NeedsJudging(1), "t1--omissions": PendingJudging(1)}
 
 
-def test_a_judge_that_wrote_its_verdict_but_has_not_sent_its_final_message_is_pending(tmp_path):
+def test_a_judging_whose_verdict_file_exists_has_returned_and_fails_when_its_transcript_never_ended(tmp_path):
     files = series_folder(tmp_path)
     write_definition(files, "t1", 1)
     write_verdict(files, "t1", 1)
 
-    assert states(files, [judge_transcript(files, "t1", 1, final=False)])["t1"] == PendingJudging(1)
+    assert states(files, [judge_transcript(files, "t1", 1, final=False)])["t1"] == NeedsJudging(2)
 
 
 def test_an_empty_transcript_is_a_judging_not_yet_returned(tmp_path):
