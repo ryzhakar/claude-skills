@@ -42,14 +42,19 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
-    _attempt_folder,
+    attempt_folder,
     load_record,
     parse_record,
     sha256,
     write_file,
     write_record,
 )
-from instruction_eval.tasks import OMISSION_PREFIX, ExpectedReply, expected_replies, refuse_missing_replies
+from instruction_eval.tasks import (
+    OMISSION_PREFIX,
+    ExpectedReply,
+    expected_replies,
+    refuse_missing_replies,
+)
 
 if TYPE_CHECKING:
     from instruction_eval.reader import Transcript, TranscriptReply
@@ -483,7 +488,7 @@ def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     replies = {reply: records.reply(reply.path) for reply in expected}
     blinded = blind_replies(revision, replies, records.anchors()["anchors"], calibration["anchors_per_packet"], random)
     _write_packets(files, revision, blinded.packets)
-    write_record(files, f"{revision}/{ORIGINS_FILE}", _origins_record(blinded), _blind_reads(revision, expected))
+    write_record(files, f"{revision}/{ORIGINS_FILE}", _origins_record(blinded.origins, blinded.packets), _blind_reads(revision, expected))
 
 
 def _refuse_unusable_series(files: SeriesFolder, command: str) -> None:
@@ -508,9 +513,9 @@ def _write_packets(files: SeriesFolder, revision: str, packets: Mapping[str, str
         write_file(files, f"{revision}/{PACKETS_FOLDER}/{packet}.md", text.encode())
 
 
-def _origins_record(blinded: BlindPackets) -> dict[str, object]:
+def _origins_record(origins: Mapping[str, Record], packets: Mapping[str, str]) -> dict[str, object]:
     """Return the origins record: every blind id's origin and each packet's hash."""
-    return {"ids": blinded.origins, "packets": {packet: sha256(text.encode()) for packet, text in blinded.packets.items()}}
+    return {"ids": origins, "packets": {packet: sha256(text.encode()) for packet, text in packets.items()}}
 
 
 def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
@@ -564,14 +569,14 @@ def calibrate_stage_one(
     sample = _blind_sample(files, _sampled_by(records, earlier), attempt, plan.sample_size, random)
     ratings = _ratings(attempt, plan)
     gate_demand_ids = _gate_demand_ids_without_sources(records)
-    folder = _attempt_folder(attempt)
+    folder = attempt_folder(attempt)
     definitions = {
         rating.agent_type: _rating_definition(files, records, brief, sample, gate_demand_ids, f"{files.root}/{folder}", rating)
         for rating in ratings
     }
     write_file(files, f"{folder}/{BRIEF_SNAPSHOT_FILE}", brief)
     write_file(files, f"{folder}/{SAMPLE_FILE}", sample.text.encode())
-    write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _sample_origins_record(sample), _stage_one_reads(files, records, attempt, sample.replies, earlier))
+    write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _origins_record(sample.origins, {SAMPLE_PACKET: sample.text}), _stage_one_reads(files, records, attempt, sample.replies, earlier))
     for name, definition in definitions.items():
         write_file(files, f"{AGENTS_FOLDER}/{name}.md", definition)
     return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: rating.agent_type} for rating in ratings]}, sort_keys=False)
@@ -594,11 +599,6 @@ def _blind_sample(files: SeriesFolder, taken: AbstractSet[ExpectedReply], attemp
     origins: dict[str, Record] = {}
     text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, records) for key in drawn], origins, random)
     return _BlindSample(replies=tuple(drawn), reader_model=records[drawn[0]]["model"], text=text, origins=origins)
-
-
-def _sample_origins_record(sample: _BlindSample) -> dict[str, object]:
-    """Return the attempt's origins record: every blind id's origin and the sample packet's hash."""
-    return {"ids": sample.origins, "packets": {SAMPLE_PACKET: sha256(sample.text.encode())}}
 
 
 @dataclass(frozen=True)
@@ -653,10 +653,10 @@ def _refuse_calibrated_series(files: SeriesFolder) -> None:
 
 def _latest_attempt(files: SeriesFolder) -> int:
     """Return the highest attempt number holding a plan, refusing a series without one."""
-    folders = (files.root / _attempt_folder(FIRST_ATTEMPT)).parent.glob(f"attempt-*/{PLAN_FILE}")
+    folders = (files.root / attempt_folder(FIRST_ATTEMPT)).parent.glob(f"attempt-*/{PLAN_FILE}")
     numbers = [int(match.group(1)) for folder in folders if (match := ATTEMPT_PATTERN.fullmatch(folder.parent.name))]
     if not numbers:
-        raise Refusal(f"missing record: {_attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}")
+        raise Refusal(f"missing record: {attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}")
     return max(numbers)
 
 
@@ -669,7 +669,7 @@ def _working_brief(files: SeriesFolder, brief_template: Path) -> bytes:
 
 def _earlier_attempts_with_origins(files: SeriesFolder, attempt: int) -> list[int]:
     """Return the numbers of the attempts before `attempt` that wrote origins."""
-    return [earlier for earlier in range(FIRST_ATTEMPT, attempt) if files.holds(f"{_attempt_folder(earlier)}/{ATTEMPT_ORIGINS_FILE}")]
+    return [earlier for earlier in range(FIRST_ATTEMPT, attempt) if files.holds(f"{attempt_folder(earlier)}/{ATTEMPT_ORIGINS_FILE}")]
 
 
 def _sampled_by(records: SeriesRecords, attempts: Iterable[int]) -> set[ExpectedReply]:
@@ -690,7 +690,7 @@ def _gate_demand_ids_without_sources(records: SeriesRecords) -> frozenset[str]:
 
 def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
     """Return what stage one reads: the series records, the plan's keys, the brief snapshot, the sample, the sampled replies, and the earlier origins."""
-    folder = _attempt_folder(attempt)
+    folder = attempt_folder(attempt)
     sources = records.series().sources
     plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
     return [
@@ -702,7 +702,7 @@ def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, 
         f"{folder}/{BRIEF_SNAPSHOT_FILE}",
         f"{folder}/{SAMPLE_FILE}",
         *(reply.path for reply in sample),
-        *(f"{_attempt_folder(number)}/{ATTEMPT_ORIGINS_FILE}" for number in earlier),
+        *(f"{attempt_folder(number)}/{ATTEMPT_ORIGINS_FILE}" for number in earlier),
     ]
 
 
@@ -713,9 +713,12 @@ def _open_task_replies(files: SeriesFolder) -> list[ExpectedReply]:
 
 
 def _reply_of_file(path: Path) -> ExpectedReply:
-    """Return the r1 reply a task reply file at the series path holds."""
+    """Return the r1 reply a task reply file at the series path holds, refusing a repeat that is no number."""
     _, _, condition, task, name = path.parts
-    return ExpectedReply(FIRST_REVISION, condition, task, int(REPEAT_FILE_PATTERN.fullmatch(name).group(1)), None)
+    repeat = REPEAT_FILE_PATTERN.fullmatch(name)
+    if repeat is None:
+        raise Refusal(f"malformed reply file: {path}")
+    return ExpectedReply(FIRST_REVISION, condition, task, int(repeat.group(1)), None)
 
 
 def _load_reply(files: SeriesFolder, path: str) -> Record:

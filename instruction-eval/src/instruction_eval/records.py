@@ -1631,7 +1631,7 @@ class SeriesRecords:
 
     def plan(self, attempt: int) -> Plan:
         """Load a calibration attempt's `plan.yaml`."""
-        path = f"{_attempt_folder(attempt)}/plan.yaml"
+        path = f"{attempt_folder(attempt)}/plan.yaml"
         return _parsed(path, parse_plan, _read_document(self.files, path))
 
     def hypothesis(self, revision: str) -> Hypothesis:
@@ -1677,7 +1677,7 @@ class SeriesRecords:
 
     def attempt_origins(self, attempt: int) -> Record:
         """Load a calibration attempt's `origins.yaml`, each origin naming an r1 reply file."""
-        return self._origins(f"{_attempt_folder(attempt)}/origins.yaml", FIRST_REVISION)
+        return self._origins(f"{attempt_folder(attempt)}/origins.yaml", FIRST_REVISION)
 
     def verdict(self, revision: str, packet: str, judging: int) -> Record:
         """Load the verdict of judging `judging` of a revision's packet, judging that packet's blind ids on judge demands only."""
@@ -1686,21 +1686,21 @@ class SeriesRecords:
 
     def rating(self, attempt: int, rating: str) -> Record:
         """Load a calibration attempt's rating file named `rating`, rating the attempt's blind ids on judge demands only."""
-        return self._verdict_shaped(f"{_attempt_folder(attempt)}/{rating}.yaml", self.attempt_origins(attempt)["ids"])
+        return self._verdict_shaped(f"{attempt_folder(attempt)}/{rating}.yaml", self.attempt_origins(attempt)["ids"])
 
     def agreement(self, attempt: int) -> Record:
         """Load a calibration attempt's `agreement.yaml`, measuring judge demands only over the attempt's rating files."""
-        path = f"{_attempt_folder(attempt)}/agreement.yaml"
+        path = f"{attempt_folder(attempt)}/agreement.yaml"
         agreement = self._command_record(path, RecordKind.AGREEMENT)
         _resolve(path, JUDGE_DEMAND_REFERENCE, agreement["demands"], self._demand_ids(JudgeDemand))
-        self._resolve_files(path, RATING_REFERENCE, agreement["ratings"], lambda rating: f"{_attempt_folder(attempt)}/{rating}")
+        self._resolve_files(path, RATING_REFERENCE, agreement["ratings"], lambda rating: f"{attempt_folder(attempt)}/{rating}")
         return agreement
 
     def calibration(self) -> Record:
         """Load `6-judge/calibration.yaml`, naming an attempt with a plan and measuring judge demands only."""
         calibration = self._command_record(CALIBRATION_RECORD, RecordKind.CALIBRATION)
         _resolve(CALIBRATION_RECORD, JUDGE_DEMAND_REFERENCE, calibration["agreement"]["demands"], self._demand_ids(JudgeDemand))
-        self._resolve_files(CALIBRATION_RECORD, ATTEMPT_REFERENCE, [calibration["attempt"]], lambda attempt: f"{_attempt_folder(attempt)}/plan.yaml")
+        self._resolve_files(CALIBRATION_RECORD, ATTEMPT_REFERENCE, [calibration["attempt"]], lambda attempt: f"{attempt_folder(attempt)}/plan.yaml")
         return calibration
 
     def anchors(self) -> Record:
@@ -1882,7 +1882,7 @@ def _parent_revision(revision: str) -> str:
     return f"r{int(revision.removeprefix('r')) - 1}"
 
 
-def _attempt_folder(attempt: int) -> str:
+def attempt_folder(attempt: int) -> str:
     """Return the folder of a calibration attempt."""
     return f"6-judge/calibration/attempt-{attempt}"
 
