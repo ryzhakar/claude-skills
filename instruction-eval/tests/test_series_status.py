@@ -173,3 +173,12 @@ def test_a_measured_first_revision_reports_its_noise_and_the_least_repeats_each_
         "instruction-vs-placebo": 35,
         "completion": 2,
     }
+
+
+def test_a_manifesto_clone_inside_the_series_folder_is_reported(tmp_path):
+    files = bare_series(tmp_path)
+    assert status_of(files)["manifesto_clone"] is False
+
+    (tmp_path / ".claude/manifesto-repo").mkdir(parents=True)
+
+    assert status_of(files)["manifesto_clone"] is True

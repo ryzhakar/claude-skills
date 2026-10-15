@@ -383,13 +383,14 @@ STATUS_PARTS = (
     STOP_RECORD,
 )
 PLAN_FILE = "plan.yaml"
+MANIFESTO_CLONE_FOLDER = ".claude/manifesto-repo"
 STATUS_DEFAULT_LEVEL = 0.95
 AGREEMENT_FILE = "agreement.yaml"
 UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
 
 
 def series_status(files: SeriesFolder) -> str:
-    """Return the series' standing as YAML: parts present, frozen or not, each revision's outcome, and the stop, writing nothing."""
+    """Return the series' standing as YAML, writing nothing: parts present, frozen or not, revision outcomes, cost against budget, calibration, packets awaiting judging, r1's noise, least repeats, the stop, and the manifesto clone."""
     guard_series(files, STATUS_COMMAND)
     records = SeriesRecords(files)
     noise = _first_revision_noise(files, records)
@@ -403,6 +404,7 @@ def series_status(files: SeriesFolder) -> str:
         "noise": noise,
         "least_repeats": _least_repeats_per_check(files, records, noise),
         "stop": _stop_standing(files, records),
+        "manifesto_clone": (files.root / MANIFESTO_CLONE_FOLDER).is_dir(),
     }
     return yaml.safe_dump(standing, sort_keys=False)
 
