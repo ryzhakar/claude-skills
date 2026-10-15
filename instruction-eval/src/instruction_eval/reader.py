@@ -43,6 +43,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
+from instruction_eval.scores import COLLECTED_FILE
 from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
@@ -1063,6 +1064,7 @@ def revision_ask(
 ) -> str:
     """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
     guard_series(files, ASK_COMMAND)
+    _refuse_collected_revision(files, revision)
     records = SeriesRecords(files)
     reader = records.reader()
     coverage_check(files, revision)
@@ -1072,6 +1074,12 @@ def revision_ask(
     asked = _asked_replies(files, revision, records, conditions)
     _answer_replies(files, revision, records, reader, texts, asked, run_reader, run_fingerprint)
     return ""
+
+
+def _refuse_collected_revision(files: SeriesFolder, revision: str) -> None:
+    """Refuse asking a revision whose replies are judged and collected, so no ask adds a reply to it."""
+    if files.holds(f"{revision}/{COLLECTED_FILE}"):
+        raise Refusal(f"{revision} already collected: no reply is added")
 
 
 def _answer_replies(

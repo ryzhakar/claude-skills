@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from instruction_eval.reader import ReaderRun, reader_fingerprint, revision_ask
-from instruction_eval.records import Refusal, SeriesFolder
+from instruction_eval.records import Refusal, SeriesFolder, write_file
 from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, tree, write_yaml
 
 COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
@@ -192,3 +192,15 @@ def test_an_edited_condition_text_or_reader_definition_refuses_the_ask_before_an
 
     with pytest.raises(Refusal, match=rf"^{edited.replace('.', '[.]')} differs from its recomputation$"):
         revision_ask(files, "r1", [], forbidden_run, forbidden_run)
+
+
+@pytest.mark.parametrize("build_series", [command_series, agent_series], ids=["command", "agent"])
+def test_a_collected_revision_is_never_asked_again_whatever_the_gate_repeats_now_say(tmp_path, build_series):
+    files = build_series(tmp_path)
+    write_file(files, "r1/7-collected.yaml", b"packets: {}\n")
+    (files.root / "7-gate.yaml").write_text(yaml.safe_dump({"repeats": 3}))
+
+    with pytest.raises(Refusal, match=r"^r1 already collected: no reply is added$"):
+        revision_ask(files, "r1", [], forbidden_run, forbidden_run)
+
+    assert not (files.root / "r1/5-replies").exists()
