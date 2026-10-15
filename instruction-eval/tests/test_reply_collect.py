@@ -37,11 +37,11 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
     write_file(files, path, yaml.safe_dump(document).encode())
 
 
-def prepared_series(tmp_path) -> SeriesFolder:
+def prepared_series(tmp_path, tasks: dict = TASKS) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
     write_record(files, "series.yaml", SERIES, [])
     write_yaml(files, "2-demands.yaml", DEMANDS)
-    write_yaml(files, "3-tasks.yaml", TASKS)
+    write_yaml(files, "3-tasks.yaml", tasks)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
     write_yaml(files, "5-reader.yaml", READER)
     write_yaml(files, "7-gate.yaml", GATE)
@@ -170,3 +170,32 @@ def test_a_gap_refuses_after_writing_the_replies_it_could_match_and_a_rerun_fill
     assert collect(files, transcripts) == ""
     assert files.read_bytes("r1/5-replies/aim/t-open/repeat-1.yaml") == written
     assert load(files, "r1/5-replies/aim/t-sealed/repeat-2.yaml")["text"] == "answer aim t-sealed 2"
+
+
+TRIP_TURNS = ["Plan a trip.", "Which week?"]
+CONVERSATION_TASKS = {**TASKS, "conversations": [{"id": "c-open", "split": "open", "turns": TRIP_TURNS}]}
+
+
+def conversation_transcripts(tmp_path) -> list[Transcript]:
+    return [
+        reader_transcript(
+            tmp_path, f"{condition}-c-open-{repeat}", condition, TRIP_TURNS, [f"first {condition} {repeat}", f"second {condition} {repeat}"], START + timedelta(minutes=repeat)
+        )
+        for condition in CONDITION_NAMES
+        for repeat in (1, 2)
+    ]
+
+
+def test_each_turn_of_a_conversation_transcript_becomes_a_reply_of_its_repeat(tmp_path):
+    files = prepared_series(tmp_path, CONVERSATION_TASKS)
+
+    collect(files, [*task_transcripts(tmp_path), *conversation_transcripts(tmp_path)])
+
+    second = load(files, "r1/5-replies/placebo/c-open/repeat-2/turn-2.yaml")
+    second.pop("inputs")
+    assert second["text"] == "second placebo 2"
+    assert second["turn"] == 2
+    assert second["message"] == "Which week?"
+    assert second["split"] == "open"
+    assert second["started"] == stamp(START + timedelta(minutes=2, seconds=10))
+    assert load(files, "r1/5-replies/instruction/c-open/repeat-1/turn-1.yaml")["message"] == "Plan a trip."
