@@ -902,12 +902,12 @@ def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, o
         ANCHORS_RECORD,
         *(f"{revision}/{PACKETS_FOLDER}/{packet}.md" for packet in origins["packets"]),
         f"{revision}/{ORIGINS_FILE}",
-        *_series_paths(files, f"{revision}/{VERDICTS_FOLDER}/**/*.yaml"),
-        *_series_paths(files, f"{AGENTS_FOLDER}/{JUDGE_DEFINITION_PREFIX}{revision}-*.md"),
+        *series_paths(files, f"{revision}/{VERDICTS_FOLDER}/**/*.yaml"),
+        *series_paths(files, f"{AGENTS_FOLDER}/{JUDGE_DEFINITION_PREFIX}{revision}-*.md"),
     ]
 
 
-def _series_paths(files: SeriesFolder, pattern: str) -> list[str]:
+def series_paths(files: SeriesFolder, pattern: str) -> list[str]:
     """Return the series path of every file the glob pattern matches, in path order."""
     return sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(pattern) if path.is_file())
 

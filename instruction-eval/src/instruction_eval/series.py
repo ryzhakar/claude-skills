@@ -30,7 +30,7 @@ from instruction_eval.gate import (
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
 )
-from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF
+from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF, series_paths
 from instruction_eval.records import (
     ANCHORS_RECORD,
     CALIBRATION_RECORD,
@@ -404,6 +404,7 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
 
 
 FREEZE_COMMAND = "series freeze"
+EVERY_FILE_PATTERN = "**/*"
 ANY_ATTEMPT_FOLDER = "6-judge/calibration/attempt-*"
 FROZEN_PART_PATTERNS = (
     SERIES_RECORD,
@@ -495,7 +496,7 @@ def _series_shape(files: SeriesFolder, records: SeriesRecords, repeats: int) -> 
 
 def _frozen_parts(files: SeriesFolder) -> list[str]:
     """Return the series path of every file the freeze hashes, each matching a part of the series, in path order."""
-    paths = sorted(path.relative_to(files.root).as_posix() for path in files.root.rglob("*") if path.is_file())
+    paths = series_paths(files, EVERY_FILE_PATTERN)
     return [path for path in paths if _matches_any(path, FROZEN_PART_PATTERNS)]
 
 
