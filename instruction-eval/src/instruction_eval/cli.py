@@ -144,7 +144,7 @@ _COMMANDS = {
 }
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     """Build the argument parser of every command, its help printing the order of work."""
     parser = argparse.ArgumentParser(
         prog="instruction-eval",
@@ -450,7 +450,7 @@ def _run_command(arguments: argparse.Namespace, effects: _Effects) -> str:
 
 def _execute(argv: Sequence[str], effects: _Effects, stdout: TextIO, stderr: TextIO) -> int:
     """Run the command `argv` names, printing its text to `stdout` or its refusal to `stderr`, and return the exit code."""
-    arguments = build_parser().parse_args(list(argv))
+    arguments = _build_parser().parse_args(list(argv))
     try:
         stdout.write(_run_command(arguments, effects))
     except Refusal as refusal:
