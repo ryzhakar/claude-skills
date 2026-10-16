@@ -18,7 +18,6 @@ from instruction_eval.demands import demands_check
 from instruction_eval.gate import (
     BudgetRefusal,
     SeriesShape,
-    _gate_demands,
     _measured_revision,
     _reply_cost,
     _stop_budget,
@@ -448,7 +447,7 @@ def series_freeze(
     records = SeriesRecords(files)
     gate = records.complete_gate()
     sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
-    gate_demands = _gate_demands(records)
+    gate_demands = records.gate_demands()
     noise = measure_noise(sealed_rows, gate_demands, records.conditions().controls, gate.repeats, gate.level)
     refuse_unresolvable_gaps(gate.checks, noise, sealed_rows, gate_demands, bool(records.series().sources), bootstrap_rng())
     _refuse_unaffordable_series(files, records, gate)
@@ -644,7 +643,7 @@ def _first_revision_noise(files: SeriesFolder, records: SeriesRecords) -> Noise 
         return None
     sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
     level = STATUS_DEFAULT_LEVEL if gate.level is None else gate.level
-    return measure_noise(sealed_rows, _gate_demands(records), records.conditions().controls, gate.repeats, level)
+    return measure_noise(sealed_rows, records.gate_demands(), records.conditions().controls, gate.repeats, level)
 
 
 def _least_repeats_per_check(files: SeriesFolder, records: SeriesRecords, noise: Noise | None) -> dict[str, int | None]:

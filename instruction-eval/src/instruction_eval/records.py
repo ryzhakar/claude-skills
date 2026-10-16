@@ -1662,7 +1662,7 @@ class SeriesRecords:
         """Load a revision's `1-hypothesis.yaml`, its failing demand a gate demand or `completion`."""
         path = f"{revision}/{HYPOTHESIS_FILE}"
         hypothesis = _parsed(path, parse_hypothesis, _read_document(self.files, path))
-        _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self._gate_demand_ids(), COMPLETION_TARGET})
+        _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self.gate_demands(), COMPLETION_TARGET})
         _resolve(path, BLIND_ID_REFERENCE, hypothesis.replies_read, self.origins(parent_revision(revision))["ids"])
         return hypothesis
 
@@ -1774,7 +1774,7 @@ class SeriesRecords:
         path = outcome_path(revision)
         outcome = self._command_record(path, RecordKind.OUTCOME)
         targets = [outcome["parent_comparison"]["target"]] if "parent_comparison" in outcome else []
-        _resolve(path, GATE_DEMAND_REFERENCE, targets, {*self._gate_demand_ids(), COMPLETION_TARGET})
+        _resolve(path, GATE_DEMAND_REFERENCE, targets, {*self.gate_demands(), COMPLETION_TARGET})
         return outcome
 
     def frozen(self) -> Record:
@@ -1782,7 +1782,7 @@ class SeriesRecords:
         frozen = self._command_record(FROZEN_RECORD, RecordKind.FROZEN)
         self._resolve_files(FROZEN_RECORD, FROZEN_PART_REFERENCE, frozen["hashes"], str)
         noise = frozen["noise"]
-        _resolve(FROZEN_RECORD, GATE_DEMAND_REFERENCE, [*noise["demands"], *noise["sigma"]["demands"]], self._gate_demand_ids())
+        _resolve(FROZEN_RECORD, GATE_DEMAND_REFERENCE, [*noise["demands"], *noise["sigma"]["demands"]], set(self.gate_demands()))
         return frozen
 
     def stop(self) -> Record:
@@ -1844,9 +1844,9 @@ class SeriesRecords:
         """Return the ids of the series demands of the given variants, every variant when none is given."""
         return {demand.id for demand in self.demands().demands if not variants or isinstance(demand, variants)}
 
-    def _gate_demand_ids(self) -> set[str]:
-        """Return the ids of the gate demands: those r1's coverage does not drop."""
-        return {demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped)}
+    def gate_demands(self) -> list[str]:
+        """Return the ids of the gate demands: those r1's coverage does not drop, in coverage order."""
+        return [demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped)]
 
 
 def _completed(gate: Gate) -> CompleteGate:

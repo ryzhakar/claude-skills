@@ -24,9 +24,7 @@ from instruction_eval.records import (
     ORIGINS_FILE,
     SCORES_FILE,
     TASKS_RECORD,
-    Coverage,
     DoneBy,
-    Dropped,
     Gate,
     LongSentencesDemand,
     PatternDemand,
@@ -458,7 +456,7 @@ def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapR
     collected = records.collected(revision)
     verdicts = records.accepted_verdicts(revision, collected)
     rows = join_reply_rows(origins, verdicts, records.detectors(revision), done_by, OPEN_SPLIT)
-    scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level, bootstrap_rng)
+    scores = _open_scores(rows, records.gate_demands(), level, bootstrap_rng)
     write_record(files, f"{revision}/{SCORES_FILE}", scores, _score_reads(revision, origins, collected))
 
 
@@ -469,11 +467,6 @@ def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
     if gate.done_by is None:
         raise Refusal(f"missing key: {DONE_BY_INPUT}")
     return gate.level, gate.done_by
-
-
-def _gate_demands(coverage: Coverage) -> list[str]:
-    """Return the demands r1's coverage does not drop, in coverage order."""
-    return [demand for demand, sentences in coverage.demands.items() if not isinstance(sentences, Dropped)]
 
 
 def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]:

@@ -57,7 +57,6 @@ from instruction_eval.records import (
     AgentRaters,
     Demand,
     Demands,
-    Dropped,
     JudgeDemand,
     Plan,
     Record,
@@ -707,7 +706,7 @@ def _gate_demand_ids_without_sources(records: SeriesRecords) -> frozenset[str]:
     """Return the ids of the demands r1's coverage keeps when the series has no source, none when it has one."""
     if records.series().sources:
         return frozenset()
-    return frozenset(demand for demand, coverage in records.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped))
+    return frozenset(records.gate_demands())
 
 
 def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:

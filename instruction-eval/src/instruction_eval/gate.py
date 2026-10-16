@@ -32,7 +32,6 @@ from instruction_eval.records import (
     Compares,
     Direction,
     DoneBy,
-    Dropped,
     GateCheck,
     Hypothesis,
     NoBudget,
@@ -418,7 +417,7 @@ def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRn
     records = SeriesRecords(files)
     gate = records.complete_gate()
     records.frozen()
-    gate_demands = _gate_demands(records)
+    gate_demands = records.gate_demands()
     measured = _measured_revision(records, revision, gate.done_by)
     outcome = _outcome(files, records, revision, measured, gate_demands, gate.checks, gate.level, bootstrap_rng)
     earlier = _earlier_outcomes(files, records, revision)
@@ -449,11 +448,6 @@ def _refuse_unusable_series(files: SeriesFolder) -> None:
     from instruction_eval.series import guard_series
 
     guard_series(files, GATE_COMMAND)
-
-
-def _gate_demands(records: SeriesRecords) -> list[str]:
-    """Return the demands r1's coverage does not drop, in coverage order."""
-    return [demand for demand, sentences in records.coverage(FIRST_REVISION).demands.items() if not isinstance(sentences, Dropped)]
 
 
 def _measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> _MeasuredRevision:
