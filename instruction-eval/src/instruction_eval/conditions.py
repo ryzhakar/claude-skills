@@ -1,11 +1,10 @@
 from collections.abc import Callable, Mapping
 from itertools import cycle, islice
 
-from instruction_eval.coverage import Sentence, split_sentences
+from instruction_eval.coverage import Sentence, frontmatter_closing_line, opens_frontmatter, split_sentences
 from instruction_eval.records import AIM_CONTROL, EMPTY_CONTROL, PLACEBO_CONTROL, PLACEBO_SNAPSHOT, SOURCE_CONTROL, Conditions, Control, Omissions
 from instruction_eval.tasks import INSTRUCTION_CONDITION, WORD_PATTERN, omission_conditions, words
 
-FRONTMATTER_FENCE = "---"
 _NEWLINE = b"\n"
 SOURCE_SEPARATOR = "\n\n"
 PLACEBO_WORD_SEPARATOR = " "
@@ -112,10 +111,10 @@ class UnclosedFrontmatter(ValueError):
 
 def strip_frontmatter(text: str, path: str) -> str:
     """Return the text without its leading frontmatter block, refusing an unclosed block."""
-    lines = text.split("\n")
-    if lines[0] != FRONTMATTER_FENCE:
+    lines = text.encode().split(_NEWLINE)
+    if not opens_frontmatter(lines):
         return text
-    closing_index = next((i for i, line in enumerate(lines[1:], 1) if line == FRONTMATTER_FENCE), None)
+    closing_index = frontmatter_closing_line(lines)
     if closing_index is None:
         raise UnclosedFrontmatter(f"unclosed frontmatter: {path}")
-    return "\n".join(lines[closing_index + 1:])
+    return _NEWLINE.join(lines[closing_index + 1:]).decode()

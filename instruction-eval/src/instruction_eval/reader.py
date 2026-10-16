@@ -9,8 +9,8 @@ from typing import Any, TypeVar
 
 import yaml
 
-from instruction_eval.conditions import FRONTMATTER_FENCE, control_texts, revision_condition_texts
-from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.conditions import control_texts, revision_condition_texts
+from instruction_eval.coverage import FRONTMATTER_FENCE, coverage_check, split_sentences
 from instruction_eval.gate import (
     BudgetRefusal,
     earlier_outcomes,
