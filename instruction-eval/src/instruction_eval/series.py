@@ -151,7 +151,7 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
 def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a memory file, except the home default login's."""
     login_memory_file = home / USER_MEMORY_RELATIVE_PATH
-    for directory in _folder_and_ancestors(files):
+    for directory in _folder_lineage(files):
         for memory_file in MEMORY_RELATIVE_PATHS:
             candidate = directory / memory_file
             if candidate.is_file() and candidate != login_memory_file:
@@ -160,12 +160,12 @@ def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
 
 def _refuse_folder_inside_git_work_tree(files: SeriesFolder) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a `.git` entry."""
-    for directory in _folder_and_ancestors(files):
+    for directory in _folder_lineage(files):
         if (directory / GIT_ENTRY).exists():
             raise Refusal(f"series folder inside a git work tree: {directory}")
 
 
-def _folder_and_ancestors(files: SeriesFolder) -> tuple[Path, ...]:
+def _folder_lineage(files: SeriesFolder) -> tuple[Path, ...]:
     """Return the series folder and each ancestor up to `/`, nearest first."""
     return (files.root, *files.root.parents)
 
