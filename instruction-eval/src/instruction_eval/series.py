@@ -28,7 +28,7 @@ from instruction_eval.gate import (
     stop_budget,
     sum_unless_null,
 )
-from instruction_eval.reader import refuse_other_reader_build
+from instruction_eval.reader import MEMORY_RELATIVE_PATHS, USER_MEMORY_RELATIVE_PATH, refuse_other_reader_build
 from instruction_eval.records import (
     AGENTS_FOLDER,
     AGREEMENT_FILE,
@@ -106,8 +106,6 @@ PATH_SEPARATOR = "/"
 STOP_COMMAND = "series stop"
 KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
-LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
-MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
 
 
@@ -152,9 +150,9 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
 
 def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a memory file, except the home default login's."""
-    login_memory_file = home / LOGIN_MEMORY_FILE
+    login_memory_file = home / USER_MEMORY_RELATIVE_PATH
     for directory in _folder_and_ancestors(files):
-        for memory_file in MEMORY_FILES:
+        for memory_file in MEMORY_RELATIVE_PATHS:
             candidate = directory / memory_file
             if candidate.is_file() and candidate != login_memory_file:
                 raise Refusal(f"series folder under a memory file: {candidate}")
