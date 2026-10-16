@@ -28,7 +28,8 @@ OATH_SKILL = "manifesto:manifesto-oath"
 TRANSCRIPT_TIMESTAMP = "2026-10-14T19:00:43.000Z"
 BLIND_ID_HEADING = re.compile(r"^## (b[0-9a-f]{8})$", re.MULTILINE)
 VERDICT_PATH_LINE = re.compile(r"Write one YAML file to (\S+) with the Write tool")
-REFERENCE_USER_RATING = "6-judge/calibration/attempt-1/reference-user.yaml"
+CALIBRATION_ATTEMPT = "6-judge/calibration/attempt-1"
+REFERENCE_USER_RATING = f"{CALIBRATION_ATTEMPT}/reference-user.yaml"
 DELETED_SENTENCE = 2
 PREDICTED_SIZE = 0.5
 SERIES_NEW = ("series", "new", SERIES_NAME, "--instruction", "writer/instruction.md", "--source", "writer/policy.md", "--reader-kind", "command")
@@ -154,7 +155,7 @@ def run_scripted_agents(session: NeutralSession, series: Path, launch_list: str)
 
 def write_user_rating(series: Path) -> None:
     """Act as the user rater: rate every entry of the attempt's sample as the scripted judge does."""
-    sample = (series / "6-judge/calibration/attempt-1/sample.md").read_text()
+    sample = (series / f"{CALIBRATION_ATTEMPT}/sample.md").read_text()
     write_yaml(series / REFERENCE_USER_RATING, scripted_verdict(BLIND_ID_HEADING.findall(sample)))
 
 
@@ -171,31 +172,54 @@ def hypothesis(series: Path, parent: str) -> dict:
 
 
 @dataclass(frozen=True)
+class ExternalEdit:
+    """An external file edited after the series took it in: the bytes taken in, and the file's bytes once edited."""
+
+    external: Path
+    taken_in: bytes
+    edited: bytes
+
+
+def edit_after_intake(external: Path, taken_in: bytes, addition: str) -> ExternalEdit:
+    """Append the addition to the external file the series took in as `taken_in`, and return the edit."""
+    external.write_bytes(external.read_bytes() + addition.encode())
+    return ExternalEdit(external, taken_in, external.read_bytes())
+
+
+@dataclass(frozen=True)
 class Walk:
-    """A finished walk: the session's runs, the series, the series stopped by hand after r4, the writer's files, and the live instruction each keep wrote."""
+    """A finished walk: the session's runs, the series, the series stopped by hand after r4, the writer's files, the external edits, and the live instruction each keep wrote."""
 
     session: NeutralSession
     series: Path
     stopped_series: Path
     writer: Path
+    external_edits: list[ExternalEdit]
     kept_at_cap: bytes
     kept_at_stop: bytes
 
 
-def judge_revision(session: NeutralSession, series: Path, revision: str) -> None:
-    """Blind, judge with scripted judges, collect, and detect the revision."""
+def judge_revision(session: NeutralSession, series: Path, revision: str) -> list[Path]:
+    """Blind, judge with scripted judges, collect, and detect the revision, returning the judges' transcripts."""
     session.run(series, "revision", "blind", revision)
-    run_scripted_agents(session, series, session.run(series, "judge", "prepare", revision))
+    transcripts = run_scripted_agents(session, series, session.run(series, "judge", "prepare", revision))
     session.run(series, "judge", "collect", revision)
     session.run(series, "revision", "detect", revision)
+    return transcripts
 
 
-def walk_first_revision(session: NeutralSession, workspace: Path, writer: Path) -> Path:
-    """Walk r1 from `series new` to `revision gate r1` and return the series folder."""
+EDIT_LINE = "Edited after its snapshot.\n"
+TRANSCRIPT_EDIT_LINE = json.dumps({"type": "user", "message": {"role": "user", "content": "Thanks."}, "timestamp": TRANSCRIPT_TIMESTAMP}) + "\n"
+
+
+def walk_first_revision(session: NeutralSession, workspace: Path, writer: Path) -> tuple[Path, list[ExternalEdit]]:
+    """Walk r1 from `series new` to `revision gate r1`, editing each external file after the series takes it in, and return the series folder and the edits."""
     live_instruction, source, placebo = writer / "instruction.md", writer / "policy.md", writer / "gardening.md"
     series = session.create(workspace, *SERIES_NEW)
-    live_instruction.write_text(live_instruction.read_text() + "Draft.\n")
-    source.write_text(source.read_text() + "Edited after its snapshot.\n")
+    edits = [
+        edit_after_intake(live_instruction, (series / "r1/2-instruction.md").read_bytes(), EDIT_LINE),
+        edit_after_intake(source, (series / "1-source/policy.md").read_bytes(), EDIT_LINE),
+    ]
     copy_fixture("2-demands.yaml", series / "2-demands.yaml")
     session.run(series, "demands", "check")
     copy_fixture("coverage-r1.yaml", series / "r1/3-coverage.yaml")
@@ -216,24 +240,26 @@ def walk_first_revision(session: NeutralSession, workspace: Path, writer: Path) 
     session.run(series, "tasks", "check")
     session.run(series, "reader", "fingerprint")
     session.run(series, "reader", "prepare", "r1")
-    placebo.write_text(placebo.read_text() + "Edited after its snapshot.\n")
+    edits.append(edit_after_intake(placebo, (series / "4-placebo-source.md").read_bytes(), EDIT_LINE))
     session.run(series, "revision", "ask", "r1")
     session.run(series, "revision", "collect", "r1")
-    (series / "6-judge").mkdir(exist_ok=True)
-    shutil.copyfile(PLUGIN_ROOT / "src/instruction_eval/templates/judge-brief.md", series / "6-judge/brief.md")
-    copy_fixture("plan.yaml", series / "6-judge/calibration/attempt-1/plan.yaml")
+    working_brief = series / "6-judge/brief.md"
+    working_brief.parent.mkdir()
+    shutil.copyfile(PLUGIN_ROOT / "src/instruction_eval/templates/judge-brief.md", working_brief)
+    copy_fixture("plan.yaml", series / f"{CALIBRATION_ATTEMPT}/plan.yaml")
     rating_launches = session.run(series, "judge", "calibrate")
-    (series / "6-judge/brief.md").write_text((series / "6-judge/brief.md").read_text() + "\nEdited after its snapshot.\n")
+    edits.append(edit_after_intake(working_brief, (series / f"{CALIBRATION_ATTEMPT}/brief.md").read_bytes(), EDIT_LINE))
     run_scripted_agents(session, series, rating_launches)
     write_user_rating(series)
     session.run(series, "judge", "calibrate")
-    judge_revision(session, series, "r1")
+    judge_transcript = judge_revision(session, series, "r1")[0]
+    edits.append(edit_after_intake(judge_transcript, judge_transcript.read_bytes(), TRANSCRIPT_EDIT_LINE))
     session.run(series, "series", "status")
     copy_fixture("7-gate-completed.yaml", series / "7-gate.yaml")
     session.run(series, "series", "freeze")
     session.run(series, "revision", "score", "r1")
     session.run(series, "revision", "gate", "r1")
-    return series
+    return series, edits
 
 
 def walk_later_revision(session: NeutralSession, series: Path, writer: Path, number: int) -> None:
@@ -263,7 +289,7 @@ def walk(tmp_path_factory) -> Walk:
     uv_cache = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True, check=True).stdout.strip()
     session = NeutralSession(home, uv_cache)
     write_neutral_login(session.config_dir)
-    series = walk_first_revision(session, workspace, writer)
+    series, external_edits = walk_first_revision(session, workspace, writer)
     for number in range(2, LAST_REVISION):
         walk_later_revision(session, series, writer, number)
     stopped_series = series.parent / STOPPED_SERIES_NAME
@@ -273,7 +299,7 @@ def walk(tmp_path_factory) -> Walk:
     kept_at_cap = (writer / "instruction.md").read_bytes()
     session.run(stopped_series, "series", "stop", "--reason", STOP_REASON)
     session.run(stopped_series, "series", "keep")
-    return Walk(session, series, stopped_series, writer, kept_at_cap, (writer / "instruction.md").read_bytes())
+    return Walk(session, series, stopped_series, writer, external_edits, kept_at_cap, (writer / "instruction.md").read_bytes())
 
 
 def test_series_keep_writes_the_kept_revision_over_the_live_instruction(walk):
@@ -284,7 +310,6 @@ def test_series_keep_writes_the_kept_revision_over_the_live_instruction(walk):
 TASKS = [task["id"] for task in yaml.safe_load((FIXTURES / "3-tasks.yaml").read_text())["tasks"]]
 REPEATS = yaml.safe_load((FIXTURES / "7-gate-started.yaml").read_text())["repeats"]
 FIRST_CONDITIONS = ("aim", "empty", "instruction", "placebo", "source")
-CALIBRATION_ATTEMPT = "6-judge/calibration/attempt-1"
 SILENT_CHECKS = (("demands", "check"), ("coverage", "check", "r1"), ("tasks", "check"), ("reader", "fingerprint"))
 
 
@@ -381,3 +406,12 @@ def test_after_series_keep_every_stored_hash_still_names_its_series_file_unchang
         for record, hashes in recorded_hashes(series).items():
             assert all((series / entry.partition("#")[0]).resolve().is_relative_to(series) for entry in hashes), record
             assert {entry: current_hash(series, entry) for entry in hashes} == hashes, record
+
+
+def test_external_files_edited_after_the_series_takes_them_in_refuse_no_later_command(walk):
+    collected = yaml.safe_load((walk.series / "r1/7-collected.yaml").read_text())["packets"][TASKS[0]]
+
+    assert [edit.external.name for edit in walk.external_edits] == ["instruction.md", "policy.md", "gardening.md", "brief.md", f"agent-ie-judge-r1-{TASKS[0]}-k1.jsonl"]
+    assert all(edit.edited != edit.taken_in and edit.edited.startswith(edit.taken_in) for edit in walk.external_edits)
+    assert collected["transcript_hash"] == hashlib.sha256(walk.external_edits[-1].taken_in).hexdigest()
+    assert walk.session.runs[-1].command == ("series", "keep")
