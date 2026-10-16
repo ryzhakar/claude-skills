@@ -9,7 +9,7 @@ from typing import Any, TypeVar
 
 import yaml
 
-from instruction_eval.conditions import control_texts, revision_condition_texts
+from instruction_eval.conditions import FRONTMATTER_FENCE, control_texts, revision_condition_texts
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.gate import (
     BudgetRefusal,
@@ -70,7 +70,7 @@ from instruction_eval.records import (
 )
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
-FRONTMATTER_FENCE = "---\n"
+FRONTMATTER_FENCE_LINE = f"{FRONTMATTER_FENCE}\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
 EMPTY_TOOLSET_LINES = ("tools: Read", "disallowedTools: Read")
 JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
@@ -120,7 +120,7 @@ def _frontmatter_text(name: str, model: str, kind: AgentKind) -> str:
         f"model: {_single_line_value(model)}",
         *_toolset_lines(kind),
     )
-    return FRONTMATTER_FENCE + "".join(line + "\n" for line in lines) + FRONTMATTER_FENCE
+    return FRONTMATTER_FENCE_LINE + "".join(line + "\n" for line in lines) + FRONTMATTER_FENCE_LINE
 
 
 def _single_line_value(value: str) -> str:
