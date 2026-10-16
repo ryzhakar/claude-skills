@@ -29,7 +29,6 @@ from instruction_eval.reader import (
     ASK_TIMEOUT_SECONDS,
     CONFIG_DIR_VARIABLE,
     AgentReader,
-    NeutralLoginRefused,
     ReaderRun,
     RunReader,
     Transcript,
@@ -445,7 +444,7 @@ def execute(argv: Sequence[str], effects: Effects, stdout: TextIO, stderr: TextI
     arguments = build_parser().parse_args(list(argv))
     try:
         stdout.write(run_command(arguments, effects))
-    except (Refusal, NeutralLoginRefused) as refusal:
+    except Refusal as refusal:
         stderr.write(f"{refusal}\n")
         return REFUSAL_EXIT_CODE
     return 0

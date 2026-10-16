@@ -6,7 +6,7 @@ import yaml
 
 import instruction_eval
 from instruction_eval.judge import judge_prepare
-from instruction_eval.reader import NeutralLoginRefused, Transcript
+from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, sha256, write_file, write_record
 from series_fixtures import tree, write_yaml
 
@@ -214,7 +214,7 @@ def test_outside_the_neutral_login_it_refuses_for_every_reader_kind_and_writes_n
     files = series_folder(tmp_path)
     before = tree(files.root)
 
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         judge_prepare(files, "r1", {}, tmp_path / "home", files.root, [], Path.read_bytes)
 
     assert tree(files.root) == before

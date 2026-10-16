@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from instruction_eval.reader import NeutralLoginRefused, reader_prepare
+from instruction_eval.reader import reader_prepare
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 from series_fixtures import sha256
 
@@ -197,7 +197,7 @@ def test_agent_reader_outside_the_neutral_login_refuses_and_writes_nothing(tmp_p
     files = series_folder(tmp_path, AGENT_READER)
     before = tree(files.root)
 
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         reader_prepare(files, "r1", EXTERNAL_FILES.__getitem__, {}, tmp_path / "home", files.root)
 
     assert tree(files.root) == before
@@ -208,7 +208,7 @@ def test_agent_reader_below_a_claude_md_refuses_and_writes_nothing(tmp_path):
     (tmp_path / "CLAUDE.md").write_text("memory")
     before = tree(files.root)
 
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         agent_prepare(tmp_path, files, "r1")
 
     assert tree(files.root) == before
