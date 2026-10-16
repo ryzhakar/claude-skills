@@ -7,7 +7,6 @@ import yaml
 
 import instruction_eval
 from instruction_eval.judge import calibrate_stage_one
-from instruction_eval.reader import NeutralLoginRefused
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
 from series_fixtures import sha256, tree, write_yaml
 
@@ -261,7 +260,7 @@ def test_stage_one_outside_the_neutral_login_refuses_and_writes_nothing(tmp_path
     files = stage_one_series(tmp_path)
     before = tree(files.root)
 
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         calibrate_stage_one(files, TEMPLATE, {}, tmp_path / "home", files.root, random.Random(7))
 
     assert tree(files.root) == before

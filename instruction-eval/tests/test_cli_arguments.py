@@ -4,7 +4,7 @@ import re
 import pytest
 from hypothesis import given, strategies as st
 
-from instruction_eval.cli import build_parser
+from instruction_eval.cli import _build_parser
 
 SERIES_NEW = ["series", "new", "demo", "--instruction", "i.md", "--reader-kind", "agent"]
 EVERY_COMMAND = [
@@ -19,7 +19,7 @@ EVERY_COMMAND = [
 
 
 def parse(*argv):
-    return build_parser().parse_args(list(argv))
+    return _build_parser().parse_args(list(argv))
 
 
 def test_help_prints_the_twelve_steps_of_the_order_of_work(capsys):
@@ -111,7 +111,7 @@ def all_parsers(parser):
 def test_no_flag_takes_no_value():
     valueless = [
         option
-        for parser in all_parsers(build_parser())
+        for parser in all_parsers(_build_parser())
         for action in parser._actions
         if action.option_strings and action.nargs == 0 and action.dest != "help"
         for option in action.option_strings

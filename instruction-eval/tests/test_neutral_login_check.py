@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from instruction_eval.reader import NeutralLoginRefused, check_neutral_login
+from instruction_eval.reader import check_neutral_login
+from instruction_eval.records import Refusal
 
 REQUIRED_PLUGINS = {
     "instruction-eval@my-claude-skills": True,
@@ -41,19 +42,19 @@ def test_accepts_a_clean_neutral_login(login: Login):
 
 
 def test_refuses_an_unset_config_dir(login: Login):
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         check_neutral_login({}, login.home, login.working_dir)
 
 
 def test_refuses_a_broken_link_named_claude_md_in_the_config_dir(login: Login):
     (login.config_dir / "CLAUDE.md").symlink_to(login.home / "missing")
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
 def test_refuses_a_claude_md_in_the_config_dir(login: Login):
     (login.config_dir / "CLAUDE.md").write_text("memory")
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
@@ -61,7 +62,7 @@ def test_refuses_a_claude_md_in_the_config_dir(login: Login):
 def test_refuses_a_non_empty_agents_or_skills_folder(login: Login, folder: str):
     (login.config_dir / folder).mkdir()
     (login.config_dir / folder / "entry.md").write_text("x")
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
@@ -70,7 +71,7 @@ def test_refuses_a_linked_agents_or_skills_folder(login: Login, folder: str):
     target = login.home / "elsewhere"
     target.mkdir()
     (login.config_dir / folder).symlink_to(target)
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
@@ -92,20 +93,20 @@ def test_accepts_an_empty_agents_or_skills_folder(login: Login, folder: str):
 )
 def test_refuses_enabled_plugins_other_than_the_two_required(login: Login, enabled_plugins: dict):
     login.write_settings(enabled_plugins)
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
 def test_refuses_a_config_dir_without_settings(login: Login):
     (login.config_dir / "settings.json").unlink()
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
 @pytest.mark.parametrize("content", ["not json", "[]", '{"enabledPlugins": []}'])
 def test_refuses_settings_that_are_not_a_plugin_mapping(login: Login, content: str):
     (login.config_dir / "settings.json").write_text(content)
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
@@ -132,7 +133,7 @@ def test_refuses_a_memory_file_at_the_working_dir_or_an_ancestor(
     planted = holders[placement] / memory_file
     planted.parent.mkdir(parents=True, exist_ok=True)
     planted.write_text("memory")
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
@@ -144,7 +145,7 @@ def test_refuses_a_memory_file_in_a_folder_outside_home(login: Login, memory_fil
     planted = outside / memory_file
     planted.parent.mkdir(parents=True, exist_ok=True)
     planted.write_text("memory")
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         login.check()
 
 
@@ -160,5 +161,5 @@ def test_refuses_a_config_dir_outside_the_bare_logins_folder(login: Login, outsi
     config_dir = login.home / outside
     config_dir.mkdir(parents=True, exist_ok=True)
     environ = {"CLAUDE_CONFIG_DIR": str(config_dir)}
-    with pytest.raises(NeutralLoginRefused):
+    with pytest.raises(Refusal):
         check_neutral_login(environ, login.home, login.working_dir)
