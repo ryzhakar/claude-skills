@@ -143,7 +143,7 @@ def measure_noise(
     level: float,
 ) -> Noise:
     """Return r1's noise: each condition's repeat variances and the half-width each check and change can resolve."""
-    z = NormalDist().inv_cdf((1 + level) / _TWO_SIDED_TAILS)
+    z = z_for_level(level)
     conditions = [INSTRUCTION_CONDITION, *controls]
     task_replies = [row for row in sealed_rows if row["turn"] is None]
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
@@ -372,7 +372,7 @@ def z_for_level(level: float) -> float:
 
 def upper_tail_probability(level: float) -> float:
     """Return the probability (1 + `level`) / 2 bounding a central `level` interval from above."""
-    return (1 + level) / 2
+    return (1 + level) / _TWO_SIDED_TAILS
 
 
 def require_valid_level(level: float) -> None:
