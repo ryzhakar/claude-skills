@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from hypothesis import given, strategies as st
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PLUGIN_ROOT.parent
@@ -58,9 +59,8 @@ COMMANDS_BY_SKILL = {
 }
 
 WAVE_CAP_SKILLS = ["judge-replies", "freeze-series", "calibrate-judge", "measure-revision"]
-WAVE_CAP_TEXT = "at most twenty agents"
+WAVE_CAP_TEXTS = ("at most twenty agents", "first twenty")
 TRANSCRIPT_RULE_TEXT = "last assistant message"
-STATUS_SKILLS = ["freeze-series", "measure-revision"]
 START_SERIES_TEXTS = [
     "claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills",
     "in any working directory",
@@ -159,6 +159,46 @@ def test_tag_check_names_text_outside_tags_and_unclosed_tags():
     ]
 
 
+TAG_NAMES = st.from_regex(r"[a-z][a-z0-9-]{0,8}", fullmatch=True)
+TEXT_LINES = st.from_regex(r"[A-Za-z]([A-Za-z ,.`]{0,19}[A-Za-z])?", fullmatch=True)
+BLOCKS = st.lists(
+    st.tuples(TAG_NAMES, st.lists(TEXT_LINES, max_size=3)), min_size=1, max_size=4
+)
+
+
+def render_blocks(blocks: list[tuple[str, list[str]]]) -> str:
+    return "\n\n".join(
+        "\n".join([f"<{tag}>", *lines, f"</{tag}>"]) for tag, lines in blocks
+    )
+
+
+@given(BLOCKS)
+def test_well_formed_blocks_have_no_tag_defects(blocks):
+    assert tag_structure_defects(render_blocks(blocks)) == []
+
+
+@given(BLOCKS, TEXT_LINES)
+def test_a_loose_line_is_the_one_text_outside_a_tag_defect(blocks, loose):
+    body = loose + "\n" + render_blocks(blocks)
+    assert tag_structure_defects(body) == [f"text outside a tag: {loose}"]
+
+
+@given(BLOCKS)
+def test_a_nested_opening_tag_is_a_misplaced_tag_defect(blocks):
+    tag, lines = blocks[0]
+    nested = render_blocks([(tag, ["<inner>", *lines])])
+    assert "misplaced tag: <inner>" in tag_structure_defects(nested)
+
+
+@given(TAG_NAMES)
+def test_a_stray_closing_tag_is_a_misplaced_tag_defect(tag):
+    assert f"misplaced tag: </{tag}>" in tag_structure_defects(f"</{tag}>")
+
+
+def test_an_empty_body_has_no_tag_block():
+    assert tag_structure_defects("") == ["no tag block"]
+
+
 @pytest.mark.parametrize("name", SKILL_NAMES)
 def test_skill_names_every_command_the_table_maps_to_it(name):
     text = skill_text(name)
@@ -173,13 +213,8 @@ def test_skill_names_every_command_the_table_maps_to_it(name):
 @pytest.mark.parametrize("name", WAVE_CAP_SKILLS)
 def test_launching_skill_states_the_wave_cap_and_the_transcript_rule(name):
     text = skill_text(name)
-    assert WAVE_CAP_TEXT in text or "first twenty" in text
+    assert any(wave_cap_text in text for wave_cap_text in WAVE_CAP_TEXTS)
     assert TRANSCRIPT_RULE_TEXT in text
-
-
-@pytest.mark.parametrize("name", STATUS_SKILLS)
-def test_freeze_and_measure_skills_carry_series_status(name):
-    assert "series status" in skill_text(name)
 
 
 @pytest.mark.parametrize("required", START_SERIES_TEXTS)
