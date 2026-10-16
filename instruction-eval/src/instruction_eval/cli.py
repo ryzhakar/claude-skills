@@ -115,67 +115,11 @@ def _add_no_arguments(parser: argparse.ArgumentParser) -> None:
     """Add nothing to a command that takes no argument."""
 
 
-_COMMANDS = {
-    "series": {
-        "new": _add_series_new_arguments,
-        "status": _add_no_arguments,
-        "freeze": _add_no_arguments,
-        "stop": _add_series_stop_arguments,
-        "keep": _add_no_arguments,
-    },
-    "demands": {"check": _add_no_arguments},
-    "coverage": {"check": _add_revision_argument},
-    "tasks": {"check": _add_no_arguments},
-    "reader": {"fingerprint": _add_no_arguments, "prepare": _add_revision_argument},
-    "revision": {
-        "ask": _add_revision_ask_arguments,
-        "collect": _add_revision_argument,
-        "blind": _add_revision_argument,
-        "detect": _add_revision_argument,
-        "score": _add_revision_argument,
-        "gate": _add_revision_argument,
-        "new": _add_no_arguments,
-    },
-    "judge": {
-        "calibrate": _add_no_arguments,
-        "prepare": _add_revision_argument,
-        "collect": _add_revision_argument,
-    },
-}
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser of every command, its help printing the order of work."""
-    parser = argparse.ArgumentParser(
-        prog="instruction-eval",
-        epilog=_ORDER_OF_WORK,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    groups = parser.add_subparsers(dest="group", required=True)
-    for group, verbs in _COMMANDS.items():
-        verb_parsers = groups.add_parser(group).add_subparsers(dest="verb", required=True)
-        for verb, add_arguments in verbs.items():
-            add_arguments(verb_parsers.add_parser(verb))
-    return parser
-
-
 _READER_TIMEOUT_SECONDS = ASK_TIMEOUT_SECONDS
 _REFUSAL_EXIT_CODE = 1
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 _PLUGIN_MANIFEST = _PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
 _BRIEF_TEMPLATE = Path(__file__).resolve().parent / "templates" / "judge-brief.md"
-_GUARDED_COMMANDS = frozenset(
-    {
-        ("demands", "check"),
-        ("coverage", "check"),
-        ("tasks", "check"),
-        ("series", "freeze"),
-        ("revision", "ask"),
-        ("revision", "detect"),
-        ("revision", "score"),
-        ("judge", "calibrate"),
-    }
-)
 _FINGERPRINT_KEY = "fingerprint"
 
 
@@ -399,35 +343,61 @@ def _collect_judge(arguments: argparse.Namespace, effects: _Effects) -> str:
     return judge_collect(_series_folder(effects), arguments.revision, _transcripts(effects), effects.read_transcript)
 
 
-_HANDLERS: dict[tuple[str, str], _Handler] = {
-    ("series", "new"): _new_series,
-    ("series", "status"): _status,
-    ("series", "freeze"): _freeze,
-    ("series", "stop"): _stop,
-    ("series", "keep"): _keep,
-    ("demands", "check"): _check_demands,
-    ("coverage", "check"): _check_coverage,
-    ("tasks", "check"): _check_tasks,
-    ("reader", "fingerprint"): _fingerprint,
-    ("reader", "prepare"): _prepare_reader,
-    ("revision", "ask"): _ask,
-    ("revision", "collect"): _collect,
-    ("revision", "blind"): _blind,
-    ("revision", "detect"): _detect,
-    ("revision", "score"): _score,
-    ("revision", "gate"): _gate,
-    ("revision", "new"): _new_revision,
-    ("judge", "calibrate"): _calibrate,
-    ("judge", "prepare"): _prepare_judge,
-    ("judge", "collect"): _collect_judge,
+@dataclass(frozen=True)
+class _Command:
+    """One command: what adds its arguments, what runs it, and whether the CLI guards the series first because the command does not."""
+
+    add_arguments: Callable[[argparse.ArgumentParser], None]
+    handle: _Handler
+    guarded: bool = False
+
+
+_COMMANDS: dict[tuple[str, str], _Command] = {
+    ("series", "new"): _Command(_add_series_new_arguments, _new_series),
+    ("series", "status"): _Command(_add_no_arguments, _status),
+    ("series", "freeze"): _Command(_add_no_arguments, _freeze),
+    ("series", "stop"): _Command(_add_series_stop_arguments, _stop),
+    ("series", "keep"): _Command(_add_no_arguments, _keep),
+    ("demands", "check"): _Command(_add_no_arguments, _check_demands, guarded=True),
+    ("coverage", "check"): _Command(_add_revision_argument, _check_coverage, guarded=True),
+    ("tasks", "check"): _Command(_add_no_arguments, _check_tasks, guarded=True),
+    ("reader", "fingerprint"): _Command(_add_no_arguments, _fingerprint),
+    ("reader", "prepare"): _Command(_add_revision_argument, _prepare_reader),
+    ("revision", "ask"): _Command(_add_revision_ask_arguments, _ask),
+    ("revision", "collect"): _Command(_add_revision_argument, _collect),
+    ("revision", "blind"): _Command(_add_revision_argument, _blind),
+    ("revision", "detect"): _Command(_add_revision_argument, _detect, guarded=True),
+    ("revision", "score"): _Command(_add_revision_argument, _score, guarded=True),
+    ("revision", "gate"): _Command(_add_revision_argument, _gate),
+    ("revision", "new"): _Command(_add_no_arguments, _new_revision),
+    ("judge", "calibrate"): _Command(_add_no_arguments, _calibrate, guarded=True),
+    ("judge", "prepare"): _Command(_add_revision_argument, _prepare_judge),
+    ("judge", "collect"): _Command(_add_revision_argument, _collect_judge),
 }
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser of every command, its help printing the order of work."""
+    parser = argparse.ArgumentParser(
+        prog="instruction-eval",
+        epilog=_ORDER_OF_WORK,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    groups = parser.add_subparsers(dest="group", required=True)
+    verb_parsers = {}
+    for (group, verb), command in _COMMANDS.items():
+        if group not in verb_parsers:
+            verb_parsers[group] = groups.add_parser(group).add_subparsers(dest="verb", required=True)
+        command.add_arguments(verb_parsers[group].add_parser(verb))
+    return parser
 
 
 def _run_command(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Run the parsed command with its effects and return the text it prints."""
-    if (arguments.group, arguments.verb) in _GUARDED_COMMANDS:
+    command = _COMMANDS[(arguments.group, arguments.verb)]
+    if command.guarded:
         guard_series(_series_folder(effects), _command_name(arguments))
-    return _HANDLERS[(arguments.group, arguments.verb)](arguments, effects)
+    return command.handle(arguments, effects)
 
 
 def _execute(argv: Sequence[str], effects: _Effects, stdout: TextIO, stderr: TextIO) -> int:
