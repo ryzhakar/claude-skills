@@ -19,6 +19,8 @@ import yaml
 from instruction_eval.conditions import SOURCE_SEPARATOR, strip_frontmatter
 from instruction_eval.coverage import split_sentences
 from instruction_eval.reader import (
+    AGENT_TYPE_KEY,
+    LAUNCHES_KEY,
     OATH_SKILL,
     REPEATS_KEY,
     AgentKind,
@@ -558,8 +560,6 @@ CANDIDATE_NAME = "candidate"
 RATER_NAME = "rater"
 CANDIDATE_RUNS = (1, 2)
 RATER_RUNS = (1, 2)
-LAUNCHES_KEY = "launches"
-AGENT_TYPE_KEY = "agent_type"
 SAMPLE_PACKET = "sample"
 POOL_EXHAUSTED_REFUSAL = "calibration pool exhausted: lower sample_size or start a new series with more repeats"
 OPEN_TASK_REPLY_PATTERN = f"{FIRST_REVISION}/{REPLIES_FOLDER}/*/*/{REPEAT_PREFIX}*.yaml"
