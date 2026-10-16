@@ -51,7 +51,7 @@
     {
       "name": "instruction-eval",
       "source": "./instruction-eval/",
-      "description": "Measure whether an LLM instruction changes model behavior: a uv-run CLI and eleven skills that run a blinded, gated series over an instruction and its revisions.",
+      "description": "Measure whether an LLM instruction changes model behavior.",
       "version": "0.1.0",
       "author": {
         "name": "ryzhakar"
