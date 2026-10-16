@@ -14,6 +14,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 STATE_TTL_SECONDS = 7 * 24 * 3600
+OBSERVED_STATES_FILE = "observed-task-states"
+OBSERVED_STATES_LINE_CAP = 200
+FINISHED_OR_IDLE_STATUSES = frozenset(
+    {"idle", "completed", "finished", "done", "stopped", "failed", "killed", "cancelled"}
+)
 LABELS = {"shell": "the background command", "subagent": "the background agent", "monitor": "the Monitor watch"}
 
 
@@ -37,9 +42,36 @@ def describe(task):
     return f"{label} \"{what}\" (task {ident})" if what else f"{label} (task {ident})"
 
 
+def task_status(task):
+    return str(task.get("status") or "").strip().lower()
+
+
+def is_awaited(task):
+    return task_status(task) not in FINISHED_OR_IDLE_STATUSES
+
+
+def observed_state_line(task):
+    return f"{task.get('type') or ''}\t{task_status(task)}"
+
+
+def record_observed_states(directory, tasks):
+    path = directory / OBSERVED_STATES_FILE
+    known = path.read_text().splitlines() if path.exists() else []
+    fresh = []
+    for line in map(observed_state_line, tasks):
+        if line not in known and line not in fresh:
+            fresh.append(line)
+    room = OBSERVED_STATES_LINE_CAP - len(known)
+    if fresh and room > 0:
+        with path.open("a") as handle:
+            handle.write("\n".join(fresh[:room]) + "\n")
+
+
 def prune(directory):
     cutoff = time.time() - STATE_TTL_SECONDS
     for path in directory.glob("*"):
+        if path.name == OBSERVED_STATES_FILE:
+            continue
         try:
             if path.stat().st_mtime < cutoff:
                 path.unlink()
@@ -54,13 +86,15 @@ def stop(data):
     if not isinstance(tasks, list) or not isinstance(crons, list):
         return
 
+    awaited = [t for t in tasks if is_awaited(t)]
     path = state_file(data.get("session_id"))
     if path is not None:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             prune(path.parent)
-            if tasks:
-                path.write_text("\n".join(describe(t) for t in tasks) + "\n")
+            record_observed_states(path.parent, tasks)
+            if awaited:
+                path.write_text("\n".join(describe(t) for t in awaited) + "\n")
             elif path.exists():
                 path.unlink()
         except OSError:
@@ -70,8 +104,8 @@ def stop(data):
     if data.get("stop_hook_active"):
         return
     # A running Monitor watch is itself a wake.
-    watches = [t for t in tasks if t.get("type") == "monitor"]
-    pending = [t for t in tasks if t.get("type") != "monitor"]
+    watches = [t for t in awaited if t.get("type") == "monitor"]
+    pending = [t for t in awaited if t.get("type") != "monitor"]
     if not pending or crons or watches:
         return
 
