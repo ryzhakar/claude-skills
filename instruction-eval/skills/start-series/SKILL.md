@@ -15,11 +15,15 @@ Turn every path into an absolute path; never pass a relative one.
 <set-up-the-neutral-login-once>
 Skip this section when `$(claudes path readers)/settings.json` already holds both allow rules and both plugins below; never skip on the folder's existence alone.
 
-Hand the user `/plugin marketplace add ryzhakar/claude-skills` and then `/plugin install instruction-eval@my-claude-skills` to type in the default login; never run `claudes new` before both succeed.
+Run the whole section when `claudes path readers` fails or that file is absent; never run part of it.
+
+Hand the user `/plugin marketplace add ryzhakar/claude-skills` and then `/plugin install instruction-eval@my-claude-skills` to type in the default login, and ask for each command's result; never run `claudes new` before two reports of success.
 
 Make the neutral login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`; never name another plugin.
 
-Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating the key when absent; never drop an existing entry.
+When `claudes ls` already lists `readers`, skip `claudes new` and edit its `settings.json`; never make the login twice.
+
+Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing entry.
 
 Keep `enabledPlugins` exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true; never add a `CLAUDE.md`, a skill, or an agent to the bare login.
 
@@ -31,7 +35,9 @@ Ask the user to run `/login` there with the same account and to report success; 
 </set-up-the-neutral-login-once>
 
 <make-the-series-folder>
-Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` from the Bash tool; never start a session in the folder before it.
+Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` from the Bash tool in any working directory; never start a session in the folder before it.
+
+The installed plugin puts `instruction-eval` on the Bash tool's PATH.
 
 When Bash finds no `instruction-eval`, hand the user `/reload-plugins` and rerun; never call the CLI by its cache path.
 
@@ -41,12 +47,14 @@ Repeat `--source` once per source file; never pass it for an instruction with no
 
 Pick `--reader-kind agent` for a Claude reader and `command` for any other model; never change the kind within a series.
 
-Run `ls -a <folder> <folder>/.claude <folder>/1-source <folder>/r1` and confirm `series.yaml`, an empty `.claude/agents/`, `1-source/<basename>` per source, `r1/2-instruction.md`, and `r1/2-revision.yaml`; on a missing item, stop and report it.
+Run `cd ~/instruction-series/<name> && ls -a . .claude .claude/agents 1-source r1` and confirm `series.yaml`, an empty `.claude/agents/`, `1-source/<basename>` per source, `r1/2-instruction.md`, and `r1/2-revision.yaml`; never continue past a missing item.
 
-Never edit a file `series new` wrote.
+Leave every file `series new` wrote as written; never edit one.
 </make-the-series-folder>
 
 <answer-each-refusal>
+Read a refusal as the one line `series new` prints on stderr with a nonzero exit; never treat stdout as one.
+
 On `series folder not empty`, choose a new name; never empty a folder to reuse it.
 
 On `series folder under a memory file` or `series folder inside a git work tree`, choose a folder outside every `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `.manifestos.yaml`, and git work tree; never delete the file named.
@@ -57,13 +65,11 @@ On `unclosed frontmatter: <path>`, ask the user to close the frontmatter in that
 
 On `missing file`, correct the path; never create the file.
 
-On any other refusal, or the same refusal after a fix, stop and report its text; never rerun more than three times.
+On any other refusal, or the same refusal after a fix, stop and report its text; never run `series new` after its third refusal.
 </answer-each-refusal>
 
 <launch-the-neutral-session>
-End the turn at the printed folder path and hand the user `cd <series folder> && claudes run readers` for their own terminal; never launch it yourself.
-
-Run every later step in that session; never run `reader prepare`, `judge prepare`, or `judge calibrate` stage one in another.
+Run every other instruction-eval skill in the neutral session; never run `reader prepare`, `judge prepare`, or `judge calibrate` stage one in another.
 
 Launch every generated agent from that session's main thread; never from a subagent.
 
@@ -73,5 +79,5 @@ When a type stays absent after the third wait, stop and report it to the user; n
 </launch-the-neutral-session>
 
 <hand-off>
-Hand the user `/instruction-eval:list-demands` to type first in the neutral session; never load it in the working session.
+End the turn with one message holding the folder path, `cd ~/instruction-series/<name> && claudes run readers` for the user's own terminal, and `/instruction-eval:list-demands` to type first in that session; never launch the session or load `list-demands` yourself.
 </hand-off>
