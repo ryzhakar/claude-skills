@@ -3,8 +3,11 @@ from pathlib import Path
 
 import pytest
 import yaml
+from hypothesis import given, strategies as st
 
 from instruction_eval.coverage import split_sentences
+
+MARKDOWN_ALPHABET = "ab. !?-*#>|`~\n\t1)e.g"
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "sentence-split"
 FIXTURE_NAMES = sorted(path.stem for path in FIXTURE_DIR.glob("*.md"))
@@ -58,3 +61,12 @@ def test_many_sentence_paragraph_splits_in_linear_time():
 
 def test_long_word_before_terminator_splits_in_linear_time():
     assert split_time_growth(lambda size: b"a" * size + b" b.", WORD_PROBE_SIZE) < LINEAR_GROWTH_LIMIT
+
+
+@given(st.text(alphabet=MARKDOWN_ALPHABET).map(str.encode))
+def test_sentences_are_numbered_from_one_in_order_without_overlap_each_a_non_blank_span_inside_the_text(text):
+    sentences = split_sentences(text)
+    assert [sentence.number for sentence in sentences] == list(range(1, len(sentences) + 1))
+    assert all(0 <= sentence.start < sentence.end <= len(text) for sentence in sentences)
+    assert all(earlier.end <= later.start and earlier.unit <= later.unit for earlier, later in zip(sentences, sentences[1:]))
+    assert all(text[sentence.start:sentence.end].strip() for sentence in sentences)
