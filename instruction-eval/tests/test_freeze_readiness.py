@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from instruction_eval.records import Refusal, SeriesFolder, reply_path, write_file, write_record
+from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
 from instruction_eval.series import refuse_unready_freeze
 from series_fixtures import sha256, write_yaml
 
@@ -82,7 +82,8 @@ def read_nothing(path: Path) -> bytes:
 
 
 def test_a_ready_series_freezes_without_refusal(tmp_path):
-    refuse_unready_freeze(ready_series(tmp_path), None, read_nothing)
+    files = ready_series(tmp_path)
+    refuse_unready_freeze(files, SeriesRecords(files), None, read_nothing)
 
 
 def test_a_missing_calibration_is_refused(tmp_path):
@@ -90,13 +91,13 @@ def test_a_missing_calibration_is_refused(tmp_path):
     (files.root / "6-judge/calibration.yaml").unlink()
 
     with pytest.raises(Refusal, match=r"^no 6-judge/calibration\.yaml$"):
-        refuse_unready_freeze(files, None, read_nothing)
+        refuse_unready_freeze(files, SeriesRecords(files), None, read_nothing)
 
 
 def assert_refused(files: SeriesFolder, message: str, fingerprint_hash: str | None = None) -> None:
     """Assert the freeze readiness check refuses the series with the message."""
     with pytest.raises(Refusal, match=message):
-        refuse_unready_freeze(files, fingerprint_hash, read_nothing)
+        refuse_unready_freeze(files, SeriesRecords(files), fingerprint_hash, read_nothing)
 
 
 @pytest.mark.parametrize("path", ["2-demands.yaml", "3-tasks.yaml", "4-conditions.yaml", "4-placebo-source.md", "5-reader.yaml"])
@@ -160,7 +161,8 @@ def test_a_stale_first_revision_record_is_refused(tmp_path):
 
 
 def test_a_command_reader_whose_fresh_fingerprint_matches_every_first_reply_is_ready(tmp_path):
-    refuse_unready_freeze(ready_series(tmp_path, COMMAND_READER), FINGERPRINT_HASH, read_nothing)
+    files = ready_series(tmp_path, COMMAND_READER)
+    refuse_unready_freeze(files, SeriesRecords(files), FINGERPRINT_HASH, read_nothing)
 
 
 def test_a_command_reader_whose_fresh_fingerprint_differs_from_a_first_reply_is_refused(tmp_path):

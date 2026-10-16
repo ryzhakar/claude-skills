@@ -281,10 +281,11 @@ FIRST_REVISION_STEPS = {
 RECORD_PATTERN = "*.yaml"
 
 
-def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, read_external: Callable[[Path], bytes]) -> None:
-    """Refuse freezing a series lacking a part or a gate key, failing a check, with r1 unmeasured, stale, or read by another reader build than `fingerprint_hash` (a command reader's fresh hash, None for an agent reader), or with a check it cannot measure."""
+def refuse_unready_freeze(
+    files: SeriesFolder, records: SeriesRecords, fingerprint_hash: str | None, read_external: Callable[[Path], bytes]
+) -> tuple[ExpectedReply, ...]:
+    """Return r1's expected replies, refusing freezing a series lacking a part or a gate key, failing a check, with r1 unmeasured, stale, or read by another reader build than `fingerprint_hash` (a command reader's fresh hash, None for an agent reader), or with a check it cannot measure."""
     _refuse_missing_parts(files)
-    records = SeriesRecords(files)
     gate = records.complete_gate()
     demands_check(files)
     tasks_check(files, read_external)
@@ -297,6 +298,7 @@ def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, rea
     if records.series().reader_kind == COMMAND_READER:
         refuse_other_reader_build(records, [reply.path for reply in expected], fingerprint_hash)
     _refuse_unmeasurable_checks(gate.checks, records)
+    return expected
 
 
 def _refuse_missing_parts(files: SeriesFolder) -> None:
@@ -386,14 +388,14 @@ def series_freeze(
 ) -> None:
     """Write `8-frozen.yaml`: the hash of every series file, r1's noise, a command reader's fresh fingerprint hash, the tool version, and the time, refusing a series not ready to freeze."""
     guard_series(files, FREEZE_COMMAND)
-    refuse_unready_freeze(files, fingerprint_hash, read_external)
     records = SeriesRecords(files)
+    expected = refuse_unready_freeze(files, records, fingerprint_hash, read_external)
     gate = records.complete_gate()
     sealed_rows = measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
     gate_demands = records.gate_demands()
     noise = measure_noise(sealed_rows, gate_demands, records.conditions().controls, gate.repeats, gate.level)
     refuse_unresolvable_gaps(gate.checks, noise, sealed_rows, gate_demands, bool(records.series().sources), bootstrap_rng())
-    _refuse_unaffordable_series(files, records, gate)
+    _refuse_unaffordable_series(files, records, gate, expected)
     hashed = _frozen_parts(files)
     frozen = {**_frozen_record(files, hashed, noise, tool_version, now), **_reader_build(records, fingerprint_hash)}
     write_record(files, FROZEN_RECORD, frozen, _freeze_reads(files, hashed))
@@ -416,9 +418,9 @@ def _user_record_keys(files: SeriesFolder, path: str) -> list[str]:
     return [f"{path}{KEY_SEPARATOR}{key}" for key in yaml.safe_load(files.read_bytes(path))]
 
 
-def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gate: CompleteGate) -> None:
+def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gate: CompleteGate, first_revision_replies: Sequence[ExpectedReply]) -> None:
     """Refuse a budget ceiling below the series' cost predicted from r1's replies."""
-    first_replies = [reply_cost(records.reply(reply.path)) for reply in _first_revision_replies(files, records, gate.repeats)]
+    first_replies = [reply_cost(records.reply(reply.path)) for reply in first_revision_replies]
     try:
         refuse_unaffordable_freeze(stop_budget(gate.budget), first_replies, _series_shape(files, records, gate.repeats))
     except BudgetRefusal as unaffordable:

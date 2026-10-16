@@ -1670,26 +1670,36 @@ class SeriesRecords:
         return tasks
 
     def conditions(self) -> Conditions:
+        """Load `4-conditions.yaml`, once per loader, its controls checked against the series sources."""
+        return self._conditions
+
+    @functools.cached_property
+    def _conditions(self) -> Conditions:
         """Load `4-conditions.yaml`, its controls checked against the series sources."""
         series = self.series()
         return _parsed(CONDITIONS_RECORD, lambda document: parse_conditions(document, series), _read_document(self.files, CONDITIONS_RECORD))
 
     def reader(self) -> Reader:
+        """Load `5-reader.yaml`, once per loader, its kind the series reader kind."""
+        return self._reader
+
+    @functools.cached_property
+    def _reader(self) -> Reader:
         """Load `5-reader.yaml`, its kind the series reader kind."""
         reader = _parsed(READER_RECORD, parse_reader, _read_document(self.files, READER_RECORD))
         self._refuse_other_reader_kind(READER_RECORD, AGENT_READER if isinstance(reader, AgentReader) else COMMAND_READER)
         return reader
 
     def gate(self) -> Gate:
-        """Load `7-gate.yaml`, any key still unwritten before freeze and every key written once the series is frozen."""
-        gate = self._written_gate()
+        """Load `7-gate.yaml`, once per loader, any key still unwritten before freeze and every key written once the series is frozen."""
+        gate = self._written_gate
         if self.files.holds(FROZEN_RECORD):
             _completed(gate)
         return gate
 
     def complete_gate(self) -> CompleteGate:
-        """Load `7-gate.yaml`, refusing an absent key."""
-        return _completed(self._written_gate())
+        """Load `7-gate.yaml`, once per loader, refusing an absent key."""
+        return _completed(self._written_gate)
 
     def plan(self, attempt: int) -> Plan:
         """Load a calibration attempt's `plan.yaml`."""
@@ -1830,6 +1840,7 @@ class SeriesRecords:
         self._resolve_files(STOP_RECORD, REVISION_REFERENCE, kept, revision_record_path)
         return stop
 
+    @functools.cached_property
     def _written_gate(self) -> Gate:
         """Load `7-gate.yaml` as the user has written it so far."""
         return _parsed(GATE_RECORD, parse_gate, _read_document(self.files, GATE_RECORD))
@@ -1882,8 +1893,13 @@ class SeriesRecords:
         return {demand.id for demand in self.demands().demands if not variants or isinstance(demand, variants)}
 
     def gate_demands(self) -> list[str]:
-        """Return the ids of the gate demands: those r1's coverage does not drop, in coverage order."""
-        return [demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped)]
+        """Return the ids of the gate demands, once per loader: those r1's coverage does not drop, in coverage order."""
+        return list(self._gate_demands)
+
+    @functools.cached_property
+    def _gate_demands(self) -> tuple[str, ...]:
+        """Return the ids of the demands r1's coverage does not drop, in coverage order."""
+        return tuple(demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped))
 
 
 def _completed(gate: Gate) -> CompleteGate:
