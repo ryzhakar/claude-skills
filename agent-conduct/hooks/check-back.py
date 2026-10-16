@@ -43,28 +43,40 @@ def describe(task):
 
 
 def task_status(task):
+    """Return the task's status lower-cased and stripped, empty when absent."""
     return str(task.get("status") or "").strip().lower()
 
 
 def is_awaited(task):
+    """Tell whether the task's status marks it as neither finished nor idle."""
     return task_status(task) not in FINISHED_OR_IDLE_STATUSES
 
 
 def observed_state_line(task):
+    """Return the task's type and status as one tab-separated line."""
     return f"{task.get('type') or ''}\t{task_status(task)}"
 
 
-def record_observed_states(directory, tasks):
-    path = directory / OBSERVED_STATES_FILE
-    known = path.read_text().splitlines() if path.exists() else []
+def fresh_observed_lines(known, tasks):
+    """Return the unrecorded type-status lines that still fit under the line cap."""
     fresh = []
     for line in map(observed_state_line, tasks):
         if line not in known and line not in fresh:
             fresh.append(line)
-    room = OBSERVED_STATES_LINE_CAP - len(known)
-    if fresh and room > 0:
-        with path.open("a") as handle:
-            handle.write("\n".join(fresh[:room]) + "\n")
+    return fresh[: max(OBSERVED_STATES_LINE_CAP - len(known), 0)]
+
+
+def record_observed_states(directory, tasks):
+    """Append the tasks' unrecorded type-status lines to the observed-states file, never raising."""
+    path = directory / OBSERVED_STATES_FILE
+    try:
+        known = path.read_text().splitlines() if path.exists() else []
+        fresh = fresh_observed_lines(known, tasks)
+        if fresh:
+            with path.open("a") as handle:
+                handle.write("\n".join(fresh) + "\n")
+    except (OSError, ValueError):
+        pass
 
 
 def prune(directory):
@@ -92,13 +104,13 @@ def stop(data):
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             prune(path.parent)
-            record_observed_states(path.parent, tasks)
             if awaited:
                 path.write_text("\n".join(describe(t) for t in awaited) + "\n")
             elif path.exists():
                 path.unlink()
         except OSError:
             pass
+        record_observed_states(path.parent, tasks)
 
     # Loop guard: a turn already continued by a Stop hook ends.
     if data.get("stop_hook_active"):

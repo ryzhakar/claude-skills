@@ -135,6 +135,15 @@ def test_observed_states_are_capped(tmp_path):
     assert len(observed_lines(tmp_path)) == OBSERVED_LINE_CAP
 
 
+def test_corrupt_observed_states_file_does_not_break_the_hook_or_state_write(tmp_path):
+    directory = tmp_path / "check-back"
+    directory.mkdir()
+    (directory / "observed-task-states").write_bytes(b"\xff\xfe\x80\x81\n")
+    reason = run_stop(tmp_path, [task("s1", "shell", "running")])
+    assert "task s1" in reason
+    assert "task s1" in state_text(tmp_path)
+
+
 def test_unset_data_dir_writes_nothing(tmp_path):
     reason = run_stop(tmp_path, [task("s1", "shell", "running")], data_dir_set=False)
     assert "task s1" in reason
