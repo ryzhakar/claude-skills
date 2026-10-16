@@ -4,6 +4,7 @@ from datetime import timedelta
 import pytest
 import yaml
 
+from instruction_eval.coverage import coverage_check
 from instruction_eval.reader import ReaderRun, reader_fingerprint, reader_prepare, revision_ask
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 from series_fixtures import write_revision
@@ -281,3 +282,27 @@ def test_from_r2_a_ceiling_refuses_an_ask_whose_replies_at_r1s_mean_cost_would_p
     else:
         revision_ask(files, "r2", [], reader, stub_fingerprint)
         assert len(reader.calls) == 4
+
+
+TWO_DEMANDS = {
+    "demands": [
+        {"id": "d-one", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
+        {"id": "d-two", "text": "Cite sources.", "boundary": "None.", "counted_by": "judge"},
+    ]
+}
+DROPPING_D_TWO = {"demands": {"d-one": [1], "d-two": {"dropped": "unmeasurable"}}, "sentences": {1: ["d-one"]}}
+KEEPING_D_TWO = {"demands": {"d-one": [1], "d-two": [1]}, "sentences": {1: ["d-one", "d-two"]}}
+
+
+def test_a_later_coverage_edited_after_a_passing_check_to_drop_other_demands_than_r1_refuses_the_ask_before_any_reader_runs(tmp_path):
+    files = later_revision_series(tmp_path, "none")
+    (files.root / "2-demands.yaml").write_text(yaml.safe_dump(TWO_DEMANDS))
+    (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump(DROPPING_D_TWO))
+    (files.root / "r2/3-coverage.yaml").write_text(yaml.safe_dump(DROPPING_D_TWO))
+    coverage_check(files, "r2")
+
+    (files.root / "r2/3-coverage.yaml").write_text(yaml.safe_dump(KEEPING_D_TWO))
+
+    with pytest.raises(Refusal, match=r"^dropped demands differ from r1: d-two \(r2/3-coverage\.yaml\)$"):
+        revision_ask(files, "r2", [], forbidden_run, forbidden_run)
+    assert not (files.root / "r2/5-replies").exists()
