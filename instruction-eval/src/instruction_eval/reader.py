@@ -1,4 +1,3 @@
-import hashlib
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, fields
@@ -10,33 +9,39 @@ from typing import Any, TypeVar
 
 import yaml
 
-from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
+from instruction_eval.conditions import FRONTMATTER_FENCE, control_texts, revision_condition_texts
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.gate import (
-    OUTCOME_FILE,
     BudgetRefusal,
-    _cost_so_far,
-    _earlier_outcomes,
-    _reply_cost,
-    _stop_budget,
+    earlier_outcomes,
+    gated_cost,
     refuse_unaffordable_ask,
-    revision_number,
+    reply_cost,
+    stop_budget,
 )
-from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
 from instruction_eval.records import (
     AGENT_READER,
+    COLLECTED_FILE,
     COMMAND_READER,
+    CONDITION_KEYS,
+    CONDITION_PLACEHOLDER,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
     FIRST_REVISION,
     FROZEN_RECORD,
     GATE_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    PLACEBO_SNAPSHOT,
     READER_RECORD,
+    REPLIES_FOLDER,
     REPLY_COST_KEYS,
     SERIES_RECORD,
     SPENT_INPUT_TOKENS_KEY,
+    TASK_KEYS,
     TASKS_RECORD,
+    TURN_PREFIX,
     AgentReader,
     CommandReader,
     Conversation,
@@ -46,18 +51,26 @@ from instruction_eval.records import (
     SeriesRecords,
     Task,
     Tasks,
-    _dump_canonical_yaml,
+    agent_definition_path,
     condition_path,
+    dump_canonical_yaml,
+    guard_series,
+    missing_gate_key,
+    outcome_path,
+    read_series_file,
     reply_path,
+    revision_ids,
+    revision_number,
     sha256,
+    source_snapshot_path,
+    task_entries,
+    utf8_text,
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE
-from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series, revision_ids
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
-FRONTMATTER_FENCE = "---\n"
+FRONTMATTER_FENCE_LINE = f"{FRONTMATTER_FENCE}\n"
 LAUNCH_LIST_DESCRIPTION = "Generated agent; launch from the printed launch list only."
 EMPTY_TOOLSET_LINES = ("tools: Read", "disallowedTools: Read")
 JUDGE_TOOLSET_LINES = ("tools: Skill, Write",)
@@ -107,7 +120,7 @@ def _frontmatter_text(name: str, model: str, kind: AgentKind) -> str:
         f"model: {_single_line_value(model)}",
         *_toolset_lines(kind),
     )
-    return FRONTMATTER_FENCE + "".join(line + "\n" for line in lines) + FRONTMATTER_FENCE
+    return FRONTMATTER_FENCE_LINE + "".join(line + "\n" for line in lines) + FRONTMATTER_FENCE_LINE
 
 
 def _single_line_value(value: str) -> str:
@@ -416,7 +429,7 @@ def _reply_to_turn(
         seconds=(reply_chunk.timestamp - opening.timestamp).total_seconds(),
         tokens=_turn_token_usage(chunks),
         transcript=transcript,
-        transcript_hash=hashlib.sha256(content[: reply_chunk.end]).hexdigest(),
+        transcript_hash=sha256(content[: reply_chunk.end]),
     )
 
 
@@ -543,6 +556,7 @@ _NAME_KEY = "name"
 _INPUT_KEY = "input"
 _SKILL_TOOL = "Skill"
 _SKILL_INPUT_KEY = "skill"
+OATH_SKILL = "manifesto:manifesto-oath"
 _WRITE_TOOL = "Write"
 _FILE_PATH_INPUT_KEY = "file_path"
 
@@ -692,7 +706,7 @@ def reader_fingerprint(files: SeriesFolder, run_fingerprint: Callable[[Sequence[
     reader = _command_reader(SeriesRecords(files).reader())
     output = _parse_fingerprint_output(run_fingerprint(reader.fingerprint))
     _refuse_missing_key(output, (*FINGERPRINT_KEYS, *reader.sampling))
-    return Fingerprint(output=output, fingerprint_hash=sha256(_dump_canonical_yaml(output)))
+    return Fingerprint(output=output, fingerprint_hash=sha256(dump_canonical_yaml(output)))
 
 
 def _command_reader(reader: Reader) -> CommandReader:
@@ -737,7 +751,7 @@ def reader_prepare(
     placebo_source = _external_placebo_source(revision, records, read_external)
     texts = _condition_texts(files, revision, records, placebo_source)
     if placebo_source is not None:
-        write_file(files, PLACEBO_SNAPSHOT_PATH, placebo_source)
+        write_file(files, PLACEBO_SNAPSHOT, placebo_source)
     for condition, text in texts.items():
         write_file(files, condition_path(revision, condition), text)
     if isinstance(reader, AgentReader):
@@ -761,9 +775,9 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
     own_texts = revision_condition_texts(instruction, records.conditions().omissions)
     if placebo_source is None:
         return own_texts
-    sources = {path: _utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
+    sources = {path: utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
     try:
-        controls = control_texts(records.conditions(), instruction, sources, _utf8_text(placebo_source, PLACEBO_SNAPSHOT_PATH))
+        controls = control_texts(records.conditions(), instruction, sources, utf8_text(placebo_source, PLACEBO_SNAPSHOT))
     except ValueError as refused:
         raise Refusal(str(refused)) from None
     return {**own_texts, **controls}
@@ -771,20 +785,12 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
 
 def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
     """Return the bytes of a revision's instruction snapshot, refusing it absent."""
-    return _read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")
-
-
-def _utf8_text(content: bytes, label: str) -> str:
-    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under the label."""
-    try:
-        return content.decode()
-    except UnicodeDecodeError:
-        raise Refusal(f"not UTF-8: {label}") from None
+    return read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")
 
 
 def _source_paths(records: SeriesRecords) -> list[str]:
     """Return the series path of each source snapshot, in `sources` order."""
-    return [f"{SOURCE_FOLDER}/{source.name}" for source in records.series().sources]
+    return [source_snapshot_path(source.name) for source in records.series().sources]
 
 
 def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, texts: Mapping[str, bytes]) -> None:
@@ -792,7 +798,7 @@ def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, te
     for condition, text in texts.items():
         agent_type = _reader_agent_type(revision, condition)
         definition = render_agent_definition(agent_type, model, AgentKind.READER, text)
-        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+        write_file(files, agent_definition_path(agent_type), definition)
 
 
 def _reader_agent_type(revision: str, condition: str) -> str:
@@ -828,7 +834,7 @@ def _gate_repeats(records: SeriesRecords) -> int:
     """Return the repeats the gate holds, refusing them unwritten."""
     repeats = records.gate().repeats
     if repeats is None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}")
+        raise missing_gate_key(REPEATS_KEY)
     return repeats
 
 
@@ -900,35 +906,27 @@ def revision_collect(
 
 def _verified_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader) -> dict[str, bytes]:
     """Return the text of each condition the revision prepares, recomputed from the series files, refusing a condition file or an agent reader's definition that differs from its recomputation."""
-    placebo_source = _read_series_file(files, PLACEBO_SNAPSHOT_PATH) if revision == FIRST_REVISION else None
+    placebo_source = read_series_file(files, PLACEBO_SNAPSHOT) if revision == FIRST_REVISION else None
     texts = _condition_texts(files, revision, records, placebo_source)
     for condition, text in texts.items():
-        _refuse_edited_file(files, condition_path(revision, condition), text)
+        refuse_edited_series_file(files, condition_path(revision, condition), text)
         if isinstance(reader, AgentReader):
             definition = render_agent_definition(_reader_agent_type(revision, condition), reader.model, AgentKind.READER, text)
-            _refuse_edited_file(files, _definition_path(revision, condition), definition)
+            refuse_edited_series_file(files, _definition_path(revision, condition), definition)
     return texts
 
 
-def _refuse_edited_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
+def refuse_edited_series_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
     """Refuse the series file at `path` when its bytes differ from the recomputed bytes."""
     try:
-        refuse_edited_definition(path, _read_series_file(files, path), recomputed)
+        refuse_edited_definition(path, read_series_file(files, path), recomputed)
     except DefinitionEdited as edited:
         raise Refusal(str(edited)) from None
 
 
-def _read_series_file(files: SeriesFolder, path: str) -> bytes:
-    """Return the bytes of the series file at `path`, refusing it absent."""
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
-
-
 def _definition_path(revision: str, condition: str) -> str:
     """Return the series path of the reader definition of a condition of a revision."""
-    return f"{AGENTS_FOLDER}/{_reader_agent_type(revision, condition)}.md"
+    return agent_definition_path(_reader_agent_type(revision, condition))
 
 
 def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
@@ -938,7 +936,7 @@ def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: 
         *_source_paths(records),
         *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
         *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
-        PLACEBO_SNAPSHOT_PATH,
+        PLACEBO_SNAPSHOT,
         *(f"{READER_RECORD}{KEY_SEPARATOR}{key}" for key in (READER_RECORD_KIND_KEY, *(field.name for field in fields(reader)))),
         f"{GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}",
         f"{revision}/{INSTRUCTION_FILE}",
@@ -1077,10 +1075,9 @@ MESSAGES_KEY = "messages"
 ROLE_KEY = "role"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
-CONDITION_PLACEHOLDER = "{condition}"
-TURN_FILE_PREFIX = "/turn-"
+TURN_FILE_PREFIX = f"/{TURN_PREFIX}"
 COVERAGE_KEYS = ("demands", "sentences")
-FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/5-replies"
+FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/{REPLIES_FOLDER}"
 REPLY_PATTERN = "*.yaml"
 ANY_CONDITION = "*"
 
@@ -1118,11 +1115,11 @@ def revision_ask(
 
 def _refuse_unaffordable_later_ask(files: SeriesFolder, records: SeriesRecords, revision: str, ask_reply_count: int) -> None:
     """Refuse an ask of a later revision whose replies, each at r1's mean cost, take the cost so far past the gate's ceiling."""
-    budget = None if revision == FIRST_REVISION else _stop_budget(records.complete_gate().budget)
+    budget = None if revision == FIRST_REVISION else stop_budget(records.complete_gate().budget)
     if budget is None:
         return
-    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _expected_reply_set(files, FIRST_REVISION, records)]
-    cost_so_far = _cost_so_far(_earlier_outcomes(files, records, revision), budget)
+    first_replies = [reply_cost(records.reply(reply.path)) for reply in _expected_reply_set(files, FIRST_REVISION, records)]
+    cost_so_far = gated_cost(earlier_outcomes(files, records, revision), budget)
     try:
         refuse_unaffordable_ask(budget, first_replies, cost_so_far, ask_reply_count)
     except BudgetRefusal as unaffordable:
@@ -1157,7 +1154,7 @@ def _answer_replies(
 
 def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
     """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
-    coverage = (f"{coverage_revision}/3-coverage.yaml{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
+    coverage = (f"{coverage_revision}/{COVERAGE_FILE}{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
     reads = [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
     return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
 
@@ -1166,7 +1163,7 @@ def _later_revision_reads(files: SeriesFolder, revision: str) -> list[str]:
     """Return what an ask of a later revision reads besides an ask of r1: the budget, r1's condition files, and each earlier gated revision's outcome."""
     first_conditions = sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(condition_path(FIRST_REVISION, ANY_CONDITION)))
     earlier = (earlier for earlier in revision_ids(files) if revision_number(earlier) < revision_number(revision))
-    return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(f"{other}/{OUTCOME_FILE}" for other in earlier if files.holds(f"{other}/{OUTCOME_FILE}"))]
+    return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(outcome_path(other) for other in earlier if files.holds(outcome_path(other)))]
 
 
 def _state_reads(files: SeriesFolder) -> list[str]:
@@ -1180,10 +1177,17 @@ def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
     return sorted(reply.relative_to(files.root).as_posix() for reply in replies)
 
 
+def refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
+    """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
+    for path in reply_paths:
+        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
+            raise Refusal(f"reader fingerprint changed since {path}")
+
+
 def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fingerprint_hash: str) -> None:
     """Refuse a fingerprint hash differing from the freeze's once frozen, else from any r1 reply written so far."""
     if not files.holds(FROZEN_RECORD):
-        _refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
+        refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
     elif records.frozen().get(FINGERPRINT_HASH_KEY) != fingerprint_hash:
         raise Refusal(f"reader fingerprint changed since {FROZEN_RECORD}")
 
@@ -1201,7 +1205,7 @@ def _reader_command(files: SeriesFolder, reader: CommandReader, reply: ExpectedR
 
 def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
     """Return the YAML `messages` the reader receives: the turns up to the reply's, with the repeat's earlier replies between them."""
-    turns = _turn_messages(_entries_by_id(records.tasks())[reply.task])
+    turns = _turn_messages(task_entries(records.tasks())[reply.task])
     last_turn = reply.turn or 1
     messages: list[dict[str, str]] = []
     for turn in range(1, last_turn + 1):
@@ -1210,11 +1214,6 @@ def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
             earlier = reply_path(reply.revision, reply.condition, reply.task, reply.repeat, turn)
             messages.append({ROLE_KEY: ASSISTANT_ROLE, _TEXT_KEY: records.reply(earlier)[_TEXT_KEY]})
     return yaml.safe_dump({MESSAGES_KEY: messages}, allow_unicode=True)
-
-
-def _entries_by_id(tasks: Tasks) -> dict[str, Task | Conversation]:
-    """Return every task and conversation by id."""
-    return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
 
 
 def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
@@ -1232,7 +1231,7 @@ def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
 
 def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fingerprint: Fingerprint) -> dict[str, Any]:
     """Return the reply record of one command reader run: its output, the fingerprint's model and hash, and null token counts."""
-    entry = _entries_by_id(tasks)[reply.task]
+    entry = task_entries(tasks)[reply.task]
     return {
         **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
         _TEXT_KEY: run.stdout,

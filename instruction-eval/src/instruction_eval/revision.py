@@ -4,30 +4,47 @@ from enum import StrEnum
 from pathlib import Path
 
 from instruction_eval.coverage import split_sentences
-from instruction_eval.gate import COMPLETION_TARGET, OUTCOME_FILE, REVISION_PREFIX, hypothesis_reads, revision_number
+from instruction_eval.gate import hypothesis_reads
 from instruction_eval.records import (
+    ADD_ACTION,
+    COLLECTED_FILE,
+    COMPLETION_COMPARES,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
+    DELETE_ACTION,
+    DETECTORS_FILE,
     FAIL_OUTCOME,
     FIRST_REVISION,
     FROZEN_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    MOVE_ACTION,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    PLACEBO_CONTROL,
+    REWRITE_ACTION,
     Hypothesis,
     MoveChange,
-    Record,
     Refusal,
     SentenceChange,
     SeriesFolder,
     SeriesRecords,
     Tasks,
+    accepted_verdict_paths,
+    condition_path,
+    guard_series,
+    outcome_path,
+    revision_id,
+    revision_ids,
+    revision_number,
     revision_record_path,
     sha256,
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE, DEMANDS_AND_TASKS_INPUTS, DETECTORS_FILE, DONE_BY_INPUT, ORIGINS_FILE, Noise, ReplyRow, join_reply_rows
-from instruction_eval.series import INSTRUCTION_FILE, guard_series, refuse_unclosed_frontmatter, revision_ids
-from instruction_eval.tasks import shared_phrases
+from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, DONE_BY_INPUT, Noise, ReplyRow, join_reply_rows
+from instruction_eval.series import refuse_unclosed_frontmatter
+from instruction_eval.tasks import AIM_LABEL, LabelledText, shared_phrases, task_messages
 
 NOISE_MULTIPLE = 2
 
@@ -48,7 +65,7 @@ def _refuse_size_within_noise(failing_demand: str, predicted_size: float, noise:
 
 def _change_noise(failing_demand: str, noise: Noise) -> float:
     """Return the change noise of the demand, or the done change noise for `completion`."""
-    if failing_demand == COMPLETION_TARGET:
+    if failing_demand == COMPLETION_COMPARES:
         return noise["done_change"]
     return noise["demands"][failing_demand]
 
@@ -66,7 +83,7 @@ def _refuse_unshown_failure(failing_demand: str, rows_read: Sequence[ReplyRow]) 
 
 def _shows_failure(row: ReplyRow, failing_demand: str) -> bool:
     """Tell whether the row breaches the demand, or for `completion` holds done false."""
-    if failing_demand == COMPLETION_TARGET:
+    if failing_demand == COMPLETION_COMPARES:
         return row["done"] is False
     return row["breaches"][failing_demand] > 0
 
@@ -80,10 +97,10 @@ def _refuse_unopen_replies(replies_read: Sequence[str], open_rows: Sequence[Repl
 
 
 class Action(StrEnum):
-    REWRITE = "rewrite"
-    ADD = "add"
-    DELETE = "delete"
-    MOVE = "move"
+    REWRITE = REWRITE_ACTION
+    ADD = ADD_ACTION
+    DELETE = DELETE_ACTION
+    MOVE = MOVE_ACTION
 
 
 @dataclass(frozen=True)
@@ -160,11 +177,9 @@ _CHECKS = {
 
 
 NEW_COMMAND = "revision new"
-COVERAGE_INPUTS = (f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}sentences")
+COVERAGE_INPUTS = (f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences")
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
-AIM_LABEL = "aim"
-PLACEBO_CONDITION = f"{FIRST_REVISION}/4-conditions/placebo.md"
-LabelledText = tuple[str, str]
+PLACEBO_CONDITION = condition_path(FIRST_REVISION, PLACEBO_CONTROL)
 
 
 def revision_new(files: SeriesFolder, read_external: Callable[[Path], bytes]) -> None:
@@ -182,7 +197,7 @@ def revision_new(files: SeriesFolder, read_external: Callable[[Path], bytes]) ->
     _refuse_unmade_change(parent_sentences, sentences, change)
     _refuse_echoes(revision, instruction.decode(), _echo_sources(files, records.tasks(), records.conditions().aim))
     refuse_unfit_hypothesis(hypothesis, _open_rows(records, parent), records.frozen()["noise"])
-    accepted_verdicts = _accepted_verdict_paths(parent, records.collected(parent))
+    accepted_verdicts = accepted_verdict_paths(parent, records.collected(parent))
     write_file(files, f"{revision}/{INSTRUCTION_FILE}", instruction)
     record = _revision_record(files, revision, parent, instruction, _change_record(parent_sentences, sentences, change))
     write_record(files, revision_record_path(revision), record, _new_reads(revision, parent, accepted_verdicts))
@@ -195,7 +210,7 @@ def _latest_revision(files: SeriesFolder) -> str:
 
 def _refuse_ungated_or_passed(files: SeriesFolder, records: SeriesRecords, revision: str) -> None:
     """Refuse a new revision unless the latest revision's outcome is `fail`."""
-    if not files.holds(f"{revision}/{OUTCOME_FILE}"):
+    if not files.holds(outcome_path(revision)):
         raise Refusal(f"latest revision {revision} is not gated")
     if records.outcome(revision)["outcome"] != FAIL_OUTCOME:
         raise Refusal(f"latest revision {revision} did not fail")
@@ -203,7 +218,7 @@ def _refuse_ungated_or_passed(files: SeriesFolder, records: SeriesRecords, revis
 
 def _next_revision(revision: str) -> str:
     """Return the id of the revision after the given one."""
-    return f"{REVISION_PREFIX}{revision_number(revision) + 1}"
+    return revision_id(revision_number(revision) + 1)
 
 
 def _live_instruction(path: Path, read_external: Callable[[Path], bytes]) -> bytes:
@@ -237,10 +252,8 @@ def _refuse_unmade_change(parent: list[str], child: list[str], change: Change) -
 
 def _echo_sources(files: SeriesFolder, tasks: Tasks, aim: str) -> list[LabelledText]:
     """Return the label and text of every task message and conversation turn, the aim, and r1's placebo condition."""
-    turns = [(f"conversation {conversation.id} turn {number}", turn) for conversation in tasks.conversations for number, turn in enumerate(conversation.turns, 1)]
     return [
-        *((f"task {task.id}", task.message) for task in tasks.tasks),
-        *turns,
+        *task_messages(tasks),
         (AIM_LABEL, aim),
         (PLACEBO_CONDITION, files.read_bytes(PLACEBO_CONDITION).decode()),
     ]
@@ -257,13 +270,8 @@ def _refuse_echoes(revision: str, instruction: str, sources: Sequence[LabelledTe
 def _open_rows(records: SeriesRecords, revision: str) -> list[ReplyRow]:
     """Return the revision's open reply rows from its origins, accepted verdicts, and detector counts."""
     collected = records.collected(revision)
-    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    verdicts = records.accepted_verdicts(revision, collected)
     return join_reply_rows(records.origins(revision), verdicts, records.detectors(revision), records.complete_gate().done_by, OPEN_SPLIT)
-
-
-def _accepted_verdict_paths(revision: str, collected: Record) -> list[str]:
-    """Return the path of each packet's accepted verdict."""
-    return [f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()]
 
 
 def _change_record(parent: list[str], child: list[str], change: Change) -> dict[str, object]:
@@ -304,5 +312,5 @@ def _new_reads(revision: str, parent: str, accepted_verdicts: Sequence[str]) -> 
         *accepted_verdicts,
         f"{parent}/{COLLECTED_FILE}",
         f"{parent}/{DETECTORS_FILE}",
-        f"{parent}/{OUTCOME_FILE}",
+        outcome_path(parent),
     ]

@@ -1,4 +1,4 @@
-"""Series commands `series new`, `series freeze`, `series stop`, and `series keep`, and the guard of every command but `series new` against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
+"""Series commands `series new`, `series freeze`, `series stop`, `series keep`, and `series status`."""
 
 import fnmatch
 import itertools
@@ -10,45 +10,64 @@ from pathlib import Path
 import yaml
 
 from instruction_eval.conditions import (
-    PLACEBO_SNAPSHOT_PATH,
     UnclosedFrontmatter,
     strip_frontmatter,
 )
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
 from instruction_eval.gate import (
-    OUTCOME_FILE,
-    REVISION_PREFIX,
     BudgetRefusal,
     SeriesShape,
-    _gate_demands,
-    _measured_revision,
-    _reply_cost,
-    _stop_budget,
     kept_revision,
     least_repeats,
+    measured_revision,
+    near_source_without_sources,
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
+    reply_cost,
+    stop_budget,
+    sum_unless_null,
 )
-from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF, series_paths
+from instruction_eval.reader import MEMORY_RELATIVE_PATHS, USER_MEMORY_RELATIVE_PATH, refuse_other_reader_build
 from instruction_eval.records import (
+    AGENTS_FOLDER,
+    AGREEMENT_FILE,
     ANCHORS_RECORD,
+    ATTEMPT_FOLDER_PREFIX,
+    CALIBRATION_FOLDER,
     CALIBRATION_RECORD,
+    COLLECTED_FILE,
     COMMAND_READER,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
+    DETECTORS_FILE,
+    DRIFT_COMPARES,
     FAIL_OUTCOME,
+    FIRST_ATTEMPT,
     FIRST_REVISION,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
+    INSTRUCTION_FILE,
+    KEEP_COMMAND,
     KEY_SEPARATOR,
+    NEAR_SOURCE_COMPARES,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    PLACEBO_SNAPSHOT,
+    PLAN_FILE,
     READER_RECORD,
+    REFERENCE_USER_FILE,
     SERIES_RECORD,
+    SOURCE_FOLDER,
+    STATUS_COMMAND,
     STOP_RECORD,
     TASKS_RECORD,
     UNRESOLVABLE_STOP,
+    VERDICTS_FOLDER,
+    WORKING_BRIEF,
+    Budget,
     CompleteGate,
     GateCheck,
     ReaderKind,
@@ -57,44 +76,37 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     attempt_folder,
+    guard_series,
     load_record,
+    outcome_path,
+    revision_ids,
     revision_record_path,
+    series_paths,
     sha256,
+    source_snapshot_path,
+    utf8_text,
     write_file,
     write_record,
 )
-from instruction_eval.records import Budget as GateBudget
 from instruction_eval.scores import (
-    COLLECTED_FILE,
-    DETECTORS_FILE,
-    ORIGINS_FILE,
     BootstrapRng,
     Noise,
     measure_noise,
 )
 from instruction_eval.tasks import (
-    EVERY_SENTENCE_OMISSIONS,
-    PLACEBO_SNAPSHOT,
     ExpectedReply,
     expected_replies,
+    omission_conditions,
     refuse_missing_replies,
     tasks_check,
 )
 
 SERIES_HOME_FOLDER = "instruction-series"
-AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
-STATUS_COMMAND = "series status"
 STOP_COMMAND = "series stop"
-KEEP_COMMAND = "series keep"
-KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
+KEEP_RULE_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}keep_rule"
 GIT_ENTRY = ".git"
-LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
-MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
-INSTRUCTION_FILE = "2-instruction.md"
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
-
-STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 
 
 def series_new(
@@ -138,9 +150,9 @@ def _series_folder_path(name: str, working_dir: Path, home: Path) -> Path:
 
 def _refuse_folder_under_memory_file(files: SeriesFolder, home: Path) -> None:
     """Refuse a series folder that or whose ancestor up to `/` holds a memory file, except the home default login's."""
-    login_memory_file = home / LOGIN_MEMORY_FILE
+    login_memory_file = home / USER_MEMORY_RELATIVE_PATH
     for directory in _folder_and_ancestors(files):
-        for memory_file in MEMORY_FILES:
+        for memory_file in MEMORY_RELATIVE_PATHS:
             candidate = directory / memory_file
             if candidate.is_file() and candidate != login_memory_file:
                 raise Refusal(f"series folder under a memory file: {candidate}")
@@ -188,7 +200,7 @@ def _make_agents_folder(files: SeriesFolder) -> None:
 def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path], texts: Mapping[Path, bytes]) -> None:
     """Copy each source's bytes to `1-source/<basename>`."""
     for source in sources:
-        write_file(files, f"{SOURCE_FOLDER}/{source.name}", texts[source])
+        write_file(files, source_snapshot_path(source.name), texts[source])
 
 
 def _refuse_duplicate_basenames(sources: Sequence[Path]) -> None:
@@ -214,9 +226,7 @@ def refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
     """Refuse a file whose first line is `---` with no later line exactly `---`."""
     for path, text in texts.items():
         try:
-            strip_frontmatter(text.decode(), str(path))
-        except UnicodeDecodeError:
-            raise Refusal(f"not UTF-8: {path}") from None
+            strip_frontmatter(utf8_text(text, str(path)), str(path))
         except UnclosedFrontmatter as unclosed:
             raise Refusal(str(unclosed)) from None
 
@@ -226,7 +236,7 @@ def series_stop(files: SeriesFolder, reason: str) -> None:
     guard_series(files, STOP_COMMAND)
     outcomes = _gated_outcomes(files, SeriesRecords(files))
     _refuse_unless_latest_gated_revision_failed(outcomes)
-    reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
+    reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(outcome_path(revision) for revision in outcomes)]
     write_record(files, STOP_RECORD, {"stop": UNRESOLVABLE_STOP, "kept": kept_revision(outcomes), "reason": reason}, reads)
 
 
@@ -259,75 +269,16 @@ def _refuse_unless_latest_gated_revision_failed(outcomes: Mapping[str, Record]) 
 
 def _gated_outcomes(files: SeriesFolder, records: SeriesRecords) -> dict[str, Record]:
     """Return the outcome of each gated revision by id, in order."""
-    return {revision: records.outcome(revision) for revision in revision_ids(files) if files.holds(_outcome_path(revision))}
-
-
-def _outcome_path(revision: str) -> str:
-    """Return the path of a revision's `9-outcome.yaml`."""
-    return f"{revision}/{OUTCOME_FILE}"
-
-
-def guard_series(files: SeriesFolder, command: str) -> None:
-    """Refuse running `command` in a folder lacking `series.yaml`, in a stopped series, after a frozen part changed, or past a broken revision chain."""
-    _refuse_missing_series(files)
-    _refuse_stopped_series(files, command)
-    records = SeriesRecords(files)
-    _refuse_changed_frozen_parts(files, records)
-    _refuse_broken_revision_chain(files, records)
-
-
-def _refuse_missing_series(files: SeriesFolder) -> None:
-    """Refuse a working directory lacking `series.yaml`."""
-    if not files.holds(SERIES_RECORD):
-        raise Refusal(f"not a series folder: no {SERIES_RECORD}")
-
-
-def _refuse_stopped_series(files: SeriesFolder, command: str) -> None:
-    """Refuse a stopped series to every command but `series status` and `series keep`."""
-    if files.holds(STOP_RECORD) and command not in STOPPED_SERIES_COMMANDS:
-        raise Refusal(f"series stopped: only {' and '.join(STOPPED_SERIES_COMMANDS)} run")
-
-
-def _refuse_changed_frozen_parts(files: SeriesFolder, records: SeriesRecords) -> None:
-    """Refuse a frozen series when a path `8-frozen.yaml` hashes no longer holds the hashed bytes."""
-    if not files.holds(FROZEN_RECORD):
-        return
-    for path, frozen_hash in records.frozen()["hashes"].items():
-        if not files.holds(path) or sha256(files.read_bytes(path)) != frozen_hash:
-            raise Refusal(f"frozen part changed: {path}")
-
-
-def _refuse_broken_revision_chain(files: SeriesFolder, records: SeriesRecords) -> None:
-    """Refuse a series whose revision record names a parent record other than the parent's bytes."""
-    for revision in _later_revisions(files):
-        record = records.revision(revision)
-        parent_path = revision_record_path(record["parent"])
-        if record["parent_record"] != sha256(files.read_bytes(parent_path)):
-            raise Refusal(f"broken revision chain: {revision_record_path(revision)} (parent record {parent_path} differs)")
-
-
-def _later_revisions(files: SeriesFolder) -> Iterator[str]:
-    """Return the ids of the revisions after the first, in order, up to the first without a record."""
-    return itertools.islice(revision_ids(files), 1, None)
-
-
-def revision_ids(files: SeriesFolder) -> Iterator[str]:
-    """Return the ids of the revisions, in order, up to the first without a record."""
-    revisions = (f"{REVISION_PREFIX}{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
-    return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
+    return {revision: records.outcome(revision) for revision in revision_ids(files) if files.holds(outcome_path(revision))}
 
 
 FREEZE_PARTS = (DEMANDS_RECORD, TASKS_RECORD, CONDITIONS_RECORD, PLACEBO_SNAPSHOT, READER_RECORD)
 FIRST_REVISION_STEPS = {
-    "blinded": f"{FIRST_REVISION}/6-origins.yaml",
-    "judged": f"{FIRST_REVISION}/7-collected.yaml",
-    "detected": f"{FIRST_REVISION}/7-detectors.yaml",
+    "blinded": f"{FIRST_REVISION}/{ORIGINS_FILE}",
+    "judged": f"{FIRST_REVISION}/{COLLECTED_FILE}",
+    "detected": f"{FIRST_REVISION}/{DETECTORS_FILE}",
 }
 RECORD_PATTERN = "*.yaml"
-USER_COVERAGE_FILE = "3-coverage.yaml"
-VERDICTS_FOLDER = "7-verdicts"
-DRIFT_COMPARES = "drift"
-NEAR_SOURCE_COMPARES = "instruction-near-source"
 
 
 def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, read_external: Callable[[Path], bytes]) -> None:
@@ -344,7 +295,7 @@ def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, rea
     _refuse_unmeasured_first_revision(files)
     _refuse_stale_first_revision_records(files)
     if records.series().reader_kind == COMMAND_READER:
-        _refuse_other_reader_build(records, [reply.path for reply in expected], fingerprint_hash)
+        refuse_other_reader_build(records, [reply.path for reply in expected], fingerprint_hash)
     _refuse_unmeasurable_checks(gate.checks, records)
 
 
@@ -383,15 +334,8 @@ def _refuse_stale_first_revision_records(files: SeriesFolder) -> None:
 def _first_revision_command_records(files: SeriesFolder) -> list[str]:
     """Return the series path of every YAML record under r1 a CLI command wrote, in path order."""
     paths = sorted(path.relative_to(files.root).as_posix() for path in (files.root / FIRST_REVISION).rglob(RECORD_PATTERN))
-    user_and_judge_records = (f"{FIRST_REVISION}/{USER_COVERAGE_FILE}", f"{FIRST_REVISION}/{VERDICTS_FOLDER}/")
+    user_and_judge_records = (f"{FIRST_REVISION}/{COVERAGE_FILE}", f"{FIRST_REVISION}/{VERDICTS_FOLDER}/")
     return [path for path in paths if not path.startswith(user_and_judge_records)]
-
-
-def _refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
-    """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
-    for path in reply_paths:
-        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
-            raise Refusal(f"reader fingerprint changed since {path}")
 
 
 def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesRecords) -> None:
@@ -399,13 +343,13 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
     compared = {check.compares for check in checks}
     if DRIFT_COMPARES in compared and not records.tasks().conversations:
         raise Refusal(f"{DRIFT_COMPARES} check without conversations ({TASKS_RECORD})")
-    if NEAR_SOURCE_COMPARES in compared and not records.series().sources:
+    if near_source_without_sources(checks, bool(records.series().sources)):
         raise Refusal(f"{NEAR_SOURCE_COMPARES} check without sources ({SERIES_RECORD})")
 
 
 FREEZE_COMMAND = "series freeze"
 EVERY_FILE_PATTERN = "**/*"
-ANY_ATTEMPT_FOLDER = "6-judge/calibration/attempt-*"
+ANY_ATTEMPT_FOLDER = f"{CALIBRATION_FOLDER}/{ATTEMPT_FOLDER_PREFIX}*"
 FROZEN_PART_PATTERNS = (
     SERIES_RECORD,
     f"{SOURCE_FOLDER}/*",
@@ -416,7 +360,7 @@ FROZEN_PART_PATTERNS = (
     READER_RECORD,
     CALIBRATION_RECORD,
     ANCHORS_RECORD,
-    "6-judge/calibration/*",
+    f"{CALIBRATION_FOLDER}/*",
     GATE_RECORD,
     f"{FIRST_REVISION}/*",
 )
@@ -426,9 +370,9 @@ USER_RECORD_PATTERNS = (
     CONDITIONS_RECORD,
     READER_RECORD,
     GATE_RECORD,
-    f"{ANY_ATTEMPT_FOLDER}/plan.yaml",
-    f"{ANY_ATTEMPT_FOLDER}/reference-user.yaml",
-    f"{FIRST_REVISION}/{USER_COVERAGE_FILE}",
+    f"{ANY_ATTEMPT_FOLDER}/{PLAN_FILE}",
+    f"{ANY_ATTEMPT_FOLDER}/{REFERENCE_USER_FILE}",
+    f"{FIRST_REVISION}/{COVERAGE_FILE}",
 )
 
 
@@ -445,8 +389,8 @@ def series_freeze(
     refuse_unready_freeze(files, fingerprint_hash, read_external)
     records = SeriesRecords(files)
     gate = records.complete_gate()
-    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
-    gate_demands = _gate_demands(records)
+    sealed_rows = measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    gate_demands = records.gate_demands()
     noise = measure_noise(sealed_rows, gate_demands, records.conditions().controls, gate.repeats, gate.level)
     refuse_unresolvable_gaps(gate.checks, noise, sealed_rows, gate_demands, bool(records.series().sources), bootstrap_rng())
     _refuse_unaffordable_series(files, records, gate)
@@ -474,9 +418,9 @@ def _user_record_keys(files: SeriesFolder, path: str) -> list[str]:
 
 def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gate: CompleteGate) -> None:
     """Refuse a budget ceiling below the series' cost predicted from r1's replies."""
-    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _first_revision_replies(files, records, gate.repeats)]
+    first_replies = [reply_cost(records.reply(reply.path)) for reply in _first_revision_replies(files, records, gate.repeats)]
     try:
-        refuse_unaffordable_freeze(_stop_budget(gate.budget), first_replies, _series_shape(files, records, gate.repeats))
+        refuse_unaffordable_freeze(stop_budget(gate.budget), first_replies, _series_shape(files, records, gate.repeats))
     except BudgetRefusal as unaffordable:
         raise Refusal(str(unaffordable)) from None
 
@@ -484,13 +428,12 @@ def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gat
 def _series_shape(files: SeriesFolder, records: SeriesRecords, repeats: int) -> SeriesShape:
     """Return the counts the cost prediction scales by: tasks, open tasks, conversation turns, repeats, and r1's omitted sentences."""
     tasks = records.tasks()
-    omits_sentences = records.conditions().omissions == EVERY_SENTENCE_OMISSIONS
     return SeriesShape(
         task_count=len(tasks.tasks),
         open_task_count=sum(task.split == OPEN_SPLIT for task in tasks.tasks),
         conversation_turns=sum(len(conversation.turns) for conversation in tasks.conversations),
         repeats=repeats,
-        omission_sentences=len(split_sentences(files.read_bytes(FIRST_INSTRUCTION))) if omits_sentences else 0,
+        omission_sentences=len(omission_conditions(records.conditions().omissions, len(split_sentences(files.read_bytes(FIRST_INSTRUCTION))))),
     )
 
 
@@ -520,7 +463,7 @@ STATUS_PARTS = (
     DEMANDS_RECORD,
     TASKS_RECORD,
     CONDITIONS_RECORD,
-    PLACEBO_SNAPSHOT_PATH,
+    PLACEBO_SNAPSHOT,
     READER_RECORD,
     WORKING_BRIEF,
     CALIBRATION_RECORD,
@@ -529,7 +472,6 @@ STATUS_PARTS = (
     FROZEN_RECORD,
     STOP_RECORD,
 )
-PLAN_FILE = "plan.yaml"
 PARTS_KEY = "parts"
 FROZEN_KEY = "frozen"
 REVISIONS_KEY = "revisions"
@@ -553,7 +495,6 @@ SCALE_KEY = "scale"
 STOP_STANDING_KEYS = ("stop", "kept", "reason")
 MANIFESTO_CLONE_FOLDER = ".claude/manifesto-repo"
 STATUS_DEFAULT_LEVEL = 0.95
-AGREEMENT_FILE = "agreement.yaml"
 UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
 
 
@@ -579,7 +520,7 @@ def series_status(files: SeriesFolder) -> str:
 
 def _revision_standing(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, object]:
     """Return a revision's outcome, change from its parent, and keep ranks, each null while the revision is ungated."""
-    if not files.holds(_outcome_path(revision)):
+    if not files.holds(outcome_path(revision)):
         return dict(UNGATED_STANDING)
     outcome = records.outcome(revision)
     return {key: outcome.get(key) for key in UNGATED_STANDING}
@@ -590,22 +531,17 @@ def _cost_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, obj
     costs = [outcome[COST_KEY] for outcome in _gated_outcomes(files, records).values()]
     spent = {
         REPLIES_KEY: sum(cost[REPLIES_KEY] for cost in costs),
-        INPUT_TOKENS_KEY: _sum_unless_null([cost[INPUT_TOKENS_KEY] for cost in costs]),
-        OUTPUT_TOKENS_KEY: _sum_unless_null([cost[OUTPUT_TOKENS_KEY] for cost in costs]),
+        INPUT_TOKENS_KEY: sum_unless_null([cost[INPUT_TOKENS_KEY] for cost in costs]),
+        OUTPUT_TOKENS_KEY: sum_unless_null([cost[OUTPUT_TOKENS_KEY] for cost in costs]),
         SECONDS_KEY: sum(cost[SECONDS_KEY] for cost in costs),
     }
     return {SPENT_KEY: spent, BUDGET_KEY: _written_budget(files, records)}
 
 
-def _sum_unless_null(values: Sequence[int | None]) -> int | None:
-    """Sum the values, or return None when any value is None."""
-    return None if None in values else sum(values)
-
-
 def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[str, object] | None:
     """Return the gate's budget as written, `none` or its unit and ceiling, or None while the gate or its budget is unwritten."""
     budget = records.gate().budget if files.holds(GATE_RECORD) else None
-    if isinstance(budget, GateBudget):
+    if isinstance(budget, Budget):
         return {"unit": budget.unit, "ceiling": budget.ceiling}
     return budget
 
@@ -619,7 +555,7 @@ def _calibration_standing(files: SeriesFolder, records: SeriesRecords) -> dict[s
 
 def _attempt_numbers(files: SeriesFolder) -> Iterator[int]:
     """Return the numbers of the calibration attempts, in order, up to the first without a plan."""
-    numbers = itertools.count(1)
+    numbers = itertools.count(FIRST_ATTEMPT)
     return itertools.takewhile(lambda attempt: files.holds(f"{attempt_folder(attempt)}/{PLAN_FILE}"), numbers)
 
 
@@ -642,9 +578,9 @@ def _first_revision_noise(files: SeriesFolder, records: SeriesRecords) -> Noise 
     gate = records.gate() if measured and files.holds(GATE_RECORD) else None
     if gate is None or gate.repeats is None or gate.done_by is None:
         return None
-    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    sealed_rows = measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
     level = STATUS_DEFAULT_LEVEL if gate.level is None else gate.level
-    return measure_noise(sealed_rows, _gate_demands(records), records.conditions().controls, gate.repeats, level)
+    return measure_noise(sealed_rows, records.gate_demands(), records.conditions().controls, gate.repeats, level)
 
 
 def _least_repeats_per_check(files: SeriesFolder, records: SeriesRecords, noise: Noise | None) -> dict[str, int | None]:

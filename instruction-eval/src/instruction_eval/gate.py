@@ -9,25 +9,42 @@ from typing import Literal, TypedDict
 import numpy
 
 from instruction_eval.records import (
-    ANCHOR_KEY,
     BUDGET_REASON,
     CAPPED_STOP,
+    COLLECTED_FILE,
+    COMPLETION_COMPARES,
+    DETECTORS_FILE,
+    DRIFT_COMPARES,
+    EMPTY_CONTROL,
     FAIL_OUTCOME,
     FEWEST_REPEATS,
     FIRST_REVISION,
+    FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
+    HYPOTHESIS_FILE,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    NEAR_SOURCE_COMPARES,
+    NO_BUDGET,
     NO_EFFECT_STOP,
+    ORIGINS_FILE,
     PASS_OUTCOME,
     PASSED_STOP,
     SEALED_SPLIT,
+    SECONDS_UNIT,
+    SOURCE_CONTROL,
     SPENT_INPUT_TOKENS_KEY,
     STOP_RECORD,
+    TOKENS_UNIT,
+    VS_AIM_COMPARES,
+    VS_EMPTY_COMPARES,
+    VS_PLACEBO_COMPARES,
+    Budget,
+    BudgetUnit,
     Compares,
     Direction,
     DoneBy,
-    Dropped,
     GateCheck,
     Hypothesis,
     NoBudget,
@@ -35,28 +52,30 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
-    reply_path,
+    accepted_verdict_paths,
+    guard_series,
+    origin_reply_paths,
+    outcome_path,
+    parent_revision,
+    revision_id,
+    revision_number,
     write_record,
 )
-from instruction_eval.records import Budget as GateBudget
 from instruction_eval.scores import (
-    COLLECTED_FILE,
-    DETECTORS_FILE,
-    ORIGINS_FILE,
     SCORE_USER_INPUTS,
     BootstrapRng,
     Comparison,
     Noise,
     ReplyRow,
     ScoredReply,
-    instruction_comparisons,
     breach_total,
     compare_paired,
+    instruction_comparisons,
     join_reply_rows,
     paired_units,
     task_means,
 )
-from instruction_eval.tasks import REVISION_INSTRUCTION_FILE, words
+from instruction_eval.tasks import INSTRUCTION_CONDITION, words
 
 LATER_REVISION_COUNT = 4
 LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
@@ -80,12 +99,12 @@ def _lower_bound_within_gap(mean_difference: float, interval: tuple[float, float
 
 
 _PASS_RULES: Mapping[Compares, PassRule] = {
-    "instruction-vs-empty": _undercuts_control_by_gap,
-    "instruction-vs-aim": _undercuts_control_by_gap,
-    "instruction-vs-placebo": _undercuts_control_by_gap,
-    "instruction-near-source": _upper_bound_within_gap,
-    "drift": _upper_bound_within_gap,
-    "completion": _lower_bound_within_gap,
+    VS_EMPTY_COMPARES: _undercuts_control_by_gap,
+    VS_AIM_COMPARES: _undercuts_control_by_gap,
+    VS_PLACEBO_COMPARES: _undercuts_control_by_gap,
+    NEAR_SOURCE_COMPARES: _upper_bound_within_gap,
+    DRIFT_COMPARES: _upper_bound_within_gap,
+    COMPLETION_COMPARES: _lower_bound_within_gap,
 }
 
 
@@ -97,10 +116,6 @@ def check_passes(check: GateCheck, comparison: Comparison) -> bool:
 
 
 GAP_RESOLUTION_SHARE = 2
-SOURCE_CONDITION = "source"
-EMPTY_CONDITION = "empty"
-_NEAR_SOURCE_COMPARES: Compares = "instruction-near-source"
-_VS_EMPTY_COMPARES: Compares = "instruction-vs-empty"
 
 
 def refuse_unresolvable_gaps(
@@ -112,24 +127,27 @@ def refuse_unresolvable_gaps(
     rng: numpy.random.Generator,
 ) -> None:
     """Raise Refusal on a null noise, a check whose noise exceeds half its gap, or an `instruction-near-source` check r1's sealed rows do not admit."""
-    near_source = _NEAR_SOURCE_COMPARES in {check.compares for check in checks}
-    if near_source:
-        _refuse_near_source_without_sources(series_has_sources)
+    if near_source_without_sources(checks, series_has_sources):
+        raise Refusal(f"{NEAR_SOURCE_COMPARES} refused: the series has no sources")
     _refuse_null_change_noise(noise)
     _refuse_unresolvable_gaps(checks, noise)
-    if near_source:
+    if _holds_near_source(checks):
         _refuse_unadmitted_near_source(_vs_empty_check(checks), sealed_rows, gate_demands, noise["level"], rng)
 
 
-def _refuse_near_source_without_sources(series_has_sources: bool) -> None:
-    """Raise Refusal when an `instruction-near-source` check stands in a series without sources."""
-    if not series_has_sources:
-        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: the series has no sources")
+def near_source_without_sources(checks: Sequence[GateCheck], series_has_sources: bool) -> bool:
+    """Tell whether an `instruction-near-source` check stands in a series without sources."""
+    return _holds_near_source(checks) and not series_has_sources
+
+
+def _holds_near_source(checks: Sequence[GateCheck]) -> bool:
+    """Tell whether the checks hold an `instruction-near-source` check."""
+    return NEAR_SOURCE_COMPARES in {check.compares for check in checks}
 
 
 def _vs_empty_check(checks: Sequence[GateCheck]) -> GateCheck:
     """Return the `instruction-vs-empty` check, which every gate holds."""
-    return next(check for check in checks if check.compares == _VS_EMPTY_COMPARES)
+    return next(check for check in checks if check.compares == VS_EMPTY_COMPARES)
 
 
 def _refuse_unadmitted_near_source(
@@ -137,9 +155,9 @@ def _refuse_unadmitted_near_source(
 ) -> None:
     """Raise Refusal unless `source` minus `empty` over r1's sealed tasks passes the `instruction-vs-empty` check."""
     gate_breaches = partial(breach_total, demands=gate_demands)
-    units = paired_units(task_means(sealed_rows, SOURCE_CONDITION, gate_breaches), task_means(sealed_rows, EMPTY_CONDITION, gate_breaches))
+    units = paired_units(task_means(sealed_rows, SOURCE_CONTROL, gate_breaches), task_means(sealed_rows, EMPTY_CONTROL, gate_breaches))
     if not check_passes(vs_empty, compare_paired(units, level, rng)):
-        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: source minus empty misses the {_VS_EMPTY_COMPARES} gap on r1's sealed rows")
+        raise Refusal(f"{NEAR_SOURCE_COMPARES} refused: source minus empty misses the {VS_EMPTY_COMPARES} gap on r1's sealed rows")
 
 
 def least_repeats(check: GateCheck, noise: Noise) -> int | None:
@@ -182,9 +200,6 @@ def series_least_repeats(checks: Sequence[GateCheck], noise: Noise) -> int | Non
     return None if None in per_check else max(per_check, default=FEWEST_REPEATS)
 
 
-BudgetUnit = Literal["tokens", "seconds"]
-TOKENS_UNIT: BudgetUnit = "tokens"
-SECONDS_UNIT: BudgetUnit = "seconds"
 
 
 class BudgetRefusal(Exception):
@@ -203,12 +218,6 @@ class ReplyCost:
     input_tokens: int | None
     output_tokens: int | None
     seconds: float
-
-
-@dataclass(frozen=True)
-class Budget:
-    unit: BudgetUnit
-    ceiling: float
 
 
 @dataclass(frozen=True)
@@ -289,7 +298,7 @@ def refuse_unaffordable_ask(
         raise BudgetRefusal(f"projected cost {projected:g} exceeds ceiling {budget.ceiling:g}")
 
 
-def _sum_unless_null(values: list[int | None]) -> int | None:
+def sum_unless_null(values: Sequence[int | None]) -> int | None:
     """Sum the values, or return null when any value is null."""
     return None if None in values else sum(values)
 
@@ -298,13 +307,10 @@ def sum_revision_cost(replies: list[ReplyCost]) -> RevisionCost:
     """Sum replies into the cost record of a revision's asks, token sums null when any reply's are."""
     return {
         "replies": len(replies),
-        "input_tokens": _sum_unless_null([reply.input_tokens for reply in replies]),
-        "output_tokens": _sum_unless_null([reply.output_tokens for reply in replies]),
+        "input_tokens": sum_unless_null([reply.input_tokens for reply in replies]),
+        "output_tokens": sum_unless_null([reply.output_tokens for reply in replies]),
         "seconds": sum(reply.seconds for reply in replies),
     }
-
-
-REVISION_PREFIX = "r"
 
 
 def kept_revision(outcomes: Mapping[str, Record]) -> str | None:
@@ -318,13 +324,6 @@ def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
     return (outcome["outcome"] != PASS_OUTCOME, outcome["instruction_breaches"], outcome["words"], revision_number(revision))
 
 
-def revision_number(revision: str) -> int:
-    """Return the number a revision id carries."""
-    return int(revision.removeprefix(REVISION_PREFIX))
-
-
-COMPLETION_TARGET = "completion"
-INSTRUCTION_CONDITION = "instruction"
 DOWN: Direction = "down"
 UP: Direction = "up"
 ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
@@ -361,7 +360,7 @@ def compare_with_parent(
 
 def _reply_value(row: ScoredReply, target: str) -> float | None:
     """Return the reply's breaches of the target demand, or its done as 1 or 0 for `completion`, null when done is null."""
-    if target == COMPLETION_TARGET:
+    if target == COMPLETION_COMPARES:
         return None if row["done"] is None else float(row["done"])
     return float(row["breaches"][target])
 
@@ -392,7 +391,7 @@ def _first_matching_stop(
     """Return the stop and its reason of the first rule the revision meets, null when it meets none."""
     if outcomes[revision]["outcome"] == PASS_OUTCOME:
         return {"stop": PASSED_STOP}
-    if _unchanged_from_parent(revision, outcomes) and _unchanged_from_parent(_parent_revision(revision), outcomes):
+    if _unchanged_from_parent(revision, outcomes) and _unchanged_from_parent(parent_revision(revision), outcomes):
         return {"stop": NO_EFFECT_STOP}
     if revision_number(revision) >= LAST_REVISION_NUMBER:
         return {"stop": CAPPED_STOP}
@@ -406,44 +405,37 @@ def _unchanged_from_parent(revision: str, outcomes: Mapping[str, Record]) -> boo
     return outcomes.get(revision, {}).get("changed_from_parent") == UNCHANGED
 
 
-def _parent_revision(revision: str) -> str:
-    """Return the id of the revision before the given one."""
-    return f"{REVISION_PREFIX}{revision_number(revision) - 1}"
-
-
 GATE_COMMAND = "revision gate"
-OUTCOME_FILE = "9-outcome.yaml"
 GATE_KEYS = ("repeats", "level", "done_by", "checks", "keep_rule", "budget")
 STOP_GATE_KEYS = ("keep_rule", "budget")
 HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
-NO_BUDGET: NoBudget = "none"
 
 
 def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
     """Write the revision's `9-outcome.yaml` from its sealed rows, each bootstrap drawing on a fresh `bootstrap_rng()`, and `9-stop.yaml` when a stop applies."""
-    _refuse_unusable_series(files)
+    guard_series(files, GATE_COMMAND)
     records = SeriesRecords(files)
     gate = records.complete_gate()
     records.frozen()
-    gate_demands = _gate_demands(records)
-    measured = _measured_revision(records, revision, gate.done_by)
+    gate_demands = records.gate_demands()
+    measured = measured_revision(records, revision, gate.done_by)
     outcome = _outcome(files, records, revision, measured, gate_demands, gate.checks, gate.level, bootstrap_rng)
-    earlier = _earlier_outcomes(files, records, revision)
+    earlier = earlier_outcomes(files, records, revision)
     reads = _gate_reads(revision, measured, earlier)
     if revision != FIRST_REVISION:
-        parent = _measured_revision(records, _parent_revision(revision), gate.done_by)
+        parent = measured_revision(records, parent_revision(revision), gate.done_by)
         outcome = {**outcome, **_parent_fields(records.hypothesis(revision), measured.sealed_rows, parent.sealed_rows, gate.level, bootstrap_rng)}
         reads = [*reads, *hypothesis_reads(revision), *parent.reads]
     outcomes = {**earlier, revision: outcome}
-    budget = _stop_budget(gate.budget)
-    stop = stop_after(revision, outcomes, budget, _cost_so_far(outcomes, budget))
-    write_record(files, _outcome_path(revision), outcome, reads)
+    budget = stop_budget(gate.budget)
+    stop = stop_after(revision, outcomes, budget, gated_cost(outcomes, budget))
+    write_record(files, outcome_path(revision), outcome, reads)
     if stop is not None:
         write_record(files, STOP_RECORD, stop, _stop_reads(outcomes))
 
 
 @dataclass(frozen=True)
-class _MeasuredRevision:
+class MeasuredRevision:
     """A revision's sealed reply rows, the cost of its own replies, and the files they were read from."""
 
     sealed_rows: list[ReplyRow]
@@ -451,39 +443,21 @@ class _MeasuredRevision:
     reads: list[str]
 
 
-def _refuse_unusable_series(files: SeriesFolder) -> None:
-    """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
-    from instruction_eval.series import guard_series
-
-    guard_series(files, GATE_COMMAND)
-
-
-def _gate_demands(records: SeriesRecords) -> list[str]:
-    """Return the demands r1's coverage does not drop, in coverage order."""
-    return [demand for demand, sentences in records.coverage(FIRST_REVISION).demands.items() if not isinstance(sentences, Dropped)]
-
-
-def _measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> _MeasuredRevision:
+def measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> MeasuredRevision:
     """Load a revision's sealed rows and own reply costs, refusing a missing collection or a reply origin without its reply file."""
     collected = records.collected(revision)
     origins = records.origins(revision)
-    verdict_paths = {packet: f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()}
-    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
-    reply_paths = {blind_id: _origin_reply_path(origin, revision) for blind_id, origin in origins["ids"].items() if ANCHOR_KEY not in origin}
+    verdicts = records.accepted_verdicts(revision, collected)
+    reply_paths = origin_reply_paths(origins, revision)
     own_paths = [path for path in reply_paths.values() if path.startswith(f"{revision}/")]
-    return _MeasuredRevision(
+    return MeasuredRevision(
         sealed_rows=join_reply_rows(origins, verdicts, records.detectors(revision), done_by, SEALED_SPLIT),
-        own_replies=[_reply_cost(records.reply(path)) for path in own_paths],
-        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *verdict_paths.values(), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
+        own_replies=[reply_cost(records.reply(path)) for path in own_paths],
+        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *accepted_verdict_paths(revision, collected), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
     )
 
 
-def _origin_reply_path(origin: Record, revision: str) -> str:
-    """Return the reply file a reply origin names, a borrowed one in the revision it names."""
-    return reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
-
-
-def _reply_cost(reply: Record) -> ReplyCost:
+def reply_cost(reply: Record) -> ReplyCost:
     """Return a reply's spent input tokens, output tokens, and seconds."""
     return ReplyCost(reply["cost"][SPENT_INPUT_TOKENS_KEY], reply["cost"]["output_tokens"], reply["seconds"])
 
@@ -492,7 +466,7 @@ def _outcome(
     files: SeriesFolder,
     records: SeriesRecords,
     revision: str,
-    measured: _MeasuredRevision,
+    measured: MeasuredRevision,
     gate_demands: Sequence[str],
     checks: Sequence[GateCheck],
     level: float,
@@ -507,8 +481,8 @@ def _outcome(
         "outcome": PASS_OUTCOME if all(check["pass"] for check in gated) else FAIL_OUTCOME,
         "checks": gated,
         "instruction_breaches": fmean(breach_total(row, gate_demands) for row in task_rows if row["condition"] == INSTRUCTION_CONDITION),
-        "completion_passed": next(check["pass"] for check in gated if check["compares"] == COMPLETION_TARGET),
-        "words": len(words(files.read_bytes(f"{revision}/{REVISION_INSTRUCTION_FILE}").decode())),
+        "completion_passed": next(check["pass"] for check in gated if check["compares"] == COMPLETION_COMPARES),
+        "words": len(words(files.read_bytes(f"{revision}/{INSTRUCTION_FILE}").decode())),
         "cost": sum_revision_cost(measured.own_replies),
     }
 
@@ -531,40 +505,35 @@ def _parent_fields(hypothesis: Hypothesis, rows: Sequence[ScoredReply], parent_r
     }
 
 
-def _earlier_outcomes(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, Record]:
+def earlier_outcomes(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, Record]:
     """Return the outcome of each gated revision before the given one, by id in order."""
-    earlier = (f"{REVISION_PREFIX}{number}" for number in range(1, revision_number(revision)))
-    return {other: records.outcome(other) for other in earlier if files.holds(_outcome_path(other))}
+    earlier = (revision_id(number) for number in range(FIRST_REVISION_NUMBER, revision_number(revision)))
+    return {other: records.outcome(other) for other in earlier if files.holds(outcome_path(other))}
 
 
-def _outcome_path(revision: str) -> str:
-    """Return the path of a revision's `9-outcome.yaml`."""
-    return f"{revision}/{OUTCOME_FILE}"
-
-
-def _gate_reads(revision: str, measured: _MeasuredRevision, earlier: Mapping[str, Record]) -> list[str]:
+def _gate_reads(revision: str, measured: MeasuredRevision, earlier: Mapping[str, Record]) -> list[str]:
     """Return what `revision gate` reads of every revision: `revision score`'s reads, every gate key, the freeze, the instruction, and every earlier outcome."""
     return [
         *SCORE_USER_INPUTS,
         *measured.reads,
         *(f"{GATE_RECORD}{KEY_SEPARATOR}{key}" for key in GATE_KEYS),
         FROZEN_RECORD,
-        f"{revision}/{REVISION_INSTRUCTION_FILE}",
-        *(_outcome_path(other) for other in earlier),
+        f"{revision}/{INSTRUCTION_FILE}",
+        *(outcome_path(other) for other in earlier),
     ]
 
 
 def hypothesis_reads(revision: str) -> list[str]:
     """Return each key of the revision's hypothesis as a read."""
-    return [f"{revision}/1-hypothesis.yaml{KEY_SEPARATOR}{key}" for key in HYPOTHESIS_KEYS]
+    return [f"{revision}/{HYPOTHESIS_FILE}{KEY_SEPARATOR}{key}" for key in HYPOTHESIS_KEYS]
 
 
-def _stop_budget(budget: GateBudget | NoBudget) -> Budget | None:
+def stop_budget(budget: Budget | NoBudget) -> Budget | None:
     """Return the gate's budget as the stop rules take it, null without a ceiling."""
-    return None if budget == NO_BUDGET else Budget(budget.unit, budget.ceiling)
+    return None if budget == NO_BUDGET else budget
 
 
-def _cost_so_far(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
+def gated_cost(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
     """Return every gated revision's ask cost summed in the budget unit, zero without a budget, refusing a tokens budget over a revision without token counts."""
     if budget is None:
         return 0
@@ -577,4 +546,4 @@ def _cost_so_far(outcomes: Mapping[str, Record], budget: Budget | None) -> float
 
 def _stop_reads(outcomes: Mapping[str, Record]) -> list[str]:
     """Return what the stop reads: the keep rule and budget, the freeze, and every gated revision's outcome."""
-    return [*(f"{GATE_RECORD}{KEY_SEPARATOR}{key}" for key in STOP_GATE_KEYS), FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
+    return [*(f"{GATE_RECORD}{KEY_SEPARATOR}{key}" for key in STOP_GATE_KEYS), FROZEN_RECORD, *(outcome_path(revision) for revision in outcomes)]

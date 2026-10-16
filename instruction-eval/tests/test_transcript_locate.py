@@ -1,6 +1,10 @@
+import json
+import tempfile
 from pathlib import Path
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from instruction_eval.reader import locate_transcripts
 
@@ -62,3 +66,41 @@ def test_meta_file_holding_no_object_is_refused_by_name():
 def test_meta_file_with_non_string_agent_type_is_refused_by_name():
     with pytest.raises(ValueError, match="agent-i9.jsonl.*agentType"):
         locate_transcripts(CONFIG_DIR, Path("/srv/badtype"), WORKING_DIR)
+
+
+FOLDER_NAMES = st.text(alphabet="ab.", min_size=1, max_size=4).filter(lambda name: name.strip("."))
+SESSION_NAMES = st.text(alphabet="s01", min_size=1, max_size=3)
+AGENT_IDS = st.text(alphabet="a01", min_size=1, max_size=3)
+AGENT_TYPES = st.text(alphabet="ie-rd", min_size=1, max_size=6)
+SESSIONS = st.dictionaries(SESSION_NAMES, st.dictionaries(AGENT_IDS, AGENT_TYPES, max_size=3), max_size=3)
+WORKING_DIR_NAMES = ("work", "elsewhere")
+
+
+def _write_session_transcripts(config_dir: Path, absolute_folder: Path, sessions: dict[str, dict[str, str]]) -> dict[Path, str]:
+    """Write the transcripts and meta files Claude Code keeps for the folder's sessions and return each transcript's agent type by path."""
+    project = config_dir / "projects" / str(absolute_folder).replace("/", "-").replace(".", "-")
+    written = {}
+    for session, agents in sessions.items():
+        subagents = project / session / "subagents"
+        subagents.mkdir(parents=True, exist_ok=True)
+        for agent_id, agent_type in agents.items():
+            transcript = subagents / f"agent-{agent_id}.jsonl"
+            transcript.write_text("")
+            (subagents / f"agent-{agent_id}.meta.json").write_text(json.dumps({"agentType": agent_type}))
+            written[transcript] = agent_type
+    return written
+
+
+@given(trees=st.fixed_dictionaries({name: st.dictionaries(FOLDER_NAMES, SESSIONS, min_size=1, max_size=3) for name in WORKING_DIR_NAMES}), data=st.data())
+def test_transcripts_found_are_exactly_those_of_the_series_folder_under_the_working_dir(trees, data):
+    series_folder = data.draw(st.sampled_from(sorted(trees[WORKING_DIR_NAMES[0]])))
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        config_dir = root / "config"
+        written = {
+            (working_dir_name, folder): _write_session_transcripts(config_dir, root / working_dir_name / folder, sessions)
+            for working_dir_name, folders in trees.items()
+            for folder, sessions in folders.items()
+        }
+        found = locate_transcripts(config_dir, Path(series_folder), root / WORKING_DIR_NAMES[0])
+        assert [(transcript.path, transcript.agent_type) for transcript in found] == sorted(written[(WORKING_DIR_NAMES[0], series_folder)].items())

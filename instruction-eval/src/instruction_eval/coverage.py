@@ -5,13 +5,16 @@ from dataclasses import dataclass
 from itertools import accumulate
 
 from instruction_eval.records import (
+    COVERAGE_FILE,
     FIRST_REVISION,
+    INSTRUCTION_FILE,
     Coverage,
     Demands,
     Dropped,
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    read_series_file,
 )
 
 _SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
@@ -19,7 +22,8 @@ _WORD_RUN = re.compile(r"(?:[^\W\d_]|\.)*")
 _ABBREVIATIONS = {"e.g", "i.e", "etc", "vs", "cf", "Mr", "Mrs", "Dr", "St", "No"}
 _SINGLE_LETTER = re.compile(r"[^\W\d_]")
 _WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
-_FENCE_OPEN = re.compile(rb"\s*(`{3,}|~{3,})")
+CODE_FENCE_OPENING = r"\s*(`{3,}|~{3,})"
+_FENCE_OPEN = re.compile(CODE_FENCE_OPENING.encode())
 _FRONTMATTER_DELIMITER = re.compile(rb"---\s*\Z")
 _LIST_MARKER = re.compile(rb"\s*(?:[-*+]|\d+[.)])(?:[ \t]+|\Z)")
 _LEADING_SPACE = re.compile(rb"\s*")
@@ -114,11 +118,16 @@ def _frontmatter_closing_line(lines: list[bytes]) -> int | None:
 
 def _fence_last_line(lines: list[bytes], first: int, fence: bytes) -> int:
     """Return the line closing a fenced code block, or the text's last non-blank line when none closes it."""
-    closing = re.compile(rb"\s*%b{%d,}\s*\Z" % (re.escape(fence[:1]), len(fence)))
+    closing = re.compile(closing_code_fence(fence.decode()).encode())
     for index in range(first + 1, len(lines)):
         if closing.match(lines[index]):
             return index
     return max(index for index, line in enumerate(lines) if line.strip())
+
+
+def closing_code_fence(fence: str) -> str:
+    """Return the pattern of a line closing the code fence: its character at least as many times, alone on the line."""
+    return rf"\s*{re.escape(fence[0])}{{{len(fence)},}}\s*\Z"
 
 
 def _paragraph_last_line(lines: list[bytes], first: int) -> int:
@@ -181,7 +190,7 @@ def coverage_check(files: SeriesFolder, revision: str) -> None:
     records = SeriesRecords(files)
     coverage = records.coverage(revision)
     path = _coverage_path(revision)
-    sentence_count = len(split_sentences(_read_instruction(files, revision)))
+    sentence_count = len(split_sentences(read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")))
     _refuse_unmapped_demands(records.demands(), coverage, path)
     _refuse_numbers_outside_text(coverage, sentence_count, path)
     _refuse_sentences_without_demand(coverage, sentence_count)
@@ -191,16 +200,7 @@ def coverage_check(files: SeriesFolder, revision: str) -> None:
 
 def _coverage_path(revision: str) -> str:
     """Return the path of a revision's `3-coverage.yaml`."""
-    return f"{revision}/3-coverage.yaml"
-
-
-def _read_instruction(files: SeriesFolder, revision: str) -> bytes:
-    """Return the bytes of a revision's `2-instruction.md`, refusing it absent."""
-    path = f"{revision}/2-instruction.md"
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
+    return f"{revision}/{COVERAGE_FILE}"
 
 
 def _refuse_unmapped_demands(demands: Demands, coverage: Coverage, path: str) -> None:

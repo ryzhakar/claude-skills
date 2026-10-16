@@ -2,18 +2,13 @@ from collections.abc import Callable, Mapping
 from itertools import cycle, islice
 
 from instruction_eval.coverage import Sentence, split_sentences
-from instruction_eval.records import Conditions, Control, Omissions
-from instruction_eval.tasks import EVERY_SENTENCE_OMISSIONS, INSTRUCTION_CONDITION, OMISSION_PREFIX, WORD_PATTERN, words
+from instruction_eval.records import AIM_CONTROL, EMPTY_CONTROL, PLACEBO_CONTROL, PLACEBO_SNAPSHOT, SOURCE_CONTROL, Conditions, Control, Omissions
+from instruction_eval.tasks import INSTRUCTION_CONDITION, WORD_PATTERN, omission_conditions, words
 
-_FENCE = "---"
+FRONTMATTER_FENCE = "---"
 _NEWLINE = b"\n"
 SOURCE_SEPARATOR = "\n\n"
 PLACEBO_WORD_SEPARATOR = " "
-PLACEBO_SNAPSHOT_PATH = "4-placebo-source.md"
-EMPTY_CONTROL: Control = "empty"
-AIM_CONTROL: Control = "aim"
-PLACEBO_CONTROL: Control = "placebo"
-SOURCE_CONTROL: Control = "source"
 
 
 def revision_condition_texts(instruction: bytes, omissions: Omissions) -> dict[str, bytes]:
@@ -37,7 +32,7 @@ def _placebo_text(placebo_source: str, first_instruction: bytes) -> bytes:
     word_count = len(words(first_instruction.decode()))
     placebo_words = WORD_PATTERN.findall(placebo_source)
     if word_count and not placebo_words:
-        raise ValueError(f"placebo source holds no word: {PLACEBO_SNAPSHOT_PATH}")
+        raise ValueError(f"placebo source holds no word: {PLACEBO_SNAPSHOT}")
     repeated = islice(cycle(placebo_words), word_count)
     return PLACEBO_WORD_SEPARATOR.join(repeated).encode()
 
@@ -49,12 +44,10 @@ def _source_text(sources: Mapping[str, str]) -> bytes:
 
 def _omission_texts(instruction: bytes, omissions: Omissions) -> dict[str, bytes]:
     """Return the instruction without sentence n as `omit-<n>` for each sentence when omissions are every sentence, else nothing."""
-    if omissions != EVERY_SENTENCE_OMISSIONS:
-        return {}
     sentences = split_sentences(instruction)
     return {
-        f"{OMISSION_PREFIX}{sentence.number}": _without(instruction, _omitted_span(instruction, sentence, sentences))
-        for sentence in sentences
+        condition: _without(instruction, _omitted_span(instruction, sentence, sentences))
+        for condition, sentence in zip(omission_conditions(omissions, len(sentences)), sentences)
     }
 
 
@@ -120,9 +113,9 @@ class UnclosedFrontmatter(ValueError):
 def strip_frontmatter(text: str, path: str) -> str:
     """Return the text without its leading frontmatter block, refusing an unclosed block."""
     lines = text.split("\n")
-    if lines[0] != _FENCE:
+    if lines[0] != FRONTMATTER_FENCE:
         return text
-    closing_index = next((i for i, line in enumerate(lines[1:], 1) if line == _FENCE), None)
+    closing_index = next((i for i, line in enumerate(lines[1:], 1) if line == FRONTMATTER_FENCE), None)
     if closing_index is None:
         raise UnclosedFrontmatter(f"unclosed frontmatter: {path}")
     return "\n".join(lines[closing_index + 1:])

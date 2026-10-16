@@ -4,8 +4,7 @@ import re
 import pytest
 import yaml
 
-from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from instruction_eval.series import guard_series
+from instruction_eval.records import Refusal, SeriesFolder, guard_series, write_file, write_record
 
 SERIES = {
     "instruction": "/home/writer/terse.md",

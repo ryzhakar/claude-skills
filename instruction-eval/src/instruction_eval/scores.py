@@ -9,39 +9,42 @@ from typing import NamedTuple, TypedDict
 
 import numpy
 
-from instruction_eval.coverage import split_sentences
+from instruction_eval.coverage import CODE_FENCE_OPENING, closing_code_fence, split_sentences
 from instruction_eval.records import (
     ANCHOR_KEY,
+    COLLECTED_FILE,
+    COMPLETION_COMPARES,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
     DETECTOR_DEMANDS,
+    DETECTORS_FILE,
+    DRIFT_COMPARES,
+    EMPTY_CONTROL,
     FIRST_REVISION,
     GATE_RECORD,
+    KEY_SEPARATOR,
+    NEAR_SOURCE_COMPARES,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    SCORES_FILE,
+    SOURCE_CONTROL,
     TASKS_RECORD,
-    Coverage,
+    VS_COMPARES,
     DoneBy,
-    Dropped,
     Gate,
     LongSentencesDemand,
     PatternDemand,
     Record,
-    Refusal,
     SeriesFolder,
     SeriesRecords,
     Split,
-    reply_path,
+    accepted_verdict_paths,
+    missing_gate_key,
+    origin_reply_paths,
     write_record,
 )
-from instruction_eval.tasks import words
+from instruction_eval.tasks import INSTRUCTION_CONDITION, words
 
-_INSTRUCTION = "instruction"
-_SOURCE = "source"
-_EMPTY = "empty"
-_VS_CONTROLS = (_EMPTY, "aim", "placebo")
-_VS_PREFIX = "instruction-vs-"
-_NEAR_SOURCE = "instruction-near-source"
-_COMPLETION = "completion"
-_DRIFT = "drift"
 _TWO_SIDED_TAILS = 2
 _LEAST_VALUES_FOR_VARIANCE = 2
 _LEAST_TURNS_FOR_SLOPE = 2
@@ -141,7 +144,7 @@ def measure_noise(
 ) -> Noise:
     """Return r1's noise: each condition's repeat variances and the half-width each check and change can resolve."""
     z = NormalDist().inv_cdf((1 + level) / _TWO_SIDED_TAILS)
-    conditions = [_INSTRUCTION, *controls]
+    conditions = [INSTRUCTION_CONDITION, *controls]
     task_replies = [row for row in sealed_rows if row["turn"] is None]
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
@@ -171,10 +174,10 @@ def measure_noise(
             repeats * _unit_count(turn_replies),
         ),
         "demands": {
-            demand: _change_half_width(z, by_condition[_INSTRUCTION], task_repeat_units)
+            demand: _change_half_width(z, by_condition[INSTRUCTION_CONDITION], task_repeat_units)
             for demand, by_condition in sigma["demands"].items()
         },
-        "done_change": _change_half_width(z, sigma["done"][_INSTRUCTION], task_repeat_units),
+        "done_change": _change_half_width(z, sigma["done"][INSTRUCTION_CONDITION], task_repeat_units),
     }
 
 
@@ -190,17 +193,21 @@ def _check_half_widths(
     breaches = sigma["breaches"]
     done_of_completion_control = sigma["done"][completion_control] if completion_control else None
     checks = {
-        _VS_PREFIX + control: _half_width(z, [breaches[_INSTRUCTION], breaches[control]], task_repeat_units)
-        for control in _VS_CONTROLS
+        compares: _half_width(z, [breaches[INSTRUCTION_CONDITION], breaches[control]], task_repeat_units)
+        for control, compares in VS_COMPARES.items()
     }
-    checks[_COMPLETION] = _half_width(z, [sigma["done"][_INSTRUCTION], done_of_completion_control], task_repeat_units)
-    if _SOURCE in controls:
-        checks[_NEAR_SOURCE] = _half_width(z, [breaches[_INSTRUCTION], breaches[_SOURCE]], task_repeat_units)
+    checks[COMPLETION_COMPARES] = _half_width(z, [sigma["done"][INSTRUCTION_CONDITION], done_of_completion_control], task_repeat_units)
+    if SOURCE_CONTROL in controls:
+        checks[NEAR_SOURCE_COMPARES] = _half_width(z, [breaches[INSTRUCTION_CONDITION], breaches[SOURCE_CONTROL]], task_repeat_units)
     if conversation_repeat_units:
         drift = sigma["drift"]
-        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
-        checks[_DRIFT] = _half_width(z, [drift[_INSTRUCTION], drift[drift_control]], conversation_repeat_units)
+        checks[DRIFT_COMPARES] = _half_width(z, [drift[INSTRUCTION_CONDITION], drift[_drift_control(controls)]], conversation_repeat_units)
     return checks
+
+
+def _drift_control(controls: Sequence[str]) -> str:
+    """Return the control drift is compared with: `source` when the controls hold it, else `empty`."""
+    return SOURCE_CONTROL if SOURCE_CONTROL in controls else EMPTY_CONTROL
 
 
 def _unit_count(replies: Sequence[ScoredReply]) -> int:
@@ -374,22 +381,20 @@ def require_valid_level(level: float) -> None:
         raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
 
 
-SCORES_FILE = "8-scores.yaml"
 BootstrapRng = Callable[[], numpy.random.Generator]
-ORIGINS_FILE = "6-origins.yaml"
-COLLECTED_FILE = "7-collected.yaml"
-DETECTORS_FILE = "7-detectors.yaml"
-LEVEL_INPUT = f"{GATE_RECORD}#level"
-DONE_BY_INPUT = f"{GATE_RECORD}#done_by"
-DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}#demands", f"{TASKS_RECORD}#tasks", f"{TASKS_RECORD}#conversations")
+LEVEL_KEY = "level"
+DONE_BY_KEY = "done_by"
+LEVEL_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{LEVEL_KEY}"
+DONE_BY_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{DONE_BY_KEY}"
+DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", f"{TASKS_RECORD}{KEY_SEPARATOR}tasks", f"{TASKS_RECORD}{KEY_SEPARATOR}conversations")
 SCORE_USER_INPUTS = (
     *DEMANDS_AND_TASKS_INPUTS,
-    f"{FIRST_REVISION}/3-coverage.yaml#demands",
-    f"{FIRST_REVISION}/3-coverage.yaml#sentences",
+    f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands",
+    f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences",
     LEVEL_INPUT,
     DONE_BY_INPUT,
 )
-FENCE_OPENING = re.compile(r"\s*(`{3,}|~{3,})")
+FENCE_OPENING = re.compile(CODE_FENCE_OPENING)
 LINE_BREAK = "\n"
 
 
@@ -399,7 +404,7 @@ def revision_detect(files: SeriesFolder, revision: str) -> None:
     detector_demands = [demand for demand in records.demands().demands if isinstance(demand, DETECTOR_DEMANDS)]
     answer_keys = {task.id: task.answer_key for task in records.tasks().tasks}
     origins = records.origins(revision)
-    reply_paths = _origin_reply_paths(revision, origins)
+    reply_paths = origin_reply_paths(origins, revision)
     replies = {blind_id: records.reply(path) for blind_id, path in reply_paths.items()}
     verdicts = [
         _detector_entry(blind_id, reply["text"], detector_demands, answer_keys.get(reply["task"])) for blind_id, reply in replies.items()
@@ -435,16 +440,11 @@ def _without_fenced_code(text: str) -> str:
         if closing is not None:
             closing = None if closing.match(line) else closing
         elif opening := FENCE_OPENING.match(line):
-            closing = _closing_fence(opening.group(1))
+            closing = re.compile(closing_code_fence(opening.group(1)))
             kept.append("")
         else:
             kept.append(line)
     return LINE_BREAK.join(kept)
-
-
-def _closing_fence(fence: str) -> re.Pattern[str]:
-    """Return the pattern of a line closing the fence: its character at least as many times, alone on the line."""
-    return re.compile(rf"\s*{re.escape(fence[0])}{{{len(fence)},}}\s*\Z")
 
 
 def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
@@ -453,45 +453,31 @@ def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapR
     level, done_by = _scoring_keys(records.gate())
     origins = records.origins(revision)
     collected = records.collected(revision)
-    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    verdicts = records.accepted_verdicts(revision, collected)
     rows = join_reply_rows(origins, verdicts, records.detectors(revision), done_by, OPEN_SPLIT)
-    scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level, bootstrap_rng)
+    scores = _open_scores(rows, records.gate_demands(), level, bootstrap_rng)
     write_record(files, f"{revision}/{SCORES_FILE}", scores, _score_reads(revision, origins, collected))
 
 
 def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
     """Return the gate's level and done mode, refusing either key unwritten."""
     if gate.level is None:
-        raise Refusal(f"missing key: {LEVEL_INPUT}")
+        raise missing_gate_key(LEVEL_KEY)
     if gate.done_by is None:
-        raise Refusal(f"missing key: {DONE_BY_INPUT}")
+        raise missing_gate_key(DONE_BY_KEY)
     return gate.level, gate.done_by
-
-
-def _gate_demands(coverage: Coverage) -> list[str]:
-    """Return the demands r1's coverage does not drop, in coverage order."""
-    return [demand for demand, sentences in coverage.demands.items() if not isinstance(sentences, Dropped)]
 
 
 def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]:
     """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
     return [
         *SCORE_USER_INPUTS,
-        *_origin_reply_paths(revision, origins).values(),
+        *origin_reply_paths(origins, revision).values(),
         f"{revision}/{ORIGINS_FILE}",
-        *(f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()),
+        *accepted_verdict_paths(revision, collected),
         f"{revision}/{COLLECTED_FILE}",
         f"{revision}/{DETECTORS_FILE}",
     ]
-
-
-def _origin_reply_paths(revision: str, origins: Record) -> dict[str, str]:
-    """Map each reply origin's blind id to its reply file, a borrowed one in the revision it names."""
-    return {
-        blind_id: reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
-        for blind_id, origin in origins["ids"].items()
-        if ANCHOR_KEY not in origin
-    }
 
 
 def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
@@ -524,15 +510,14 @@ def instruction_comparisons(
     task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng
 ) -> dict[str, dict[str, object]]:
     """Map each compares the rows define to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
-    controls = [condition for condition in (*_VS_CONTROLS, _SOURCE) if condition in _conditions_of(task_rows)]
+    controls = [condition for condition in (*VS_COMPARES, SOURCE_CONTROL) if condition in _conditions_of(task_rows)]
     task_breaches = partial(_task_means_of, task_rows, partial(breach_total, demands=gate_demands))
-    comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != _SOURCE}
-    if _SOURCE in controls:
-        comparisons[_NEAR_SOURCE] = _instruction_minus(task_breaches, _SOURCE, level, bootstrap_rng)
-    comparisons[_COMPLETION] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
+    comparisons = {VS_COMPARES[control]: _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != SOURCE_CONTROL}
+    if SOURCE_CONTROL in controls:
+        comparisons[NEAR_SOURCE_COMPARES] = _instruction_minus(task_breaches, SOURCE_CONTROL, level, bootstrap_rng)
+    comparisons[COMPLETION_COMPARES] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
     if turn_rows:
-        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
-        comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level, bootstrap_rng)
+        comparisons[DRIFT_COMPARES] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), _drift_control(controls), level, bootstrap_rng)
     return comparisons
 
 
@@ -552,7 +537,7 @@ def _conversation_slopes(turn_rows: Sequence[ScoredReply], gate_demands: Sequenc
 
 def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], other: str | None, level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return the comparison record of instruction minus the other condition over the units both hold a mean for."""
-    units = paired_units(unit_means(_INSTRUCTION), unit_means(other))
+    units = paired_units(unit_means(INSTRUCTION_CONDITION), unit_means(other))
     return _comparison_record(compare_paired(units, level, bootstrap_rng()))
 
 

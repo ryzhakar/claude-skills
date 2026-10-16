@@ -6,7 +6,7 @@ import pytest
 import yaml
 from hypothesis import given, strategies as st
 
-from instruction_eval.records import RecordError, RecordKind, parse_record
+from instruction_eval.records import Refusal, RecordKind, parse_record
 
 FIXTURES = Path(__file__).parent / "fixtures" / "command-record-schemas"
 
@@ -34,7 +34,7 @@ def without(document: dict, path: tuple) -> dict:
 
 
 def assert_refused(kind: RecordKind, document: dict, fragment: str) -> None:
-    with pytest.raises(RecordError, match=re.escape(fragment)):
+    with pytest.raises(Refusal, match=re.escape(fragment)):
         parse_record(kind, document)
 
 
@@ -600,7 +600,7 @@ INTERVAL_PATH = ("comparisons", "drift", "interval")
 def test_arbitrary_documents_are_refused_with_record_error_alone(document, kind):
     try:
         parse_record(kind, document)
-    except RecordError:
+    except Refusal:
         pass
 
 

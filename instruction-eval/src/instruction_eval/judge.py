@@ -13,48 +13,85 @@ from itertools import islice
 from pathlib import Path
 from random import Random
 from statistics import fmean, median
-from typing import TYPE_CHECKING
 
 import yaml
 
-from instruction_eval.conditions import strip_frontmatter
+from instruction_eval.conditions import SOURCE_SEPARATOR, strip_frontmatter
 from instruction_eval.coverage import split_sentences
+from instruction_eval.reader import (
+    AGENT_TYPE_KEY,
+    LAUNCHES_KEY,
+    OATH_SKILL,
+    REPEATS_KEY,
+    AgentKind,
+    Transcript,
+    TranscriptReply,
+    check_neutral_login,
+    judge_transcript_rejection,
+    parse_transcript_replies,
+    refuse_edited_series_file,
+    render_agent_definition,
+)
 from instruction_eval.records import (
+    AGENTS_FOLDER,
+    AGREEMENT_FILE,
     ANCHOR_KEY,
     ANCHORS_RECORD,
+    ATTEMPT_FOLDER_PREFIX,
+    ATTEMPT_ORIGINS_FILE,
+    BRIEF_SNAPSHOT_FILE,
+    CALIBRATION_FOLDER,
     CALIBRATION_RECORD,
+    COLLECTED_FILE,
+    CONDITION_KEYS,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
+    FIRST_ATTEMPT,
     FIRST_REVISION,
     GATE_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    PLAN_FILE,
     READER_RECORD,
+    REFERENCE_PREFIX,
+    REFERENCE_USER_FILE,
+    REPEAT_PREFIX,
+    REPLIES_FOLDER,
+    SAMPLE_FILE,
     SERIES_RECORD,
+    TASK_KEYS,
     TASKS_RECORD,
-    USER_RATER,
+    VERDICTS_FOLDER,
+    WORKING_BRIEF,
     Acceptance,
     AgentRaters,
     Demand,
     Demands,
-    Dropped,
     JudgeDemand,
     Plan,
     Record,
-    RecordError,
     RecordKind,
     Refusal,
     SeriesFolder,
     SeriesRecords,
     Task,
+    agent_definition_path,
     attempt_folder,
+    guard_series,
     load_record,
+    missing_gate_key,
+    packet_path,
     parse_record,
+    series_paths,
     sha256,
+    source_snapshot_path,
+    verdict_path,
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE
 from instruction_eval.tasks import (
     OMISSION_PREFIX,
     ExpectedReply,
@@ -62,19 +99,13 @@ from instruction_eval.tasks import (
     refuse_missing_replies,
 )
 
-if TYPE_CHECKING:
-    from instruction_eval.reader import Transcript, TranscriptReply
-
 SOURCE_PLACEHOLDER = "{SOURCE}"
 DEMANDS_PLACEHOLDER = "{DEMANDS}"
 PACKET_PLACEHOLDER = "{PACKET}"
 OUT_PLACEHOLDER = "{OUT}"
 PLACEHOLDERS = (SOURCE_PLACEHOLDER, DEMANDS_PLACEHOLDER, PACKET_PLACEHOLDER, OUT_PLACEHOLDER)
 PLACEHOLDER_PATTERN = re.compile("|".join(re.escape(placeholder) for placeholder in PLACEHOLDERS))
-OATH_SKILL = "manifesto:manifesto-oath"
 BRIEF_FORBIDDEN_WORDS = ("empty", "aim", "placebo", "instruction", "omit", "control", "condition", "revision", "reader", "digest")
-SOURCE_FOLDER = "1-source"
-SOURCE_SEPARATOR = "\n\n"
 VERDICT_LABEL = RecordKind.VERDICT.value
 OMISSIONS_PACKET_SUFFIX = "--omissions"
 TURN_PACKET_INFIX = "-turn-"
@@ -127,7 +158,7 @@ def _binding_text(sources: Mapping[str, str], demands: Demands, gate_demand_ids:
 
 def _source_file_text(basename: str, text: str) -> str:
     """Return one source file's name line, a blank line, and its text without frontmatter."""
-    return f"Source file: {basename}\n\n{strip_frontmatter(text, f'{SOURCE_FOLDER}/{basename}')}"
+    return f"Source file: {basename}\n\n{strip_frontmatter(text, source_snapshot_path(basename))}"
 
 
 def _demand_list(demands: Iterable[Demand]) -> str:
@@ -136,7 +167,7 @@ def _demand_list(demands: Iterable[Demand]) -> str:
 
 
 def parse_verdict(document: object, blind_ids: AbstractSet[str], judge_demand_ids: AbstractSet[str]) -> Record:
-    """Return the verdict document when it holds every blind id of its packet once, each counting every judge demand, values in range, and raise RecordError otherwise."""
+    """Return the verdict document when it holds every blind id of its packet once, each counting every judge demand, values in range, and raise Refusal otherwise."""
     verdict = parse_record(RecordKind.VERDICT, document)
     _refuse_other_blind_ids(verdict, blind_ids)
     for index, entry in enumerate(verdict["verdicts"]):
@@ -145,24 +176,24 @@ def parse_verdict(document: object, blind_ids: AbstractSet[str], judge_demand_id
 
 
 def _refuse_other_blind_ids(verdict: Record, blind_ids: AbstractSet[str]) -> None:
-    """Raise RecordError when the verdict misses a blind id of the packet or judges one outside it."""
+    """Raise Refusal when the verdict misses a blind id of the packet or judges one outside it."""
     judged = {entry["id"] for entry in verdict["verdicts"]}
     missing = sorted(blind_ids - judged)
     if missing:
-        raise RecordError(f"{VERDICT_LABEL}: missing blind id {missing[0]}")
+        raise Refusal(f"{VERDICT_LABEL}: missing blind id {missing[0]}")
     foreign = sorted(judged - blind_ids)
     if foreign:
-        raise RecordError(f"{VERDICT_LABEL}: blind id {foreign[0]} is not in the packet")
+        raise Refusal(f"{VERDICT_LABEL}: blind id {foreign[0]} is not in the packet")
 
 
 def _refuse_other_demands(breaches: Mapping[str, int], path: str, judge_demand_ids: AbstractSet[str]) -> None:
-    """Raise RecordError when a breaches map misses a judge demand or counts another demand."""
+    """Raise Refusal when a breaches map misses a judge demand or counts another demand."""
     missing = sorted(judge_demand_ids - breaches.keys())
     if missing:
-        raise RecordError(f"{path}: missing judge demand {missing[0]}")
+        raise Refusal(f"{path}: missing judge demand {missing[0]}")
     foreign = sorted(breaches.keys() - judge_demand_ids)
     if foreign:
-        raise RecordError(f"{path}: {foreign[0]} is not a judge demand")
+        raise Refusal(f"{path}: {foreign[0]} is not a judge demand")
 
 
 @dataclass(frozen=True)
@@ -262,7 +293,6 @@ def _section(blind_id: str, exchanges: Iterable[tuple[str, str]]) -> str:
 
 
 JUDGE_DEFINITION_PREFIX = "ie-judge-"
-AGENTS_FOLDER = ".claude/agents"
 FAILED_JUDGINGS_BEFORE_RECALIBRATION = 3
 RECALIBRATE_REFUSAL = "recalibrate in a new series"
 
@@ -309,7 +339,7 @@ class _Judgings:
 
     files: SeriesFolder
     revision: str
-    transcripts: Sequence["Transcript"]
+    transcripts: Sequence[Transcript]
     read_transcript: Callable[[Path], bytes]
     origins: Record
     judge_model: str
@@ -319,7 +349,7 @@ class _Judgings:
 
 
 def judging_states(
-    files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]
+    files: SeriesFolder, revision: str, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
 ) -> dict[str, JudgingState]:
     """Return each packet of the revision's origins with its judging state, refusing a packet holding three failed judgings."""
     records = SeriesRecords(files)
@@ -331,7 +361,7 @@ def _judging_states(
     revision: str,
     origins: Record,
     calibration: Record,
-    transcripts: Sequence["Transcript"],
+    transcripts: Sequence[Transcript],
     read_transcript: Callable[[Path], bytes],
 ) -> dict[str, JudgingState]:
     """Return each packet of the loaded origins with its judging state under the loaded calibration, refusing a packet holding three failed judgings."""
@@ -371,7 +401,7 @@ def _judging_outcome(
     """Return the judging's acceptance, `PendingJudging` while its verdict file is absent and its transcript has not ended, or None when it failed."""
     run = _latest_run(judgings.transcripts, judgings.read_transcript, _judging_agent_type(judgings.revision, packet, number))
     reply = run.reply if run else None
-    if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
+    if not judgings.files.holds(verdict_path(judgings.revision, packet, number)):
         return None if reply else PendingJudging(number)
     verdict = _valid_verdict(judgings, packet_origins, packet, number)
     if verdict is None or run is None or reply is None or reply.model != judgings.judge_model or _is_rejected(judgings, run, packet, number):
@@ -393,24 +423,17 @@ def _judging_agent_type(revision: str, packet: str, number: int) -> str:
     return f"{JUDGE_DEFINITION_PREFIX}{revision}-{packet}-k{number}"
 
 
-def _verdict_file(revision: str, packet: str, number: int) -> str:
-    """Return the series path of judging `number`'s verdict file."""
-    return f"{revision}/7-verdicts/{packet}/k{number}.yaml"
-
-
 @dataclass(frozen=True)
 class _Run:
     """The latest transcript of a judging: its path, its bytes, and its final reply when it has ended in one."""
 
     path: Path
     content: bytes
-    reply: "TranscriptReply | None"
+    reply: TranscriptReply | None
 
 
-def _latest_run(transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes], agent_type: str) -> _Run | None:
+def _latest_run(transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes], agent_type: str) -> _Run | None:
     """Return the agent type's latest transcript read once, or None when it has no transcript."""
-    from instruction_eval.reader import parse_transcript_replies
-
     contents = {transcript.path: read_transcript(transcript.path) for transcript in transcripts if transcript.agent_type == agent_type}
     if not contents:
         return None
@@ -429,18 +452,16 @@ def _start_time(transcript: bytes) -> datetime:
 
 def _is_rejected(judgings: _Judgings, run: _Run, packet: str, number: int) -> bool:
     """Tell whether the judge's transcript shows a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict."""
-    from instruction_eval.reader import judge_transcript_rejection
-
-    verdict_path = judgings.files.root / _verdict_file(judgings.revision, packet, number)
-    return judge_transcript_rejection(run.path, run.content, verdict_path) is not None
+    verdict_file = judgings.files.root / verdict_path(judgings.revision, packet, number)
+    return judge_transcript_rejection(run.path, run.content, verdict_file) is not None
 
 
 def _valid_verdict(judgings: _Judgings, packet_origins: Mapping[str, Record], packet: str, number: int) -> Record | None:
     """Return the judging's verdict file parsed against the packet's blind ids and the judge demands, or None when it is not valid."""
     try:
-        document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
+        document = yaml.safe_load(judgings.files.read_bytes(verdict_path(judgings.revision, packet, number)))
         return parse_verdict(document, set(packet_origins), judgings.judge_demand_ids)
-    except (yaml.YAMLError, RecordError):
+    except (yaml.YAMLError, Refusal):
         return None
 
 
@@ -485,16 +506,11 @@ def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[in
 
 
 BLIND_COMMAND = "revision blind"
-INSTRUCTION_FILE = "2-instruction.md"
-PACKETS_FOLDER = "6-packets"
-ORIGINS_FILE = "6-origins.yaml"
-TASK_KEYS = ("tasks", "conversations")
-CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
 
 
 def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     """Write the revision's blinded packets and their origins, a later revision borrowing every control reply from r1, refusing without calibration, a gap in the expected replies, or too few anchors."""
-    _refuse_unusable_series(files, BLIND_COMMAND)
+    guard_series(files, BLIND_COMMAND)
     records = SeriesRecords(files)
     calibration = records.calibration()
     expected = _expected_replies(files, revision, records)
@@ -505,18 +521,11 @@ def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     write_record(files, f"{revision}/{ORIGINS_FILE}", _origins_record(blinded.origins, blinded.packets), _blind_reads(revision, expected))
 
 
-def _refuse_unusable_series(files: SeriesFolder, command: str) -> None:
-    """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
-    from instruction_eval.series import guard_series
-
-    guard_series(files, command)
-
-
 def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
     """Return the replies the revision expects, refusing a gate whose repeats are unwritten."""
     repeats = records.gate().repeats
     if repeats is None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+        raise missing_gate_key(REPEATS_KEY)
     sentence_count = len(split_sentences(files.read_bytes(f"{revision}/{INSTRUCTION_FILE}")))
     return expected_replies(revision, records.tasks(), records.conditions(), repeats, sentence_count)
 
@@ -524,7 +533,7 @@ def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords
 def _write_packets(files: SeriesFolder, revision: str, packets: Mapping[str, str]) -> None:
     """Write each packet's text to the revision's packets folder."""
     for packet, text in packets.items():
-        write_file(files, f"{revision}/{PACKETS_FOLDER}/{packet}.md", text.encode())
+        write_file(files, packet_path(revision, packet), text.encode())
 
 
 def _origins_record(origins: Mapping[str, Record], packets: Mapping[str, str]) -> dict[str, object]:
@@ -537,7 +546,7 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
     return [
         *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
         *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
-        f"{GATE_RECORD}{KEY_SEPARATOR}repeats",
+        f"{GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}",
         f"{revision}/{INSTRUCTION_FILE}",
         *(reply.path for reply in expected),
         CALIBRATION_RECORD,
@@ -546,37 +555,27 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
 
 
 CALIBRATE_COMMAND = "judge calibrate"
-WORKING_BRIEF = "6-judge/brief.md"
-PLAN_FILE = "plan.yaml"
-COVERAGE_FILE = "3-coverage.yaml"
-BRIEF_SNAPSHOT_FILE = "brief.md"
-ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
-FIRST_ATTEMPT = 1
+ATTEMPT_PATTERN = re.compile(rf"{ATTEMPT_FOLDER_PREFIX}([0-9]+)")
 CALIBRATION_AGENT_PREFIX = "ie-calib-"
 CANDIDATE_NAME = "candidate"
 RATER_NAME = "rater"
-REFERENCE_PREFIX = "reference-"
 CANDIDATE_RUNS = (1, 2)
 RATER_RUNS = (1, 2)
-LAUNCHES_KEY = "launches"
-AGENT_TYPE_KEY = "agent_type"
 SAMPLE_PACKET = "sample"
-SAMPLE_FILE = "sample.md"
-ATTEMPT_ORIGINS_FILE = "origins.yaml"
 POOL_EXHAUSTED_REFUSAL = "calibration pool exhausted: lower sample_size or start a new series with more repeats"
-OPEN_TASK_REPLY_PATTERN = f"{FIRST_REVISION}/5-replies/*/*/repeat-*.yaml"
-REPEAT_FILE_PATTERN = re.compile(r"repeat-([0-9]+)\.yaml")
+OPEN_TASK_REPLY_PATTERN = f"{FIRST_REVISION}/{REPLIES_FOLDER}/*/*/{REPEAT_PREFIX}*.yaml"
+REPEAT_FILE_PATTERN = re.compile(rf"{REPEAT_PREFIX}([0-9]+)\.yaml")
 
 
 def calibrate_stage_one(
     files: SeriesFolder, brief_template: Path, environ: Mapping[str, str], home: Path, working_dir: Path, random: Random
 ) -> str:
     """Run stage one of `judge calibrate` on the latest attempt: snapshot the brief, blind a sample of r1's open replies, write the rating definitions, and return their launch list."""
-    _refuse_unusable_series(files, CALIBRATE_COMMAND)
+    guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     brief = _working_brief(files, brief_template)
-    _refuse_outside_neutral_login(environ, home, working_dir)
+    check_neutral_login(environ, home, working_dir)
     records = SeriesRecords(files)
     plan = records.plan(attempt)
     earlier = _earlier_attempts_with_origins(files, attempt)
@@ -588,7 +587,7 @@ def calibrate_stage_one(
     write_file(files, f"{folder}/{SAMPLE_FILE}", sample.text.encode())
     write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _origins_record(sample.origins, {SAMPLE_PACKET: sample.text}), _stage_one_reads(files, records, attempt, sample.replies, earlier))
     for name, definition in definitions.items():
-        write_file(files, f"{AGENTS_FOLDER}/{name}.md", definition)
+        write_file(files, agent_definition_path(name), definition)
     return _launch_list(definitions)
 
 
@@ -651,18 +650,9 @@ def _judging_definition(
     files: SeriesFolder, records: SeriesRecords, brief: str, packet: str, verdict_path: Path, reader_model: str, agent_type: str, model: str
 ) -> bytes:
     """Return the definition of a judge or rater agent running `model`, its body the brief rendered for the packet text and the verdict path."""
-    sources = {source.name: files.read_bytes(f"{SOURCE_FOLDER}/{source.name}").decode() for source in records.series().sources}
+    sources = {source.name: files.read_bytes(source_snapshot_path(source.name)).decode() for source in records.series().sources}
     body = render_brief(brief, sources, records.demands(), _gate_demand_ids_without_sources(records), packet, verdict_path, reader_model, files.root.name)
-    from instruction_eval.reader import AgentKind, render_agent_definition
-
     return render_agent_definition(agent_type, model, AgentKind.JUDGE, body.encode())
-
-
-def _refuse_outside_neutral_login(environ: Mapping[str, str], home: Path, working_dir: Path) -> None:
-    """Refuse a session outside the neutral login or a working directory under a memory file."""
-    from instruction_eval.reader import check_neutral_login
-
-    check_neutral_login(environ, home, working_dir)
 
 
 def _refuse_calibrated_series(files: SeriesFolder) -> None:
@@ -673,7 +663,7 @@ def _refuse_calibrated_series(files: SeriesFolder) -> None:
 
 def _latest_attempt(files: SeriesFolder) -> int:
     """Return the highest attempt number holding a plan, refusing a series without one."""
-    folders = (files.root / attempt_folder(FIRST_ATTEMPT)).parent.glob(f"attempt-*/{PLAN_FILE}")
+    folders = (files.root / CALIBRATION_FOLDER).glob(f"{ATTEMPT_FOLDER_PREFIX}*/{PLAN_FILE}")
     numbers = [int(match.group(1)) for folder in folders if (match := ATTEMPT_PATTERN.fullmatch(folder.parent.name))]
     if not numbers:
         raise Refusal(f"missing record: {attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}")
@@ -706,7 +696,7 @@ def _gate_demand_ids_without_sources(records: SeriesRecords) -> frozenset[str]:
     """Return the ids of the demands r1's coverage keeps when the series has no source, none when it has one."""
     if records.series().sources:
         return frozenset()
-    return frozenset(demand for demand, coverage in records.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped))
+    return frozenset(records.gate_demands())
 
 
 def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
@@ -716,7 +706,7 @@ def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, 
     plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
     return [
         SERIES_RECORD,
-        *(f"{SOURCE_FOLDER}/{source.name}" for source in sources),
+        *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
         f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
         *(f"{folder}/{PLAN_FILE}{KEY_SEPARATOR}{key}" for key in plan_keys),
@@ -744,9 +734,10 @@ def _reply_of_file(path: Path) -> ExpectedReply:
 
 def _load_reply(files: SeriesFolder, path: str) -> Record:
     """Return the reply record at the path, refusing it stale or malformed."""
+    document = load_record(files, path)
     try:
-        return parse_record(RecordKind.REPLY, load_record(files, path))
-    except RecordError as error:
+        return parse_record(RecordKind.REPLY, document)
+    except Refusal as error:
         raise Refusal(f"malformed record: {path} ({error})") from None
 
 
@@ -781,12 +772,12 @@ def judge_prepare(
     environ: Mapping[str, str],
     home: Path,
     working_dir: Path,
-    transcripts: Sequence["Transcript"],
+    transcripts: Sequence[Transcript],
     read_transcript: Callable[[Path], bytes],
 ) -> str:
     """Write the next judging of each packet with no accepted or pending judging and return a pending line per packet awaiting its judge, then the launch list of the judgings written."""
-    _refuse_unusable_series(files, JUDGE_PREPARE_COMMAND)
-    _refuse_outside_neutral_login(environ, home, working_dir)
+    guard_series(files, JUDGE_PREPARE_COMMAND)
+    check_neutral_login(environ, home, working_dir)
     records = SeriesRecords(files)
     origins = records.origins(revision)
     calibration = records.calibration()
@@ -794,7 +785,7 @@ def judge_prepare(
     needed = [(packet, state.judging) for packet, state in states.items() if isinstance(state, NeedsJudging)]
     definitions = _judge_definitions(files, records, revision, origins, calibration, needed)
     for agent_type, definition in definitions.items():
-        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+        write_file(files, agent_definition_path(agent_type), definition)
     pending = "".join(f"judging k{state.judging} pending: {packet}\n" for packet, state in states.items() if isinstance(state, PendingJudging))
     return pending + _launch_list(definitions)
 
@@ -809,8 +800,8 @@ def _judge_definitions(
     definitions = {}
     for packet, judging in judgings:
         agent_type = _judging_agent_type(revision, packet, judging)
-        verdict_path = files.root / _verdict_file(revision, packet, judging)
-        definitions[agent_type] = _judging_definition(files, records, brief, packets[packet], verdict_path, reader_model, agent_type, calibration["judge_model"])
+        verdict_file = files.root / verdict_path(revision, packet, judging)
+        definitions[agent_type] = _judging_definition(files, records, brief, packets[packet], verdict_file, reader_model, agent_type, calibration["judge_model"])
     return definitions
 
 
@@ -821,7 +812,7 @@ def _blinded_packets(files: SeriesFolder, revision: str, origins: Record) -> dic
 
 def _blinded_packet(files: SeriesFolder, revision: str, packet: str, packet_hash: str) -> str:
     """Return the packet's text, refusing it missing, or edited when its bytes differ from the hash its origins hold."""
-    path = f"{revision}/{PACKETS_FOLDER}/{packet}.md"
+    path = packet_path(revision, packet)
     if not files.holds(path):
         raise Refusal(f"missing packet: {path}")
     content = files.read_bytes(path)
@@ -836,12 +827,11 @@ def _accepted_brief(files: SeriesFolder, calibration: Record) -> str:
 
 
 JUDGE_COLLECT_COMMAND = "judge collect"
-VERDICTS_FOLDER = "7-verdicts"
 
 
-def judge_collect(files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
+def judge_collect(files: SeriesFolder, revision: str, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]) -> str:
     """Write the revision's collection of every packet's accepted judging and return nothing, or return the packets to re-judge, refusing a pending judging."""
-    _refuse_unusable_series(files, JUDGE_COLLECT_COMMAND)
+    guard_series(files, JUDGE_COLLECT_COMMAND)
     records = SeriesRecords(files)
     origins = records.origins(revision)
     calibration = records.calibration()
@@ -858,11 +848,9 @@ def judge_collect(files: SeriesFolder, revision: str, transcripts: Sequence["Tra
 
 def _refuse_edited_judge_definitions(files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record) -> None:
     """Refuse a judge definition of the revision whose bytes differ from its recomputation from the accepted brief and its packet."""
-    from instruction_eval.reader import _refuse_edited_file
-
     written = [(packet, judging) for packet in origins["packets"] for judging in _judging_numbers(files, revision, packet)]
     for agent_type, recomputed in _judge_definitions(files, records, revision, origins, calibration, written).items():
-        _refuse_edited_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", recomputed)
+        refuse_edited_series_file(files, agent_definition_path(agent_type), recomputed)
 
 
 def _refuse_pending_judgings(states: Mapping[str, JudgingState]) -> None:
@@ -893,23 +881,18 @@ def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, o
     sources = records.series().sources
     return [
         SERIES_RECORD,
-        *(f"{SOURCE_FOLDER}/{source.name}" for source in sources),
+        *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
         f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
         f"{READER_RECORD}{KEY_SEPARATOR}model",
         CALIBRATION_RECORD,
         f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}",
         ANCHORS_RECORD,
-        *(f"{revision}/{PACKETS_FOLDER}/{packet}.md" for packet in origins["packets"]),
+        *(packet_path(revision, packet) for packet in origins["packets"]),
         f"{revision}/{ORIGINS_FILE}",
         *series_paths(files, f"{revision}/{VERDICTS_FOLDER}/**/*.yaml"),
         *series_paths(files, f"{AGENTS_FOLDER}/{JUDGE_DEFINITION_PREFIX}{revision}-*.md"),
     ]
-
-
-def series_paths(files: SeriesFolder, pattern: str) -> list[str]:
-    """Return the series path of every file the glob pattern matches, in path order."""
-    return sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(pattern) if path.is_file())
 
 
 def _launch_list(agent_types: Iterable[str]) -> str:
@@ -917,8 +900,6 @@ def _launch_list(agent_types: Iterable[str]) -> str:
     return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: agent_type} for agent_type in agent_types]}, sort_keys=False)
 
 
-AGREEMENT_FILE = "agreement.yaml"
-REFERENCE_USER_FILE = f"{REFERENCE_PREFIX}{USER_RATER}.yaml"
 NO_REFERENCE_DONE_REFUSAL = "no reference done in the sample"
 HALF = 0.5
 PLAN_COPIED_KEYS = ("judge_model", "raters", "sample_size", "anchors_per_packet", "acceptance")
@@ -949,9 +930,9 @@ class _Measures:
     scale: float | None
 
 
-def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
+def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]) -> str:
     """Run stage two of `judge calibrate` on the latest attempt: score its candidate ratings against the raters' reference, write its agreement, and on acceptance the calibration and the anchors, returning the attempt's acceptance or rejection."""
-    _refuse_unusable_series(files, CALIBRATE_COMMAND)
+    guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     folder = attempt_folder(attempt)
@@ -989,20 +970,16 @@ def _refuse_missing_ratings(files: SeriesFolder, folder: str, names: Iterable[st
 
 def _refuse_edited_rating_definitions(files: SeriesFolder, records: SeriesRecords, folder: str, ratings: Iterable[_Rating], reader_model: str) -> None:
     """Refuse a rating definition whose bytes differ from its recomputation from the attempt's brief snapshot and sample."""
-    from instruction_eval.reader import _refuse_edited_file
-
     brief = files.read_bytes(f"{folder}/{BRIEF_SNAPSHOT_FILE}").decode()
     sample = files.read_bytes(f"{folder}/{SAMPLE_FILE}").decode()
     for rating in ratings:
-        _refuse_edited_file(files, f"{AGENTS_FOLDER}/{rating.agent_type}.md", _rating_definition(files, records, folder, brief, sample, reader_model, rating))
+        refuse_edited_series_file(files, agent_definition_path(rating.agent_type), _rating_definition(files, records, folder, brief, sample, reader_model, rating))
 
 
 def _rating_run(
-    files: SeriesFolder, folder: str, rating: _Rating, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]
+    files: SeriesFolder, folder: str, rating: _Rating, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
 ) -> dict[str, str]:
     """Return the model, transcript, and transcript hash of the agent that wrote the rating, refusing a rating without an ended transcript, from another model, or whose transcript rejects it."""
-    from instruction_eval.reader import judge_transcript_rejection
-
     path = f"{folder}/{rating.file}"
     run = _latest_run(transcripts, read_transcript, rating.agent_type)
     if run is None or run.reply is None:
@@ -1020,7 +997,7 @@ def _rating_entries(files: SeriesFolder, folder: str, name: str, blind_ids: Abst
     path = f"{folder}/{name}"
     try:
         verdict = parse_verdict(yaml.safe_load(files.read_bytes(path)), blind_ids, judge_demand_ids)
-    except (yaml.YAMLError, RecordError) as error:
+    except (yaml.YAMLError, Refusal) as error:
         raise Refusal(f"invalid rating: {path} ({error})") from None
     return {entry["id"]: entry for entry in verdict["verdicts"]}
 
@@ -1129,6 +1106,6 @@ def _stage_two_reads(
         *_stage_one_reads(files, records, attempt, sampled, _earlier_attempts_with_origins(files, attempt)),
         f"{folder}/{ATTEMPT_ORIGINS_FILE}",
         *(f"{folder}/{name}" for name in sorted(rating_files)),
-        *(f"{AGENTS_FOLDER}/{rating.agent_type}.md" for rating in ratings),
+        *(agent_definition_path(rating.agent_type) for rating in ratings),
         f"{TASKS_RECORD}{KEY_SEPARATOR}tasks",
     ]

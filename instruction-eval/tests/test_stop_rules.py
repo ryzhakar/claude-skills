@@ -1,4 +1,5 @@
-from instruction_eval.gate import Budget, stop_after
+from instruction_eval.gate import stop_after
+from instruction_eval.records import Budget
 
 CEILING = 100.0
 TOKEN_BUDGET = Budget("tokens", CEILING)

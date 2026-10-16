@@ -8,8 +8,10 @@ from typing import Final
 from instruction_eval.records import (
     FIRST_REVISION,
     FIRST_REVISION_NUMBER,
+    INSTRUCTION_FILE,
     OPEN_SPLIT,
     OVERREACH_TARGET,
+    PLACEBO_SNAPSHOT,
     SEALED_SPLIT,
     TASKS_RECORD,
     Conditions,
@@ -19,7 +21,11 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     Tasks,
+    read_series_file,
     reply_path,
+    revision_id,
+    source_snapshot_path,
+    utf8_text,
 )
 
 LabelledText = tuple[str, str]
@@ -32,11 +38,8 @@ HALVES = (OPEN_SPLIT, SEALED_SPLIT)
 FEWEST_CONVERSATIONS_PER_HALF = 2
 FEWEST_TURNS = 2
 ID_SEPARATOR_CLASH = "--"
-REVISION_INSTRUCTION_FILE = "2-instruction.md"
-PLACEBO_SNAPSHOT = "4-placebo-source.md"
 AIM_LABEL = "aim"
 PLACEBO_LABEL = "placebo source"
-SOURCE_FOLDER = "1-source"
 TURN_SUFFIX = re.compile(r"-turn-[0-9]+\Z")
 
 
@@ -60,7 +63,7 @@ def expected_replies(revision: str, tasks: Tasks, conditions: Conditions, repeat
     """Return the expected reply set of a revision in path order: its own instruction and omission replies, and the controls' replies r1 holds."""
     replies = [
         *_every_task_and_turn(revision, INSTRUCTION_CONDITION, tasks, repeats),
-        *(reply for omission in _omission_conditions(conditions, sentence_count) for reply in _open_tasks(revision, omission, tasks, repeats)),
+        *(reply for omission in omission_conditions(conditions.omissions, sentence_count) for reply in _open_tasks(revision, omission, tasks, repeats)),
         *(reply for control in conditions.controls for reply in _every_task_and_turn(FIRST_REVISION, control, tasks, repeats)),
     ]
     return tuple(sorted(replies, key=lambda reply: reply.path))
@@ -87,9 +90,9 @@ def _open_tasks(revision: str, condition: str, tasks: Tasks, repeats: int) -> It
         yield from (ExpectedReply(revision, condition, task.id, repeat, None) for task in tasks.tasks if task.split == OPEN_SPLIT)
 
 
-def _omission_conditions(conditions: Conditions, sentence_count: int) -> tuple[str, ...]:
-    """Return one `omit-<n>` condition per sentence when the conditions call for omissions, else none."""
-    if conditions.omissions != EVERY_SENTENCE_OMISSIONS:
+def omission_conditions(omissions: Omissions, sentence_count: int) -> tuple[str, ...]:
+    """Return one `omit-<n>` condition per sentence, numbered from 1, when omissions are every sentence, else none."""
+    if omissions != EVERY_SENTENCE_OMISSIONS:
         return ()
     return tuple(f"{OMISSION_PREFIX}{sentence}" for sentence in range(1, sentence_count + 1))
 
@@ -193,21 +196,21 @@ def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks, re
     aim = (AIM_LABEL, conditions.aim)
     placebo = _placebo_source(files, conditions, read_external)
     _, placebo_text = placebo
-    _refuse_shared_phrases(_task_messages(tasks), [*instructions, aim, placebo])
+    _refuse_shared_phrases(task_messages(tasks), [*instructions, aim, placebo])
     _refuse_shared_phrases([aim], instructions)
     _refuse_shared_phrases([(PLACEBO_LABEL, placebo_text)], _source_files(files, records.series()))
 
 
 def _revision_instructions(files: SeriesFolder) -> list[LabelledText]:
     """Return the path and text of each revision's instruction, in revision order, up to the first revision without one."""
-    paths = itertools.takewhile(files.holds, (f"r{number}/{REVISION_INSTRUCTION_FILE}" for number in itertools.count(FIRST_REVISION_NUMBER)))
-    return [(path, _read_series_text(files, path)) for path in paths]
+    paths = itertools.takewhile(files.holds, (f"{revision_id(number)}/{INSTRUCTION_FILE}" for number in itertools.count(FIRST_REVISION_NUMBER)))
+    return [(path, utf8_text(read_series_file(files, path), path)) for path in paths]
 
 
 def _placebo_source(files: SeriesFolder, conditions: Conditions, read_external: Callable[[Path], bytes]) -> LabelledText:
     """Return the label and text of the placebo source, the series snapshot when it exists, else the external file, refusing one missing, not UTF-8, or holding no word."""
     label, content = _placebo_source_bytes(files, conditions, read_external)
-    text = _decode(content, label)
+    text = utf8_text(content, label)
     if not words(text):
         raise Refusal(f"placebo source holds no word: {label}")
     return label, text
@@ -226,27 +229,11 @@ def _placebo_source_bytes(files: SeriesFolder, conditions: Conditions, read_exte
 
 def _source_files(files: SeriesFolder, series: Series) -> list[LabelledText]:
     """Return the path and text of each series source file, in `sources` order."""
-    paths = [f"{SOURCE_FOLDER}/{source.name}" for source in series.sources]
-    return [(path, _read_series_text(files, path)) for path in paths]
+    paths = [source_snapshot_path(source.name) for source in series.sources]
+    return [(path, utf8_text(read_series_file(files, path), path)) for path in paths]
 
 
-def _read_series_text(files: SeriesFolder, path: str) -> str:
-    """Return the UTF-8 text of a series file, refusing it missing or not UTF-8."""
-    try:
-        return _decode(files.read_bytes(path), path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
-
-
-def _decode(content: bytes, label: str) -> str:
-    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under `label`."""
-    try:
-        return content.decode()
-    except UnicodeDecodeError:
-        raise Refusal(f"not UTF-8: {label}") from None
-
-
-def _task_messages(tasks: Tasks) -> list[LabelledText]:
+def task_messages(tasks: Tasks) -> list[LabelledText]:
     """Return the label and text of every task message and every conversation turn."""
     turns = [(f"conversation {conversation.id} turn {number}", turn) for conversation in tasks.conversations for number, turn in enumerate(conversation.turns, 1)]
     return [*((f"task {task.id}", task.message) for task in tasks.tasks), *turns]

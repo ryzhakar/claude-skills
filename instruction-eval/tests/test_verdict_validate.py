@@ -3,7 +3,7 @@ import copy
 import pytest
 
 from instruction_eval.judge import parse_verdict
-from instruction_eval.records import RecordError
+from instruction_eval.records import Refusal
 
 BLIND_IDS = frozenset({"b0000000a", "b0000000b"})
 JUDGE_DEMAND_IDS = frozenset({"d-terse", "d-plain"})
@@ -44,5 +44,5 @@ def test_a_verdict_holding_each_packet_id_once_with_every_judge_demand_counted_i
     ids=["missing-id", "foreign-id", "repeated-id", "uncounted-demand", "non-judge-demand", "negative-count", "fractional-count", "done-out-of-range", "kind-out-of-range", "no-notes", "no-entries"],
 )
 def test_an_invalid_verdict_is_refused_naming_its_fault(edit, fault):
-    with pytest.raises(RecordError, match=fault):
+    with pytest.raises(Refusal, match=fault):
         parse_verdict(broken(edit), BLIND_IDS, JUDGE_DEMAND_IDS)

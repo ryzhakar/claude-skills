@@ -1,7 +1,6 @@
 import pytest
 
 from instruction_eval.gate import (
-    Budget,
     BudgetRefusal,
     ReplyCost,
     SeriesShape,
@@ -9,6 +8,7 @@ from instruction_eval.gate import (
     refuse_unaffordable_freeze,
     sum_revision_cost,
 )
+from instruction_eval.records import Budget
 
 SHAPE = SeriesShape(
     task_count=3, open_task_count=1, conversation_turns=2, repeats=2, omission_sentences=3,
