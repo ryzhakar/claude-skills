@@ -1,0 +1,5 @@
+- {unit: 1, text: "Intro line."}
+- {unit: 1, text: "Ends here."}
+- {unit: 2, text: "| a. b. | c |"}
+- {unit: 3, text: "|---|---|"}
+- {unit: 4, text: "| d! | e. |"}

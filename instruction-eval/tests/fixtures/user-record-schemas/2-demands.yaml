@@ -1,0 +1,15 @@
+demands:
+  - id: short-sentences
+    text: Keep sentences short.
+    boundary: Quoted material is exempt.
+    counted_by: long-sentences
+    limit: 25
+  - id: no-hedges
+    text: Never hedge.
+    boundary: Uncertainty stated as a number is not a hedge.
+    counted_by: pattern
+    pattern: \b(perhaps|maybe)\b
+  - id: active-voice
+    text: Prefer the active voice.
+    boundary: Passive is allowed when the actor is unknown.
+    counted_by: judge

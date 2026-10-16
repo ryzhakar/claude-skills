@@ -1,0 +1,11 @@
+failing_demand: short-sentences
+replies_read:
+  - b3f9a01c2
+  - b00ffa917
+change:
+  action: move
+  sentence: 4
+  to: 1
+predicted_movement:
+  direction: down
+  size: 0.6

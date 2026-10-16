@@ -1,0 +1,13 @@
+kind: command
+model: gpt-5-mini
+command:
+  - llm-reply
+  - --system-file
+  - "{condition}"
+fingerprint:
+  - llm-reply
+  - --version
+sampling:
+  temperature: 0.7
+  max_tokens: 1024
+  seed: fixed

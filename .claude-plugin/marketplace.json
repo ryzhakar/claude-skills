@@ -49,6 +49,17 @@
       "license": "MIT"
     },
     {
+      "name": "instruction-eval",
+      "source": "./instruction-eval/",
+      "description": "Measure whether an LLM instruction changes model behavior.",
+      "version": "0.1.0",
+      "author": {
+        "name": "ryzhakar"
+      },
+      "repository": "https://github.com/ryzhakar/claude-skills",
+      "license": "MIT"
+    },
+    {
       "name": "manifesto",
       "source": "./manifesto/",
       "description": "Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.",

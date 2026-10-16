@@ -1,0 +1,55 @@
+inputs:
+  r1/7-collected.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+split: open
+rows:
+  - id: x7k
+    condition: instruction
+    task: greet
+    repeat: 1
+    turn: null
+    borrowed_from: null
+    breaches:
+      brevity: 2
+      hedging: 0
+    kind: answer
+    done_by_answer_key: true
+    done_by_judge: false
+    done: true
+  - id: m2q
+    condition: empty
+    task: chat
+    repeat: 2
+    turn: 2
+    borrowed_from: r1
+    breaches:
+      brevity: 0
+      hedging: 1
+    kind: probe
+    done_by_answer_key: null
+    done_by_judge: null
+    done: null
+by_condition:
+  instruction:
+    breaches_per_reply: 1.5
+    demands:
+      brevity: 1.0
+      hedging: 0.5
+    done_rate: 0.5
+    kinds:
+      answer: 1
+      probe: 1
+comparisons:
+  instruction-vs-empty:
+    mean_difference: -1.0
+    interval: [-1.5, -0.5]
+    units: 12
+  drift:
+    mean_difference: 0.0
+    interval: null
+    units: 0
+drift:
+  instruction:
+    slope: 0.01
+    interval: [-0.1, 0.1]
+disagreements:
+  - x7k

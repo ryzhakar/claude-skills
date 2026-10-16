@@ -1,0 +1,24 @@
+inputs:
+  6-judge/calibration/attempt-1/plan.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+attempt: 1
+judge_model: claude-opus-4-1
+raters:
+  - agent
+  - agent
+sample_size: 20
+anchors_per_packet: 3
+acceptance:
+  breach_difference: 0.5
+  self_difference: 0.5
+  done_agreement: 0.8
+brief_hash: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+agreement:
+  inputs:
+    6-judge/calibration/attempt-1/plan.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  demands:
+    brevity:
+      breach_difference: 0.25
+      self_difference: 0.5
+  done_agreement: 0.9
+  scale: 1.2
+  ratings: {}

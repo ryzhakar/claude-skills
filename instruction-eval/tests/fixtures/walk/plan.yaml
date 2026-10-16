@@ -1,0 +1,8 @@
+judge_model: claude-opus-4-1
+raters: [user]
+sample_size: 15
+anchors_per_packet: 3
+acceptance:
+  breach_difference: 0.5
+  self_difference: 0.5
+  done_agreement: 0.8

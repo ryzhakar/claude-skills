@@ -1,0 +1,29 @@
+inputs:
+  7-gate.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+hashes:
+  series.yaml: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  r1/2-instruction.md: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+noise:
+  repeats: 3
+  level: 0.95
+  z: 1.96
+  sigma:
+    breaches:
+      instruction: 0.4
+      empty: null
+    done:
+      instruction: 0.1
+    drift:
+      instruction: 0.05
+    demands:
+      brevity:
+        instruction: 0.2
+        empty: null
+  checks:
+    instruction-vs-empty: 0.3
+    drift: null
+  demands:
+    brevity: 0.25
+  done_change: 0.15
+tool_version: 0.1.0
+frozen_at: "2026-10-14T10:00:00+00:00"

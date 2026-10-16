@@ -434,3 +434,25 @@ INVALIDATES:   the `architecture_log.md` entry of 2026-10-05 stating the full `t
                implementer's context at start; the `skills:` form for any cross-plugin preload in this
                marketplace
 SOURCE:        `orchestration_log/recon/2026-10-06/preload-probe/`; this change
+
+## 2026-10-14 — instruction-eval enters the marketplace
+BEFORE:        no plugin measured whether an instruction changes model behavior; eleven plugins
+AFTER:         `instruction-eval` 0.1.0 holds eleven skills and the `instruction-eval` CLI. Records are YAML
+               only and written once; judges rate blind; checks gate on measured noise; a neutral reader
+               session reads the records; one refusal type reports every rejected action
+WHY:           an instruction's effect was asserted, not measured; the series makes each claim a record a
+               later reader re-derives
+INVALIDATES:   the count of eleven plugins
+SOURCE:        spec and journal `orchestration_log/history/2026-10-12/`; review `orchestration_log/recon/2026-10-14/reports/final-review.md`
+KNOWN ISSUES:  open Important findings, eleven listed in the review:
+               - records-series: Vocabularies and primitive checks stated twice
+               - records-series: Public surface far wider than the commands
+               - tasks-coverage-revision: Public surface beyond the outermost interface in revision.py
+               - judge: Verdict file with unended transcript counts as failed
+               - judge: Repeated reads and parses
+               - reader-cli: Facts held in two places
+               - reader-cli: File system reached without being handed
+               - reader-cli: Order-of-work text repeats record names
+               - gate-scores: Helpers beneath the barrier are public
+               - tests: Same-named helpers redefined per file
+               - tests: Copy-pasted helpers beyond series_fixtures

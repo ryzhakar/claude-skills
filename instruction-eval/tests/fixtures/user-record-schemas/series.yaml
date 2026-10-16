@@ -1,0 +1,7 @@
+instruction: /home/writer/instructions/terse.md
+sources:
+  - /home/writer/sources/strunk.md
+  - /home/writer/sources/orwell.md
+reader_kind: agent
+created: 2026-10-14T10:00:00+03:00
+inputs: {}
