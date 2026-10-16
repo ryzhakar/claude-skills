@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy
@@ -201,6 +202,37 @@ def test_a_first_revision_missing_one_check_fails_without_a_stop(tmp_path):
     assert outcome["outcome"] == "fail"
     assert [check["pass"] for check in outcome["checks"]] == [True, False, True, True]
     assert not files.holds("9-stop.yaml")
+
+
+@dataclass(frozen=True)
+class OmissionReply(Reply):
+    """A fixture reply of an `omit-<n>` condition, judged in its task's omission packet."""
+
+    @property
+    def packet(self) -> str:
+        """Return the reply's omission packet."""
+        return f"{self.task}--omissions"
+
+
+def omission_replies(start: int) -> list[OmissionReply]:
+    """Build both repeats of the open task under each omission of the two-sentence instruction, each breaching `d-judge` heavily."""
+    return [
+        OmissionReply(f"b{start + index:08x}", condition, "t1", repeat=repeat, judged=9)
+        for index, (condition, repeat) in enumerate((condition, repeat) for condition in ("omit-1", "omit-2") for repeat in (1, 2))
+    ]
+
+
+def test_omission_replies_move_no_check_and_the_outcome_names_no_omission(tmp_path, monkeypatch):
+    without = frozen_series(tmp_path / "without", first_replies(instruction_judged=0, aim_judged=3))
+    revision_gate(without, "r1", bootstrap_rng)
+    monkeypatch.setitem(globals(), "CONDITIONS", {**CONDITIONS, "omissions": "every-sentence"})
+    files = frozen_series(tmp_path / "with", [*first_replies(instruction_judged=0, aim_judged=3), *omission_replies(0x50)])
+
+    revision_gate(files, "r1", bootstrap_rng)
+
+    outcome = SeriesRecords(files).outcome("r1")
+    assert outcome["checks"] == SeriesRecords(without).outcome("r1")["checks"]
+    assert "omit-" not in repr({key: value for key, value in outcome.items() if key != "inputs"})
 
 
 def test_a_later_revision_compares_its_instruction_with_the_parent_on_the_hypothesis_target_beside_borrowed_controls(tmp_path):
