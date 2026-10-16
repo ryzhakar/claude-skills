@@ -10,7 +10,7 @@ Commit together exactly the changes you would revert together; never join change
 
 Commit source code and records, such as journals and status files, apart; never in one commit.
 
-Squash records commits on your own branch to the fewest commits; never commit records one entry at a time.
+Squash records commits at your branch's tip into one: `git reset --soft` to the commit before the first, commit, then push the session branch with `--force-with-lease`; never commit records one entry at a time.
 
 <never_do_this reason="fix and journal revert as one">
 <invoke name="Bash">
@@ -26,13 +26,13 @@ Squash records commits on your own branch to the fewest commits; never commit re
 
 <never_do_this reason="records history in slices">
 <invoke name="Bash">
-<parameter name="command">git commit -m "doc(journal): add 14:05 entry" records/journal.md && git commit -m "doc(journal): add 14:20 entry" records/status.md</parameter>
+<parameter name="command">git add records/journal.md && git commit -m "doc(journal): add 14:20 entry" && git push origin integration/parser</parameter>
 </invoke>
 </never_do_this>
 
 <do_exactly_this>
 <invoke name="Bash">
-<parameter name="command">git commit -m "doc(journal): log build wakes" records/journal.md records/status.md</parameter>
+<parameter name="command">git add records/journal.md && git reset --soft HEAD~1 && git commit -m "doc(journal): log build wakes" && git push --force-with-lease origin integration/parser</parameter>
 </invoke>
 </do_exactly_this>
 </commit-what-reverts-together>
@@ -72,17 +72,17 @@ Leave the configured author in place; the author email noreply@anthropic.com is 
 <keep-main-linear>
 NEVER rewrite main or force-push it.
 
-Move main by rebasing your branch on `origin/main`, then fast-forwarding main to it; never by a merge commit.
+Move main by rebasing your branch on `origin/main`, then `git push origin <branch>:main`; never by a merge commit or `git switch main`.
 
 <never_do_this reason="main rewritten">
 <invoke name="Bash">
-<parameter name="command">git fetch origin && git rebase origin/main && git switch main && git merge integration/parser && git push --force origin main</parameter>
+<parameter name="command">git fetch origin && git push --force origin integration/parser:main</parameter>
 </invoke>
 </never_do_this>
 
 <do_exactly_this>
 <invoke name="Bash">
-<parameter name="command">git fetch origin && git rebase origin/main && git switch main && git merge --ff-only integration/parser && git push origin main</parameter>
+<parameter name="command">git fetch origin && git rebase origin/main && git push origin integration/parser:main</parameter>
 </invoke>
 </do_exactly_this>
 </keep-main-linear>
@@ -112,7 +112,7 @@ NEVER use the EnterWorktree tool.
 
 A sibling session is a concurrent session in the same project that you did not launch as a teammate.
 
-Check on waking whether another session works in the project; never assume you are alone.
+Run `git worktree list` and `git status --short` in the project folder on waking; count a checked-out session branch or a dirty tree there as another session.
 
 Claim the project folder when no other session works there; create your own worktree with git when one does.
 
@@ -124,7 +124,7 @@ Claim the project folder when no other session works there; create your own work
 
 <do_exactly_this>
 <invoke name="Bash">
-<parameter name="command">git worktree add -b integration/parser /Users/dev/project.worktrees/parser</parameter>
+<parameter name="command">git worktree list && git status --short && git worktree add -b integration/parser /Users/dev/project.worktrees/parser</parameter>
 </invoke>
 </do_exactly_this>
 </one-worktree-per-sibling-session>
