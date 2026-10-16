@@ -1,0 +1,6 @@
+demands:
+  no-apology: [1]
+  terse: [2]
+sentences:
+  1: [no-apology]
+  2: [terse]
