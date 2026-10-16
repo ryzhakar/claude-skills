@@ -17,9 +17,11 @@ Run `instruction-eval judge prepare <r>`; for each packet with no accepted judgi
 
 Wait up to three 20-second waits for the new `ie-judge-<r>-*` types to list among the Agent tool's available agent types; when one stays unlisted, report it to the user and stop; never restart the session for them.
 
-Launch each listed agent type once from the main thread with the Agent tool and a prompt adding nothing to its definition; never launch from a subagent.
+Launch each listed agent type once from the main thread with the Agent tool and the prompt `Begin.`; never launch from a subagent.
 
 Launch at most twenty agents at once; the twenty-first is refused.
+
+Launch the first twenty listed types, then one more as each judge ends; never run more than twenty.
 
 Each judge writes its own verdict to `<r>/7-verdicts/<packet>/k<k>.yaml`; never write, paste, or edit a verdict.
 
