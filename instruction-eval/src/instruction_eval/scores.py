@@ -9,7 +9,7 @@ from typing import NamedTuple, TypedDict
 
 import numpy
 
-from instruction_eval.coverage import split_sentences
+from instruction_eval.coverage import CODE_FENCE_OPENING, closing_code_fence, split_sentences
 from instruction_eval.records import (
     ANCHOR_KEY,
     COLLECTED_FILE,
@@ -392,7 +392,7 @@ SCORE_USER_INPUTS = (
     LEVEL_INPUT,
     DONE_BY_INPUT,
 )
-FENCE_OPENING = re.compile(r"\s*(`{3,}|~{3,})")
+FENCE_OPENING = re.compile(CODE_FENCE_OPENING)
 LINE_BREAK = "\n"
 
 
@@ -438,16 +438,11 @@ def _without_fenced_code(text: str) -> str:
         if closing is not None:
             closing = None if closing.match(line) else closing
         elif opening := FENCE_OPENING.match(line):
-            closing = _closing_fence(opening.group(1))
+            closing = re.compile(closing_code_fence(opening.group(1)))
             kept.append("")
         else:
             kept.append(line)
     return LINE_BREAK.join(kept)
-
-
-def _closing_fence(fence: str) -> re.Pattern[str]:
-    """Return the pattern of a line closing the fence: its character at least as many times, alone on the line."""
-    return re.compile(rf"\s*{re.escape(fence[0])}{{{len(fence)},}}\s*\Z")
 
 
 def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
