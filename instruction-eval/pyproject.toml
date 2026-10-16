@@ -27,3 +27,5 @@ packages = ["src/instruction_eval"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not needs_network'"
+markers = ["needs_network: test needs the network; the default run excludes it and `-m ''` includes it"]
