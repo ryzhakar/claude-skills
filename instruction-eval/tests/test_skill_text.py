@@ -193,6 +193,7 @@ def test_skill_carries_no_forbidden_string(name, pattern):
     assert re.search(pattern, skill_text(name)) is None
 
 
+@pytest.mark.needs_network
 @pytest.mark.parametrize("name", SKILL_NAMES)
 def test_skill_counts_under_the_token_ceiling(name, token_counts):
     assert token_counts[name] < TOKEN_CEILING
