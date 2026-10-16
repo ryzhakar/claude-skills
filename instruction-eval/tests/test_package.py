@@ -3,6 +3,7 @@ import tomllib
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = PLUGIN_ROOT.parent
 MODULE_NAMES = {
     "series", "demands", "coverage", "tasks", "conditions", "reader",
     "judge", "revision", "scores", "gate", "records", "cli",
@@ -33,3 +34,14 @@ def test_lockfile_names_no_loopback_index():
 
 def test_plugin_ships_no_hooks():
     assert not (PLUGIN_ROOT / "hooks").exists()
+
+
+def test_marketplace_lists_the_plugin_at_its_version_and_the_readmes_name_it_and_its_skills():
+    manifest = json.loads((PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text())
+    marketplace = json.loads((REPOSITORY_ROOT / ".claude-plugin" / "marketplace.json").read_text())
+    entry = next(plugin for plugin in marketplace["plugins"] if plugin["name"] == "instruction-eval")
+    assert (entry["source"], entry["version"]) == ("./instruction-eval/", manifest["version"])
+    assert "[instruction-eval](instruction-eval/)" in (REPOSITORY_ROOT / "README.md").read_text()
+    plugin_readme = (PLUGIN_ROOT / "README.md").read_text()
+    assert all(f"skills/{skill.name}/SKILL.md" in plugin_readme for skill in (PLUGIN_ROOT / "skills").iterdir())
+
