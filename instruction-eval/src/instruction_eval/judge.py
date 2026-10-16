@@ -701,16 +701,23 @@ def _gate_demand_ids_without_sources(records: SeriesRecords) -> frozenset[str]:
     return frozenset(records.gate_demands())
 
 
-def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
-    """Return what stage one reads: the series records, the plan's keys, the brief snapshot, the sample, the sampled replies, and the earlier origins."""
-    folder = attempt_folder(attempt)
+def _binding_reads(records: SeriesRecords) -> list[str]:
+    """Return what a judge's binding text reads: the series, its source snapshots or without one r1's coverage demands, and the demands."""
     sources = records.series().sources
-    plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
     return [
         SERIES_RECORD,
         *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
         f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+    ]
+
+
+def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
+    """Return what stage one reads: what a judge binds to, the plan's keys, the brief snapshot, the sample, the sampled replies, and the earlier origins."""
+    folder = attempt_folder(attempt)
+    plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
+    return [
+        *_binding_reads(records),
         *(f"{folder}/{PLAN_FILE}{KEY_SEPARATOR}{key}" for key in plan_keys),
         f"{folder}/{BRIEF_SNAPSHOT_FILE}",
         f"{folder}/{SAMPLE_FILE}",
@@ -879,13 +886,9 @@ def _collected_record(accepted: Mapping[str, AcceptedJudging]) -> dict[str, obje
 
 
 def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record) -> list[str]:
-    """Return what `judge collect` reads: the series, its sources or without one r1's coverage demands, the demands, the reader model, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
-    sources = records.series().sources
+    """Return what `judge collect` reads: what a judge binds to, the reader model, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
     return [
-        SERIES_RECORD,
-        *(source_snapshot_path(source.name) for source in sources),
-        *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
-        f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        *_binding_reads(records),
         f"{READER_RECORD}{KEY_SEPARATOR}model",
         CALIBRATION_RECORD,
         f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}",
