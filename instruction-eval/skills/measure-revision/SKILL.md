@@ -21,7 +21,7 @@ For an agent reader, wait up to three 20-second waits for the new `ie-reader-<r>
 
 Run `instruction-eval revision ask <r>`, adding `--conditions <name>` once per condition to limit one ask; a command reader's replies land in `<r>/5-replies/`, and an agent reader's launch list prints.
 
-On `reader failed: <path> (<cause>)`, fix the reader command and rerun; on a budget refusal, report it to the user and stop; never raise a frozen budget.
+On `reader failed: <path> (<cause>)`, report the cause to the user and rerun once they fix what the `5-reader.yaml` `command` needs; never edit the frozen `5-reader.yaml`; on a budget refusal, report it to the user and stop; never raise a frozen budget.
 
 Launch each launch-list entry from the main thread with the Agent tool, its `agent_type` as the agent and its `message` byte for byte as the prompt; never add a word.
 
@@ -49,6 +49,8 @@ On a refusal naming a missing record or a stale input, report the line to the us
 </score-and-gate>
 
 <hand-off>
+`revision gate` writes `9-stop.yaml` with `stop: passed` on every `pass`.
+
 When `9-stop.yaml` exists, `passed`, `no-effect`, or `capped`, hand off to `keep-revision`; never ask another revision.
 
 When the outcome is `fail` and no stop exists, hand off to `diagnose`; never edit the instruction first.
