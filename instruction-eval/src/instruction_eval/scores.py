@@ -35,8 +35,8 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     Split,
-    reply_path,
-    verdict_path,
+    accepted_verdict_paths,
+    origin_reply_paths,
     write_record,
 )
 from instruction_eval.tasks import words
@@ -402,7 +402,7 @@ def revision_detect(files: SeriesFolder, revision: str) -> None:
     detector_demands = [demand for demand in records.demands().demands if isinstance(demand, DETECTOR_DEMANDS)]
     answer_keys = {task.id: task.answer_key for task in records.tasks().tasks}
     origins = records.origins(revision)
-    reply_paths = _origin_reply_paths(revision, origins)
+    reply_paths = origin_reply_paths(origins, revision)
     replies = {blind_id: records.reply(path) for blind_id, path in reply_paths.items()}
     verdicts = [
         _detector_entry(blind_id, reply["text"], detector_demands, answer_keys.get(reply["task"])) for blind_id, reply in replies.items()
@@ -456,7 +456,7 @@ def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapR
     level, done_by = _scoring_keys(records.gate())
     origins = records.origins(revision)
     collected = records.collected(revision)
-    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    verdicts = records.accepted_verdicts(revision, collected)
     rows = join_reply_rows(origins, verdicts, records.detectors(revision), done_by, OPEN_SPLIT)
     scores = _open_scores(rows, _gate_demands(records.coverage(FIRST_REVISION)), level, bootstrap_rng)
     write_record(files, f"{revision}/{SCORES_FILE}", scores, _score_reads(revision, origins, collected))
@@ -480,21 +480,12 @@ def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]
     """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
     return [
         *SCORE_USER_INPUTS,
-        *_origin_reply_paths(revision, origins).values(),
+        *origin_reply_paths(origins, revision).values(),
         f"{revision}/{ORIGINS_FILE}",
-        *(verdict_path(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()),
+        *accepted_verdict_paths(revision, collected),
         f"{revision}/{COLLECTED_FILE}",
         f"{revision}/{DETECTORS_FILE}",
     ]
-
-
-def _origin_reply_paths(revision: str, origins: Record) -> dict[str, str]:
-    """Map each reply origin's blind id to its reply file, a borrowed one in the revision it names."""
-    return {
-        blind_id: reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
-        for blind_id, origin in origins["ids"].items()
-        if ANCHOR_KEY not in origin
-    }
 
 
 def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:

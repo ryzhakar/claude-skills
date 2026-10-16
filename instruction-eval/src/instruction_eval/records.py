@@ -1708,6 +1708,10 @@ class SeriesRecords:
         packet_ids = {blind_id for blind_id, origin in self.origins(revision)["ids"].items() if origin["packet"] == packet}
         return self._verdict_shaped(verdict_path(revision, packet, judging), packet_ids)
 
+    def accepted_verdicts(self, revision: str, collected: Record) -> list[Record]:
+        """Load the accepted verdict of each packet the revision's loaded collection names, in collection order."""
+        return [self.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+
     def rating(self, attempt: int, rating: str) -> Record:
         """Load a calibration attempt's rating file named `rating`, rating the attempt's blind ids on judge demands only."""
         return self._verdict_shaped(f"{attempt_folder(attempt)}/{rating}.yaml", self.attempt_origins(attempt)["ids"])
@@ -1811,8 +1815,7 @@ class SeriesRecords:
         anchors = [origin[ANCHOR_KEY] for origin in entries if ANCHOR_KEY in origin]
         if anchors:
             _resolve(path, ANCHOR_REFERENCE, anchors, {anchor["id"] for anchor in self.anchors()["anchors"]})
-        replies = [_origin_reply_path(origin, revision) for origin in entries if ANCHOR_KEY not in origin]
-        self._resolve_files(path, REPLY_REFERENCE, replies, str)
+        self._resolve_files(path, REPLY_REFERENCE, origin_reply_paths(origins, revision).values(), str)
         return origins
 
     def _refuse_other_reader_kind(self, path: str, reader_kind: ReaderKind) -> None:
@@ -1920,10 +1923,18 @@ def verdict_path(revision: str, packet: str, judging: int) -> str:
     return f"{revision}/{VERDICTS_FOLDER}/{packet}/k{judging}.yaml"
 
 
-def _origin_reply_path(origin: Record, revision: str) -> str:
-    """Return the reply file a reply origin names, in its borrowed revision or else in `revision`."""
-    home = origin["borrowed_from"] or revision
-    return reply_path(home, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+def origin_reply_paths(origins: Record, revision: str) -> dict[str, str]:
+    """Map each reply origin's blind id to the reply file it names, in its borrowed revision or else in `revision`."""
+    return {
+        blind_id: reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
+        for blind_id, origin in origins["ids"].items()
+        if ANCHOR_KEY not in origin
+    }
+
+
+def accepted_verdict_paths(revision: str, collected: Record) -> list[str]:
+    """Return the path of each packet's accepted verdict the revision's collection names."""
+    return [verdict_path(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
 
 
 def attempt_folder(attempt: int) -> str:

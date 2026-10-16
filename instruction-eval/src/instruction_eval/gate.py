@@ -9,7 +9,6 @@ from typing import Literal, TypedDict
 import numpy
 
 from instruction_eval.records import (
-    ANCHOR_KEY,
     BUDGET_REASON,
     CAPPED_STOP,
     COLLECTED_FILE,
@@ -41,12 +40,12 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    accepted_verdict_paths,
+    origin_reply_paths,
     outcome_path,
     parent_revision,
-    reply_path,
     revision_id,
     revision_number,
-    verdict_path,
     write_record,
 )
 from instruction_eval.records import Budget as GateBudget
@@ -461,20 +460,14 @@ def _measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -
     """Load a revision's sealed rows and own reply costs, refusing a missing collection or a reply origin without its reply file."""
     collected = records.collected(revision)
     origins = records.origins(revision)
-    verdict_paths = {packet: verdict_path(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()}
-    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
-    reply_paths = {blind_id: _origin_reply_path(origin, revision) for blind_id, origin in origins["ids"].items() if ANCHOR_KEY not in origin}
+    verdicts = records.accepted_verdicts(revision, collected)
+    reply_paths = origin_reply_paths(origins, revision)
     own_paths = [path for path in reply_paths.values() if path.startswith(f"{revision}/")]
     return _MeasuredRevision(
         sealed_rows=join_reply_rows(origins, verdicts, records.detectors(revision), done_by, SEALED_SPLIT),
         own_replies=[_reply_cost(records.reply(path)) for path in own_paths],
-        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *verdict_paths.values(), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
+        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *accepted_verdict_paths(revision, collected), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
     )
-
-
-def _origin_reply_path(origin: Record, revision: str) -> str:
-    """Return the reply file a reply origin names, a borrowed one in the revision it names."""
-    return reply_path(origin["borrowed_from"] or revision, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
 
 
 def _reply_cost(reply: Record) -> ReplyCost:

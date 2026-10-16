@@ -20,19 +20,18 @@ from instruction_eval.records import (
     ORIGINS_FILE,
     Hypothesis,
     MoveChange,
-    Record,
     Refusal,
     SentenceChange,
     SeriesFolder,
     SeriesRecords,
     Tasks,
+    accepted_verdict_paths,
     condition_path,
     outcome_path,
     revision_id,
     revision_number,
     revision_record_path,
     sha256,
-    verdict_path,
     write_file,
     write_record,
 )
@@ -193,7 +192,7 @@ def revision_new(files: SeriesFolder, read_external: Callable[[Path], bytes]) ->
     _refuse_unmade_change(parent_sentences, sentences, change)
     _refuse_echoes(revision, instruction.decode(), _echo_sources(files, records.tasks(), records.conditions().aim))
     refuse_unfit_hypothesis(hypothesis, _open_rows(records, parent), records.frozen()["noise"])
-    accepted_verdicts = _accepted_verdict_paths(parent, records.collected(parent))
+    accepted_verdicts = accepted_verdict_paths(parent, records.collected(parent))
     write_file(files, f"{revision}/{INSTRUCTION_FILE}", instruction)
     record = _revision_record(files, revision, parent, instruction, _change_record(parent_sentences, sentences, change))
     write_record(files, revision_record_path(revision), record, _new_reads(revision, parent, accepted_verdicts))
@@ -268,13 +267,8 @@ def _refuse_echoes(revision: str, instruction: str, sources: Sequence[LabelledTe
 def _open_rows(records: SeriesRecords, revision: str) -> list[ReplyRow]:
     """Return the revision's open reply rows from its origins, accepted verdicts, and detector counts."""
     collected = records.collected(revision)
-    verdicts = [records.verdict(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
+    verdicts = records.accepted_verdicts(revision, collected)
     return join_reply_rows(records.origins(revision), verdicts, records.detectors(revision), records.complete_gate().done_by, OPEN_SPLIT)
-
-
-def _accepted_verdict_paths(revision: str, collected: Record) -> list[str]:
-    """Return the path of each packet's accepted verdict."""
-    return [verdict_path(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
 
 
 def _change_record(parent: list[str], child: list[str], change: Change) -> dict[str, object]:
