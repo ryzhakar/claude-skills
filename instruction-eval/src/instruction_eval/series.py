@@ -74,6 +74,7 @@ from instruction_eval.records import (
     revision_id,
     revision_record_path,
     sha256,
+    utf8_text,
     write_file,
     write_record,
 )
@@ -222,9 +223,7 @@ def refuse_unclosed_frontmatter(texts: Mapping[Path, bytes]) -> None:
     """Refuse a file whose first line is `---` with no later line exactly `---`."""
     for path, text in texts.items():
         try:
-            strip_frontmatter(text.decode(), str(path))
-        except UnicodeDecodeError:
-            raise Refusal(f"not UTF-8: {path}") from None
+            strip_frontmatter(utf8_text(text, str(path)), str(path))
         except UnclosedFrontmatter as unclosed:
             raise Refusal(str(unclosed)) from None
 

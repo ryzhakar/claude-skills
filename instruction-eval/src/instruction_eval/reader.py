@@ -55,9 +55,11 @@ from instruction_eval.records import (
     _dump_canonical_yaml,
     condition_path,
     outcome_path,
+    read_series_file,
     reply_path,
     revision_number,
     sha256,
+    utf8_text,
     write_file,
     write_record,
 )
@@ -768,9 +770,9 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
     own_texts = revision_condition_texts(instruction, records.conditions().omissions)
     if placebo_source is None:
         return own_texts
-    sources = {path: _utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
+    sources = {path: utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
     try:
-        controls = control_texts(records.conditions(), instruction, sources, _utf8_text(placebo_source, PLACEBO_SNAPSHOT))
+        controls = control_texts(records.conditions(), instruction, sources, utf8_text(placebo_source, PLACEBO_SNAPSHOT))
     except ValueError as refused:
         raise Refusal(str(refused)) from None
     return {**own_texts, **controls}
@@ -778,15 +780,7 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
 
 def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
     """Return the bytes of a revision's instruction snapshot, refusing it absent."""
-    return _read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")
-
-
-def _utf8_text(content: bytes, label: str) -> str:
-    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under the label."""
-    try:
-        return content.decode()
-    except UnicodeDecodeError:
-        raise Refusal(f"not UTF-8: {label}") from None
+    return read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")
 
 
 def _source_paths(records: SeriesRecords) -> list[str]:
@@ -907,7 +901,7 @@ def revision_collect(
 
 def _verified_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader) -> dict[str, bytes]:
     """Return the text of each condition the revision prepares, recomputed from the series files, refusing a condition file or an agent reader's definition that differs from its recomputation."""
-    placebo_source = _read_series_file(files, PLACEBO_SNAPSHOT) if revision == FIRST_REVISION else None
+    placebo_source = read_series_file(files, PLACEBO_SNAPSHOT) if revision == FIRST_REVISION else None
     texts = _condition_texts(files, revision, records, placebo_source)
     for condition, text in texts.items():
         _refuse_edited_file(files, condition_path(revision, condition), text)
@@ -920,17 +914,9 @@ def _verified_condition_texts(files: SeriesFolder, revision: str, records: Serie
 def _refuse_edited_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
     """Refuse the series file at `path` when its bytes differ from the recomputed bytes."""
     try:
-        refuse_edited_definition(path, _read_series_file(files, path), recomputed)
+        refuse_edited_definition(path, read_series_file(files, path), recomputed)
     except DefinitionEdited as edited:
         raise Refusal(str(edited)) from None
-
-
-def _read_series_file(files: SeriesFolder, path: str) -> bytes:
-    """Return the bytes of the series file at `path`, refusing it absent."""
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
 
 
 def _definition_path(revision: str, condition: str) -> str:

@@ -14,6 +14,7 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
+    read_series_file,
 )
 
 _SENTENCE_END = re.compile(rb"""[.!?]["')\]]*(?=\s|\Z)""")
@@ -183,7 +184,7 @@ def coverage_check(files: SeriesFolder, revision: str) -> None:
     records = SeriesRecords(files)
     coverage = records.coverage(revision)
     path = _coverage_path(revision)
-    sentence_count = len(split_sentences(_read_instruction(files, revision)))
+    sentence_count = len(split_sentences(read_series_file(files, f"{revision}/{INSTRUCTION_FILE}")))
     _refuse_unmapped_demands(records.demands(), coverage, path)
     _refuse_numbers_outside_text(coverage, sentence_count, path)
     _refuse_sentences_without_demand(coverage, sentence_count)
@@ -194,15 +195,6 @@ def coverage_check(files: SeriesFolder, revision: str) -> None:
 def _coverage_path(revision: str) -> str:
     """Return the path of a revision's `3-coverage.yaml`."""
     return f"{revision}/{COVERAGE_FILE}"
-
-
-def _read_instruction(files: SeriesFolder, revision: str) -> bytes:
-    """Return the bytes of a revision's `2-instruction.md`, refusing it absent."""
-    path = f"{revision}/{INSTRUCTION_FILE}"
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
 
 
 def _refuse_unmapped_demands(demands: Demands, coverage: Coverage, path: str) -> None:

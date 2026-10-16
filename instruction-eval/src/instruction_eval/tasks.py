@@ -22,8 +22,10 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     Tasks,
+    read_series_file,
     reply_path,
     revision_id,
+    utf8_text,
 )
 
 LabelledText = tuple[str, str]
@@ -202,13 +204,13 @@ def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks, re
 def _revision_instructions(files: SeriesFolder) -> list[LabelledText]:
     """Return the path and text of each revision's instruction, in revision order, up to the first revision without one."""
     paths = itertools.takewhile(files.holds, (f"{revision_id(number)}/{INSTRUCTION_FILE}" for number in itertools.count(FIRST_REVISION_NUMBER)))
-    return [(path, _read_series_text(files, path)) for path in paths]
+    return [(path, utf8_text(read_series_file(files, path), path)) for path in paths]
 
 
 def _placebo_source(files: SeriesFolder, conditions: Conditions, read_external: Callable[[Path], bytes]) -> LabelledText:
     """Return the label and text of the placebo source, the series snapshot when it exists, else the external file, refusing one missing, not UTF-8, or holding no word."""
     label, content = _placebo_source_bytes(files, conditions, read_external)
-    text = _decode(content, label)
+    text = utf8_text(content, label)
     if not words(text):
         raise Refusal(f"placebo source holds no word: {label}")
     return label, text
@@ -228,23 +230,7 @@ def _placebo_source_bytes(files: SeriesFolder, conditions: Conditions, read_exte
 def _source_files(files: SeriesFolder, series: Series) -> list[LabelledText]:
     """Return the path and text of each series source file, in `sources` order."""
     paths = [f"{SOURCE_FOLDER}/{source.name}" for source in series.sources]
-    return [(path, _read_series_text(files, path)) for path in paths]
-
-
-def _read_series_text(files: SeriesFolder, path: str) -> str:
-    """Return the UTF-8 text of a series file, refusing it missing or not UTF-8."""
-    try:
-        return _decode(files.read_bytes(path), path)
-    except FileNotFoundError:
-        raise Refusal(f"missing file: {path}") from None
-
-
-def _decode(content: bytes, label: str) -> str:
-    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under `label`."""
-    try:
-        return content.decode()
-    except UnicodeDecodeError:
-        raise Refusal(f"not UTF-8: {label}") from None
+    return [(path, utf8_text(read_series_file(files, path), path)) for path in paths]
 
 
 def _task_messages(tasks: Tasks) -> list[LabelledText]:

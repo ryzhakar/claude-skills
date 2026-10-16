@@ -100,6 +100,22 @@ def write_file(files: SeriesFolder, path: str, content: bytes) -> None:
         raise Refusal(f"already written: {path}") from None
 
 
+def read_series_file(files: SeriesFolder, path: str) -> bytes:
+    """Return the bytes of the series file at `path`, refusing it absent."""
+    try:
+        return files.read_bytes(path)
+    except FileNotFoundError:
+        raise Refusal(f"missing file: {path}") from None
+
+
+def utf8_text(content: bytes, label: str) -> str:
+    """Return the UTF-8 text of the bytes, refusing them as not UTF-8 under `label`."""
+    try:
+        return content.decode()
+    except UnicodeDecodeError:
+        raise Refusal(f"not UTF-8: {label}") from None
+
+
 def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256, refusing a record carrying its own."""
     if INPUTS_KEY in record:
