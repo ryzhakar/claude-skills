@@ -17,7 +17,7 @@ Run every command with the series folder as the working directory.
 <number-the-sentences>
 Number the sentences of `<r>/2-instruction.md` from 1 in reading order; never number the live instruction.
 
-Count each of these as one sentence spanning its whole lines: a leading `---` frontmatter block, a fenced code block, a heading line, a table row line, a blockquote line, a horizontal rule.
+Count each of these as one sentence spanning its whole lines: a leading `---` frontmatter block, a fenced code block, a heading line, a table row line, the `|---|` separator line included, a blockquote line, a horizontal rule.
 
 Split each paragraph and each list item into sentences; a list item is its text after the marker with continuation lines, and a nested item is an item of its own.
 
@@ -55,7 +55,9 @@ On `dropped demands differ from r1`, drop exactly `r1`'s set.
 
 On `sentence <n> carries no demand (imported)`, map sentence n to the demand it carries; never map it to a demand it does not carry.
 
-When an imported `r1` sentence carries a demand the source makes, or the series has no source, add that demand through `list-demands`; otherwise the writer cuts the sentence from the live instruction and the series restarts through `start-series`.
+When an imported `r1` sentence carries a demand the source makes, or the series has no source, add that demand through the `list-demands` skill; never map the sentence before `demands check` passes.
+
+When an imported `r1` sentence carries no demand the source makes, have the writer cut it from the live instruction and restart through the `start-series` skill; never keep the series.
 
 Never edit `r1/2-instruction.md`.
 
