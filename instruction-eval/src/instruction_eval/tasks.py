@@ -13,7 +13,6 @@ from instruction_eval.records import (
     OVERREACH_TARGET,
     PLACEBO_SNAPSHOT,
     SEALED_SPLIT,
-    SOURCE_FOLDER,
     TASKS_RECORD,
     Conditions,
     Omissions,
@@ -25,6 +24,7 @@ from instruction_eval.records import (
     read_series_file,
     reply_path,
     revision_id,
+    source_snapshot_path,
     utf8_text,
 )
 
@@ -229,7 +229,7 @@ def _placebo_source_bytes(files: SeriesFolder, conditions: Conditions, read_exte
 
 def _source_files(files: SeriesFolder, series: Series) -> list[LabelledText]:
     """Return the path and text of each series source file, in `sources` order."""
-    paths = [f"{SOURCE_FOLDER}/{source.name}" for source in series.sources]
+    paths = [source_snapshot_path(source.name) for source in series.sources]
     return [(path, utf8_text(read_series_file(files, path), path)) for path in paths]
 
 

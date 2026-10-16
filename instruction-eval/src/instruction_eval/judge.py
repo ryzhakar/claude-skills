@@ -49,7 +49,6 @@ from instruction_eval.records import (
     REPLIES_FOLDER,
     SAMPLE_FILE,
     SERIES_RECORD,
-    SOURCE_FOLDER,
     TASKS_RECORD,
     VERDICTS_FOLDER,
     WORKING_BRIEF,
@@ -69,6 +68,7 @@ from instruction_eval.records import (
     load_record,
     parse_record,
     sha256,
+    source_snapshot_path,
     verdict_path,
     write_file,
     write_record,
@@ -144,7 +144,7 @@ def _binding_text(sources: Mapping[str, str], demands: Demands, gate_demand_ids:
 
 def _source_file_text(basename: str, text: str) -> str:
     """Return one source file's name line, a blank line, and its text without frontmatter."""
-    return f"Source file: {basename}\n\n{strip_frontmatter(text, f'{SOURCE_FOLDER}/{basename}')}"
+    return f"Source file: {basename}\n\n{strip_frontmatter(text, source_snapshot_path(basename))}"
 
 
 def _demand_list(demands: Iterable[Demand]) -> str:
@@ -651,7 +651,7 @@ def _judging_definition(
     files: SeriesFolder, records: SeriesRecords, brief: str, packet: str, verdict_path: Path, reader_model: str, agent_type: str, model: str
 ) -> bytes:
     """Return the definition of a judge or rater agent running `model`, its body the brief rendered for the packet text and the verdict path."""
-    sources = {source.name: files.read_bytes(f"{SOURCE_FOLDER}/{source.name}").decode() for source in records.series().sources}
+    sources = {source.name: files.read_bytes(source_snapshot_path(source.name)).decode() for source in records.series().sources}
     body = render_brief(brief, sources, records.demands(), _gate_demand_ids_without_sources(records), packet, verdict_path, reader_model, files.root.name)
     from instruction_eval.reader import AgentKind, render_agent_definition
 
@@ -716,7 +716,7 @@ def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, 
     plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
     return [
         SERIES_RECORD,
-        *(f"{SOURCE_FOLDER}/{source.name}" for source in sources),
+        *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
         f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
         *(f"{folder}/{PLAN_FILE}{KEY_SEPARATOR}{key}" for key in plan_keys),
@@ -893,7 +893,7 @@ def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, o
     sources = records.series().sources
     return [
         SERIES_RECORD,
-        *(f"{SOURCE_FOLDER}/{source.name}" for source in sources),
+        *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
         f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
         f"{READER_RECORD}{KEY_SEPARATOR}model",

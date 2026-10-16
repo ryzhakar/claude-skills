@@ -1913,6 +1913,11 @@ def parent_revision(revision: str) -> str:
     return revision_id(revision_number(revision) - 1)
 
 
+def source_snapshot_path(basename: str) -> str:
+    """Return the path of the series snapshot of the source file with the given basename."""
+    return f"{SOURCE_FOLDER}/{basename}"
+
+
 def revision_record_path(revision: str) -> str:
     """Return the path of a revision's `2-revision.yaml`."""
     return f"{revision}/{REVISION_RECORD_FILE}"

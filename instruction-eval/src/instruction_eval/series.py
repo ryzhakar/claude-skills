@@ -74,6 +74,7 @@ from instruction_eval.records import (
     revision_id,
     revision_record_path,
     sha256,
+    source_snapshot_path,
     utf8_text,
     write_file,
     write_record,
@@ -197,7 +198,7 @@ def _make_agents_folder(files: SeriesFolder) -> None:
 def _snapshot_sources(files: SeriesFolder, sources: Sequence[Path], texts: Mapping[Path, bytes]) -> None:
     """Copy each source's bytes to `1-source/<basename>`."""
     for source in sources:
-        write_file(files, f"{SOURCE_FOLDER}/{source.name}", texts[source])
+        write_file(files, source_snapshot_path(source.name), texts[source])
 
 
 def _refuse_duplicate_basenames(sources: Sequence[Path]) -> None:

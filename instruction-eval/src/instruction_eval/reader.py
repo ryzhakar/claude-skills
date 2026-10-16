@@ -39,7 +39,6 @@ from instruction_eval.records import (
     REPLIES_FOLDER,
     REPLY_COST_KEYS,
     SERIES_RECORD,
-    SOURCE_FOLDER,
     SPENT_INPUT_TOKENS_KEY,
     TASKS_RECORD,
     TURN_PREFIX,
@@ -59,6 +58,7 @@ from instruction_eval.records import (
     reply_path,
     revision_number,
     sha256,
+    source_snapshot_path,
     utf8_text,
     write_file,
     write_record,
@@ -785,7 +785,7 @@ def _revision_instruction(files: SeriesFolder, revision: str) -> bytes:
 
 def _source_paths(records: SeriesRecords) -> list[str]:
     """Return the series path of each source snapshot, in `sources` order."""
-    return [f"{SOURCE_FOLDER}/{source.name}" for source in records.series().sources]
+    return [source_snapshot_path(source.name) for source in records.series().sources]
 
 
 def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, texts: Mapping[str, bytes]) -> None:
