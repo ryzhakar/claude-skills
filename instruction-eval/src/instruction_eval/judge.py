@@ -79,6 +79,7 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     Task,
+    agent_definition_path,
     attempt_folder,
     guard_series,
     load_record,
@@ -586,7 +587,7 @@ def calibrate_stage_one(
     write_file(files, f"{folder}/{SAMPLE_FILE}", sample.text.encode())
     write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _origins_record(sample.origins, {SAMPLE_PACKET: sample.text}), _stage_one_reads(files, records, attempt, sample.replies, earlier))
     for name, definition in definitions.items():
-        write_file(files, f"{AGENTS_FOLDER}/{name}.md", definition)
+        write_file(files, agent_definition_path(name), definition)
     return _launch_list(definitions)
 
 
@@ -784,7 +785,7 @@ def judge_prepare(
     needed = [(packet, state.judging) for packet, state in states.items() if isinstance(state, NeedsJudging)]
     definitions = _judge_definitions(files, records, revision, origins, calibration, needed)
     for agent_type, definition in definitions.items():
-        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+        write_file(files, agent_definition_path(agent_type), definition)
     pending = "".join(f"judging k{state.judging} pending: {packet}\n" for packet, state in states.items() if isinstance(state, PendingJudging))
     return pending + _launch_list(definitions)
 
@@ -849,7 +850,7 @@ def _refuse_edited_judge_definitions(files: SeriesFolder, records: SeriesRecords
     """Refuse a judge definition of the revision whose bytes differ from its recomputation from the accepted brief and its packet."""
     written = [(packet, judging) for packet in origins["packets"] for judging in _judging_numbers(files, revision, packet)]
     for agent_type, recomputed in _judge_definitions(files, records, revision, origins, calibration, written).items():
-        refuse_edited_series_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", recomputed)
+        refuse_edited_series_file(files, agent_definition_path(agent_type), recomputed)
 
 
 def _refuse_pending_judgings(states: Mapping[str, JudgingState]) -> None:
@@ -972,7 +973,7 @@ def _refuse_edited_rating_definitions(files: SeriesFolder, records: SeriesRecord
     brief = files.read_bytes(f"{folder}/{BRIEF_SNAPSHOT_FILE}").decode()
     sample = files.read_bytes(f"{folder}/{SAMPLE_FILE}").decode()
     for rating in ratings:
-        refuse_edited_series_file(files, f"{AGENTS_FOLDER}/{rating.agent_type}.md", _rating_definition(files, records, folder, brief, sample, reader_model, rating))
+        refuse_edited_series_file(files, agent_definition_path(rating.agent_type), _rating_definition(files, records, folder, brief, sample, reader_model, rating))
 
 
 def _rating_run(
@@ -1105,6 +1106,6 @@ def _stage_two_reads(
         *_stage_one_reads(files, records, attempt, sampled, _earlier_attempts_with_origins(files, attempt)),
         f"{folder}/{ATTEMPT_ORIGINS_FILE}",
         *(f"{folder}/{name}" for name in sorted(rating_files)),
-        *(f"{AGENTS_FOLDER}/{rating.agent_type}.md" for rating in ratings),
+        *(agent_definition_path(rating.agent_type) for rating in ratings),
         f"{TASKS_RECORD}{KEY_SEPARATOR}tasks",
     ]

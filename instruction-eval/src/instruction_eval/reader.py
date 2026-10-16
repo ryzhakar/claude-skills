@@ -21,7 +21,6 @@ from instruction_eval.gate import (
 )
 from instruction_eval.records import (
     AGENT_READER,
-    AGENTS_FOLDER,
     COLLECTED_FILE,
     COMMAND_READER,
     CONDITION_KEYS,
@@ -52,6 +51,7 @@ from instruction_eval.records import (
     SeriesRecords,
     Task,
     Tasks,
+    agent_definition_path,
     condition_path,
     dump_canonical_yaml,
     guard_series,
@@ -798,7 +798,7 @@ def _write_reader_definitions(files: SeriesFolder, revision: str, model: str, te
     for condition, text in texts.items():
         agent_type = _reader_agent_type(revision, condition)
         definition = render_agent_definition(agent_type, model, AgentKind.READER, text)
-        write_file(files, f"{AGENTS_FOLDER}/{agent_type}.md", definition)
+        write_file(files, agent_definition_path(agent_type), definition)
 
 
 def _reader_agent_type(revision: str, condition: str) -> str:
@@ -926,7 +926,7 @@ def refuse_edited_series_file(files: SeriesFolder, path: str, recomputed: bytes)
 
 def _definition_path(revision: str, condition: str) -> str:
     """Return the series path of the reader definition of a condition of a revision."""
-    return f"{AGENTS_FOLDER}/{_reader_agent_type(revision, condition)}.md"
+    return agent_definition_path(_reader_agent_type(revision, condition))
 
 
 def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:

@@ -1937,6 +1937,11 @@ def source_snapshot_path(basename: str) -> str:
     return f"{SOURCE_FOLDER}/{basename}"
 
 
+def agent_definition_path(agent_type: str) -> str:
+    """Return the path of the definition of the agent with the given agent type."""
+    return f"{AGENTS_FOLDER}/{agent_type}.md"
+
+
 def revision_record_path(revision: str) -> str:
     """Return the path of a revision's `2-revision.yaml`."""
     return f"{revision}/{REVISION_RECORD_FILE}"
