@@ -4,7 +4,7 @@ import yaml
 
 from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.series import series_stop
-from series_fixtures import sha256, write_revision, write_yaml
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, sha256, write_revision, write_yaml
 
 SERIES = {
     "instruction": "/home/writer/terse.md",
@@ -12,8 +12,6 @@ SERIES = {
     "reader_kind": "agent",
     "created": "2026-10-14T10:00:00+00:00",
 }
-DEMANDS = {"demands": [{"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
-COVERAGE = {"demands": {"d-judge": [1]}, "sentences": {1: ["d-judge"]}}
 GATE = {"keep_rule": "best-estimate-shortest"}
 SIGMA = {"breaches": {}, "done": {}, "drift": {}, "demands": {}}
 NOISE = {"repeats": 2, "level": 0.95, "z": 1.96, "sigma": SIGMA, "checks": {}, "demands": {}, "done_change": None}
@@ -40,9 +38,9 @@ def outcome(passed: bool, completion_passed: bool, instruction_breaches: float, 
 def frozen_series(tmp_path, revisions: int, outcomes: dict[int, dict]) -> SeriesFolder:
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", SERIES, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
+    write_yaml(files, "2-demands.yaml", ONE_DEMAND)
     write_yaml(files, "7-gate.yaml", GATE)
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     for number in range(1, revisions + 1):
         write_revision(files, number)
     frozen = {

@@ -6,7 +6,7 @@ import numpy
 import pytest
 import yaml
 from gate_fixtures import first_replies, frozen_series
-from series_fixtures import AGENT_SERIES, sha256, write_revision, write_yaml
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, AGENT_SERIES, sha256, write_revision, write_yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import SeriesFolder, write_record
@@ -48,8 +48,6 @@ def test_a_fresh_series_reports_its_parts_unfrozen_with_an_ungated_first_revisio
     assert status["stop"] is None
 
 
-DEMANDS = {"demands": [{"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
-COVERAGE = {"demands": {"d-judge": [1]}, "sentences": {1: ["d-judge"]}}
 SIGMA = {"breaches": {}, "done": {}, "drift": {}, "demands": {}}
 NOISE = {"repeats": 2, "level": 0.95, "z": 1.96, "sigma": SIGMA, "checks": {}, "demands": {}, "done_change": None}
 FROZEN_PARTS = ("series.yaml", "2-demands.yaml", "r1/2-instruction.md", "r1/3-coverage.yaml")
@@ -74,9 +72,9 @@ def outcome(passed: bool, instruction_breaches: float, words: int, cost: dict, c
 def gated_series(tmp_path, gate: dict, outcomes: dict[int, dict]) -> SeriesFolder:
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", AGENT_SERIES, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
+    write_yaml(files, "2-demands.yaml", ONE_DEMAND)
     write_yaml(files, "7-gate.yaml", gate)
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     for number in outcomes:
         write_revision(files, number)
     hashes = {path: sha256(files.read_bytes(path)) for path in FROZEN_PARTS}

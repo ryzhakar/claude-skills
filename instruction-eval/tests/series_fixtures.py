@@ -77,6 +77,8 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
 
 
 REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
+ONE_DEMAND = {"demands": [{"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
+ONE_DEMAND_COVERAGE = {"demands": {"d-judge": [1]}, "sentences": {1: ["d-judge"]}}
 
 
 class NeutralLogin:

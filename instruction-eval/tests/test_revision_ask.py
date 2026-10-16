@@ -14,7 +14,7 @@ from reader_fixtures import (
     stamp,
     write_yaml,
 )
-from series_fixtures import tree, write_revision
+from series_fixtures import ONE_DEMAND_COVERAGE, tree, write_revision
 
 from instruction_eval.coverage import coverage_check
 from instruction_eval.reader import (
@@ -25,7 +25,6 @@ from instruction_eval.reader import (
 )
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
 
-COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
 FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: b1\ntemperature: 0.7\n"
 READER_SECONDS = 0.5
 
@@ -48,13 +47,13 @@ def stub_fingerprint(command: Sequence[str]) -> str:
 
 def command_series(tmp_path) -> SeriesFolder:
     files = prepared_series(tmp_path, reader=COMMAND_READER)
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     return files
 
 
 def agent_series(tmp_path) -> SeriesFolder:
     files = prepared_series(tmp_path)
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     return files
 
 
@@ -110,7 +109,7 @@ def test_a_command_reader_answers_every_missing_reply_serially_each_reply_record
 
 def test_each_conversation_turn_is_asked_with_the_repeats_earlier_turns_and_replies(tmp_path):
     files = prepared_series(tmp_path, CONVERSATION_TASKS, reader=COMMAND_READER)
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     reader = StubReader()
 
     revision_ask(files, "r1", ["instruction"], reader, stub_fingerprint)
@@ -200,7 +199,7 @@ def test_a_named_condition_the_revision_does_not_ask_refuses_before_any_reader_r
 
 def test_a_coverage_failing_its_check_refuses_the_ask_before_any_reader_runs(tmp_path):
     files = command_series(tmp_path)
-    (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump({"demands": {"d-one": [1]}, "sentences": {}}))
+    (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump({"demands": {"d-judge": [1]}, "sentences": {}}))
 
     with pytest.raises(Refusal):
         revision_ask(files, "r1", [], forbidden_run, forbidden_run)
@@ -253,13 +252,13 @@ def forbidden_read(path):
 def later_revision_series(tmp_path, budget) -> SeriesFolder:
     """Build a frozen command series whose r1 is asked and gated as failed and whose r2 is prepared."""
     files = prepared_series(tmp_path, reader=COMMAND_READER, gate={**FULL_GATE, "budget": budget})
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     revision_ask(files, "r1", [], StubReader(), stub_fingerprint)
     write_record(files, "r1/9-outcome.yaml", FIRST_OUTCOME, [])
     frozen = {"hashes": {}, "noise": NOISE, "tool_version": "0.1.0", "frozen_at": "2026-10-14T10:00:00+00:00", "fingerprint_hash": reader_fingerprint(files, stub_fingerprint).fingerprint_hash}
     write_record(files, "8-frozen.yaml", frozen, [])
     write_revision(files, 2)
-    write_yaml(files, "r2/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r2/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     reader_prepare(files, "r2", forbidden_read, {}, files.root, files.root)
     return files
 
@@ -310,12 +309,12 @@ def test_from_r2_a_ceiling_refuses_an_ask_whose_replies_at_r1s_mean_cost_would_p
 
 TWO_DEMANDS = {
     "demands": [
-        {"id": "d-one", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
+        {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
         {"id": "d-two", "text": "Cite sources.", "boundary": "None.", "counted_by": "judge"},
     ]
 }
-DROPPING_D_TWO = {"demands": {"d-one": [1], "d-two": {"dropped": "unmeasurable"}}, "sentences": {1: ["d-one"]}}
-KEEPING_D_TWO = {"demands": {"d-one": [1], "d-two": [1]}, "sentences": {1: ["d-one", "d-two"]}}
+DROPPING_D_TWO = {"demands": {"d-judge": [1], "d-two": {"dropped": "unmeasurable"}}, "sentences": {1: ["d-judge"]}}
+KEEPING_D_TWO = {"demands": {"d-judge": [1], "d-two": [1]}, "sentences": {1: ["d-judge", "d-two"]}}
 
 
 def test_a_later_coverage_edited_after_a_passing_check_to_drop_other_demands_than_r1_refuses_the_ask_before_any_reader_runs(tmp_path):

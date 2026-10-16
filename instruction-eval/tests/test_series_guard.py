@@ -4,7 +4,7 @@ import re
 import pytest
 
 from instruction_eval.records import Refusal, SeriesFolder, guard_series, write_file, write_record
-from series_fixtures import write_yaml
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, write_yaml
 
 SERIES = {
     "instruction": "/home/writer/terse.md",
@@ -12,8 +12,6 @@ SERIES = {
     "reader_kind": "agent",
     "created": "2026-10-14T10:00:00+00:00",
 }
-DEMANDS = {"demands": [{"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
-COVERAGE = {"demands": {"d-judge": [1]}, "sentences": {1: ["d-judge"]}}
 SIGMA = {"breaches": {}, "done": {}, "drift": {}, "demands": {}}
 NOISE = {"repeats": 2, "level": 0.95, "z": 1.96, "sigma": SIGMA, "checks": {}, "demands": {}, "done_change": None}
 FROZEN_PARTS = ("series.yaml", "2-demands.yaml", "r1/2-instruction.md", "r1/3-coverage.yaml")
@@ -41,11 +39,11 @@ def write_revision(files: SeriesFolder, number: int, parent_record: str) -> None
 def files(tmp_path):
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", SERIES, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
+    write_yaml(files, "2-demands.yaml", ONE_DEMAND)
     write_file(files, "r1/2-instruction.md", b"Be terse.\n")
     first = {"number": 1, "parent": None, "hash": sha256(files, "r1/2-instruction.md"), "parent_record": None, "change": None}
     write_record(files, "r1/2-revision.yaml", first, [])
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     frozen = {
         "hashes": {path: sha256(files, path) for path in FROZEN_PARTS},
         "noise": NOISE,
@@ -100,7 +98,7 @@ def test_a_frozen_series_whose_part_was_deleted_refuses_naming_it(files):
 
 def test_an_unfrozen_series_runs_after_its_parts_change(files):
     (files.root / "8-frozen.yaml").unlink()
-    write_yaml(files, "2-demands.yaml", {"demands": [{**DEMANDS["demands"][0], "text": "Be brief."}]})
+    write_yaml(files, "2-demands.yaml", {"demands": [{**ONE_DEMAND["demands"][0], "text": "Be brief."}]})
     guard_series(files, "series freeze")
 
 

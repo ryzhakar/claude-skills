@@ -5,20 +5,19 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
-from series_fixtures import NeutralLogin, write_revision
+from series_fixtures import ONE_DEMAND, NeutralLogin, write_revision
 
 from instruction_eval.reader import Transcript, reader_prepare, revision_collect
 from instruction_eval.records import SeriesFolder, write_file, write_record
 
 MODEL = "claude-sonnet-5-5"
 SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
-DEMANDS = {"demands": [{"id": "d-one", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
 OPEN_MESSAGE = "Explain tides.\nBe brief.  \n"
 SEALED_MESSAGE = "Explain rain."
 TASKS = {
     "tasks": [
-        {"id": "t-open", "tempts": "d-one", "split": "open", "message": OPEN_MESSAGE, "answer_key": None},
-        {"id": "t-sealed", "tempts": "d-one", "split": "sealed", "message": SEALED_MESSAGE, "answer_key": None},
+        {"id": "t-open", "tempts": "d-judge", "split": "open", "message": OPEN_MESSAGE, "answer_key": None},
+        {"id": "t-sealed", "tempts": "d-judge", "split": "sealed", "message": SEALED_MESSAGE, "answer_key": None},
     ],
     "conversations": [],
 }
@@ -39,7 +38,7 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
 def prepared_series(tmp_path, tasks: dict = TASKS, reader: dict = READER, gate: dict = GATE) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
     write_record(files, "series.yaml", {**SERIES, "reader_kind": reader["kind"]}, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
+    write_yaml(files, "2-demands.yaml", ONE_DEMAND)
     write_yaml(files, "3-tasks.yaml", tasks)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
     write_yaml(files, "5-reader.yaml", reader)

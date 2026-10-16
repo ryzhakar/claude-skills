@@ -4,11 +4,10 @@ import pytest
 
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
 from instruction_eval.series import refuse_unready_freeze
-from series_fixtures import sha256, write_yaml
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, sha256, write_yaml
 
 INSTRUCTION = b"Be terse.\n"
 PLACEBO = b"Lorem ipsum dolor sit amet.\n"
-DEMANDS = {"demands": [{"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
 TASKS = {
     "tasks": [
         {"id": "t-open", "tempts": "d-judge", "split": "open", "message": "Explain the tides.", "answer_key": None},
@@ -20,7 +19,6 @@ TASKS = {
 }
 CONDITIONS = {"controls": ["empty", "aim", "placebo"], "aim": "Answer in few words.", "placebo_source": "/tmp/placebo.md", "omissions": "none"}
 CONDITION_NAMES = ("instruction", "empty", "aim", "placebo")
-COVERAGE = {"demands": {"d-judge": [1]}, "sentences": {1: ["d-judge"]}}
 CHECKS = [{"compares": compares, "gap": 1.0} for compares in ("instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion")]
 GATE = {"repeats": 2, "level": 0.95, "done_by": "judge", "checks": CHECKS, "keep_rule": "best-estimate-shortest", "budget": "none"}
 HASH = "a" * 64
@@ -56,7 +54,7 @@ def ready_series(tmp_path: Path, reader: dict = AGENT_READER) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
     reader_kind = reader["kind"]
     write_record(files, "series.yaml", {"instruction": "/tmp/terse.md", "sources": [], "reader_kind": reader_kind, "created": "2026-10-14T10:00:00+00:00"}, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
+    write_yaml(files, "2-demands.yaml", ONE_DEMAND)
     write_yaml(files, "3-tasks.yaml", TASKS)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
     write_file(files, "4-placebo-source.md", PLACEBO)
@@ -65,7 +63,7 @@ def ready_series(tmp_path: Path, reader: dict = AGENT_READER) -> SeriesFolder:
     write_yaml(files, "7-gate.yaml", GATE)
     write_file(files, "r1/2-instruction.md", INSTRUCTION)
     write_record(files, "r1/2-revision.yaml", {"number": 1, "parent": None, "hash": sha256(INSTRUCTION), "parent_record": None, "change": None}, [])
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     for condition in CONDITION_NAMES:
         write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
         for task in TASKS["tasks"]:
@@ -118,7 +116,7 @@ def test_a_gate_missing_a_key_is_refused_the_keep_rule_included(tmp_path, key):
 
 def test_a_failing_demands_check_is_refused(tmp_path):
     files = ready_series(tmp_path)
-    write_yaml(files, "2-demands.yaml", {"demands": DEMANDS["demands"] * 2})
+    write_yaml(files, "2-demands.yaml", {"demands": ONE_DEMAND["demands"] * 2})
 
     assert_refused(files, r"^duplicate demand id: d-judge")
 

@@ -6,9 +6,8 @@ import yaml
 
 from instruction_eval.judge import revision_blind
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, sha256, write_file, write_record
-from series_fixtures import write_agent_series, write_yaml
+from series_fixtures import ONE_DEMAND, write_agent_series, write_yaml
 
-DEMANDS = {"demands": [{"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
 TASK_IDS = ("t1", "t2", "t3", "t4")
 TASKS = {
     "tasks": [
@@ -108,7 +107,7 @@ def write_replies(files: SeriesFolder, revision: str, conditions: Sequence[str])
 def blindable_series(tmp_path, revisions: int = 1) -> SeriesFolder:
     """Write a series with calibration, anchors, and the replies of revision r1, and of later revisions the instruction's alone."""
     files = SeriesFolder(tmp_path)
-    write_agent_series(files, DEMANDS, TASKS, ANCHORS)
+    write_agent_series(files, ONE_DEMAND, TASKS, ANCHORS)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
     write_yaml(files, "7-gate.yaml", GATE)
     write_yaml(files, "6-judge/calibration/attempt-1/plan.yaml", PLAN)
