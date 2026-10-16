@@ -44,7 +44,7 @@ from instruction_eval.records import (
 )
 from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, DONE_BY_INPUT, Noise, ReplyRow, join_reply_rows
 from instruction_eval.series import refuse_unclosed_frontmatter
-from instruction_eval.tasks import AIM_LABEL, LabelledText, shared_phrases, task_messages
+from instruction_eval.tasks import AIM_LABEL, LabelledText, refuse_shared_phrases, task_messages
 
 NOISE_MULTIPLE = 2
 
@@ -195,7 +195,7 @@ def revision_new(files: SeriesFolder, read_external: Callable[[Path], bytes]) ->
     sentences = _sentence_texts(instruction)
     change = _named_change(hypothesis.change)
     _refuse_unmade_change(parent_sentences, sentences, change)
-    _refuse_echoes(revision, instruction.decode(), _echo_sources(files, records.tasks(), records.conditions().aim))
+    refuse_shared_phrases([(f"revision {revision}", instruction.decode())], _echo_sources(files, records.tasks(), records.conditions().aim))
     refuse_unfit_hypothesis(hypothesis, _open_rows(records, parent), records.frozen()["noise"])
     accepted_verdicts = accepted_verdict_paths(parent, records.collected(parent))
     write_file(files, f"{revision}/{INSTRUCTION_FILE}", instruction)
@@ -257,14 +257,6 @@ def _echo_sources(files: SeriesFolder, tasks: Tasks, aim: str) -> list[LabelledT
         (AIM_LABEL, aim),
         (PLACEBO_CONDITION, files.read_bytes(PLACEBO_CONDITION).decode()),
     ]
-
-
-def _refuse_echoes(revision: str, instruction: str, sources: Sequence[LabelledText]) -> None:
-    """Refuse an instruction sharing a three-word sequence with a source, naming the first source and phrase."""
-    for label, text in sources:
-        phrases = shared_phrases(instruction, text)
-        if phrases:
-            raise Refusal(f"revision {revision} echoes {label}: {phrases[0]}")
 
 
 def _open_rows(records: SeriesRecords, revision: str) -> list[ReplyRow]:
