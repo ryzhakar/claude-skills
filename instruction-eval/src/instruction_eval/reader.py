@@ -68,7 +68,6 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.series import _refuse_other_reader_build
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"
@@ -1178,10 +1177,17 @@ def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
     return sorted(reply.relative_to(files.root).as_posix() for reply in replies)
 
 
+def refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
+    """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
+    for path in reply_paths:
+        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
+            raise Refusal(f"reader fingerprint changed since {path}")
+
+
 def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fingerprint_hash: str) -> None:
     """Refuse a fingerprint hash differing from the freeze's once frozen, else from any r1 reply written so far."""
     if not files.holds(FROZEN_RECORD):
-        _refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
+        refuse_other_reader_build(records, _first_revision_reply_paths(files), fingerprint_hash)
     elif records.frozen().get(FINGERPRINT_HASH_KEY) != fingerprint_hash:
         raise Refusal(f"reader fingerprint changed since {FROZEN_RECORD}")
 

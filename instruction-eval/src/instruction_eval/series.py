@@ -28,6 +28,7 @@ from instruction_eval.gate import (
     stop_budget,
     sum_unless_null,
 )
+from instruction_eval.reader import refuse_other_reader_build
 from instruction_eval.records import (
     AGENTS_FOLDER,
     AGREEMENT_FILE,
@@ -296,7 +297,7 @@ def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, rea
     _refuse_unmeasured_first_revision(files)
     _refuse_stale_first_revision_records(files)
     if records.series().reader_kind == COMMAND_READER:
-        _refuse_other_reader_build(records, [reply.path for reply in expected], fingerprint_hash)
+        refuse_other_reader_build(records, [reply.path for reply in expected], fingerprint_hash)
     _refuse_unmeasurable_checks(gate.checks, records)
 
 
@@ -337,13 +338,6 @@ def _first_revision_command_records(files: SeriesFolder) -> list[str]:
     paths = sorted(path.relative_to(files.root).as_posix() for path in (files.root / FIRST_REVISION).rglob(RECORD_PATTERN))
     user_and_judge_records = (f"{FIRST_REVISION}/{COVERAGE_FILE}", f"{FIRST_REVISION}/{VERDICTS_FOLDER}/")
     return [path for path in paths if not path.startswith(user_and_judge_records)]
-
-
-def _refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
-    """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
-    for path in reply_paths:
-        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
-            raise Refusal(f"reader fingerprint changed since {path}")
 
 
 def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesRecords) -> None:
