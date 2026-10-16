@@ -1,11 +1,10 @@
-import hashlib
 
 import pytest
 import yaml
 
 from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.series import series_stop
-from series_fixtures import sha256, write_revision
+from series_fixtures import sha256, write_revision, write_yaml
 
 SERIES = {
     "instruction": "/home/writer/terse.md",
@@ -25,12 +24,6 @@ REASON = "no hypothesis clears twice its noise"
 
 def file_hash(files: SeriesFolder, path: str) -> str:
     return sha256(files.read_bytes(path))
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document))
 
 
 def outcome(passed: bool, completion_passed: bool, instruction_breaches: float, words: int) -> dict:

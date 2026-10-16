@@ -6,7 +6,7 @@ import yaml
 
 from instruction_eval.reader import reader_prepare
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import sha256
+from series_fixtures import sha256, tree
 
 REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
 
@@ -130,10 +130,6 @@ def test_agent_reader_gets_one_definition_per_condition_with_the_condition_file_
         assert frontmatter["description"] == "Generated agent; launch from the printed launch list only."
         assert frontmatter["model"] == AGENT_MODEL
         assert body == conditions[f"{condition}.md"]
-
-
-def tree(root: Path) -> list[str]:
-    return sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
 
 
 def test_a_folder_that_is_no_series_refuses(tmp_path):

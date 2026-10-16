@@ -2,12 +2,12 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import yaml
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from instruction_eval.coverage import coverage_check
 from instruction_eval.records import Refusal, SeriesFolder
+from series_fixtures import write_yaml
 
 DEMANDS = [
     {"id": "d-a", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
@@ -19,12 +19,6 @@ COVERAGE = {
     "sentences": {1: ["d-a"], 2: ["d-b"], 3: ["d-a"]},
 }
 COVERAGE_PATH = "r1/3-coverage.yaml"
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document))
 
 
 def covered_series(tmp_path, coverage: dict = COVERAGE, instruction: str = INSTRUCTION, demands: list[dict] = DEMANDS) -> SeriesFolder:

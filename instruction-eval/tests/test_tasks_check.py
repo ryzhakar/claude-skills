@@ -3,12 +3,12 @@ from pathlib import Path
 import tempfile
 
 import pytest
-import yaml
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.tasks import tasks_check
+from series_fixtures import write_yaml
 
 DEMANDS = [{"id": "d-a", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]
 INSTRUCTION = "Be terse. Never pad answers with filler.\n"
@@ -27,12 +27,6 @@ CONVERSATIONS = [
     {"id": "trip-sealed", "split": "sealed", "turns": ["My bicycle chain keeps slipping.", "Could the sprocket be worn?"]},
     {"id": "trip-sealed-two", "split": "sealed", "turns": ["Tomatoes split before ripening.", "Is uneven watering responsible?"]},
 ]
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document))
 
 
 def tasks_series(

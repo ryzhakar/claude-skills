@@ -2,9 +2,9 @@ import hashlib
 import re
 
 import pytest
-import yaml
 
 from instruction_eval.records import Refusal, SeriesFolder, guard_series, write_file, write_record
+from series_fixtures import write_yaml
 
 SERIES = {
     "instruction": "/home/writer/terse.md",
@@ -21,12 +21,6 @@ FROZEN_PARTS = ("series.yaml", "2-demands.yaml", "r1/2-instruction.md", "r1/3-co
 
 def sha256(files: SeriesFolder, path: str) -> str:
     return hashlib.sha256((files.root / path).read_bytes()).hexdigest()
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document))
 
 
 def write_revision(files: SeriesFolder, number: int, parent_record: str) -> None:

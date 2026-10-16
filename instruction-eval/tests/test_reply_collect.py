@@ -9,7 +9,7 @@ import yaml
 
 from instruction_eval.reader import Transcript, reader_prepare, revision_collect
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import write_revision
+from series_fixtures import tree, write_revision
 from test_reader_prepare import NeutralLogin
 
 MODEL = "claude-sonnet-5-5"
@@ -234,10 +234,6 @@ COMMAND_READER = {
     "fingerprint": ["llm-reply", "--version"],
     "sampling": {"temperature": 0.7},
 }
-
-
-def tree(root: Path) -> list[str]:
-    return sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
 
 
 def write_command_replies(files: SeriesFolder, conditions=CONDITION_NAMES) -> None:
