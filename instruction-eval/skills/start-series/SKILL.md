@@ -13,15 +13,15 @@ Turn every path into an absolute path; never pass a relative one.
 </gather-the-inputs>
 
 <set-up-the-neutral-login-once>
-Skip this section when `$(claudes path readers)/settings.json` holds both allow rules and both plugins below; never skip on the folder's existence alone.
+Run `claudes ls` first; never run `claudes path readers` before it.
 
-When `claudes ls` lists no `readers`, hand the user `/plugin marketplace add ryzhakar/claude-skills` and then `/plugin install instruction-eval@my-claude-skills` to type in the default login, and ask for each command's result; never continue before two reports of success.
+When it lists no `readers`, hand the user `/plugin marketplace add ryzhakar/claude-skills` and then `/plugin install instruction-eval@my-claude-skills` to type in the default login, and ask for each command's result; never continue before two reports of success.
 
 On a failure report, stop and report its text; never retry it yourself.
 
 Then make the login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`; never name another plugin.
 
-When `claudes ls` lists `readers`, skip the plugin commands, `claudes new`, and the `/login` hand-off, and only fix `settings.json`; never make the login twice.
+When it lists `readers`, read `$(claudes path readers)/settings.json` and skip to the series folder when it holds both allow rules and both plugins below; never make the login twice.
 
 Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing allow entry.
 
@@ -29,7 +29,7 @@ Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `manifes
 
 Keep the bare login free of a `CLAUDE.md`, a skill, and an agent; never add one.
 
-Read `settings.json` back and confirm both allow rules and both plugins; never continue with a gap.
+Read `settings.json` back, fixing and rereading it on a gap; never continue with a gap.
 
 Only when `claudes new` ran in this turn, hand the user `claudes run readers` to start once in their own terminal and ask them to run `/login` there with the same account and report success; never continue before that report.
 </set-up-the-neutral-login-once>
@@ -37,7 +37,7 @@ Only when `claudes new` ran in this turn, hand the user `claudes run readers` to
 <make-the-series-folder>
 Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` by bare name from the Bash tool in any working directory; never start a session in the folder before it.
 
-When Bash finds no `instruction-eval`, hand the user `/reload-plugins` and rerun; never call the CLI by its cache path.
+When Bash finds no `instruction-eval`, hand the user `/reload-plugins` and rerun once; never call the CLI by its cache path.
 
 Give the bare name, which creates `~/instruction-series/<name>/`; never give a path outside `~/instruction-series/`.
 
