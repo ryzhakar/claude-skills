@@ -850,3 +850,14 @@ Root fixes: R129 and R27 snapshot the placebo source; the Commands table splits 
 ## Residue
 
 Round-4 fixes are unverified: no check round read the spec after them. Rejected findings: none; all 28 were verified against the text and fixed.
+
+## Amendments after build (2026-10-16T14:51+0300, orchestrator, reversible choices settled from the owner's standing words; the requirements above stay as frozen)
+Each follows from R115 (a record's `inputs` hashes only the keys the command read); the Commands table's Reads cells are amended to name what the code reads:
+- `judge calibrate` stage one also reads `attempt-<n>/sample.md` (its own earlier write is not an input; the sample it draws is) and, for a series without a source, `r1/3-coverage.yaml#demands`.
+- `revision blind` also reads `<r>/2-instruction.md` (the sentence count for the `omit-<n>` conditions).
+- `judge collect` also reads `5-reader.yaml#model` and, for a sourceless series, `r1/3-coverage.yaml#demands`.
+- `revision new` also reads `7-gate.yaml#done_by`.
+- `revision gate`'s second record `9-stop.yaml` hashes the gate's own `<r>/9-outcome.yaml` plus `7-gate.yaml#budget`.
+- For r > 1, `revision blind`, `detect`, `score` and `gate` read r1's control replies only (R69, R130), not all of `r1/5-replies/**`.
+- Records: `8-scores.yaml` `mean_difference` and `done_rate`, and `9-outcome.yaml` `checks[].mean_difference`, `parent_comparison.mean_difference` and `parent_comparison.interval`, may be null when no unit is paired (R72, R87).
+- Defect, not amendment: `judge calibrate` stage two hashed `reference-user.yaml` as a whole file; R115 requires per-key hashing (`#verdicts`).
