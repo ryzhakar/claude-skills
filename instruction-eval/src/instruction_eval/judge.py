@@ -573,7 +573,7 @@ def calibrate_stage_one(
     """Run stage one of `judge calibrate` on the latest attempt: snapshot the brief, blind a sample of r1's open replies, write the rating definitions, and return their launch list."""
     guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
-    attempt = _latest_attempt(files)
+    attempt = latest_attempt_number(files)
     brief = _working_brief(files, brief_template)
     check_neutral_login(environ, home, working_dir)
     records = SeriesRecords(files)
@@ -661,7 +661,7 @@ def _refuse_calibrated_series(files: SeriesFolder) -> None:
         raise Refusal(f"already calibrated: {CALIBRATION_RECORD}")
 
 
-def _latest_attempt(files: SeriesFolder) -> int:
+def latest_attempt_number(files: SeriesFolder) -> int:
     """Return the highest attempt number holding a plan, refusing a series without one."""
     folders = (files.root / CALIBRATION_FOLDER).glob(f"{ATTEMPT_FOLDER_PREFIX}*/{PLAN_FILE}")
     numbers = [int(match.group(1)) for folder in folders if (match := ATTEMPT_PATTERN.fullmatch(folder.parent.name))]
@@ -934,7 +934,7 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence[Transcript], 
     """Run stage two of `judge calibrate` on the latest attempt: score its candidate ratings against the raters' reference, write its agreement, and on acceptance the calibration and the anchors, returning the attempt's acceptance or rejection."""
     guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
-    attempt = _latest_attempt(files)
+    attempt = latest_attempt_number(files)
     folder = attempt_folder(attempt)
     records = SeriesRecords(files)
     plan = records.plan(attempt)

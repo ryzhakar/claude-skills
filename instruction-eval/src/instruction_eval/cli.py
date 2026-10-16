@@ -18,11 +18,11 @@ from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
 from instruction_eval.gate import revision_gate
 from instruction_eval.judge import (
-    ATTEMPT_PATTERN,
     calibrate_stage_one,
     calibrate_stage_two,
     judge_collect,
     judge_prepare,
+    latest_attempt_number,
     revision_blind,
 )
 from instruction_eval.reader import (
@@ -41,7 +41,6 @@ from instruction_eval.reader import (
 )
 from instruction_eval.records import (
     ATTEMPT_ORIGINS_FILE,
-    CALIBRATION_FOLDER,
     INSTRUCTION_FILE,
     ReaderKind,
     Refusal,
@@ -166,8 +165,7 @@ REFUSAL_EXIT_CODE = 1
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_MANIFEST = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
 BRIEF_TEMPLATE = Path(__file__).resolve().parent / "templates" / "judge-brief.md"
-GUARDED_COMMANDS = frozenset({("demands", "check"), ("coverage", "check"), ("tasks", "check"), ("revision", "score"), ("revision", "detect")})
-CALIBRATION_PLAN_PATTERN = "attempt-*/plan.yaml"
+GUARDED_COMMANDS = frozenset({("demands", "check"), ("coverage", "check"), ("tasks", "check"), ("revision", "score"), ("revision", "detect"), ("judge", "calibrate")})
 FINGERPRINT_KEY = "fingerprint"
 FINGERPRINT_HASH_KEY = "fingerprint_hash"
 
@@ -278,10 +276,8 @@ def _refuse_unknown_conditions(files: SeriesFolder, revision: str, conditions: S
 
 
 def _latest_attempt_holds_origins(files: SeriesFolder) -> bool:
-    """Tell whether the highest attempt holding a plan has written its origins."""
-    plans = (files.root / CALIBRATION_FOLDER).glob(CALIBRATION_PLAN_PATTERN)
-    numbers = [int(match.group(1)) for plan in plans if (match := ATTEMPT_PATTERN.fullmatch(plan.parent.name))]
-    return bool(numbers) and files.holds(f"{attempt_folder(max(numbers))}/{ATTEMPT_ORIGINS_FILE}")
+    """Tell whether the latest attempt has written its origins."""
+    return files.holds(f"{attempt_folder(latest_attempt_number(files))}/{ATTEMPT_ORIGINS_FILE}")
 
 
 def _fresh_fingerprint_hash(files: SeriesFolder, effects: Effects) -> str | None:
