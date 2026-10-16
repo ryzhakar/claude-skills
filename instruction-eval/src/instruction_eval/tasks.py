@@ -1,6 +1,6 @@
 import itertools
 import re
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -196,9 +196,9 @@ def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks, re
     aim = (AIM_LABEL, conditions.aim)
     placebo = _placebo_source(files, conditions, read_external)
     _, placebo_text = placebo
-    _refuse_shared_phrases(task_messages(tasks), [*instructions, aim, placebo])
-    _refuse_shared_phrases([aim], instructions)
-    _refuse_shared_phrases([(PLACEBO_LABEL, placebo_text)], _source_files(files, records.series()))
+    refuse_shared_phrases(task_messages(tasks), [*instructions, aim, placebo])
+    refuse_shared_phrases([aim], instructions)
+    refuse_shared_phrases([(PLACEBO_LABEL, placebo_text)], _source_files(files, records.series()))
 
 
 def _revision_instructions(files: SeriesFolder) -> list[LabelledText]:
@@ -239,7 +239,7 @@ def task_messages(tasks: Tasks) -> list[LabelledText]:
     return [*((f"task {task.id}", task.message) for task in tasks.tasks), *turns]
 
 
-def _refuse_shared_phrases(owners: list[LabelledText], others: list[LabelledText]) -> None:
+def refuse_shared_phrases(owners: Sequence[LabelledText], others: Sequence[LabelledText]) -> None:
     """Refuse the first owner text sharing a three-word sequence with an other text, naming both and the first shared phrase."""
     for owner, text in owners:
         for other, other_text in others:

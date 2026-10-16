@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = PLUGIN_ROOT / "bin" / "instruction-eval"
@@ -85,16 +86,14 @@ def test_every_command_refuses_outside_a_series_folder(tmp_path, run):
 
 
 FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: b1\ntemperature: 0.7\n"
-DEMANDS = {"demands": [{"id": "d-one", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
 OPEN_MESSAGE = "Explain tides.\n"
 TASKS = {
     "tasks": [
-        {"id": "t-open", "tempts": "d-one", "split": "open", "message": OPEN_MESSAGE, "answer_key": None},
-        {"id": "t-sealed", "tempts": "d-one", "split": "sealed", "message": "Explain rain.", "answer_key": None},
+        {"id": "t-open", "tempts": "d-judge", "split": "open", "message": OPEN_MESSAGE, "answer_key": None},
+        {"id": "t-sealed", "tempts": "d-judge", "split": "sealed", "message": "Explain rain.", "answer_key": None},
     ],
     "conversations": [],
 }
-COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
 CONDITIONS_BY_NAME = ["aim", "empty", "instruction", "placebo"]
 
 
@@ -119,7 +118,7 @@ def command_series(tmp_path, run) -> Path:
     fingerprint = write_script(fakes / "fingerprint", f"printf '{FINGERPRINT_OUTPUT}'")
     placebo = tmp_path / "gardening.md"
     placebo.write_text("Gardens bloom early.\n")
-    write_yaml(folder / "2-demands.yaml", DEMANDS)
+    write_yaml(folder / "2-demands.yaml", ONE_DEMAND)
     write_yaml(folder / "3-tasks.yaml", TASKS)
     write_yaml(folder / "4-conditions.yaml", {"controls": ["empty", "aim", "placebo"], "aim": "Be terse.", "placebo_source": str(placebo), "omissions": "none"})
     write_yaml(
@@ -127,17 +126,17 @@ def command_series(tmp_path, run) -> Path:
         {"kind": "command", "model": "gpt-5-mini", "command": [str(reader), "{condition}"], "fingerprint": [str(fingerprint)], "sampling": {"temperature": 0.7}},
     )
     write_yaml(folder / "7-gate.yaml", {"repeats": 2})
-    write_yaml(folder / "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(folder / "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     return folder
 
 
 def test_demands_check_passes_in_silence_and_refuses_a_repeated_demand_in_one_line(command_series, run):
     passed = run(command_series, "demands", "check")
     assert (passed.returncode, passed.stdout, passed.stderr) == (0, "", "")
-    write_yaml(command_series / "2-demands.yaml", {"demands": [*DEMANDS["demands"], *DEMANDS["demands"]]})
+    write_yaml(command_series / "2-demands.yaml", {"demands": [*ONE_DEMAND["demands"], *ONE_DEMAND["demands"]]})
     refused = run(command_series, "demands", "check")
     assert refused.returncode == 1
-    assert refused.stderr == "duplicate demand id: d-one (2-demands.yaml)\n"
+    assert refused.stderr == "duplicate demand id: d-judge (2-demands.yaml)\n"
 
 
 def test_reader_fingerprint_prints_the_parsed_output_with_its_hash(command_series, run):

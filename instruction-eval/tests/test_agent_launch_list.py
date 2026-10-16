@@ -19,16 +19,15 @@ from instruction_eval.reader import (
     agent_launch_list,
 )
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import write_revision
+from series_fixtures import ONE_DEMAND, write_revision
 
 TIDES_MESSAGE = "Explain tides.\nBe brief.  \n"
 TRIP_TURNS = ["Plan a trip.", "Which week?", "Thanks."]
 SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
-DEMANDS = {"demands": [{"id": "d-one", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]}
 TASKS = {
     "tasks": [
-        {"id": "t-open", "tempts": "d-one", "split": "open", "message": TIDES_MESSAGE, "answer_key": None},
-        {"id": "t-sealed", "tempts": "d-one", "split": "sealed", "message": "Explain rain.", "answer_key": None},
+        {"id": "t-open", "tempts": "d-judge", "split": "open", "message": TIDES_MESSAGE, "answer_key": None},
+        {"id": "t-sealed", "tempts": "d-judge", "split": "sealed", "message": "Explain rain.", "answer_key": None},
     ],
     "conversations": [{"id": "c-open", "split": "open", "turns": TRIP_TURNS}],
 }
@@ -44,7 +43,7 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
 def agent_series(tmp_path, gate: dict = GATE, conditions: dict = CONDITIONS) -> SeriesFolder:
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", SERIES, [])
-    write_yaml(files, "2-demands.yaml", DEMANDS)
+    write_yaml(files, "2-demands.yaml", ONE_DEMAND)
     write_yaml(files, "3-tasks.yaml", TASKS)
     write_yaml(files, "4-conditions.yaml", conditions)
     write_yaml(files, "5-reader.yaml", READER)

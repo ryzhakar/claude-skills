@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -6,9 +5,7 @@ import yaml
 
 from instruction_eval.reader import reader_prepare
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import sha256
-
-REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
+from series_fixtures import NeutralLogin, sha256, tree
 
 SOURCE_PATH = Path("/home/writer/policy.md")
 PLACEBO_PATH = Path("/home/writer/gardening.md")
@@ -96,17 +93,6 @@ def forbidden_read(path: Path) -> bytes:
     raise AssertionError(f"read external file {path}")
 
 
-class NeutralLogin:
-    def __init__(self, home: Path):
-        self.home = home
-        self.config_dir = home / ".claudes-bare" / "readers"
-        self.config_dir.mkdir(parents=True)
-        (self.config_dir / "settings.json").write_text(json.dumps({"enabledPlugins": REQUIRED_PLUGINS}))
-
-    def environ(self) -> dict[str, str]:
-        return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
-
-
 def split_definition(definition: bytes) -> tuple[dict, bytes]:
     header, _, body = definition.removeprefix(b"---\n").partition(b"---\n")
     return yaml.safe_load(header), body
@@ -130,10 +116,6 @@ def test_agent_reader_gets_one_definition_per_condition_with_the_condition_file_
         assert frontmatter["description"] == "Generated agent; launch from the printed launch list only."
         assert frontmatter["model"] == AGENT_MODEL
         assert body == conditions[f"{condition}.md"]
-
-
-def tree(root: Path) -> list[str]:
-    return sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
 
 
 def test_a_folder_that_is_no_series_refuses(tmp_path):

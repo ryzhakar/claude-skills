@@ -1,6 +1,7 @@
 """Coverage of an instruction's demands by its sentences."""
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import accumulate
 
@@ -24,7 +25,8 @@ _SINGLE_LETTER = re.compile(r"[^\W\d_]")
 _WHOLE_LINE_UNIT = re.compile(rb"\s*(?:[#|>]|([-*_])(?:[ \t]*\1){2,}\s*\Z)")
 CODE_FENCE_OPENING = r"\s*(`{3,}|~{3,})"
 _FENCE_OPEN = re.compile(CODE_FENCE_OPENING.encode())
-_FRONTMATTER_DELIMITER = re.compile(rb"---\s*\Z")
+FRONTMATTER_FENCE = "---"
+_FRONTMATTER_FENCE_BYTES = FRONTMATTER_FENCE.encode()
 _LIST_MARKER = re.compile(rb"\s*(?:[-*+]|\d+[.)])(?:[ \t]+|\Z)")
 _LEADING_SPACE = re.compile(rb"\s*")
 
@@ -111,9 +113,19 @@ _UNIT_OPENINGS = (
 
 def _frontmatter_closing_line(lines: list[bytes]) -> int | None:
     """Return the line closing a frontmatter block that opens the text, or None when the text opens none."""
-    if not _FRONTMATTER_DELIMITER.match(lines[0]):
+    if not opens_frontmatter(lines):
         return None
-    return next((index for index in range(1, len(lines)) if _FRONTMATTER_DELIMITER.match(lines[index])), None)
+    return frontmatter_closing_line(lines)
+
+
+def opens_frontmatter(lines: Sequence[bytes]) -> bool:
+    """Tell whether the first line is exactly the frontmatter fence."""
+    return lines[0] == _FRONTMATTER_FENCE_BYTES
+
+
+def frontmatter_closing_line(lines: Sequence[bytes]) -> int | None:
+    """Return the index of the first line after the first that is exactly the frontmatter fence, or None when no line is."""
+    return next((index for index in range(1, len(lines)) if lines[index] == _FRONTMATTER_FENCE_BYTES), None)
 
 
 def _fence_last_line(lines: list[bytes], first: int, fence: bytes) -> int:

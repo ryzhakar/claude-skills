@@ -13,7 +13,7 @@ from dataclasses import dataclass, fields
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Final, Literal, NoReturn, TypeVar, get_args
+from typing import Any, Literal, NoReturn, TypeVar, get_args
 
 import yaml
 
@@ -22,9 +22,12 @@ STATUS_COMMAND = "series status"
 KEEP_COMMAND = "series keep"
 STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 INPUTS_KEY = "inputs"
+FEWEST_REPEATS = 2
+_UNBOUNDED = float("inf")
 
 SERIES_RECORD = "series.yaml"
 DEMANDS_RECORD = "2-demands.yaml"
+DEMANDS_INPUT = f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands"
 TASKS_RECORD = "3-tasks.yaml"
 CONDITIONS_RECORD = "4-conditions.yaml"
 READER_RECORD = "5-reader.yaml"
@@ -217,6 +220,11 @@ def _stage_beside(target: Path, content: bytes) -> Path:
     return Path(staged.name)
 
 
+def replace_whole(target: Path, content: bytes) -> None:
+    """Replace the file at `target` with `content` in one step, so a crash leaves the old bytes or the new, never a part."""
+    os.replace(_stage_beside(target, content), target)
+
+
 def dump_canonical_yaml(value: Any) -> bytes:
     """Dump a value as YAML with sorted keys in block style."""
     return yaml.safe_dump(value, sort_keys=True, default_flow_style=False, allow_unicode=True).encode()
@@ -256,14 +264,18 @@ USER_RATERS = [USER_RATER]
 AGENT_RATERS = [AGENT_RATER, AGENT_RATER]
 REFERENCE_USER_FILE = f"{REFERENCE_PREFIX}{USER_RATER}.yaml"
 PERMITTED_RATER_SETS = (tuple(USER_RATERS), tuple(AGENT_RATERS))
-OPEN_SPLIT = "open"
-SEALED_SPLIT = "sealed"
+Split = Literal["open", "sealed"]
+OPEN_SPLIT, SEALED_SPLIT = get_args(Split)
 
-REWRITE_ACTION = "rewrite"
-ADD_ACTION = "add"
-DELETE_ACTION = "delete"
-MOVE_ACTION = "move"
+InPlaceAction = Literal["rewrite", "add", "delete"]
+MoveAction = Literal["move"]
+ChangeAction = InPlaceAction | MoveAction
+REWRITE_ACTION, ADD_ACTION, DELETE_ACTION = get_args(InPlaceAction)
+(MOVE_ACTION,) = get_args(MoveAction)
 MOVE_TARGET_KEY = "to"
+
+ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
+CHANGED, REVERSED, UNCHANGED, UNRESOLVED = get_args(ChangedFromParent)
 
 PASSED_STOP = "passed"
 NO_EFFECT_STOP = "no-effect"
@@ -481,7 +493,7 @@ def _reply_reader_kind_rule(reply: Record, path: str) -> None:
 
 _NOISE = _mapping(
     {
-        "repeats": _integer(2),
+        "repeats": _integer(FEWEST_REPEATS),
         "level": _LEVEL,
         "z": _POSITIVE,
         "sigma": _mapping(
@@ -705,7 +717,7 @@ def _raters(value: Any, path: str) -> None:
 
 _AGREEMENT = _mapping(
     {
-        "inputs": _INPUTS,
+        INPUTS_KEY: _INPUTS,
         "demands": _map_of(
             _IDENTIFIER,
             _mapping({"breach_difference": _ANY_NUMBER, "self_difference": _ANY_NUMBER}),
@@ -743,7 +755,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     RecordKind.AGREEMENT: _AGREEMENT,
     RecordKind.CALIBRATION: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "attempt": _POSITION,
             "judge_model": _AGENT_MODEL,
             "raters": _raters,
@@ -755,11 +767,11 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
         }
     ),
     RecordKind.ANCHORS: _mapping(
-        {"inputs": _INPUTS, "anchors": _list_of(_ANCHOR, "id", non_empty=True)}
+        {INPUTS_KEY: _INPUTS, "anchors": _list_of(_ANCHOR, "id", non_empty=True)}
     ),
     RecordKind.SCORES: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "split": _enum(OPEN_SPLIT),
             "rows": _list_of(_ROW),
             "by_condition": _map_of(_IDENTIFIER, _CONDITION_SCORES),
@@ -770,7 +782,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.OUTCOME: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "outcome": _enum(PASS_OUTCOME, FAIL_OUTCOME),
             "checks": _list_of(_OUTCOME_CHECK),
             "instruction_breaches": _NON_NEGATIVE,
@@ -779,28 +791,28 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
             "cost": _OUTCOME_COST,
         },
         {
-            "changed_from_parent": _enum("changed", "reversed", "unchanged", "unresolved"),
+            "changed_from_parent": _enum(*get_args(ChangedFromParent)),
             "parent_comparison": _PARENT_COMPARISON,
         },
         _outcome_parent_fields_rule,
     ),
     RecordKind.DETECTORS: _mapping(
-        {"inputs": _INPUTS, "verdicts": _list_of(_DETECTOR_ENTRY, "id", non_empty=True)}
+        {INPUTS_KEY: _INPUTS, "verdicts": _list_of(_DETECTOR_ENTRY, "id", non_empty=True)}
     ),
     RecordKind.COLLECTED: _mapping(
-        {"inputs": _INPUTS, "packets": _map_of(_IDENTIFIER, _COLLECTED_PACKET)}
+        {INPUTS_KEY: _INPUTS, "packets": _map_of(_IDENTIFIER, _COLLECTED_PACKET)}
     ),
     RecordKind.VERDICT: _mapping({"verdicts": _list_of(_VERDICT_ENTRY, "id", non_empty=True)}),
     RecordKind.ORIGINS: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "ids": _map_of(_IDENTIFIER, _origin),
             "packets": _map_of(_IDENTIFIER, _HASH),
         }
     ),
     RecordKind.STOP: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "stop": _enum(PASSED_STOP, NO_EFFECT_STOP, CAPPED_STOP, UNRESOLVABLE_STOP),
             "kept": _nullable(_REVISION_ID),
         },
@@ -809,7 +821,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.REVISION: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "number": _POSITION,
             "parent": _nullable(_REVISION_ID),
             "hash": _HASH,
@@ -820,7 +832,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.FROZEN: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "hashes": _map_of(_text, _HASH),
             "noise": _NOISE,
             "tool_version": _text,
@@ -830,7 +842,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.REPLY: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "condition": _IDENTIFIER,
             "task": _IDENTIFIER,
             "split": _SPLIT,
@@ -866,7 +878,6 @@ Choice = TypeVar("Choice", bound=str)
 
 DOCUMENT = ""
 DOCUMENT_LABEL = "record"
-FEWEST_REPEATS = 2
 HASH_DIGEST_PATTERN = re.compile(rf"^{HASH_PATTERN}\Z")
 ID_PATTERN = re.compile(rf"^{IDENTIFIER_PATTERN}\Z")
 BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
@@ -876,10 +887,7 @@ RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
 CONDITION_PLACEHOLDER = "{condition}"
 
 Counter = Literal["judge", "pattern", "long-sentences"]
-JUDGE_COUNTER: Final[Counter] = "judge"
-PATTERN_COUNTER: Final[Counter] = "pattern"
-LONG_SENTENCES_COUNTER: Final[Counter] = "long-sentences"
-Split = Literal["open", "sealed"]
+JUDGE_COUNTER, PATTERN_COUNTER, LONG_SENTENCES_COUNTER = get_args(Counter)
 Omissions = Literal["every-sentence", "none"]
 DoneBy = Literal["answer-key", "judge"]
 KeepRule = Literal["best-estimate-shortest"]
@@ -887,8 +895,6 @@ BudgetUnit = Literal["tokens", "seconds"]
 TOKENS_UNIT, SECONDS_UNIT = get_args(BudgetUnit)
 NoBudget = Literal["none"]
 (NO_BUDGET,) = get_args(NoBudget)
-InPlaceAction = Literal["rewrite", "add", "delete"]
-ChangeAction = InPlaceAction | Literal["move"]
 Direction = Literal["down", "up"]
 Scalar = str | int | float | bool
 
@@ -921,13 +927,13 @@ class Series:
 
 def parse_series(document: object) -> Series:
     """Build the `series.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "created", "inputs"})
+    keys = read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "created", INPUTS_KEY})
     return Series(
         instruction=read_absolute_path(keys["instruction"], "instruction"),
         sources=read_entries(keys["sources"], "sources", read_absolute_path),
         reader_kind=read_choice(keys["reader_kind"], "reader_kind", get_args(ReaderKind)),
         created=read_timestamp(keys["created"], "created"),
-        inputs=read_map(keys["inputs"], "inputs", read_string, read_hash),
+        inputs=read_map(keys[INPUTS_KEY], INPUTS_KEY, read_string, read_hash),
     )
 
 
@@ -1318,8 +1324,8 @@ def read_acceptance(value: object, where: str) -> Acceptance:
     """Return the acceptance thresholds of a calibration plan."""
     keys = read_keys(value, where, required={"breach_difference", "self_difference", "done_agreement"})
     return Acceptance(
-        breach_difference=read_bounded_number(keys["breach_difference"], child(where, "breach_difference"), 0, float("inf")),
-        self_difference=read_bounded_number(keys["self_difference"], child(where, "self_difference"), 0, float("inf")),
+        breach_difference=read_bounded_number(keys["breach_difference"], child(where, "breach_difference"), 0, _UNBOUNDED),
+        self_difference=read_bounded_number(keys["self_difference"], child(where, "self_difference"), 0, _UNBOUNDED),
         done_agreement=read_bounded_number(keys["done_agreement"], child(where, "done_agreement"), 0, 1),
     )
 
@@ -1663,26 +1669,36 @@ class SeriesRecords:
         return tasks
 
     def conditions(self) -> Conditions:
+        """Load `4-conditions.yaml`, once per loader, its controls checked against the series sources."""
+        return self._conditions
+
+    @functools.cached_property
+    def _conditions(self) -> Conditions:
         """Load `4-conditions.yaml`, its controls checked against the series sources."""
         series = self.series()
         return _parsed(CONDITIONS_RECORD, lambda document: parse_conditions(document, series), _read_document(self.files, CONDITIONS_RECORD))
 
     def reader(self) -> Reader:
+        """Load `5-reader.yaml`, once per loader, its kind the series reader kind."""
+        return self._reader
+
+    @functools.cached_property
+    def _reader(self) -> Reader:
         """Load `5-reader.yaml`, its kind the series reader kind."""
         reader = _parsed(READER_RECORD, parse_reader, _read_document(self.files, READER_RECORD))
         self._refuse_other_reader_kind(READER_RECORD, AGENT_READER if isinstance(reader, AgentReader) else COMMAND_READER)
         return reader
 
     def gate(self) -> Gate:
-        """Load `7-gate.yaml`, any key still unwritten before freeze and every key written once the series is frozen."""
-        gate = self._written_gate()
+        """Load `7-gate.yaml`, once per loader, any key still unwritten before freeze and every key written once the series is frozen."""
+        gate = self._written_gate
         if self.files.holds(FROZEN_RECORD):
             _completed(gate)
         return gate
 
     def complete_gate(self) -> CompleteGate:
-        """Load `7-gate.yaml`, refusing an absent key."""
-        return _completed(self._written_gate())
+        """Load `7-gate.yaml`, once per loader, refusing an absent key."""
+        return _completed(self._written_gate)
 
     def plan(self, attempt: int) -> Plan:
         """Load a calibration attempt's `plan.yaml`."""
@@ -1823,6 +1839,7 @@ class SeriesRecords:
         self._resolve_files(STOP_RECORD, REVISION_REFERENCE, kept, revision_record_path)
         return stop
 
+    @functools.cached_property
     def _written_gate(self) -> Gate:
         """Load `7-gate.yaml` as the user has written it so far."""
         return _parsed(GATE_RECORD, parse_gate, _read_document(self.files, GATE_RECORD))
@@ -1875,8 +1892,13 @@ class SeriesRecords:
         return {demand.id for demand in self.demands().demands if not variants or isinstance(demand, variants)}
 
     def gate_demands(self) -> list[str]:
-        """Return the ids of the gate demands: those r1's coverage does not drop, in coverage order."""
-        return [demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped)]
+        """Return the ids of the gate demands, once per loader: those r1's coverage does not drop, in coverage order."""
+        return list(self._gate_demands)
+
+    @functools.cached_property
+    def _gate_demands(self) -> tuple[str, ...]:
+        """Return the ids of the demands r1's coverage does not drop, in coverage order."""
+        return tuple(demand for demand, coverage in self.coverage(FIRST_REVISION).demands.items() if not isinstance(coverage, Dropped))
 
 
 def _completed(gate: Gate) -> CompleteGate:
@@ -1954,8 +1976,13 @@ def condition_path(revision: str, condition: str) -> str:
 
 def reply_path(revision: str, condition: str, task: str, repeat: int, turn: int | None) -> str:
     """Return the path of one reply: a task's repeat, or with a turn a conversation turn within a repeat."""
-    repeat_path = f"{revision}/{REPLIES_FOLDER}/{condition}/{task}/{REPEAT_PREFIX}{repeat}"
-    return f"{repeat_path}.yaml" if turn is None else f"{repeat_path}/{TURN_PREFIX}{turn}.yaml"
+    path = repeat_path(revision, condition, task, repeat)
+    return f"{path}.yaml" if turn is None else f"{path}/{TURN_PREFIX}{turn}.yaml"
+
+
+def repeat_path(revision: str, condition: str, task: str, repeat: int) -> str:
+    """Return the path a repeat's reply file or turn folder is named by, without its suffix."""
+    return f"{revision}/{REPLIES_FOLDER}/{condition}/{task}/{REPEAT_PREFIX}{repeat}"
 
 
 def outcome_path(revision: str) -> str:

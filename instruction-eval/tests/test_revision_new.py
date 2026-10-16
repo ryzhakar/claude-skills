@@ -229,6 +229,10 @@ def test_an_instruction_echoing_a_task_a_turn_the_aim_or_the_placebo_is_refused(
         ({**HYPOTHESIS, "replies_read": ["b00000002"]}, r"^replies_read shows no failure of d-judge$"),
         ({**HYPOTHESIS, "failing_demand": "d-hedge"}, r"^replies_read shows no failure of d-hedge$"),
         ({**HYPOTHESIS, "failing_demand": "completion", "replies_read": ["b00000002"]}, r"^replies_read shows no failure of completion$"),
+        (
+            {**HYPOTHESIS, "failing_demand": "completion", "predicted_movement": {"direction": "down", "size": 0.2}},
+            r"^predicted size 0\.2 does not exceed twice the change noise of completion: 0\.2$",
+        ),
     ],
 )
 def test_an_unfit_hypothesis_is_refused(tmp_path, hypothesis, message):

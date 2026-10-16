@@ -46,7 +46,7 @@ from instruction_eval.records import (
     CONDITION_KEYS,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
-    DEMANDS_RECORD,
+    DEMANDS_INPUT,
     FIRST_ATTEMPT,
     FIRST_REVISION,
     GATE_RECORD,
@@ -221,19 +221,22 @@ def blind_replies(revision: str, replies: Mapping[ExpectedReply, Record], anchor
             *(_reply_entry(packet, revision, key, replies) for key in keys),
             *(_anchor_entry(packet, anchor) for anchor in _drawn_anchors(packet, task, anchors, anchors_per_packet, random)),
         ]
-        packets[packet] = _packet_text(entries, origins, random)
+        packets[packet], packet_origins = _packet_text(entries, origins.keys(), random)
+        origins.update(packet_origins)
     return BlindPackets(packets=packets, origins=origins)
 
 
-def _packet_text(entries: list[_Entry], origins: dict[str, Record], random: Random) -> str:
-    """Return the entries shuffled into a packet's markdown under fresh blind ids, recording each id's origin in `origins`."""
-    random.shuffle(entries)
+def _packet_text(entries: Sequence[_Entry], taken: AbstractSet[str], random: Random) -> tuple[str, dict[str, Record]]:
+    """Return a shuffled copy of the entries as a packet's markdown under blind ids no taken id equals, with each new id's origin."""
+    shuffled = list(entries)
+    random.shuffle(shuffled)
+    packet_origins: dict[str, Record] = {}
     sections = []
-    for entry in entries:
-        blind_id = _fresh_blind_id(origins, random)
-        origins[blind_id] = entry.origin
+    for entry in shuffled:
+        blind_id = _fresh_blind_id(taken | packet_origins.keys(), random)
+        packet_origins[blind_id] = entry.origin
         sections.append(_section(blind_id, entry.exchanges))
-    return SECTION_SEPARATOR.join(sections) + "\n"
+    return SECTION_SEPARATOR.join(sections) + "\n", packet_origins
 
 
 def _replies_by_packet(replies: Iterable[ExpectedReply]) -> dict[str, tuple[str, list[ExpectedReply]]]:
@@ -582,7 +585,8 @@ def calibrate_stage_one(
     sample = _blind_sample(files, _sampled_by(records, earlier), attempt, plan.sample_size, random)
     ratings = _ratings(attempt, plan)
     folder = attempt_folder(attempt)
-    definitions = {rating.agent_type: _rating_definition(files, records, folder, brief.decode(), sample.text, sample.reader_model, rating) for rating in ratings}
+    binding = _judge_binding(files, records)
+    definitions = {rating.agent_type: _rating_definition(files, binding, folder, brief.decode(), sample.text, sample.reader_model, rating) for rating in ratings}
     write_file(files, f"{folder}/{BRIEF_SNAPSHOT_FILE}", brief)
     write_file(files, f"{folder}/{SAMPLE_FILE}", sample.text.encode())
     write_record(files, f"{folder}/{ATTEMPT_ORIGINS_FILE}", _origins_record(sample.origins, {SAMPLE_PACKET: sample.text}), _stage_one_reads(files, records, attempt, sample.replies, earlier))
@@ -603,10 +607,10 @@ class _BlindSample:
 
 def _blind_sample(files: SeriesFolder, taken: AbstractSet[ExpectedReply], attempt: int, sample_size: int, random: Random) -> _BlindSample:
     """Draw the attempt's sample of r1's open task replies and blind it into one packet."""
-    drawn = _draw_sample(_open_task_replies(files), taken, attempt, sample_size)
-    records = {key: _load_reply(files, key.path) for key in drawn}
-    origins: dict[str, Record] = {}
-    text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, records) for key in drawn], origins, random)
+    open_replies = _open_task_replies(files)
+    drawn = _draw_sample(list(open_replies), taken, attempt, sample_size)
+    records = {key: open_replies[key] for key in drawn}
+    text, origins = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, records) for key in drawn], frozenset(), random)
     return _BlindSample(replies=tuple(drawn), reader_model=_serving_model(records.values()), text=text, origins=origins)
 
 
@@ -641,17 +645,34 @@ def _agent_rater_ratings(attempt: int, plan: Plan) -> list[_Rating]:
     return [_Rating(f"{CALIBRATION_AGENT_PREFIX}{attempt}-{RATER_NAME}-{run}", plan.raters.rater_model, f"{REFERENCE_PREFIX}{RATER_NAME}-{run}.yaml") for run in RATER_RUNS]
 
 
-def _rating_definition(files: SeriesFolder, records: SeriesRecords, folder: str, brief: str, sample: str, reader_model: str, rating: _Rating) -> bytes:
+@dataclass(frozen=True)
+class _JudgeBinding:
+    """What every judge and rater brief of a series binds to: the source snapshot texts by name, the demands, the gate demand ids without a source, and the series folder name."""
+
+    sources: Mapping[str, str]
+    demands: Demands
+    gate_demand_ids: AbstractSet[str]
+    series_name: str
+
+
+def _judge_binding(files: SeriesFolder, records: SeriesRecords) -> _JudgeBinding:
+    """Read once what every judge and rater brief of the series binds to."""
+    return _JudgeBinding(
+        sources={source.name: files.read_bytes(source_snapshot_path(source.name)).decode() for source in records.series().sources},
+        demands=records.demands(),
+        gate_demand_ids=_gate_demand_ids_without_sources(records),
+        series_name=files.root.name,
+    )
+
+
+def _rating_definition(files: SeriesFolder, binding: _JudgeBinding, folder: str, brief: str, sample: str, reader_model: str, rating: _Rating) -> bytes:
     """Return the rating's agent definition, its body the attempt's brief rendered for the sample and the rating's file."""
-    return _judging_definition(files, records, brief, sample, Path(f"{files.root}/{folder}/{rating.file}"), reader_model, rating.agent_type, rating.model)
+    return _judging_definition(binding, brief, sample, Path(f"{files.root}/{folder}/{rating.file}"), reader_model, rating.agent_type, rating.model)
 
 
-def _judging_definition(
-    files: SeriesFolder, records: SeriesRecords, brief: str, packet: str, verdict_path: Path, reader_model: str, agent_type: str, model: str
-) -> bytes:
+def _judging_definition(binding: _JudgeBinding, brief: str, packet: str, verdict_path: Path, reader_model: str, agent_type: str, model: str) -> bytes:
     """Return the definition of a judge or rater agent running `model`, its body the brief rendered for the packet text and the verdict path."""
-    sources = {source.name: files.read_bytes(source_snapshot_path(source.name)).decode() for source in records.series().sources}
-    body = render_brief(brief, sources, records.demands(), _gate_demand_ids_without_sources(records), packet, verdict_path, reader_model, files.root.name)
+    body = render_brief(brief, binding.sources, binding.demands, binding.gate_demand_ids, packet, verdict_path, reader_model, binding.series_name)
     return render_agent_definition(agent_type, model, AgentKind.JUDGE, body.encode())
 
 
@@ -699,16 +720,23 @@ def _gate_demand_ids_without_sources(records: SeriesRecords) -> frozenset[str]:
     return frozenset(records.gate_demands())
 
 
-def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
-    """Return what stage one reads: the series records, the plan's keys, the brief snapshot, the sample, the sampled replies, and the earlier origins."""
-    folder = attempt_folder(attempt)
+def _binding_reads(records: SeriesRecords) -> list[str]:
+    """Return what a judge's binding text reads: the series, its source snapshots or without one r1's coverage demands, and the demands."""
     sources = records.series().sources
-    plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
     return [
         SERIES_RECORD,
         *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
-        f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        DEMANDS_INPUT,
+    ]
+
+
+def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, sample: Sequence[ExpectedReply], earlier: Iterable[int]) -> list[str]:
+    """Return what stage one reads: what a judge binds to, the plan's keys, the brief snapshot, the sample, the sampled replies, and the earlier origins."""
+    folder = attempt_folder(attempt)
+    plan_keys = yaml.safe_load(files.read_bytes(f"{folder}/{PLAN_FILE}"))
+    return [
+        *_binding_reads(records),
         *(f"{folder}/{PLAN_FILE}{KEY_SEPARATOR}{key}" for key in plan_keys),
         f"{folder}/{BRIEF_SNAPSHOT_FILE}",
         f"{folder}/{SAMPLE_FILE}",
@@ -717,10 +745,11 @@ def _stage_one_reads(files: SeriesFolder, records: SeriesRecords, attempt: int, 
     ]
 
 
-def _open_task_replies(files: SeriesFolder) -> list[ExpectedReply]:
-    """Return every open task reply of r1 other than an omission's, conversation turns excluded."""
-    replies = (_reply_of_file(path.relative_to(files.root)) for path in sorted(files.root.glob(OPEN_TASK_REPLY_PATTERN)))
-    return [reply for reply in replies if not reply.condition.startswith(OMISSION_PREFIX) and _load_reply(files, reply.path)["split"] == OPEN_SPLIT]
+def _open_task_replies(files: SeriesFolder) -> dict[ExpectedReply, Record]:
+    """Return every open task reply of r1 other than an omission's, conversation turns excluded, each with its loaded record."""
+    keys = (_reply_of_file(path.relative_to(files.root)) for path in sorted(files.root.glob(OPEN_TASK_REPLY_PATTERN)))
+    loaded = {key: _load_reply(files, key.path) for key in keys if not key.condition.startswith(OMISSION_PREFIX)}
+    return {key: record for key, record in loaded.items() if record["split"] == OPEN_SPLIT}
 
 
 def _reply_of_file(path: Path) -> ExpectedReply:
@@ -797,11 +826,12 @@ def _judge_definitions(
     brief = _accepted_brief(files, calibration)
     packets = _blinded_packets(files, revision, origins)
     reader_model = records.reader().model
+    binding = _judge_binding(files, records)
     definitions = {}
     for packet, judging in judgings:
         agent_type = _judging_agent_type(revision, packet, judging)
         verdict_file = files.root / verdict_path(revision, packet, judging)
-        definitions[agent_type] = _judging_definition(files, records, brief, packets[packet], verdict_file, reader_model, agent_type, calibration["judge_model"])
+        definitions[agent_type] = _judging_definition(binding, brief, packets[packet], verdict_file, reader_model, agent_type, calibration["judge_model"])
     return definitions
 
 
@@ -877,13 +907,9 @@ def _collected_record(accepted: Mapping[str, AcceptedJudging]) -> dict[str, obje
 
 
 def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, origins: Record, calibration: Record) -> list[str]:
-    """Return what `judge collect` reads: the series, its sources or without one r1's coverage demands, the demands, the reader model, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
-    sources = records.series().sources
+    """Return what `judge collect` reads: what a judge binds to, the reader model, the calibration with its accepted brief, the anchors, the revision's packets, origins, and verdicts, and its judge definitions."""
     return [
-        SERIES_RECORD,
-        *(source_snapshot_path(source.name) for source in sources),
-        *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
-        f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        *_binding_reads(records),
         f"{READER_RECORD}{KEY_SEPARATOR}model",
         CALIBRATION_RECORD,
         f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}",
@@ -935,9 +961,31 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence[Transcript], 
     guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
     attempt = latest_attempt_number(files)
-    folder = attempt_folder(attempt)
     records = SeriesRecords(files)
     plan = records.plan(attempt)
+    ratings = _validated_ratings(files, records, attempt, plan, transcripts, read_transcript)
+    return _scored_decision(files, records, attempt, plan, ratings)
+
+
+@dataclass(frozen=True)
+class _ValidatedRatings:
+    """An attempt's ratings once validated: the sample by blind id and its replies, the candidate and agent ratings, the reference files, each agent rating's run, and each rating file's entries."""
+
+    sampled: Mapping[str, ExpectedReply]
+    replies: Mapping[str, Record]
+    candidates: Sequence[_Rating]
+    agent_ratings: Sequence[_Rating]
+    reference_files: Sequence[str]
+    runs: Mapping[str, dict[str, str]]
+    entries: Mapping[str, Mapping[str, Record]]
+    judge_demand_ids: Sequence[str]
+
+
+def _validated_ratings(
+    files: SeriesFolder, records: SeriesRecords, attempt: int, plan: Plan, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
+) -> _ValidatedRatings:
+    """Return the attempt's ratings, refusing a missing rating, an edited rating definition, a rating without a valid run, or a rating that is not a valid verdict of the sample."""
+    folder = attempt_folder(attempt)
     sampled = _sampled_replies(records.attempt_origins(attempt))
     candidates, raters = _candidate_ratings(attempt, plan), _agent_rater_ratings(attempt, plan)
     agent_ratings = [*candidates, *raters]
@@ -948,11 +996,16 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence[Transcript], 
     runs = {rating.file: _rating_run(files, folder, rating, transcripts, read_transcript) for rating in agent_ratings}
     judge_demand_ids = sorted(demand.id for demand in records.demands().demands if isinstance(demand, JudgeDemand))
     entries = {name: _rating_entries(files, folder, name, sampled.keys(), set(judge_demand_ids)) for name in [*runs, *reference_files]}
-    reference = _reference([entries[name] for name in reference_files], judge_demand_ids)
-    measures = _agreement([entries[rating.file] for rating in candidates], reference, judge_demand_ids)
-    anchors = _anchors(reference, replies)
-    reads = _stage_two_reads(files, records, attempt, list(sampled.values()), agent_ratings, reference_files)
-    write_record(files, f"{folder}/{AGREEMENT_FILE}", {**dataclasses.asdict(measures), "ratings": runs}, reads)
+    return _ValidatedRatings(sampled, replies, candidates, agent_ratings, reference_files, runs, entries, judge_demand_ids)
+
+
+def _scored_decision(files: SeriesFolder, records: SeriesRecords, attempt: int, plan: Plan, ratings: _ValidatedRatings) -> str:
+    """Score the candidate ratings against the reference, write the agreement, and on acceptance the anchors and the calibration, returning the acceptance or rejection."""
+    reference = _reference([ratings.entries[name] for name in ratings.reference_files], ratings.judge_demand_ids)
+    measures = _agreement([ratings.entries[rating.file] for rating in ratings.candidates], reference, ratings.judge_demand_ids)
+    anchors = _anchors(reference, ratings.replies)
+    reads = _stage_two_reads(files, records, attempt, list(ratings.sampled.values()), ratings.agent_ratings, ratings.reference_files)
+    write_record(files, f"{attempt_folder(attempt)}/{AGREEMENT_FILE}", {**dataclasses.asdict(measures), "ratings": ratings.runs}, reads)
     rejection = _threshold_miss(measures, plan.acceptance) or _anchor_shortfall(anchors, records.tasks().tasks, plan.anchors_per_packet)
     if rejection:
         return f"rejected: attempt {attempt} ({rejection})\n"
@@ -972,8 +1025,9 @@ def _refuse_edited_rating_definitions(files: SeriesFolder, records: SeriesRecord
     """Refuse a rating definition whose bytes differ from its recomputation from the attempt's brief snapshot and sample."""
     brief = files.read_bytes(f"{folder}/{BRIEF_SNAPSHOT_FILE}").decode()
     sample = files.read_bytes(f"{folder}/{SAMPLE_FILE}").decode()
+    binding = _judge_binding(files, records)
     for rating in ratings:
-        refuse_edited_series_file(files, agent_definition_path(rating.agent_type), _rating_definition(files, records, folder, brief, sample, reader_model, rating))
+        refuse_edited_series_file(files, agent_definition_path(rating.agent_type), _rating_definition(files, binding, folder, brief, sample, reader_model, rating))
 
 
 def _rating_run(

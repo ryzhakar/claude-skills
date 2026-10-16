@@ -4,16 +4,19 @@ from dataclasses import dataclass
 from fractions import Fraction
 from functools import partial
 from statistics import fmean
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 import numpy
 
 from instruction_eval.records import (
     BUDGET_REASON,
     CAPPED_STOP,
-    COLLECTED_FILE,
+    CHANGED,
     COMPLETION_COMPARES,
-    DETECTORS_FILE,
+    REVERSED,
+    UNCHANGED,
+    UNRESOLVED,
+    ChangedFromParent,
     DRIFT_COMPARES,
     EMPTY_CONTROL,
     FAIL_OUTCOME,
@@ -28,7 +31,6 @@ from instruction_eval.records import (
     NEAR_SOURCE_COMPARES,
     NO_BUDGET,
     NO_EFFECT_STOP,
-    ORIGINS_FILE,
     PASS_OUTCOME,
     PASSED_STOP,
     SEALED_SPLIT,
@@ -52,7 +54,6 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
-    accepted_verdict_paths,
     guard_series,
     origin_reply_paths,
     outcome_path,
@@ -70,8 +71,10 @@ from instruction_eval.scores import (
     ScoredReply,
     breach_total,
     compare_paired,
+    done_value,
     instruction_comparisons,
     join_reply_rows,
+    measured_reads,
     paired_units,
     task_means,
 )
@@ -326,11 +329,6 @@ def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
 
 DOWN: Direction = "down"
 UP: Direction = "up"
-ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
-CHANGED: ChangedFromParent = "changed"
-REVERSED: ChangedFromParent = "reversed"
-UNCHANGED: ChangedFromParent = "unchanged"
-UNRESOLVED: ChangedFromParent = "unresolved"
 
 
 @dataclass(frozen=True)
@@ -361,8 +359,8 @@ def compare_with_parent(
 def _reply_value(row: ScoredReply, target: str) -> float | None:
     """Return the reply's breaches of the target demand, or its done as 1 or 0 for `completion`, null when done is null."""
     if target == COMPLETION_COMPARES:
-        return None if row["done"] is None else float(row["done"])
-    return float(row["breaches"][target])
+        return done_value(row)
+    return float(breach_total(row, [target]))
 
 
 def _movement_verdict(
@@ -453,7 +451,7 @@ def measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) ->
     return MeasuredRevision(
         sealed_rows=join_reply_rows(origins, verdicts, records.detectors(revision), done_by, SEALED_SPLIT),
         own_replies=[reply_cost(records.reply(path)) for path in own_paths],
-        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *accepted_verdict_paths(revision, collected), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
+        reads=measured_reads(revision, origins, collected),
     )
 
 

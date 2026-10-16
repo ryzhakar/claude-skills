@@ -14,7 +14,7 @@ from typing import TextIO, get_args
 
 import numpy
 
-from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.coverage import coverage_check
 from instruction_eval.demands import demands_check
 from instruction_eval.gate import revision_gate
 from instruction_eval.judge import (
@@ -28,6 +28,8 @@ from instruction_eval.judge import (
 from instruction_eval.reader import (
     ASK_TIMEOUT_SECONDS,
     CONFIG_DIR_VARIABLE,
+    FINGERPRINT_HASH_KEY,
+    REPEATS_KEY,
     AgentReader,
     ReaderRun,
     RunReader,
@@ -39,8 +41,21 @@ from instruction_eval.reader import (
     revision_collect,
 )
 from instruction_eval.records import (
+    ATTEMPT_FOLDER_PREFIX,
     ATTEMPT_ORIGINS_FILE,
-    INSTRUCTION_FILE,
+    CONDITIONS_RECORD,
+    COVERAGE_FILE,
+    DEMANDS_RECORD,
+    FIRST_ATTEMPT,
+    FIRST_REVISION,
+    FIRST_REVISION_NUMBER,
+    GATE_RECORD,
+    HYPOTHESIS_FILE,
+    PLAN_FILE,
+    READER_RECORD,
+    REVISION_PREFIX,
+    TASKS_RECORD,
+    WORKING_BRIEF,
     ReaderKind,
     Refusal,
     SeriesFolder,
@@ -48,9 +63,10 @@ from instruction_eval.records import (
     attempt_folder,
     dump_canonical_yaml,
     guard_series,
+    replace_whole,
 )
 from instruction_eval.revision import revision_new
-from instruction_eval.scores import BOOTSTRAP_SEED, BootstrapRng, revision_detect, revision_score
+from instruction_eval.scores import BOOTSTRAP_SEED, DONE_BY_KEY, LEVEL_KEY, BootstrapRng, revision_detect, revision_score
 from instruction_eval.series import (
     series_freeze,
     series_keep,
@@ -58,24 +74,25 @@ from instruction_eval.series import (
     series_status,
     series_stop,
 )
-from instruction_eval.tasks import expected_replies, tasks_check
+from instruction_eval.tasks import tasks_check
 
 _READER_KINDS = get_args(ReaderKind)
 _REVISION_ID_PATTERN = re.compile(r"r[0-9]+")
 
-_ORDER_OF_WORK = """\
+_SECOND_REVISION = f"{REVISION_PREFIX}{FIRST_REVISION_NUMBER + 1}"
+_ORDER_OF_WORK = f"""\
 Order of work:
 1. in any shell: `series new`; then start the neutral session there: `cd <series folder> && claudes run readers`; every later step runs in that session
-2. user writes `2-demands.yaml`; `demands check`
-3. user writes `r1/3-coverage.yaml`; `coverage check r1`
-4. user writes `4-conditions.yaml`, `5-reader.yaml`, and `7-gate.yaml` `repeats`, `level`, `done_by`
-5. user writes `3-tasks.yaml`; `tasks check`
-6. `reader fingerprint` (command kind); `reader prepare r1`; `revision ask r1`; agents launched; `revision collect r1`
-7. user writes `6-judge/brief.md` and `6-judge/calibration/attempt-1/plan.yaml`; `judge calibrate` (snapshots the brief); ratings; `judge calibrate`; on rejection, the user edits the brief, writes `attempt-<n+1>/plan.yaml`, and repeats
-8. `revision blind r1`; `judge prepare r1`; judges; `judge collect r1`; `revision detect r1`
-9. `series status` prints the noise; user completes `7-gate.yaml`; `series freeze`
-10. `revision score r1`; `revision gate r1`. `series status` is available at any step
-11. on `fail`: user writes `r2/1-hypothesis.yaml`; writer edits the instruction; `revision new`; user writes `r2/3-coverage.yaml`; `coverage check r2`; `reader prepare r2`; `revision ask r2 --conditions instruction …`; `revision collect r2`; `revision blind r2`; `judge prepare r2`; `judge collect r2`; `revision detect r2`; `revision score r2`; `revision gate r2`
+2. user writes `{DEMANDS_RECORD}`; `demands check`
+3. user writes `{FIRST_REVISION}/{COVERAGE_FILE}`; `coverage check {FIRST_REVISION}`
+4. user writes `{CONDITIONS_RECORD}`, `{READER_RECORD}`, and `{GATE_RECORD}` `{REPEATS_KEY}`, `{LEVEL_KEY}`, `{DONE_BY_KEY}`
+5. user writes `{TASKS_RECORD}`; `tasks check`
+6. `reader fingerprint` (command kind); `reader prepare {FIRST_REVISION}`; `revision ask {FIRST_REVISION}`; agents launched; `revision collect {FIRST_REVISION}`
+7. user writes `{WORKING_BRIEF}` and `{attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}`; `judge calibrate` (snapshots the brief); ratings; `judge calibrate`; on rejection, the user edits the brief, writes `{ATTEMPT_FOLDER_PREFIX}<n+1>/{PLAN_FILE}`, and repeats
+8. `revision blind {FIRST_REVISION}`; `judge prepare {FIRST_REVISION}`; judges; `judge collect {FIRST_REVISION}`; `revision detect {FIRST_REVISION}`
+9. `series status` prints the noise; user completes `{GATE_RECORD}`; `series freeze`
+10. `revision score {FIRST_REVISION}`; `revision gate {FIRST_REVISION}`. `series status` is available at any step
+11. on `fail`: user writes `{_SECOND_REVISION}/{HYPOTHESIS_FILE}`; writer edits the instruction; `revision new`; user writes `{_SECOND_REVISION}/{COVERAGE_FILE}`; `coverage check {_SECOND_REVISION}`; `reader prepare {_SECOND_REVISION}`; `revision ask {_SECOND_REVISION} --conditions instruction …`; `revision collect {_SECOND_REVISION}`; `revision blind {_SECOND_REVISION}`; `judge prepare {_SECOND_REVISION}`; `judge collect {_SECOND_REVISION}`; `revision detect {_SECOND_REVISION}`; `revision score {_SECOND_REVISION}`; `revision gate {_SECOND_REVISION}`
 12. at a stop: `series keep` writes the kept snapshot to the live instruction path
 """
 
@@ -115,74 +132,17 @@ def _add_no_arguments(parser: argparse.ArgumentParser) -> None:
     """Add nothing to a command that takes no argument."""
 
 
-_COMMANDS = {
-    "series": {
-        "new": _add_series_new_arguments,
-        "status": _add_no_arguments,
-        "freeze": _add_no_arguments,
-        "stop": _add_series_stop_arguments,
-        "keep": _add_no_arguments,
-    },
-    "demands": {"check": _add_no_arguments},
-    "coverage": {"check": _add_revision_argument},
-    "tasks": {"check": _add_no_arguments},
-    "reader": {"fingerprint": _add_no_arguments, "prepare": _add_revision_argument},
-    "revision": {
-        "ask": _add_revision_ask_arguments,
-        "collect": _add_revision_argument,
-        "blind": _add_revision_argument,
-        "detect": _add_revision_argument,
-        "score": _add_revision_argument,
-        "gate": _add_revision_argument,
-        "new": _add_no_arguments,
-    },
-    "judge": {
-        "calibrate": _add_no_arguments,
-        "prepare": _add_revision_argument,
-        "collect": _add_revision_argument,
-    },
-}
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser of every command, its help printing the order of work."""
-    parser = argparse.ArgumentParser(
-        prog="instruction-eval",
-        epilog=_ORDER_OF_WORK,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    groups = parser.add_subparsers(dest="group", required=True)
-    for group, verbs in _COMMANDS.items():
-        verb_parsers = groups.add_parser(group).add_subparsers(dest="verb", required=True)
-        for verb, add_arguments in verbs.items():
-            add_arguments(verb_parsers.add_parser(verb))
-    return parser
-
-
 _READER_TIMEOUT_SECONDS = ASK_TIMEOUT_SECONDS
 _REFUSAL_EXIT_CODE = 1
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 _PLUGIN_MANIFEST = _PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
 _BRIEF_TEMPLATE = Path(__file__).resolve().parent / "templates" / "judge-brief.md"
-_GUARDED_COMMANDS = frozenset(
-    {
-        ("demands", "check"),
-        ("coverage", "check"),
-        ("tasks", "check"),
-        ("series", "freeze"),
-        ("revision", "ask"),
-        ("revision", "detect"),
-        ("revision", "score"),
-        ("judge", "calibrate"),
-    }
-)
 _FINGERPRINT_KEY = "fingerprint"
-_FINGERPRINT_HASH_KEY = "fingerprint_hash"
 
 
 @dataclass(frozen=True)
 class _Effects:
-    """Every effect a command takes: the clock, the folders, the environment, the random sources, and the readers of files and processes."""
+    """Every effect a command takes: the clock, the folders, the environment, the random sources, the readers of files and processes, and the replacer of the live instruction."""
 
     now: Callable[[], datetime]
     home: Path
@@ -191,6 +151,7 @@ class _Effects:
     random: random.Random
     bootstrap_rng: BootstrapRng
     read_external: Callable[[Path], bytes]
+    replace_file: Callable[[Path, bytes], None]
     read_transcript: Callable[[Path], bytes]
     run_reader: RunReader
     run_fingerprint: Callable[[Sequence[str]], str]
@@ -237,6 +198,7 @@ def _real_effects() -> _Effects:
         random=random.SystemRandom(),
         bootstrap_rng=lambda: numpy.random.default_rng(BOOTSTRAP_SEED),
         read_external=Path.read_bytes,
+        replace_file=replace_whole,
         read_transcript=Path.read_bytes,
         run_reader=partial(_run_reader, now),
         run_fingerprint=_run_fingerprint,
@@ -267,22 +229,6 @@ def _transcripts(effects: _Effects) -> list[Transcript]:
         return locate_transcripts(Path(config_dir), effects.working_dir, effects.working_dir)
     except ValueError as unreadable:
         raise Refusal(str(unreadable)) from None
-
-
-def _refuse_unknown_conditions(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> None:
-    """Refuse the first named condition outside the revision's condition set."""
-    if not conditions:
-        return
-    instruction_path = f"{revision}/{INSTRUCTION_FILE}"
-    if not files.holds(instruction_path):
-        raise Refusal(f"missing record: {instruction_path}")
-    records = SeriesRecords(files)
-    sentence_count = len(split_sentences(files.read_bytes(instruction_path)))
-    replies = expected_replies(revision, records.tasks(), records.conditions(), 1, sentence_count)
-    known = sorted({reply.condition for reply in replies if reply.revision == revision})
-    for condition in conditions:
-        if condition not in known:
-            raise Refusal(f"unknown condition: {condition} (revision {revision} has {', '.join(known)})")
 
 
 def _latest_attempt_holds_origins(files: SeriesFolder) -> bool:
@@ -323,7 +269,7 @@ def _stop(arguments: argparse.Namespace, effects: _Effects) -> str:
 
 def _keep(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Write the kept revision over the live instruction."""
-    series_keep(_series_folder(effects))
+    series_keep(_series_folder(effects), effects.replace_file)
     return ""
 
 
@@ -348,7 +294,7 @@ def _check_tasks(arguments: argparse.Namespace, effects: _Effects) -> str:
 def _fingerprint(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Return the command reader's parsed fingerprint and its hash."""
     fingerprint = reader_fingerprint(_series_folder(effects), effects.run_fingerprint)
-    return dump_canonical_yaml({_FINGERPRINT_KEY: fingerprint.output, _FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash}).decode()
+    return dump_canonical_yaml({_FINGERPRINT_KEY: fingerprint.output, FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash}).decode()
 
 
 def _prepare_reader(arguments: argparse.Namespace, effects: _Effects) -> str:
@@ -360,7 +306,6 @@ def _prepare_reader(arguments: argparse.Namespace, effects: _Effects) -> str:
 def _ask(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Ask the revision's missing replies and return an agent reader's launch list."""
     files = _series_folder(effects)
-    _refuse_unknown_conditions(files, arguments.revision, arguments.conditions)
     return revision_ask(files, arguments.revision, arguments.conditions, effects.run_reader, effects.run_fingerprint)
 
 
@@ -417,35 +362,61 @@ def _collect_judge(arguments: argparse.Namespace, effects: _Effects) -> str:
     return judge_collect(_series_folder(effects), arguments.revision, _transcripts(effects), effects.read_transcript)
 
 
-_HANDLERS: dict[tuple[str, str], _Handler] = {
-    ("series", "new"): _new_series,
-    ("series", "status"): _status,
-    ("series", "freeze"): _freeze,
-    ("series", "stop"): _stop,
-    ("series", "keep"): _keep,
-    ("demands", "check"): _check_demands,
-    ("coverage", "check"): _check_coverage,
-    ("tasks", "check"): _check_tasks,
-    ("reader", "fingerprint"): _fingerprint,
-    ("reader", "prepare"): _prepare_reader,
-    ("revision", "ask"): _ask,
-    ("revision", "collect"): _collect,
-    ("revision", "blind"): _blind,
-    ("revision", "detect"): _detect,
-    ("revision", "score"): _score,
-    ("revision", "gate"): _gate,
-    ("revision", "new"): _new_revision,
-    ("judge", "calibrate"): _calibrate,
-    ("judge", "prepare"): _prepare_judge,
-    ("judge", "collect"): _collect_judge,
+@dataclass(frozen=True)
+class _Command:
+    """One command: what adds its arguments, what runs it, and whether the CLI guards the series first because the command does not."""
+
+    add_arguments: Callable[[argparse.ArgumentParser], None]
+    handle: _Handler
+    guarded: bool = False
+
+
+_COMMANDS: dict[tuple[str, str], _Command] = {
+    ("series", "new"): _Command(_add_series_new_arguments, _new_series),
+    ("series", "status"): _Command(_add_no_arguments, _status),
+    ("series", "freeze"): _Command(_add_no_arguments, _freeze),
+    ("series", "stop"): _Command(_add_series_stop_arguments, _stop),
+    ("series", "keep"): _Command(_add_no_arguments, _keep),
+    ("demands", "check"): _Command(_add_no_arguments, _check_demands, guarded=True),
+    ("coverage", "check"): _Command(_add_revision_argument, _check_coverage, guarded=True),
+    ("tasks", "check"): _Command(_add_no_arguments, _check_tasks, guarded=True),
+    ("reader", "fingerprint"): _Command(_add_no_arguments, _fingerprint),
+    ("reader", "prepare"): _Command(_add_revision_argument, _prepare_reader),
+    ("revision", "ask"): _Command(_add_revision_ask_arguments, _ask),
+    ("revision", "collect"): _Command(_add_revision_argument, _collect),
+    ("revision", "blind"): _Command(_add_revision_argument, _blind),
+    ("revision", "detect"): _Command(_add_revision_argument, _detect, guarded=True),
+    ("revision", "score"): _Command(_add_revision_argument, _score, guarded=True),
+    ("revision", "gate"): _Command(_add_revision_argument, _gate),
+    ("revision", "new"): _Command(_add_no_arguments, _new_revision),
+    ("judge", "calibrate"): _Command(_add_no_arguments, _calibrate, guarded=True),
+    ("judge", "prepare"): _Command(_add_revision_argument, _prepare_judge),
+    ("judge", "collect"): _Command(_add_revision_argument, _collect_judge),
 }
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser of every command, its help printing the order of work."""
+    parser = argparse.ArgumentParser(
+        prog="instruction-eval",
+        epilog=_ORDER_OF_WORK,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    groups = parser.add_subparsers(dest="group", required=True)
+    verb_parsers = {}
+    for (group, verb), command in _COMMANDS.items():
+        if group not in verb_parsers:
+            verb_parsers[group] = groups.add_parser(group).add_subparsers(dest="verb", required=True)
+        command.add_arguments(verb_parsers[group].add_parser(verb))
+    return parser
 
 
 def _run_command(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Run the parsed command with its effects and return the text it prints."""
-    if (arguments.group, arguments.verb) in _GUARDED_COMMANDS:
+    command = _COMMANDS[(arguments.group, arguments.verb)]
+    if command.guarded:
         guard_series(_series_folder(effects), _command_name(arguments))
-    return _HANDLERS[(arguments.group, arguments.verb)](arguments, effects)
+    return command.handle(arguments, effects)
 
 
 def _execute(argv: Sequence[str], effects: _Effects, stdout: TextIO, stderr: TextIO) -> int:

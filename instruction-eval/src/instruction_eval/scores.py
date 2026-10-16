@@ -15,7 +15,7 @@ from instruction_eval.records import (
     COLLECTED_FILE,
     COMPLETION_COMPARES,
     COVERAGE_FILE,
-    DEMANDS_RECORD,
+    DEMANDS_INPUT,
     DETECTOR_DEMANDS,
     DETECTORS_FILE,
     DRIFT_COMPARES,
@@ -143,14 +143,14 @@ def measure_noise(
     level: float,
 ) -> Noise:
     """Return r1's noise: each condition's repeat variances and the half-width each check and change can resolve."""
-    z = NormalDist().inv_cdf((1 + level) / _TWO_SIDED_TAILS)
+    z = z_for_level(level)
     conditions = [INSTRUCTION_CONDITION, *controls]
     task_replies = [row for row in sealed_rows if row["turn"] is None]
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
     sigma: NoiseSigma = {
         "breaches": _repeat_variances(task_replies, conditions, partial(breach_total, demands=gate_demands)),
-        "done": _repeat_variances(task_replies, conditions, _done_value),
+        "done": _repeat_variances(task_replies, conditions, done_value),
         "drift": {
             condition: _mean_repeat_variance(_drift_slopes_by_unit(turn_replies, condition, gate_demands))
             for condition in conditions
@@ -263,7 +263,7 @@ def breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
     return sum(reply["breaches"][demand] for demand in demands)
 
 
-def _done_value(reply: ScoredReply) -> float | None:
+def done_value(reply: ScoredReply) -> float | None:
     """Return the reply's done as 1 or 0, or null when done is null."""
     return None if reply["done"] is None else float(reply["done"])
 
@@ -319,14 +319,14 @@ class Comparison:
 
 def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.Generator) -> Comparison:
     """Average instruction minus other per unit and bound it by a percentile bootstrap interval at `level`, null without units."""
-    require_valid_level(level)
+    _require_valid_level(level)
     if not units:
         return Comparison(mean_difference=None, interval=None, units=0)
-    differences = unit_differences(units)
-    resample_means = bootstrap_resample_means(differences, rng)
+    differences = _unit_differences(units)
+    resample_means = _bootstrap_resample_means(differences, rng)
     return Comparison(
         mean_difference=float(differences.mean()),
-        interval=percentile_interval(resample_means, level),
+        interval=_percentile_interval(resample_means, level),
         units=len(differences),
     )
 
@@ -346,36 +346,36 @@ def task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callabl
     return {task: mean(values) for task, values in values_by_task.items()}
 
 
-def unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
+def _unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
     """Return each unit's instruction value minus its other value."""
     return numpy.array([unit.instruction - unit.other for unit in units], dtype=float)
 
 
-def bootstrap_resample_means(differences: numpy.ndarray, rng: numpy.random.Generator) -> numpy.ndarray:
+def _bootstrap_resample_means(differences: numpy.ndarray, rng: numpy.random.Generator) -> numpy.ndarray:
     """Return the mean difference of each of the resamples drawn from units with replacement."""
     resampled_indices = rng.integers(0, len(differences), size=(BOOTSTRAP_RESAMPLES, len(differences)))
     return differences[resampled_indices].mean(axis=1)
 
 
-def percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[float, float]:
+def _percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[float, float]:
     """Return the central `level` interval of the resample means by numpy's linear quantile."""
-    upper_probability = upper_tail_probability(level)
+    upper_probability = _upper_tail_probability(level)
     low, high = numpy.quantile(resample_means, [1 - upper_probability, upper_probability], method="linear")
     return float(low), float(high)
 
 
 def z_for_level(level: float) -> float:
     """Return the standard normal quantile at (1 + `level`) / 2."""
-    require_valid_level(level)
-    return NormalDist().inv_cdf(upper_tail_probability(level))
+    _require_valid_level(level)
+    return NormalDist().inv_cdf(_upper_tail_probability(level))
 
 
-def upper_tail_probability(level: float) -> float:
+def _upper_tail_probability(level: float) -> float:
     """Return the probability (1 + `level`) / 2 bounding a central `level` interval from above."""
-    return (1 + level) / 2
+    return (1 + level) / _TWO_SIDED_TAILS
 
 
-def require_valid_level(level: float) -> None:
+def _require_valid_level(level: float) -> None:
     """Raise ValueError naming `level` unless it lies strictly between 0 and 1."""
     if not 0 < level < 1:
         raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
@@ -386,7 +386,7 @@ LEVEL_KEY = "level"
 DONE_BY_KEY = "done_by"
 LEVEL_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{LEVEL_KEY}"
 DONE_BY_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{DONE_BY_KEY}"
-DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", f"{TASKS_RECORD}{KEY_SEPARATOR}tasks", f"{TASKS_RECORD}{KEY_SEPARATOR}conversations")
+DEMANDS_AND_TASKS_INPUTS = (DEMANDS_INPUT, f"{TASKS_RECORD}{KEY_SEPARATOR}tasks", f"{TASKS_RECORD}{KEY_SEPARATOR}conversations")
 SCORE_USER_INPUTS = (
     *DEMANDS_AND_TASKS_INPUTS,
     f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands",
@@ -469,9 +469,13 @@ def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
 
 
 def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]:
-    """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
+    """Return what `revision score` reads: the user keys and the revision's measured records."""
+    return [*SCORE_USER_INPUTS, *measured_reads(revision, origins, collected)]
+
+
+def measured_reads(revision: str, origins: Record, collected: Record) -> list[str]:
+    """Return a measured revision's records: every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
     return [
-        *SCORE_USER_INPUTS,
         *origin_reply_paths(origins, revision).values(),
         f"{revision}/{ORIGINS_FILE}",
         *accepted_verdict_paths(revision, collected),
@@ -515,7 +519,7 @@ def instruction_comparisons(
     comparisons = {VS_COMPARES[control]: _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != SOURCE_CONTROL}
     if SOURCE_CONTROL in controls:
         comparisons[NEAR_SOURCE_COMPARES] = _instruction_minus(task_breaches, SOURCE_CONTROL, level, bootstrap_rng)
-    comparisons[COMPLETION_COMPARES] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
+    comparisons[COMPLETION_COMPARES] = _instruction_minus(partial(_task_means_of, task_rows, done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
     if turn_rows:
         comparisons[DRIFT_COMPARES] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), _drift_control(controls), level, bootstrap_rng)
     return comparisons
@@ -544,8 +548,8 @@ def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], 
 def _drift(conversation_slopes: Mapping[str, float], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return a condition's mean drift slope over conversations and its percentile bootstrap interval."""
     slopes = numpy.array(list(conversation_slopes.values()))
-    resample_means = bootstrap_resample_means(slopes, bootstrap_rng())
-    return {"slope": float(slopes.mean()), "interval": list(percentile_interval(resample_means, level))}
+    resample_means = _bootstrap_resample_means(slopes, bootstrap_rng())
+    return {"slope": float(slopes.mean()), "interval": list(_percentile_interval(resample_means, level))}
 
 
 def _comparison_record(comparison: Comparison) -> dict[str, object]:

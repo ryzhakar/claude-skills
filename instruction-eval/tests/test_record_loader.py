@@ -14,6 +14,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
+from series_fixtures import write_yaml
 
 CHECKS = [
     {"compares": "instruction-vs-empty", "gap": 0.5},
@@ -184,12 +185,6 @@ TASKS = {
     "conversations": [{"id": "c-open", "split": "open", "turns": ["Plan a trip.", "Which week?"]}],
 }
 COVERAGE = {"demands": {"d-judge": [1], "d-pattern": {"dropped": "Unmeasured here."}}, "sentences": {1: ["d-judge"]}}
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    target = files.root / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(yaml.safe_dump(document, sort_keys=False))
 
 
 def sha256(files: SeriesFolder, path: str) -> str:

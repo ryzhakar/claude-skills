@@ -1,4 +1,10 @@
-from instruction_eval.tasks import shared_phrases, words
+from hypothesis import given, strategies as st
+
+from instruction_eval.tasks import SEQUENCE_LENGTH, shared_phrases, words
+
+ASCII_LAST_CODEPOINT = 127
+PHRASE_VOCABULARY = ["cite", "the", "source", "always", "first"]
+MOST_PHRASE_WORDS = 12
 
 
 def test_words_are_lowercased_alphanumeric_and_apostrophe_runs():
@@ -21,3 +27,16 @@ def test_shared_phrases_is_empty_for_texts_under_three_words():
 
 def test_shared_phrases_lists_a_repeated_sequence_once():
     assert shared_phrases("a b c a b c", "x a b c") == ["a b c"]
+
+
+@given(st.text(alphabet=st.characters(max_codepoint=ASCII_LAST_CODEPOINT)))
+def test_words_are_lowercase_and_unchanged_by_lowercasing_the_text(text):
+    found = words(text)
+    assert all(word == word.lower() for word in found)
+    assert words(text.lower()) == found
+
+
+@given(st.lists(st.sampled_from(PHRASE_VOCABULARY), min_size=SEQUENCE_LENGTH, max_size=MOST_PHRASE_WORDS))
+def test_a_text_shares_each_of_its_own_three_word_runs_with_itself_once_in_order(word_list):
+    runs = dict.fromkeys(" ".join(word_list[start:start + SEQUENCE_LENGTH]) for start in range(len(word_list) - SEQUENCE_LENGTH + 1))
+    assert shared_phrases(" ".join(word_list), " ".join(word_list)) == list(runs)

@@ -9,8 +9,8 @@ from typing import Any, TypeVar
 
 import yaml
 
-from instruction_eval.conditions import FRONTMATTER_FENCE, control_texts, revision_condition_texts
-from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.conditions import control_texts, revision_condition_texts
+from instruction_eval.coverage import FRONTMATTER_FENCE, coverage_check, split_sentences
 from instruction_eval.gate import (
     BudgetRefusal,
     earlier_outcomes,
@@ -27,7 +27,7 @@ from instruction_eval.records import (
     CONDITION_PLACEHOLDER,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
-    DEMANDS_RECORD,
+    DEMANDS_INPUT,
     FIRST_REVISION,
     FROZEN_RECORD,
     GATE_RECORD,
@@ -41,7 +41,6 @@ from instruction_eval.records import (
     SPENT_INPUT_TOKENS_KEY,
     TASK_KEYS,
     TASKS_RECORD,
-    TURN_PREFIX,
     AgentReader,
     CommandReader,
     Conversation,
@@ -58,6 +57,7 @@ from instruction_eval.records import (
     missing_gate_key,
     outcome_path,
     read_series_file,
+    repeat_path,
     reply_path,
     revision_ids,
     revision_number,
@@ -87,7 +87,8 @@ REPEAT_KEY = "repeat"
 LAUNCH_MESSAGE_KEY = "message"
 SEND_MESSAGES_KEY = "send_messages"
 FINGERPRINT_COMMAND = "reader fingerprint"
-FINGERPRINT_KEYS = ("model", "build")
+FINGERPRINT_MODEL_KEY = "model"
+FINGERPRINT_KEYS = (FINGERPRINT_MODEL_KEY, "build")
 AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
 
 
@@ -302,14 +303,14 @@ def _parse_transcript_line(
     try:
         return _entry_from_json(entry, end)
     except _MalformedEntry as fault:
-        raise ValueError(f"{transcript}: line {number} {fault}") from fault
+        raise Refusal(f"{transcript}: line {number} {fault}") from fault
 
 
 def _decode_object_line(transcript: Path, number: int, raw_line: bytes) -> dict[str, Any]:
     """Decode one transcript line as a JSON object, refusing with the transcript and line number when it is not."""
     entry = _decode_transcript_line(transcript, number, raw_line)
     if not isinstance(entry, dict):
-        raise ValueError(f"{transcript}: line {number} is not a JSON object")
+        raise Refusal(f"{transcript}: line {number} is not a JSON object")
     return entry
 
 
@@ -318,7 +319,7 @@ def _decode_transcript_line(transcript: Path, number: int, raw_line: bytes) -> o
     try:
         return json.loads(raw_line)
     except json.JSONDecodeError as error:
-        raise ValueError(f"{transcript}: line {number} is not JSON") from error
+        raise Refusal(f"{transcript}: line {number} is not JSON") from error
 
 
 def _entry_from_json(entry: dict[str, Any], end: int) -> _TurnOpening | _AssistantChunk | None:
@@ -619,7 +620,7 @@ def _screen_entry(
     try:
         return tuple(exposure for screen in screens for exposure in screen(entry))
     except _MalformedEntry as fault:
-        raise ValueError(f"{transcript}: line {number} {fault}") from fault
+        raise Refusal(f"{transcript}: line {number} {fault}") from fault
 
 
 def _outside_context_exposures(entry: dict[str, Any]) -> tuple[str, ...]:
@@ -815,9 +816,18 @@ def _launch_list(replies: Sequence[ExpectedReply], records: SeriesRecords) -> st
 
 
 def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
-    """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named."""
+    """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named, refusing a named condition the revision does not ask."""
     expected = _expected_reply_set(files, revision, records)
+    _refuse_unknown_conditions(revision, expected, conditions)
     return tuple(reply for reply in expected if (not conditions or reply.condition in conditions) and not files.holds(reply.path))
+
+
+def _refuse_unknown_conditions(revision: str, expected: Iterable[ExpectedReply], conditions: Sequence[str]) -> None:
+    """Refuse the first named condition outside the conditions the revision's own expected replies hold."""
+    known = sorted({reply.condition for reply in expected if reply.revision == revision})
+    unknown = next((condition for condition in conditions if condition not in known), None)
+    if unknown is not None:
+        raise Refusal(f"unknown condition: {unknown} (revision {revision} has {', '.join(known)})")
 
 
 def _expected_reply_set(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
@@ -1071,7 +1081,6 @@ MESSAGES_KEY = "messages"
 ROLE_KEY = "role"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
-TURN_FILE_PREFIX = f"/{TURN_PREFIX}"
 COVERAGE_KEYS = ("demands", "sentences")
 FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/{REPLIES_FOLDER}"
 REPLY_PATTERN = "*.yaml"
@@ -1094,14 +1103,14 @@ RunReader = Callable[[Sequence[str], str, int], ReaderRun]
 def revision_ask(
     files: SeriesFolder, revision: str, conditions: Sequence[str], run_reader: RunReader, run_fingerprint: Callable[[Sequence[str]], str]
 ) -> str:
-    """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
+    """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing an unknown condition, a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
     guard_series(files, ASK_COMMAND)
     _refuse_collected_revision(files, revision)
     records = SeriesRecords(files)
     reader = records.reader()
+    asked = _asked_replies(files, revision, records, conditions)
     coverage_check(files, revision)
     texts = _verified_condition_texts(files, revision, records, reader)
-    asked = _asked_replies(files, revision, records, conditions)
     _refuse_unaffordable_later_ask(files, records, revision, len(asked))
     if isinstance(reader, AgentReader):
         return _launch_list(asked, records)
@@ -1151,7 +1160,7 @@ def _answer_replies(
 def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
     """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
     coverage = (f"{coverage_revision}/{COVERAGE_FILE}{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
-    reads = [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
+    reads = [*_reader_reads(revision, records, reader, texts), DEMANDS_INPUT, *coverage]
     return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
 
 
@@ -1176,7 +1185,7 @@ def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
 def refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
     """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
     for path in reply_paths:
-        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
+        if records.reply(path)[FINGERPRINT_HASH_KEY] != fingerprint_hash:
             raise Refusal(f"reader fingerprint changed since {path}")
 
 
@@ -1189,8 +1198,8 @@ def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fin
 
 
 def _serial_order(reply: ExpectedReply) -> tuple[str, int]:
-    """Return the sort key that orders replies by path, a conversation's turns in numeric order."""
-    return (reply.path.rpartition(TURN_FILE_PREFIX)[0] or reply.path, reply.turn or 0)
+    """Return the sort key that orders replies by their repeat's path, a conversation's turns in numeric order."""
+    return (repeat_path(reply.revision, reply.condition, reply.task, reply.repeat), reply.turn or 0)
 
 
 def _reader_command(files: SeriesFolder, reader: CommandReader, reply: ExpectedReply) -> list[str]:
@@ -1231,7 +1240,7 @@ def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fi
     return {
         **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
         _TEXT_KEY: run.stdout,
-        REPLY_MODEL_KEY: fingerprint.output[REPLY_MODEL_KEY],
+        REPLY_MODEL_KEY: fingerprint.output[FINGERPRINT_MODEL_KEY],
         READER_KIND_KEY: COMMAND_READER,
         STARTED_KEY: run.started.isoformat(),
         SECONDS_KEY: run.seconds,

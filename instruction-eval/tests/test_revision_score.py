@@ -1,11 +1,10 @@
 from collections.abc import Sequence
 
-import numpy
 import pytest
 
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, write_file, write_record
-from instruction_eval.scores import BOOTSTRAP_SEED, revision_score
-from series_fixtures import Reply, write_agent_series, write_origins, write_yaml
+from instruction_eval.scores import revision_score
+from series_fixtures import Reply, bootstrap_rng, write_agent_series, write_origins, write_yaml
 
 DEMANDS = {
     "demands": [
@@ -78,11 +77,6 @@ def scored_series(tmp_path, replies: Sequence[Reply], done_by: str = "judge") ->
     write_series(files, {"repeats": 2, "level": 0.95, "done_by": done_by})
     write_revision(files, "r1", replies)
     return files
-
-
-def bootstrap_rng() -> numpy.random.Generator:
-    """Return the fresh seeded random source the composition root hands each bootstrap."""
-    return numpy.random.default_rng(BOOTSTRAP_SEED)
 
 
 def read_scores(files: SeriesFolder, revision: str = "r1") -> dict:
