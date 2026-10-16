@@ -122,19 +122,22 @@ def refuse_unresolvable_gaps(
     rng: numpy.random.Generator,
 ) -> None:
     """Raise Refusal on a null noise, a check whose noise exceeds half its gap, or an `instruction-near-source` check r1's sealed rows do not admit."""
-    near_source = NEAR_SOURCE_COMPARES in {check.compares for check in checks}
-    if near_source:
-        _refuse_near_source_without_sources(series_has_sources)
+    if near_source_without_sources(checks, series_has_sources):
+        raise Refusal(f"{NEAR_SOURCE_COMPARES} refused: the series has no sources")
     _refuse_null_change_noise(noise)
     _refuse_unresolvable_gaps(checks, noise)
-    if near_source:
+    if _holds_near_source(checks):
         _refuse_unadmitted_near_source(_vs_empty_check(checks), sealed_rows, gate_demands, noise["level"], rng)
 
 
-def _refuse_near_source_without_sources(series_has_sources: bool) -> None:
-    """Raise Refusal when an `instruction-near-source` check stands in a series without sources."""
-    if not series_has_sources:
-        raise Refusal(f"{NEAR_SOURCE_COMPARES} refused: the series has no sources")
+def near_source_without_sources(checks: Sequence[GateCheck], series_has_sources: bool) -> bool:
+    """Tell whether an `instruction-near-source` check stands in a series without sources."""
+    return _holds_near_source(checks) and not series_has_sources
+
+
+def _holds_near_source(checks: Sequence[GateCheck]) -> bool:
+    """Tell whether the checks hold an `instruction-near-source` check."""
+    return NEAR_SOURCE_COMPARES in {check.compares for check in checks}
 
 
 def _vs_empty_check(checks: Sequence[GateCheck]) -> GateCheck:

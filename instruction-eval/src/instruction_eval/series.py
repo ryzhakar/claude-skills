@@ -23,6 +23,7 @@ from instruction_eval.gate import (
     _stop_budget,
     kept_revision,
     least_repeats,
+    near_source_without_sources,
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
 )
@@ -400,7 +401,7 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
     compared = {check.compares for check in checks}
     if DRIFT_COMPARES in compared and not records.tasks().conversations:
         raise Refusal(f"{DRIFT_COMPARES} check without conversations ({TASKS_RECORD})")
-    if NEAR_SOURCE_COMPARES in compared and not records.series().sources:
+    if near_source_without_sources(checks, bool(records.series().sources)):
         raise Refusal(f"{NEAR_SOURCE_COMPARES} check without sources ({SERIES_RECORD})")
 
 
