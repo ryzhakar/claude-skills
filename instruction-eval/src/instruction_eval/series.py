@@ -240,12 +240,12 @@ def series_stop(files: SeriesFolder, reason: str) -> None:
     write_record(files, STOP_RECORD, {"stop": UNRESOLVABLE_STOP, "kept": kept_revision(outcomes), "reason": reason}, reads)
 
 
-def series_keep(files: SeriesFolder) -> None:
-    """Write the kept revision's instruction snapshot over the live instruction file, refusing a series not stopped or keeping nothing."""
+def series_keep(files: SeriesFolder, replace_file: Callable[[Path, bytes], None]) -> None:
+    """Replace the live instruction file with the kept revision's instruction snapshot through `replace_file`, refusing a series not stopped or keeping nothing."""
     guard_series(files, KEEP_COMMAND)
     records = SeriesRecords(files)
     kept = _kept_revision(files, records)
-    records.series().instruction.write_bytes(files.read_bytes(f"{kept}/{INSTRUCTION_FILE}"))
+    replace_file(records.series().instruction, files.read_bytes(f"{kept}/{INSTRUCTION_FILE}"))
 
 
 def _kept_revision(files: SeriesFolder, records: SeriesRecords) -> str:

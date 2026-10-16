@@ -220,6 +220,11 @@ def _stage_beside(target: Path, content: bytes) -> Path:
     return Path(staged.name)
 
 
+def replace_whole(target: Path, content: bytes) -> None:
+    """Replace the file at `target` with `content` in one step, so a crash leaves the old bytes or the new, never a part."""
+    os.replace(_stage_beside(target, content), target)
+
+
 def dump_canonical_yaml(value: Any) -> bytes:
     """Dump a value as YAML with sorted keys in block style."""
     return yaml.safe_dump(value, sort_keys=True, default_flow_style=False, allow_unicode=True).encode()

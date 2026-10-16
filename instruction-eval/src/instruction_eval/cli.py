@@ -63,6 +63,7 @@ from instruction_eval.records import (
     attempt_folder,
     dump_canonical_yaml,
     guard_series,
+    replace_whole,
 )
 from instruction_eval.revision import revision_new
 from instruction_eval.scores import BOOTSTRAP_SEED, DONE_BY_KEY, LEVEL_KEY, BootstrapRng, revision_detect, revision_score
@@ -141,7 +142,7 @@ _FINGERPRINT_KEY = "fingerprint"
 
 @dataclass(frozen=True)
 class _Effects:
-    """Every effect a command takes: the clock, the folders, the environment, the random sources, and the readers of files and processes."""
+    """Every effect a command takes: the clock, the folders, the environment, the random sources, the readers of files and processes, and the replacer of the live instruction."""
 
     now: Callable[[], datetime]
     home: Path
@@ -150,6 +151,7 @@ class _Effects:
     random: random.Random
     bootstrap_rng: BootstrapRng
     read_external: Callable[[Path], bytes]
+    replace_file: Callable[[Path, bytes], None]
     read_transcript: Callable[[Path], bytes]
     run_reader: RunReader
     run_fingerprint: Callable[[Sequence[str]], str]
@@ -196,6 +198,7 @@ def _real_effects() -> _Effects:
         random=random.SystemRandom(),
         bootstrap_rng=lambda: numpy.random.default_rng(BOOTSTRAP_SEED),
         read_external=Path.read_bytes,
+        replace_file=replace_whole,
         read_transcript=Path.read_bytes,
         run_reader=partial(_run_reader, now),
         run_fingerprint=_run_fingerprint,
@@ -266,7 +269,7 @@ def _stop(arguments: argparse.Namespace, effects: _Effects) -> str:
 
 def _keep(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Write the kept revision over the live instruction."""
-    series_keep(_series_folder(effects))
+    series_keep(_series_folder(effects), effects.replace_file)
     return ""
 
 
