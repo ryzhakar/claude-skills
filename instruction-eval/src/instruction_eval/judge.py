@@ -221,19 +221,22 @@ def blind_replies(revision: str, replies: Mapping[ExpectedReply, Record], anchor
             *(_reply_entry(packet, revision, key, replies) for key in keys),
             *(_anchor_entry(packet, anchor) for anchor in _drawn_anchors(packet, task, anchors, anchors_per_packet, random)),
         ]
-        packets[packet] = _packet_text(entries, origins, random)
+        packets[packet], packet_origins = _packet_text(entries, origins.keys(), random)
+        origins.update(packet_origins)
     return BlindPackets(packets=packets, origins=origins)
 
 
-def _packet_text(entries: list[_Entry], origins: dict[str, Record], random: Random) -> str:
-    """Return the entries shuffled into a packet's markdown under fresh blind ids, recording each id's origin in `origins`."""
-    random.shuffle(entries)
+def _packet_text(entries: Sequence[_Entry], taken: AbstractSet[str], random: Random) -> tuple[str, dict[str, Record]]:
+    """Return a shuffled copy of the entries as a packet's markdown under blind ids no taken id equals, with each new id's origin."""
+    shuffled = list(entries)
+    random.shuffle(shuffled)
+    packet_origins: dict[str, Record] = {}
     sections = []
-    for entry in entries:
-        blind_id = _fresh_blind_id(origins, random)
-        origins[blind_id] = entry.origin
+    for entry in shuffled:
+        blind_id = _fresh_blind_id(taken | packet_origins.keys(), random)
+        packet_origins[blind_id] = entry.origin
         sections.append(_section(blind_id, entry.exchanges))
-    return SECTION_SEPARATOR.join(sections) + "\n"
+    return SECTION_SEPARATOR.join(sections) + "\n", packet_origins
 
 
 def _replies_by_packet(replies: Iterable[ExpectedReply]) -> dict[str, tuple[str, list[ExpectedReply]]]:
@@ -605,8 +608,7 @@ def _blind_sample(files: SeriesFolder, taken: AbstractSet[ExpectedReply], attemp
     """Draw the attempt's sample of r1's open task replies and blind it into one packet."""
     drawn = _draw_sample(_open_task_replies(files), taken, attempt, sample_size)
     records = {key: _load_reply(files, key.path) for key in drawn}
-    origins: dict[str, Record] = {}
-    text = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, records) for key in drawn], origins, random)
+    text, origins = _packet_text([_reply_entry(SAMPLE_PACKET, FIRST_REVISION, key, records) for key in drawn], frozenset(), random)
     return _BlindSample(replies=tuple(drawn), reader_model=_serving_model(records.values()), text=text, origins=origins)
 
 
