@@ -319,14 +319,14 @@ class Comparison:
 
 def compare_paired(units: Sequence[PairedUnit], level: float, rng: numpy.random.Generator) -> Comparison:
     """Average instruction minus other per unit and bound it by a percentile bootstrap interval at `level`, null without units."""
-    require_valid_level(level)
+    _require_valid_level(level)
     if not units:
         return Comparison(mean_difference=None, interval=None, units=0)
-    differences = unit_differences(units)
-    resample_means = bootstrap_resample_means(differences, rng)
+    differences = _unit_differences(units)
+    resample_means = _bootstrap_resample_means(differences, rng)
     return Comparison(
         mean_difference=float(differences.mean()),
-        interval=percentile_interval(resample_means, level),
+        interval=_percentile_interval(resample_means, level),
         units=len(differences),
     )
 
@@ -346,36 +346,36 @@ def task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callabl
     return {task: mean(values) for task, values in values_by_task.items()}
 
 
-def unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
+def _unit_differences(units: Sequence[PairedUnit]) -> numpy.ndarray:
     """Return each unit's instruction value minus its other value."""
     return numpy.array([unit.instruction - unit.other for unit in units], dtype=float)
 
 
-def bootstrap_resample_means(differences: numpy.ndarray, rng: numpy.random.Generator) -> numpy.ndarray:
+def _bootstrap_resample_means(differences: numpy.ndarray, rng: numpy.random.Generator) -> numpy.ndarray:
     """Return the mean difference of each of the resamples drawn from units with replacement."""
     resampled_indices = rng.integers(0, len(differences), size=(BOOTSTRAP_RESAMPLES, len(differences)))
     return differences[resampled_indices].mean(axis=1)
 
 
-def percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[float, float]:
+def _percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[float, float]:
     """Return the central `level` interval of the resample means by numpy's linear quantile."""
-    upper_probability = upper_tail_probability(level)
+    upper_probability = _upper_tail_probability(level)
     low, high = numpy.quantile(resample_means, [1 - upper_probability, upper_probability], method="linear")
     return float(low), float(high)
 
 
 def z_for_level(level: float) -> float:
     """Return the standard normal quantile at (1 + `level`) / 2."""
-    require_valid_level(level)
-    return NormalDist().inv_cdf(upper_tail_probability(level))
+    _require_valid_level(level)
+    return NormalDist().inv_cdf(_upper_tail_probability(level))
 
 
-def upper_tail_probability(level: float) -> float:
+def _upper_tail_probability(level: float) -> float:
     """Return the probability (1 + `level`) / 2 bounding a central `level` interval from above."""
     return (1 + level) / _TWO_SIDED_TAILS
 
 
-def require_valid_level(level: float) -> None:
+def _require_valid_level(level: float) -> None:
     """Raise ValueError naming `level` unless it lies strictly between 0 and 1."""
     if not 0 < level < 1:
         raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
@@ -548,8 +548,8 @@ def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], 
 def _drift(conversation_slopes: Mapping[str, float], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return a condition's mean drift slope over conversations and its percentile bootstrap interval."""
     slopes = numpy.array(list(conversation_slopes.values()))
-    resample_means = bootstrap_resample_means(slopes, bootstrap_rng())
-    return {"slope": float(slopes.mean()), "interval": list(percentile_interval(resample_means, level))}
+    resample_means = _bootstrap_resample_means(slopes, bootstrap_rng())
+    return {"slope": float(slopes.mean()), "interval": list(_percentile_interval(resample_means, level))}
 
 
 def _comparison_record(comparison: Comparison) -> dict[str, object]:
