@@ -19,9 +19,7 @@ Wait up to three 20-second waits for the new `ie-judge-<r>-*` types to list amon
 
 Launch each listed agent type once from the main thread with the Agent tool and the prompt `Begin.`; never launch from a subagent.
 
-Launch at most twenty agents at once; the twenty-first is refused.
-
-Launch the first twenty listed types, then one more as each judge ends; never run more than twenty.
+Launch the first twenty listed types, then one more as each judge ends; never launch a twenty-first while twenty run.
 
 Each judge writes its own verdict to `<r>/7-verdicts/<packet>/k<k>.yaml`; never write, paste, or edit a verdict.
 
