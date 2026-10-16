@@ -1024,6 +1024,11 @@ class Tasks:
 TASK_KEYS = ("tasks", "conversations")
 
 
+def task_entries(tasks: Tasks) -> dict[str, Task | Conversation]:
+    """Return every task and conversation by id."""
+    return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
+
+
 def parse_tasks(document: object) -> Tasks:
     """Build the `3-tasks.yaml` record from its parsed document."""
     keys = read_keys(document, DOCUMENT, required=set(TASK_KEYS))
@@ -1854,8 +1859,7 @@ class SeriesRecords:
 
     def _task_entries(self) -> dict[str, Task | Conversation]:
         """Return every task and conversation of the series by id."""
-        tasks = self.tasks()
-        return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
+        return task_entries(self.tasks())
 
     def _prepared_condition_path(self, revision: str, condition: str) -> str:
         """Return the condition text `revision` prepared, or else the r1 text a later revision borrows."""

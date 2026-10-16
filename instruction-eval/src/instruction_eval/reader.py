@@ -62,6 +62,7 @@ from instruction_eval.records import (
     revision_number,
     sha256,
     source_snapshot_path,
+    task_entries,
     utf8_text,
     write_file,
     write_record,
@@ -1197,7 +1198,7 @@ def _reader_command(files: SeriesFolder, reader: CommandReader, reply: ExpectedR
 
 def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
     """Return the YAML `messages` the reader receives: the turns up to the reply's, with the repeat's earlier replies between them."""
-    turns = _turn_messages(_entries_by_id(records.tasks())[reply.task])
+    turns = _turn_messages(task_entries(records.tasks())[reply.task])
     last_turn = reply.turn or 1
     messages: list[dict[str, str]] = []
     for turn in range(1, last_turn + 1):
@@ -1206,11 +1207,6 @@ def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
             earlier = reply_path(reply.revision, reply.condition, reply.task, reply.repeat, turn)
             messages.append({ROLE_KEY: ASSISTANT_ROLE, _TEXT_KEY: records.reply(earlier)[_TEXT_KEY]})
     return yaml.safe_dump({MESSAGES_KEY: messages}, allow_unicode=True)
-
-
-def _entries_by_id(tasks: Tasks) -> dict[str, Task | Conversation]:
-    """Return every task and conversation by id."""
-    return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
 
 
 def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
@@ -1228,7 +1224,7 @@ def _refuse_failed_run(reply: ExpectedReply, run: ReaderRun) -> None:
 
 def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fingerprint: Fingerprint) -> dict[str, Any]:
     """Return the reply record of one command reader run: its output, the fingerprint's model and hash, and null token counts."""
-    entry = _entries_by_id(tasks)[reply.task]
+    entry = task_entries(tasks)[reply.task]
     return {
         **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
         _TEXT_KEY: run.stdout,
