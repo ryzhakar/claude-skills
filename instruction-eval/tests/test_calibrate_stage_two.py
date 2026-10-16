@@ -400,6 +400,18 @@ def test_a_user_rater_is_the_reference_alone_and_only_the_candidate_ratings_carr
     assert agreement["scale"] == pytest.approx(1 / 3)
 
 
+def test_the_user_raters_reference_enters_inputs_by_its_verdicts_key(tmp_path):
+    files = calibrating_series(tmp_path, USER_PLAN)
+    transcripts = rate(files, {"candidate-1": one_done, "candidate-2": one_done})
+    write_rating(files, "reference-user", counting(3, True))
+
+    stage_two(files, transcripts)
+
+    inputs = SeriesRecords(files).agreement(1)["inputs"]
+    assert f"{ATTEMPT}/reference-user.yaml#verdicts" in inputs
+    assert f"{ATTEMPT}/reference-user.yaml" not in inputs
+
+
 PLAN_KEYS = ("judge_model", "raters", "rater_model", "sample_size", "anchors_per_packet", "acceptance")
 
 

@@ -1099,13 +1099,22 @@ def _calibration_record(files: SeriesFolder, records: SeriesRecords, attempt: in
 def _stage_two_reads(
     files: SeriesFolder, records: SeriesRecords, attempt: int, sampled: Sequence[ExpectedReply], ratings: Sequence[_Rating], reference_files: Iterable[str]
 ) -> list[str]:
-    """Return what stage two reads: what stage one read, the attempt's origins, the rating files, the rating definitions, and the tasks."""
+    """Return what stage two reads: what stage one read, the attempt's origins, the rating files, the user's reference by its verdicts key, the rating definitions, and the tasks."""
     folder = attempt_folder(attempt)
     rating_files = {rating.file for rating in ratings} | set(reference_files)
     return [
         *_stage_one_reads(files, records, attempt, sampled, _earlier_attempts_with_origins(files, attempt)),
         f"{folder}/{ATTEMPT_ORIGINS_FILE}",
-        *(f"{folder}/{name}" for name in sorted(rating_files)),
+        *(_rating_read(folder, name) for name in sorted(rating_files)),
         *(agent_definition_path(rating.agent_type) for rating in ratings),
         f"{TASKS_RECORD}{KEY_SEPARATOR}tasks",
     ]
+
+
+USER_RATING_KEY = "verdicts"
+
+
+def _rating_read(folder: str, name: str) -> str:
+    """Return how stage two reads a rating file: an agent's whole, the user's by its verdicts key."""
+    path = f"{folder}/{name}"
+    return f"{path}{KEY_SEPARATOR}{USER_RATING_KEY}" if name == REFERENCE_USER_FILE else path
