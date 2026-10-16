@@ -1,9 +1,14 @@
 import json
+import re
 import tomllib
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PLUGIN_ROOT.parent
+NUMBER_WORDS = (
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
+)
 MODULE_NAMES = {
     "series", "demands", "coverage", "tasks", "conditions", "reader",
     "judge", "revision", "scores", "gate", "records", "cli",
@@ -44,4 +49,11 @@ def test_marketplace_lists_the_plugin_at_its_version_and_the_readmes_name_it_and
     assert "[instruction-eval](instruction-eval/)" in (REPOSITORY_ROOT / "README.md").read_text()
     plugin_readme = (PLUGIN_ROOT / "README.md").read_text()
     assert all(f"skills/{skill.name}/SKILL.md" in plugin_readme for skill in (PLUGIN_ROOT / "skills").iterdir())
+
+
+def test_capabilities_counts_every_plugin_directory():
+    capabilities = (REPOSITORY_ROOT / "orchestration_log" / "reference" / "capabilities.md").read_text()
+    counted = re.search(r"^(\w+) plugins, each a top-level directory", capabilities, re.MULTILINE).group(1)
+    plugin_directories = list(REPOSITORY_ROOT.glob("*/.claude-plugin/plugin.json"))
+    assert NUMBER_WORDS.index(counted.lower()) == len(plugin_directories)
 
