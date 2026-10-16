@@ -228,6 +228,7 @@ Check = Callable[[Any, str], None]
 
 REVISION_ID_PATTERN = r"r[1-9][0-9]*"
 IDENTIFIER_PATTERN = r"[a-z0-9][a-z0-9-]*"
+AGENT_MODEL_ID_PATTERN = r"claude-[a-z0-9]+(-[a-z0-9]+)+"
 Control = Literal["empty", "aim", "placebo", "source"]
 EMPTY_CONTROL, AIM_CONTROL, PLACEBO_CONTROL, SOURCE_CONTROL = get_args(Control)
 CONTROLS_WITHOUT_SOURCES = (EMPTY_CONTROL, AIM_CONTROL, PLACEBO_CONTROL)
@@ -604,7 +605,7 @@ _VERDICT_ENTRY = _mapping(
 _DETECTOR_ENTRY = _mapping(
     {"id": _IDENTIFIER, "breaches": _BREACHES, "done_by_answer_key": _boolean_or_null}
 )
-_AGENT_MODEL = _matching(r"claude-[a-z0-9]+(-[a-z0-9]+)+", "a full claude model id")
+_AGENT_MODEL = _matching(AGENT_MODEL_ID_PATTERN, "a full claude model id")
 _COLLECTED_PACKET = _mapping(
     {
         "accepted": _POSITION,
@@ -864,9 +865,9 @@ DOCUMENT_LABEL = "record"
 FEWEST_REPEATS = 2
 FEWEST_ANCHORS_PER_PACKET = 3
 HASH_DIGEST_PATTERN = re.compile(rf"^{HASH_PATTERN}\Z")
-ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*\Z")
+ID_PATTERN = re.compile(rf"^{IDENTIFIER_PATTERN}\Z")
 BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
-AGENT_MODEL_PATTERN = re.compile(r"^claude-[a-z0-9]+(-[a-z0-9]+)+\Z")
+AGENT_MODEL_PATTERN = re.compile(rf"^{AGENT_MODEL_ID_PATTERN}\Z")
 MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
 RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
 CONDITION_PLACEHOLDER = "{condition}"
