@@ -2,44 +2,44 @@
 name: start-series
 description: >
   Create a series folder for one instruction and its sources, and set up the neutral login whose session drives the series.
-  "start a series", "evaluate this instruction", "measure this prompt", "test this digest", "set up instruction-eval", "new series".
-  A user holds an instruction, with or without the source it distills, and no series folder for it yet.
+  Use when the user says "start a series", "evaluate this instruction", "measure this prompt", "test this digest", "set up instruction-eval", or "new series".
+  Use when a user holds an instruction, with or without the source it distills, and no series folder for it yet.
 ---
 
-<cover-the-first-stage>
-Follow this skill at the start of a series: the neutral login once per machine, the series folder once per instruction, then the launch of the neutral session in that folder.
-
-A series is every revision of one instruction measured under one frozen set of demands, tasks, conditions, reader, judge, gate, and keep rule.
-</cover-the-first-stage>
+<gather-the-inputs>
+Ask the user for the instruction path, each source path, a series name, and whether the reader is a Claude model; never guess one.
+</gather-the-inputs>
 
 <set-up-the-neutral-login-once>
-Install `instruction-eval@my-claude-skills` in the default login first; `claudes new` refuses a plugin missing from the shared registry.
+Skip this section when `test -d ~/.claudes-bare/readers` succeeds; never make the login twice.
 
-Make the neutral login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`, which writes `~/.claudes-bare/readers`.
+Install the plugin in the default login with `/plugin install instruction-eval@my-claude-skills` before `claudes new`; never run `claudes new` first.
 
-Start it once with `claudes run readers` and run `/login` with the same account.
+Make the neutral login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`.
 
-Add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow` in the bare login's `settings.json`; `claudes path readers` prints its folder.
+Edit `$(claudes path readers)/settings.json`: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating the key when absent; never drop an existing entry.
 
 Keep `enabledPlugins` exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true; never add a `CLAUDE.md`, a skill, or an agent to the bare login.
 
-`reader prepare`, `judge prepare`, and `judge calibrate` stage one refuse a session whose `CLAUDE_CONFIG_DIR` lies outside `~/.claudes-bare/` or breaks either rule.
+Read `settings.json` back and confirm both allow rules and both plugins; fix any gap before the next step.
+
+Hand the user `claudes run readers` to start once in their own terminal and run `/login` with the same account; wait for their word that login succeeded.
 </set-up-the-neutral-login-once>
 
 <make-the-series-folder>
-Run `instruction-eval series new <name|path> --instruction <path> [--source <path>]… --reader-kind agent|command` in any shell, the working session included; never start a session in the folder before it.
+Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` from the Bash tool, where the enabled plugin puts `instruction-eval` on PATH; never start a session in the folder before it.
 
-Give a bare name, which puts the series at `~/instruction-series/<name>/` where the allow rules reach; never give a path outside `~/instruction-series/`.
+Give a bare name, which creates `~/instruction-series/<name>/`; never give a path outside `~/instruction-series/`.
 
 Repeat `--source` once per source file; omit it for an instruction with no source.
 
 Pick `--reader-kind agent` for a Claude reader and `command` for any other model; never change the kind within a series.
 
-`series new` writes `series.yaml`, an empty `.claude/agents/`, `1-source/<basename>` per source, `r1/2-instruction.md`, and `r1/2-revision.yaml`, then prints the folder; never edit a file it wrote.
+Expect `series.yaml`, an empty `.claude/agents/`, `1-source/<basename>` per source, `r1/2-instruction.md`, `r1/2-revision.yaml`, and the folder path printed; never edit a file `series new` wrote.
 </make-the-series-folder>
 
 <answer-each-refusal>
-A refusal prints one line, writes nothing, and names the one fault; fix that fault and rerun the same command.
+On a refusal, fix the named fault and rerun the same command; never edit a file the command wrote.
 
 On `series folder not empty`, choose a new name; never empty a folder to reuse it.
 
@@ -53,15 +53,17 @@ On `missing file`, correct the path.
 </answer-each-refusal>
 
 <launch-the-neutral-session>
-Launch it with `cd <series folder> && claudes run readers`; run every later step in that session.
+End the turn at the printed folder path and hand the user `cd <series folder> && claudes run readers` to run in their own terminal; never launch it yourself.
+
+Run every later step in that session, whose `CLAUDE_CONFIG_DIR` lies under `~/.claudes-bare/`; never run `reader prepare`, `judge prepare`, or `judge calibrate` stage one elsewhere.
 
 Launch every generated agent from that session's main thread; never from a subagent.
 
-After each `reader prepare`, `judge prepare`, and `judge calibrate` stage one, wait until the new agent types list in the Agent tool, then launch; never restart the session for them.
+After each `reader prepare`, `judge prepare`, and `judge calibrate` stage one, wait up to 60 seconds for the new agent types to appear in the Agent tool's list of available agents, then launch; never restart the session for them.
 
-PR7 measured four definitions written into the series folder's `.claude/agents/` registering in the main thread's Agent tool within about 40 seconds without restart, and never in a subagent's Agent tool.
+When a type stays absent after 60 seconds, stop and report the missing type to the user.
 </launch-the-neutral-session>
 
 <hand-off>
-Hand off to `list-demands`.
+Load `list-demands` in the neutral session once it runs.
 </hand-off>
