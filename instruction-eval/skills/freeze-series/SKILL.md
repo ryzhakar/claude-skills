@@ -17,7 +17,9 @@ For a command reader, run `instruction-eval reader fingerprint` first and confir
 
 Run `instruction-eval reader prepare r1`; it snapshots the placebo source to `4-placebo-source.md` and writes `r1/4-conditions/<condition>.md`, and for an agent reader `.claude/agents/ie-reader-r1-<condition>.md`.
 
-For an agent reader, wait up to three 20-second waits for the new agent types to list in the Agent tool; never restart the session for them.
+For an agent reader, wait up to three 20-second waits for the new `ie-reader-r1-*` types to list among the Agent tool's available agent types; never restart the session for them.
+
+When a type stays unlisted after the third wait, report it to the user and stop; never launch a missing type.
 
 Run `instruction-eval revision ask r1`; a command reader's replies land in `r1/5-replies/`, and an agent reader's launch list prints, one entry per `agent_type`, condition, task, repeat, and `message`.
 
@@ -53,11 +55,30 @@ Run `instruction-eval revision detect r1`; it writes `r1/7-detectors.yaml`.
 <set-the-gate-and-freeze>
 Run `instruction-eval series status` and read r1's noise per check and the least repeats per check with a gap.
 
-Complete `7-gate.yaml`: `checks`, each `compares` with a `gap` above zero and at least twice that check's noise, holding `instruction-vs-empty`, `instruction-vs-aim`, `instruction-vs-placebo`, and `completion`, plus `instruction-near-source` only with sources and `drift` only with conversations; `keep_rule: best-estimate-shortest`; `budget`, `none` or `{unit: tokens | seconds, ceiling: <number>}`; never change `repeats`, `level`, or `done_by`.
+Complete `7-gate.yaml` to this shape, keeping its three existing keys; never change `repeats`, `level`, or `done_by`:
+
+```yaml
+repeats: 3
+level: 0.95
+done_by: answer-key
+checks:
+  - {compares: instruction-vs-empty, gap: 0.5}
+  - {compares: instruction-vs-aim, gap: 0.5}
+  - {compares: instruction-vs-placebo, gap: 0.5}
+  - {compares: completion, gap: 0.1}
+keep_rule: best-estimate-shortest
+budget: none
+```
+
+Give each `gap` above zero and at least twice the noise `series status` prints for that check, in the same unit; never copy the example values.
+
+Add `{compares: instruction-near-source, gap: ...}` only when `series.yaml` `sources` is non-empty, and `{compares: drift, gap: ...}` only when `3-tasks.yaml` `conversations` is non-empty; never add either otherwise.
+
+Set `budget` to `none` or `{unit: tokens, ceiling: <number>}` or `{unit: seconds, ceiling: <number>}` as the user chooses; never choose for the user.
 
 Run `instruction-eval series freeze`; it writes `8-frozen.yaml`, hashing every part and holding the noise.
 
-On `unresolvable gap: <check>; least repeats <n>`, widen that gap or start a new series with at least that many repeats, this one serving as its pilot.
+On `unresolvable gap: <check>; least repeats <n>`, ask the user to choose: widen that gap to at least twice its noise and rerun, or start a new series through `start-series` with `repeats` at least n, this one serving as its pilot; never choose for the user.
 
 On a budget refusal, raise the ceiling or set `budget: none`.
 
