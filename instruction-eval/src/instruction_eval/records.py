@@ -241,7 +241,7 @@ OVERREACH_TARGET = "overreach"
 HASH_PATTERN = r"[0-9a-f]{64}"
 TOTAL_KEY = "total"
 INTERVAL_LENGTH = 2
-MINIMUM_ANCHORS_PER_PACKET = 3
+FEWEST_ANCHORS_PER_PACKET = 3
 TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
 
 ReaderKind = Literal["agent", "command"]
@@ -744,7 +744,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
             "judge_model": _AGENT_MODEL,
             "raters": _raters,
             "sample_size": _integer(1),
-            "anchors_per_packet": _integer(MINIMUM_ANCHORS_PER_PACKET),
+            "anchors_per_packet": _integer(FEWEST_ANCHORS_PER_PACKET),
             "acceptance": _ACCEPTANCE,
             "brief_hash": _HASH,
             "agreement": _AGREEMENT,
@@ -863,7 +863,6 @@ Choice = TypeVar("Choice", bound=str)
 DOCUMENT = ""
 DOCUMENT_LABEL = "record"
 FEWEST_REPEATS = 2
-FEWEST_ANCHORS_PER_PACKET = 3
 HASH_DIGEST_PATTERN = re.compile(rf"^{HASH_PATTERN}\Z")
 ID_PATTERN = re.compile(rf"^{IDENTIFIER_PATTERN}\Z")
 BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
