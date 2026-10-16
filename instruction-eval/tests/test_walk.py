@@ -415,3 +415,19 @@ def test_external_files_edited_after_the_series_takes_them_in_refuse_no_later_co
     assert all(edit.edited != edit.taken_in and edit.edited.startswith(edit.taken_in) for edit in walk.external_edits)
     assert collected["transcript_hash"] == hashlib.sha256(walk.external_edits[-1].taken_in).hexdigest()
     assert walk.session.runs[-1].command == ("series", "keep")
+
+
+REPORT_NAME = re.compile(r"^(REPORT|SUMMARY|FINDINGS|ANALYSIS).*\.md$", re.IGNORECASE)
+
+
+def told_paths(series: Path) -> set[Path]:
+    """Return every path a generated definition of the series tells its agent to write."""
+    return {Path(match) for definition in (series / ".claude/agents").iterdir() for match in VERDICT_PATH_LINE.findall(definition.read_text())}
+
+
+def test_no_path_written_or_told_to_an_agent_is_named_as_a_report(walk):
+    written = {run.series / path for run in walk.session.runs for path in run.created} | {walk.writer / "instruction.md"}
+    told = told_paths(walk.series) | told_paths(walk.stopped_series)
+
+    assert told and written
+    assert [path for path in written | told if REPORT_NAME.match(path.name)] == []
