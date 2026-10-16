@@ -29,7 +29,7 @@ Launch at most twenty agents at once; the twenty-first is refused.
 
 Take every reply as its transcript's last assistant message, collected only by `revision collect` or `judge collect`; never paste a reply by hand.
 
-Run `instruction-eval revision collect <r>` after each wave; on `missing replies: <count>, first <path>`, launch the entries still missing and rerun; never relaunch a collected one.
+Run `instruction-eval revision collect <r>` after each wave; it writes the missing `<r>/5-replies/<condition>/<task>/repeat-<p>.yaml` files it can match; on `missing replies: <count>, first <path>`, launch the entries still missing and rerun; never relaunch a collected one.
 
 Run `instruction-eval revision blind <r>`; it writes `<r>/6-packets/<packet>.md` and `<r>/6-origins.yaml`, borrowing every control reply from `r1`.
 
