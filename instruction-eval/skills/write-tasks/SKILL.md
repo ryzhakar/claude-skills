@@ -13,23 +13,23 @@ Run every command with the series folder as the working directory; never run one
 </cover-the-task-stage>
 
 <write-the-conditions-reader-and-gate-start>
-Write `4-conditions.yaml`: `controls` `[empty, aim, placebo]`, plus `source` exactly when the series has sources; never list another control.
+Write `4-conditions.yaml` with four keys: `controls`, a YAML list `[empty, aim, placebo]`, plus `source` exactly when `series.yaml` `sources` is non-empty; never list another control.
 
-Write `aim` as one line stating the instruction's aim in words it never uses; never share a three-word sequence with any revision.
+Write the `aim` key as one line stating the instruction's aim in words it never uses; never share a three-word sequence with any revision.
 
-Set `placebo_source` to the absolute path of a text carrying no demand and sharing no three-word sequence with a task or source; never point it at a series file.
+Set the `placebo_source` key to the absolute path of a text carrying no demand and sharing no three-word sequence with a task or source; never point it at a series file.
 
-Set `omissions` to `every-sentence` or `none`; never leave it out.
+Set the `omissions` key to the user's choice: `every-sentence` adds one `omit-<n>` condition per sentence for diagnosis to read, `none` adds none; never choose for the user.
 
-Write `5-reader.yaml` with `kind` equal to the series' reader kind and `model` the full pinned model ID beginning `claude-`; never use `sonnet`, `opus`, `haiku`, `fable`, or `inherit`.
+Write `5-reader.yaml` with `kind` equal to `series.yaml` `reader_kind` (`agent` or `command`) and `model` the full pinned model ID beginning `claude-`; never use `sonnet`, `opus`, `haiku`, `fable`, or `inherit`.
 
-For a command reader, add `command` (a list holding `{condition}` once), `fingerprint` (a list), and `sampling` (a map whose keys the fingerprint prints); never add these for an agent reader.
+For a command reader, add `command`, the reader's argument list as strings, `{condition}` once among them; `fingerprint`, the argument list of a command printing YAML with `model`, `build`, and every `sampling` key; and `sampling`, a map of the reader's sampling settings to scalars; never add these for an agent reader.
 
 Write `7-gate.yaml` with `repeats` (at least 2), `level` (between 0 and 1), and `done_by` (`answer-key` or `judge`); never add the other gate keys before `freeze-series`.
 </write-the-conditions-reader-and-gate-start>
 
 <write-the-tasks>
-Write `3-tasks.yaml` by hand: `tasks`, each with `id`, `tempts` (a demand id or `overreach`), `split` (`open` or `sealed`), `message`, and `answer_key`; `conversations`, each with `id`, `split`, and `turns`.
+Write `3-tasks.yaml` by hand: `tasks`, each with `id`, `tempts` (a demand id or `overreach`), `split` (`open` or `sealed`), `message`, and `answer_key`; `conversations`, each with `id`, `split`, and `turns`, a list of user messages as strings.
 
 Tempt every demand and `overreach` in both halves; never leave a half without one.
 
@@ -61,9 +61,9 @@ On `<task> echoes <other>: <phrase>`, reword the message or the `aim`; on `missi
 
 Edit `3-tasks.yaml`, `4-conditions.yaml`, and `5-reader.yaml` freely until `reader prepare r1`; never edit one after.
 
-Read the replies of the first launched wave before launching the rest; a task fix after a reply is collected starts a new series.
+When `freeze-series` collects the first wave, read its replies before the rest; when a task proves unanswerable, fix it and start a new series through `start-series`; never edit a task after a reply is collected.
 </check-the-tasks>
 
 <hand-off>
-Hand off to `freeze-series`; never ask before it.
+Hand off to `freeze-series` once `tasks check` exits silent; never ask before it.
 </hand-off>
