@@ -30,6 +30,7 @@ VERDICT_PATH_LINE = re.compile(r"Write one YAML file to (\S+) with the Write too
 REFERENCE_USER_RATING = "6-judge/calibration/attempt-1/reference-user.yaml"
 DELETED_SENTENCE = 2
 PREDICTED_SIZE = 0.5
+SERIES_NEW = ("series", "new", SERIES_NAME, "--instruction", "writer/instruction.md", "--source", "writer/policy.md", "--reader-kind", "command")
 
 
 def tree_bytes(root: Path) -> dict[str, bytes]:
@@ -80,6 +81,13 @@ class NeutralSession:
         stdout = self.launch(series, *command)
         self.runs.append(CommandRun(series, command, before, tree_bytes(series), stdout))
         return stdout
+
+    def create(self, working_dir: Path, *command: str) -> Path:
+        """Run `series new` in the working dir, record the series it writes, and return the series folder."""
+        stdout = self.launch(working_dir, *command)
+        series = Path(stdout.strip())
+        self.runs.append(CommandRun(series, command, {}, tree_bytes(series), stdout))
+        return series
 
 
 def write_neutral_login(config_dir: Path) -> None:
@@ -184,7 +192,7 @@ def judge_revision(session: NeutralSession, series: Path, revision: str) -> None
 def walk_first_revision(session: NeutralSession, workspace: Path, writer: Path) -> Path:
     """Walk r1 from `series new` to `revision gate r1` and return the series folder."""
     live_instruction, source, placebo = writer / "instruction.md", writer / "policy.md", writer / "gardening.md"
-    series = Path(session.launch(workspace, "series", "new", SERIES_NAME, "--instruction", "writer/instruction.md", "--source", "writer/policy.md", "--reader-kind", "command").strip())
+    series = session.create(workspace, *SERIES_NEW)
     live_instruction.write_text(live_instruction.read_text() + "Draft.\n")
     source.write_text(source.read_text() + "Edited after its snapshot.\n")
     copy_fixture("2-demands.yaml", series / "2-demands.yaml")
@@ -270,3 +278,77 @@ def walk(tmp_path_factory) -> Walk:
 def test_series_keep_writes_the_kept_revision_over_the_live_instruction(walk):
     assert walk.kept_at_cap == (walk.series / f"r{LAST_REVISION}/2-instruction.md").read_bytes()
     assert walk.kept_at_stop == (walk.stopped_series / f"r{LAST_REVISION - 1}/2-instruction.md").read_bytes()
+
+
+TASKS = [task["id"] for task in yaml.safe_load((FIXTURES / "3-tasks.yaml").read_text())["tasks"]]
+REPEATS = yaml.safe_load((FIXTURES / "7-gate-started.yaml").read_text())["repeats"]
+FIRST_CONDITIONS = ("aim", "empty", "instruction", "placebo", "source")
+CALIBRATION_ATTEMPT = "6-judge/calibration/attempt-1"
+SILENT_CHECKS = (("demands", "check"), ("coverage", "check", "r1"), ("tasks", "check"), ("reader", "fingerprint"))
+
+
+def replies(revision: str, conditions: Sequence[str]) -> set[str]:
+    """Return the reply files of every task and repeat of the conditions in the revision."""
+    return {f"{revision}/5-replies/{condition}/{task}/repeat-{repeat}.yaml" for condition in conditions for task in TASKS for repeat in range(1, REPEATS + 1)}
+
+
+def judged_revision_writes(revision: str) -> list[tuple[tuple[str, ...], set[str]]]:
+    """Return the runs that judge and detect the revision, each with the files it writes."""
+    return [
+        (("revision", "blind", revision), {f"{revision}/6-origins.yaml", *(f"{revision}/6-packets/{task}.md" for task in TASKS)}),
+        (("judge", "prepare", revision), {f".claude/agents/ie-judge-{revision}-{task}-k1.md" for task in TASKS}),
+        (("judge", "collect", revision), {f"{revision}/7-collected.yaml"}),
+        (("revision", "detect", revision), {f"{revision}/7-detectors.yaml"}),
+    ]
+
+
+def first_revision_writes() -> list[tuple[tuple[str, ...], set[str]]]:
+    """Return the runs of r1 from `series new` to its gate, each with the files it writes."""
+    return [
+        (SERIES_NEW, {"series.yaml", "1-source/policy.md", "r1/2-instruction.md", "r1/2-revision.yaml"}),
+        *((command, set()) for command in SILENT_CHECKS),
+        (("reader", "prepare", "r1"), {"4-placebo-source.md", *(f"r1/4-conditions/{condition}.md" for condition in FIRST_CONDITIONS)}),
+        (("revision", "ask", "r1"), replies("r1", FIRST_CONDITIONS)),
+        (("revision", "collect", "r1"), set()),
+        (
+            ("judge", "calibrate"),
+            {
+                *(f".claude/agents/ie-calib-1-candidate-{run}.md" for run in (1, 2)),
+                *(f"{CALIBRATION_ATTEMPT}/{name}" for name in ("brief.md", "sample.md", "origins.yaml")),
+            },
+        ),
+        (("judge", "calibrate"), {f"{CALIBRATION_ATTEMPT}/agreement.yaml", "6-judge/calibration.yaml", "6-judge/anchors.yaml"}),
+        *judged_revision_writes("r1"),
+        (("series", "status"), set()),
+        (("series", "freeze"), {"8-frozen.yaml"}),
+        (("revision", "score", "r1"), {"r1/8-scores.yaml"}),
+        (("revision", "gate", "r1"), {"r1/9-outcome.yaml"}),
+    ]
+
+
+def later_revision_writes(number: int) -> list[tuple[tuple[str, ...], set[str]]]:
+    """Return the runs of a later revision from `revision new` to its gate, each with the files it writes, the last revision's gate stopping the series."""
+    revision = f"r{number}"
+    stop = {"9-stop.yaml"} if number == LAST_REVISION else set()
+    return [
+        (("revision", "new"), {f"{revision}/2-instruction.md", f"{revision}/2-revision.yaml"}),
+        (("coverage", "check", revision), set()),
+        (("reader", "prepare", revision), {f"{revision}/4-conditions/instruction.md"}),
+        (("revision", "ask", revision, "--conditions", "instruction"), replies(revision, ["instruction"])),
+        (("revision", "collect", revision), set()),
+        *judged_revision_writes(revision),
+        (("revision", "score", revision), {f"{revision}/8-scores.yaml"}),
+        (("revision", "gate", revision), {f"{revision}/9-outcome.yaml", *stop}),
+    ]
+
+
+def test_each_command_writes_exactly_the_files_its_writes_cell_names(walk):
+    expected = [
+        *first_revision_writes(),
+        *(run for number in range(2, LAST_REVISION + 1) for run in later_revision_writes(number)),
+        (("series", "keep"), set()),
+        (("series", "stop", "--reason", STOP_REASON), {"9-stop.yaml"}),
+        (("series", "keep"), set()),
+    ]
+
+    assert [(run.command, run.created) for run in walk.session.runs] == expected
