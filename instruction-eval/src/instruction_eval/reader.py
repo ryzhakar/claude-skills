@@ -909,14 +909,14 @@ def _verified_condition_texts(files: SeriesFolder, revision: str, records: Serie
     placebo_source = read_series_file(files, PLACEBO_SNAPSHOT) if revision == FIRST_REVISION else None
     texts = _condition_texts(files, revision, records, placebo_source)
     for condition, text in texts.items():
-        _refuse_edited_file(files, condition_path(revision, condition), text)
+        refuse_edited_series_file(files, condition_path(revision, condition), text)
         if isinstance(reader, AgentReader):
             definition = render_agent_definition(_reader_agent_type(revision, condition), reader.model, AgentKind.READER, text)
-            _refuse_edited_file(files, _definition_path(revision, condition), definition)
+            refuse_edited_series_file(files, _definition_path(revision, condition), definition)
     return texts
 
 
-def _refuse_edited_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
+def refuse_edited_series_file(files: SeriesFolder, path: str, recomputed: bytes) -> None:
     """Refuse the series file at `path` when its bytes differ from the recomputed bytes."""
     try:
         refuse_edited_definition(path, read_series_file(files, path), recomputed)
