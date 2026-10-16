@@ -1,7 +1,7 @@
 ---
 name: git-etiquette
 description: >
-  Commit, push, and integrate with git under the owner's version-control orders: revertible commits, ten-word subjects, zero attribution, a linear main, one worktree per sibling session.
+  Commit, push, and integrate with git: revertible commits, ten-word subjects, zero attribution, a linear main, one worktree per sibling session.
   "commit this", "push it", "integrate to main", "rebase on main", "squash the records", "make a worktree", "open a PR", or any turn about to run a git command that writes history, moves a branch, or creates a worktree.
 ---
 
@@ -42,7 +42,7 @@ Write each message as one line `type(scope): subject` of at most ten words; neve
 
 Add zero attribution; NEVER write a trailer, a co-author line, or pull-request text naming the tool.
 
-Leave the configured author in place; the author email noreply@anthropic.com is not attribution.
+Leave the configured author in place, noreply@anthropic.com included; never count the author email as attribution.
 
 <never_do_this reason="subject past ten words">
 <invoke name="Bash">
@@ -72,7 +72,7 @@ Leave the configured author in place; the author email noreply@anthropic.com is 
 <keep-main-linear>
 NEVER rewrite main or force-push it.
 
-Move main by rebasing your branch on `origin/main`, then `git push origin <branch>:main`; never by a merge commit or `git switch main`.
+Move main by rebasing your branch on `origin/main`, then fast-forwarding it with `git push origin <branch>:main`; never by a merge commit or `git switch main`.
 
 <never_do_this reason="main rewritten">
 <invoke name="Bash">
@@ -92,6 +92,18 @@ Commit on your session's own branch; never on main.
 
 Push your session branch after each commit; never leave a commit unpushed.
 
+<never_do_this reason="commit left unpushed">
+<invoke name="Bash">
+<parameter name="command">git commit -m "fix(parser): accept empty input"</parameter>
+</invoke>
+</never_do_this>
+
+<do_exactly_this>
+<invoke name="Bash">
+<parameter name="command">git commit -m "fix(parser): accept empty input" && git push origin integration/parser</parameter>
+</invoke>
+</do_exactly_this>
+
 Move main only on a trigger the owner sets; never on your own judgment.
 
 <never_do_this reason="main moved without trigger">
@@ -110,11 +122,11 @@ Move main only on a trigger the owner sets; never on your own judgment.
 <one-worktree-per-sibling-session>
 NEVER use the EnterWorktree tool.
 
-A sibling session is a concurrent session in the same project that you did not launch as a teammate.
+Treat as a sibling any concurrent session in the project that you did not launch as a teammate; never treat a teammate you launched as one.
 
 Run `git worktree list` and `git status --short` in the project folder on waking; count a checked-out session branch or a dirty tree there as another session.
 
-Claim the project folder when no other session works there; create your own worktree with git when one does.
+Claim the project folder when no other session works there; create your own worktree with git when one does; never share the folder.
 
 <never_do_this reason="tool-made worktree">
 <invoke name="EnterWorktree">
