@@ -2,17 +2,13 @@ from collections.abc import Callable, Mapping
 from itertools import cycle, islice
 
 from instruction_eval.coverage import Sentence, split_sentences
-from instruction_eval.records import PLACEBO_SNAPSHOT, Conditions, Control, Omissions
+from instruction_eval.records import AIM_CONTROL, EMPTY_CONTROL, PLACEBO_CONTROL, PLACEBO_SNAPSHOT, SOURCE_CONTROL, Conditions, Control, Omissions
 from instruction_eval.tasks import EVERY_SENTENCE_OMISSIONS, INSTRUCTION_CONDITION, OMISSION_PREFIX, WORD_PATTERN, words
 
 _FENCE = "---"
 _NEWLINE = b"\n"
 SOURCE_SEPARATOR = "\n\n"
 PLACEBO_WORD_SEPARATOR = " "
-EMPTY_CONTROL: Control = "empty"
-AIM_CONTROL: Control = "aim"
-PLACEBO_CONTROL: Control = "placebo"
-SOURCE_CONTROL: Control = "source"
 
 
 def revision_condition_texts(instruction: bytes, omissions: Omissions) -> dict[str, bytes]:

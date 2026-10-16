@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from instruction_eval.conditions import PLACEBO_CONTROL
 from instruction_eval.coverage import split_sentences
-from instruction_eval.gate import COMPLETION_TARGET, hypothesis_reads
+from instruction_eval.gate import hypothesis_reads
 from instruction_eval.records import (
     COLLECTED_FILE,
+    COMPLETION_COMPARES,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
     DETECTORS_FILE,
@@ -18,6 +18,7 @@ from instruction_eval.records import (
     KEY_SEPARATOR,
     OPEN_SPLIT,
     ORIGINS_FILE,
+    PLACEBO_CONTROL,
     Hypothesis,
     MoveChange,
     Refusal,
@@ -37,7 +38,7 @@ from instruction_eval.records import (
 )
 from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, DONE_BY_INPUT, Noise, ReplyRow, join_reply_rows
 from instruction_eval.series import guard_series, refuse_unclosed_frontmatter, revision_ids
-from instruction_eval.tasks import shared_phrases
+from instruction_eval.tasks import AIM_LABEL, shared_phrases
 
 NOISE_MULTIPLE = 2
 
@@ -58,7 +59,7 @@ def _refuse_size_within_noise(failing_demand: str, predicted_size: float, noise:
 
 def _change_noise(failing_demand: str, noise: Noise) -> float:
     """Return the change noise of the demand, or the done change noise for `completion`."""
-    if failing_demand == COMPLETION_TARGET:
+    if failing_demand == COMPLETION_COMPARES:
         return noise["done_change"]
     return noise["demands"][failing_demand]
 
@@ -76,7 +77,7 @@ def _refuse_unshown_failure(failing_demand: str, rows_read: Sequence[ReplyRow]) 
 
 def _shows_failure(row: ReplyRow, failing_demand: str) -> bool:
     """Tell whether the row breaches the demand, or for `completion` holds done false."""
-    if failing_demand == COMPLETION_TARGET:
+    if failing_demand == COMPLETION_COMPARES:
         return row["done"] is False
     return row["breaches"][failing_demand] > 0
 
@@ -172,7 +173,6 @@ _CHECKS = {
 NEW_COMMAND = "revision new"
 COVERAGE_INPUTS = (f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences")
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
-AIM_LABEL = "aim"
 PLACEBO_CONDITION = condition_path(FIRST_REVISION, PLACEBO_CONTROL)
 LabelledText = tuple[str, str]
 

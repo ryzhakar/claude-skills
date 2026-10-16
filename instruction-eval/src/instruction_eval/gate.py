@@ -12,7 +12,10 @@ from instruction_eval.records import (
     BUDGET_REASON,
     CAPPED_STOP,
     COLLECTED_FILE,
+    COMPLETION_COMPARES,
     DETECTORS_FILE,
+    DRIFT_COMPARES,
+    EMPTY_CONTROL,
     FAIL_OUTCOME,
     FEWEST_REPEATS,
     FIRST_REVISION,
@@ -22,13 +25,18 @@ from instruction_eval.records import (
     HYPOTHESIS_FILE,
     INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    NEAR_SOURCE_COMPARES,
     NO_EFFECT_STOP,
     ORIGINS_FILE,
     PASS_OUTCOME,
     PASSED_STOP,
     SEALED_SPLIT,
+    SOURCE_CONTROL,
     SPENT_INPUT_TOKENS_KEY,
     STOP_RECORD,
+    VS_AIM_COMPARES,
+    VS_EMPTY_COMPARES,
+    VS_PLACEBO_COMPARES,
     Compares,
     Direction,
     DoneBy,
@@ -62,7 +70,7 @@ from instruction_eval.scores import (
     paired_units,
     task_means,
 )
-from instruction_eval.tasks import words
+from instruction_eval.tasks import INSTRUCTION_CONDITION, words
 
 LATER_REVISION_COUNT = 4
 LAST_REVISION_NUMBER = LATER_REVISION_COUNT + 1
@@ -86,12 +94,12 @@ def _lower_bound_within_gap(mean_difference: float, interval: tuple[float, float
 
 
 _PASS_RULES: Mapping[Compares, PassRule] = {
-    "instruction-vs-empty": _undercuts_control_by_gap,
-    "instruction-vs-aim": _undercuts_control_by_gap,
-    "instruction-vs-placebo": _undercuts_control_by_gap,
-    "instruction-near-source": _upper_bound_within_gap,
-    "drift": _upper_bound_within_gap,
-    "completion": _lower_bound_within_gap,
+    VS_EMPTY_COMPARES: _undercuts_control_by_gap,
+    VS_AIM_COMPARES: _undercuts_control_by_gap,
+    VS_PLACEBO_COMPARES: _undercuts_control_by_gap,
+    NEAR_SOURCE_COMPARES: _upper_bound_within_gap,
+    DRIFT_COMPARES: _upper_bound_within_gap,
+    COMPLETION_COMPARES: _lower_bound_within_gap,
 }
 
 
@@ -103,10 +111,6 @@ def check_passes(check: GateCheck, comparison: Comparison) -> bool:
 
 
 GAP_RESOLUTION_SHARE = 2
-SOURCE_CONDITION = "source"
-EMPTY_CONDITION = "empty"
-_NEAR_SOURCE_COMPARES: Compares = "instruction-near-source"
-_VS_EMPTY_COMPARES: Compares = "instruction-vs-empty"
 
 
 def refuse_unresolvable_gaps(
@@ -118,7 +122,7 @@ def refuse_unresolvable_gaps(
     rng: numpy.random.Generator,
 ) -> None:
     """Raise Refusal on a null noise, a check whose noise exceeds half its gap, or an `instruction-near-source` check r1's sealed rows do not admit."""
-    near_source = _NEAR_SOURCE_COMPARES in {check.compares for check in checks}
+    near_source = NEAR_SOURCE_COMPARES in {check.compares for check in checks}
     if near_source:
         _refuse_near_source_without_sources(series_has_sources)
     _refuse_null_change_noise(noise)
@@ -130,12 +134,12 @@ def refuse_unresolvable_gaps(
 def _refuse_near_source_without_sources(series_has_sources: bool) -> None:
     """Raise Refusal when an `instruction-near-source` check stands in a series without sources."""
     if not series_has_sources:
-        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: the series has no sources")
+        raise Refusal(f"{NEAR_SOURCE_COMPARES} refused: the series has no sources")
 
 
 def _vs_empty_check(checks: Sequence[GateCheck]) -> GateCheck:
     """Return the `instruction-vs-empty` check, which every gate holds."""
-    return next(check for check in checks if check.compares == _VS_EMPTY_COMPARES)
+    return next(check for check in checks if check.compares == VS_EMPTY_COMPARES)
 
 
 def _refuse_unadmitted_near_source(
@@ -143,9 +147,9 @@ def _refuse_unadmitted_near_source(
 ) -> None:
     """Raise Refusal unless `source` minus `empty` over r1's sealed tasks passes the `instruction-vs-empty` check."""
     gate_breaches = partial(breach_total, demands=gate_demands)
-    units = paired_units(task_means(sealed_rows, SOURCE_CONDITION, gate_breaches), task_means(sealed_rows, EMPTY_CONDITION, gate_breaches))
+    units = paired_units(task_means(sealed_rows, SOURCE_CONTROL, gate_breaches), task_means(sealed_rows, EMPTY_CONTROL, gate_breaches))
     if not check_passes(vs_empty, compare_paired(units, level, rng)):
-        raise Refusal(f"{_NEAR_SOURCE_COMPARES} refused: source minus empty misses the {_VS_EMPTY_COMPARES} gap on r1's sealed rows")
+        raise Refusal(f"{NEAR_SOURCE_COMPARES} refused: source minus empty misses the {VS_EMPTY_COMPARES} gap on r1's sealed rows")
 
 
 def least_repeats(check: GateCheck, noise: Noise) -> int | None:
@@ -321,8 +325,6 @@ def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
     return (outcome["outcome"] != PASS_OUTCOME, outcome["instruction_breaches"], outcome["words"], revision_number(revision))
 
 
-COMPLETION_TARGET = "completion"
-INSTRUCTION_CONDITION = "instruction"
 DOWN: Direction = "down"
 UP: Direction = "up"
 ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
@@ -359,7 +361,7 @@ def compare_with_parent(
 
 def _reply_value(row: ScoredReply, target: str) -> float | None:
     """Return the reply's breaches of the target demand, or its done as 1 or 0 for `completion`, null when done is null."""
-    if target == COMPLETION_TARGET:
+    if target == COMPLETION_COMPARES:
         return None if row["done"] is None else float(row["done"])
     return float(row["breaches"][target])
 
@@ -488,7 +490,7 @@ def _outcome(
         "outcome": PASS_OUTCOME if all(check["pass"] for check in gated) else FAIL_OUTCOME,
         "checks": gated,
         "instruction_breaches": fmean(breach_total(row, gate_demands) for row in task_rows if row["condition"] == INSTRUCTION_CONDITION),
-        "completion_passed": next(check["pass"] for check in gated if check["compares"] == COMPLETION_TARGET),
+        "completion_passed": next(check["pass"] for check in gated if check["compares"] == COMPLETION_COMPARES),
         "words": len(words(files.read_bytes(f"{revision}/{INSTRUCTION_FILE}").decode())),
         "cost": sum_revision_cost(measured.own_replies),
     }

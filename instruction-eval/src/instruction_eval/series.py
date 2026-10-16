@@ -40,6 +40,7 @@ from instruction_eval.records import (
     COVERAGE_FILE,
     DEMANDS_RECORD,
     DETECTORS_FILE,
+    DRIFT_COMPARES,
     FAIL_OUTCOME,
     FIRST_ATTEMPT,
     FIRST_REVISION,
@@ -48,6 +49,7 @@ from instruction_eval.records import (
     GATE_RECORD,
     INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    NEAR_SOURCE_COMPARES,
     OPEN_SPLIT,
     ORIGINS_FILE,
     PLACEBO_SNAPSHOT,
@@ -327,8 +329,6 @@ FIRST_REVISION_STEPS = {
     "detected": f"{FIRST_REVISION}/{DETECTORS_FILE}",
 }
 RECORD_PATTERN = "*.yaml"
-DRIFT_COMPARES = "drift"
-NEAR_SOURCE_COMPARES = "instruction-near-source"
 
 
 def refuse_unready_freeze(files: SeriesFolder, fingerprint_hash: str | None, read_external: Callable[[Path], bytes]) -> None:

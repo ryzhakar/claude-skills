@@ -223,14 +223,15 @@ Check = Callable[[Any, str], None]
 
 REVISION_ID_PATTERN = r"r[1-9][0-9]*"
 IDENTIFIER_PATTERN = r"[a-z0-9][a-z0-9-]*"
-COMPARES = (
-    "instruction-vs-empty",
-    "instruction-vs-aim",
-    "instruction-vs-placebo",
-    "instruction-near-source",
-    "completion",
-    "drift",
-)
+Control = Literal["empty", "aim", "placebo", "source"]
+EMPTY_CONTROL, AIM_CONTROL, PLACEBO_CONTROL, SOURCE_CONTROL = get_args(Control)
+CONTROLS_WITHOUT_SOURCES = (EMPTY_CONTROL, AIM_CONTROL, PLACEBO_CONTROL)
+Compares = Literal["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "instruction-near-source", "completion", "drift"]
+COMPARES = get_args(Compares)
+VS_EMPTY_COMPARES, VS_AIM_COMPARES, VS_PLACEBO_COMPARES, NEAR_SOURCE_COMPARES, COMPLETION_COMPARES, DRIFT_COMPARES = COMPARES
+VS_COMPARES = {EMPTY_CONTROL: VS_EMPTY_COMPARES, AIM_CONTROL: VS_AIM_COMPARES, PLACEBO_CONTROL: VS_PLACEBO_COMPARES}
+REQUIRED_COMPARES = (*VS_COMPARES.values(), COMPLETION_COMPARES)
+OVERREACH_TARGET = "overreach"
 HASH_PATTERN = r"[0-9a-f]{64}"
 TOTAL_KEY = "total"
 INTERVAL_LENGTH = 2
@@ -859,7 +860,7 @@ ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*\Z")
 BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
 AGENT_MODEL_PATTERN = re.compile(r"^claude-[a-z0-9]+(-[a-z0-9]+)+\Z")
 MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
-RESERVED_DEMAND_IDS = ("overreach", "completion")
+RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
 CONDITION_PLACEHOLDER = "{condition}"
 USER_RATERS = ["user"]
 AGENT_RATERS = ["agent", "agent"]
@@ -872,12 +873,8 @@ JUDGE_COUNTER: Final[Counter] = "judge"
 PATTERN_COUNTER: Final[Counter] = "pattern"
 LONG_SENTENCES_COUNTER: Final[Counter] = "long-sentences"
 Split = Literal["open", "sealed"]
-Control = Literal["empty", "aim", "placebo", "source"]
-CONTROLS_WITHOUT_SOURCES = ("empty", "aim", "placebo")
 Omissions = Literal["every-sentence", "none"]
 DoneBy = Literal["answer-key", "judge"]
-Compares = Literal["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "instruction-near-source", "completion", "drift"]
-REQUIRED_COMPARES = ("instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion")
 KeepRule = Literal["best-estimate-shortest"]
 BudgetUnit = Literal["tokens", "seconds"]
 NoBudget = Literal["none"]
@@ -1578,8 +1575,6 @@ def read_bounded_number(value: object, where: str, lowest: float, highest: float
 
 Parsed = TypeVar("Parsed")
 
-OVERREACH_TARGET = "overreach"
-COMPLETION_TARGET = "completion"
 DEMAND_REFERENCE = "demand"
 GATE_DEMAND_REFERENCE = "gate demand"
 JUDGE_DEMAND_REFERENCE = "judge demand"
@@ -1678,7 +1673,7 @@ class SeriesRecords:
         """Load a revision's `1-hypothesis.yaml`, its failing demand a gate demand or `completion`."""
         path = f"{revision}/{HYPOTHESIS_FILE}"
         hypothesis = _parsed(path, parse_hypothesis, _read_document(self.files, path))
-        _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self.gate_demands(), COMPLETION_TARGET})
+        _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self.gate_demands(), COMPLETION_COMPARES})
         _resolve(path, BLIND_ID_REFERENCE, hypothesis.replies_read, self.origins(parent_revision(revision))["ids"])
         return hypothesis
 
@@ -1790,7 +1785,7 @@ class SeriesRecords:
         path = outcome_path(revision)
         outcome = self._command_record(path, RecordKind.OUTCOME)
         targets = [outcome["parent_comparison"]["target"]] if "parent_comparison" in outcome else []
-        _resolve(path, GATE_DEMAND_REFERENCE, targets, {*self.gate_demands(), COMPLETION_TARGET})
+        _resolve(path, GATE_DEMAND_REFERENCE, targets, {*self.gate_demands(), COMPLETION_COMPARES})
         return outcome
 
     def frozen(self) -> Record:

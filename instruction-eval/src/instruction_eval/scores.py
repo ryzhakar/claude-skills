@@ -13,17 +13,23 @@ from instruction_eval.coverage import split_sentences
 from instruction_eval.records import (
     ANCHOR_KEY,
     COLLECTED_FILE,
+    COMPLETION_COMPARES,
     COVERAGE_FILE,
     DEMANDS_RECORD,
     DETECTOR_DEMANDS,
     DETECTORS_FILE,
+    DRIFT_COMPARES,
+    EMPTY_CONTROL,
     FIRST_REVISION,
     GATE_RECORD,
     KEY_SEPARATOR,
+    NEAR_SOURCE_COMPARES,
     OPEN_SPLIT,
     ORIGINS_FILE,
     SCORES_FILE,
+    SOURCE_CONTROL,
     TASKS_RECORD,
+    VS_COMPARES,
     DoneBy,
     Gate,
     LongSentencesDemand,
@@ -37,16 +43,8 @@ from instruction_eval.records import (
     origin_reply_paths,
     write_record,
 )
-from instruction_eval.tasks import words
+from instruction_eval.tasks import INSTRUCTION_CONDITION, words
 
-_INSTRUCTION = "instruction"
-_SOURCE = "source"
-_EMPTY = "empty"
-_VS_CONTROLS = (_EMPTY, "aim", "placebo")
-_VS_PREFIX = "instruction-vs-"
-_NEAR_SOURCE = "instruction-near-source"
-_COMPLETION = "completion"
-_DRIFT = "drift"
 _TWO_SIDED_TAILS = 2
 _LEAST_VALUES_FOR_VARIANCE = 2
 _LEAST_TURNS_FOR_SLOPE = 2
@@ -146,7 +144,7 @@ def measure_noise(
 ) -> Noise:
     """Return r1's noise: each condition's repeat variances and the half-width each check and change can resolve."""
     z = NormalDist().inv_cdf((1 + level) / _TWO_SIDED_TAILS)
-    conditions = [_INSTRUCTION, *controls]
+    conditions = [INSTRUCTION_CONDITION, *controls]
     task_replies = [row for row in sealed_rows if row["turn"] is None]
     turn_replies = [row for row in sealed_rows if row["turn"] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
@@ -176,10 +174,10 @@ def measure_noise(
             repeats * _unit_count(turn_replies),
         ),
         "demands": {
-            demand: _change_half_width(z, by_condition[_INSTRUCTION], task_repeat_units)
+            demand: _change_half_width(z, by_condition[INSTRUCTION_CONDITION], task_repeat_units)
             for demand, by_condition in sigma["demands"].items()
         },
-        "done_change": _change_half_width(z, sigma["done"][_INSTRUCTION], task_repeat_units),
+        "done_change": _change_half_width(z, sigma["done"][INSTRUCTION_CONDITION], task_repeat_units),
     }
 
 
@@ -195,17 +193,21 @@ def _check_half_widths(
     breaches = sigma["breaches"]
     done_of_completion_control = sigma["done"][completion_control] if completion_control else None
     checks = {
-        _VS_PREFIX + control: _half_width(z, [breaches[_INSTRUCTION], breaches[control]], task_repeat_units)
-        for control in _VS_CONTROLS
+        compares: _half_width(z, [breaches[INSTRUCTION_CONDITION], breaches[control]], task_repeat_units)
+        for control, compares in VS_COMPARES.items()
     }
-    checks[_COMPLETION] = _half_width(z, [sigma["done"][_INSTRUCTION], done_of_completion_control], task_repeat_units)
-    if _SOURCE in controls:
-        checks[_NEAR_SOURCE] = _half_width(z, [breaches[_INSTRUCTION], breaches[_SOURCE]], task_repeat_units)
+    checks[COMPLETION_COMPARES] = _half_width(z, [sigma["done"][INSTRUCTION_CONDITION], done_of_completion_control], task_repeat_units)
+    if SOURCE_CONTROL in controls:
+        checks[NEAR_SOURCE_COMPARES] = _half_width(z, [breaches[INSTRUCTION_CONDITION], breaches[SOURCE_CONTROL]], task_repeat_units)
     if conversation_repeat_units:
         drift = sigma["drift"]
-        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
-        checks[_DRIFT] = _half_width(z, [drift[_INSTRUCTION], drift[drift_control]], conversation_repeat_units)
+        checks[DRIFT_COMPARES] = _half_width(z, [drift[INSTRUCTION_CONDITION], drift[_drift_control(controls)]], conversation_repeat_units)
     return checks
+
+
+def _drift_control(controls: Sequence[str]) -> str:
+    """Return the control drift is compared with: `source` when the controls hold it, else `empty`."""
+    return SOURCE_CONTROL if SOURCE_CONTROL in controls else EMPTY_CONTROL
 
 
 def _unit_count(replies: Sequence[ScoredReply]) -> int:
@@ -511,15 +513,14 @@ def instruction_comparisons(
     task_rows: Sequence[ScoredReply], turn_rows: Sequence[ScoredReply], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng
 ) -> dict[str, dict[str, object]]:
     """Map each compares the rows define to instruction minus its control: per task for breaches over gate demands and done rate, per conversation for drift."""
-    controls = [condition for condition in (*_VS_CONTROLS, _SOURCE) if condition in _conditions_of(task_rows)]
+    controls = [condition for condition in (*VS_COMPARES, SOURCE_CONTROL) if condition in _conditions_of(task_rows)]
     task_breaches = partial(_task_means_of, task_rows, partial(breach_total, demands=gate_demands))
-    comparisons = {f"{_VS_PREFIX}{control}": _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != _SOURCE}
-    if _SOURCE in controls:
-        comparisons[_NEAR_SOURCE] = _instruction_minus(task_breaches, _SOURCE, level, bootstrap_rng)
-    comparisons[_COMPLETION] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
+    comparisons = {VS_COMPARES[control]: _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != SOURCE_CONTROL}
+    if SOURCE_CONTROL in controls:
+        comparisons[NEAR_SOURCE_COMPARES] = _instruction_minus(task_breaches, SOURCE_CONTROL, level, bootstrap_rng)
+    comparisons[COMPLETION_COMPARES] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
     if turn_rows:
-        drift_control = _SOURCE if _SOURCE in controls else _EMPTY
-        comparisons[_DRIFT] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), drift_control, level, bootstrap_rng)
+        comparisons[DRIFT_COMPARES] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), _drift_control(controls), level, bootstrap_rng)
     return comparisons
 
 
@@ -539,7 +540,7 @@ def _conversation_slopes(turn_rows: Sequence[ScoredReply], gate_demands: Sequenc
 
 def _instruction_minus(unit_means: Callable[[str | None], Mapping[str, float]], other: str | None, level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return the comparison record of instruction minus the other condition over the units both hold a mean for."""
-    units = paired_units(unit_means(_INSTRUCTION), unit_means(other))
+    units = paired_units(unit_means(INSTRUCTION_CONDITION), unit_means(other))
     return _comparison_record(compare_paired(units, level, bootstrap_rng()))
 
 
