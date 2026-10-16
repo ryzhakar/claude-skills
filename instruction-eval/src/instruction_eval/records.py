@@ -116,6 +116,11 @@ def utf8_text(content: bytes, label: str) -> str:
         raise Refusal(f"not UTF-8: {label}") from None
 
 
+def series_paths(files: SeriesFolder, pattern: str) -> list[str]:
+    """Return the series path of every file the glob pattern matches, in path order."""
+    return sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(pattern) if path.is_file())
+
+
 def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256, refusing a record carrying its own."""
     if INPUTS_KEY in record:
@@ -1016,9 +1021,12 @@ class Tasks:
     conversations: tuple[Conversation, ...]
 
 
+TASK_KEYS = ("tasks", "conversations")
+
+
 def parse_tasks(document: object) -> Tasks:
     """Build the `3-tasks.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required={"tasks", "conversations"})
+    keys = read_keys(document, DOCUMENT, required=set(TASK_KEYS))
     return Tasks(
         tasks=read_entries(keys["tasks"], "tasks", read_task),
         conversations=read_entries(keys["conversations"], "conversations", read_conversation),
@@ -1057,9 +1065,12 @@ class Conditions:
     omissions: Omissions
 
 
+CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
+
+
 def parse_conditions(document: object, series: Series) -> Conditions:
     """Build the `4-conditions.yaml` record, refusing controls other than the set the series sources call for."""
-    keys = read_keys(document, DOCUMENT, required={"controls", "aim", "placebo_source", "omissions"})
+    keys = read_keys(document, DOCUMENT, required=set(CONDITION_KEYS))
     return Conditions(
         controls=read_controls(keys["controls"], "controls", series.sources),
         aim=read_line(keys["aim"], "aim"),

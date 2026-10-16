@@ -20,12 +20,12 @@ from instruction_eval.gate import (
     _stop_budget,
     refuse_unaffordable_ask,
 )
-from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, TASK_KEYS
 from instruction_eval.records import (
     AGENT_READER,
     AGENTS_FOLDER,
     COLLECTED_FILE,
     COMMAND_READER,
+    CONDITION_KEYS,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
     DEMANDS_RECORD,
@@ -40,6 +40,7 @@ from instruction_eval.records import (
     REPLY_COST_KEYS,
     SERIES_RECORD,
     SPENT_INPUT_TOKENS_KEY,
+    TASK_KEYS,
     TASKS_RECORD,
     TURN_PREFIX,
     AgentReader,
@@ -552,6 +553,7 @@ _NAME_KEY = "name"
 _INPUT_KEY = "input"
 _SKILL_TOOL = "Skill"
 _SKILL_INPUT_KEY = "skill"
+OATH_SKILL = "manifesto:manifesto-oath"
 _WRITE_TOOL = "Write"
 _FILE_PATH_INPUT_KEY = "file_path"
 

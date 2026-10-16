@@ -26,7 +26,6 @@ from instruction_eval.gate import (
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
 )
-from instruction_eval.judge import series_paths
 from instruction_eval.records import (
     AGENTS_FOLDER,
     AGREEMENT_FILE,
@@ -75,6 +74,7 @@ from instruction_eval.records import (
     outcome_path,
     revision_id,
     revision_record_path,
+    series_paths,
     sha256,
     source_snapshot_path,
     utf8_text,

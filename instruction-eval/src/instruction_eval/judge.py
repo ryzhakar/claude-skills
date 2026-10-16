@@ -19,6 +19,7 @@ import yaml
 
 from instruction_eval.conditions import strip_frontmatter
 from instruction_eval.coverage import split_sentences
+from instruction_eval.reader import OATH_SKILL
 from instruction_eval.records import (
     AGENTS_FOLDER,
     AGREEMENT_FILE,
@@ -30,6 +31,7 @@ from instruction_eval.records import (
     CALIBRATION_FOLDER,
     CALIBRATION_RECORD,
     COLLECTED_FILE,
+    CONDITION_KEYS,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
     DEMANDS_RECORD,
@@ -49,6 +51,7 @@ from instruction_eval.records import (
     REPLIES_FOLDER,
     SAMPLE_FILE,
     SERIES_RECORD,
+    TASK_KEYS,
     TASKS_RECORD,
     VERDICTS_FOLDER,
     WORKING_BRIEF,
@@ -67,6 +70,7 @@ from instruction_eval.records import (
     attempt_folder,
     load_record,
     parse_record,
+    series_paths,
     sha256,
     source_snapshot_path,
     verdict_path,
@@ -89,7 +93,6 @@ PACKET_PLACEHOLDER = "{PACKET}"
 OUT_PLACEHOLDER = "{OUT}"
 PLACEHOLDERS = (SOURCE_PLACEHOLDER, DEMANDS_PLACEHOLDER, PACKET_PLACEHOLDER, OUT_PLACEHOLDER)
 PLACEHOLDER_PATTERN = re.compile("|".join(re.escape(placeholder) for placeholder in PLACEHOLDERS))
-OATH_SKILL = "manifesto:manifesto-oath"
 BRIEF_FORBIDDEN_WORDS = ("empty", "aim", "placebo", "instruction", "omit", "control", "condition", "revision", "reader", "digest")
 SOURCE_SEPARATOR = "\n\n"
 VERDICT_LABEL = RecordKind.VERDICT.value
@@ -496,8 +499,6 @@ def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[in
 
 
 BLIND_COMMAND = "revision blind"
-TASK_KEYS = ("tasks", "conversations")
-CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
 
 
 def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
@@ -905,11 +906,6 @@ def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, o
         *series_paths(files, f"{revision}/{VERDICTS_FOLDER}/**/*.yaml"),
         *series_paths(files, f"{AGENTS_FOLDER}/{JUDGE_DEFINITION_PREFIX}{revision}-*.md"),
     ]
-
-
-def series_paths(files: SeriesFolder, pattern: str) -> list[str]:
-    """Return the series path of every file the glob pattern matches, in path order."""
-    return sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(pattern) if path.is_file())
 
 
 def _launch_list(agent_types: Iterable[str]) -> str:
