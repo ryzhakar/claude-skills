@@ -21,7 +21,7 @@ Set the `placebo_source` key to the absolute path of a text carrying no demand a
 
 Set the `omissions` key to the user's choice: `every-sentence` adds one `omit-<n>` condition per sentence for diagnosis to read, `none` adds none; never choose for the user.
 
-Write `5-reader.yaml` with `kind` equal to `series.yaml` `reader_kind` (`agent` or `command`) and `model` the full pinned model ID beginning `claude-`; never use `sonnet`, `opus`, `haiku`, `fable`, or `inherit`.
+Write `5-reader.yaml` with `kind` equal to `series.yaml` `reader_kind` (`agent` or `command`) and `model` the full pinned model ID beginning `claude-` for an agent reader, any non-empty name for a command reader; never use `sonnet`, `opus`, `haiku`, `fable`, or `inherit`.
 
 For a command reader, add `command`, the reader's argument list as strings, `{condition}` once among them; `fingerprint`, the argument list of a command printing YAML with `model`, `build`, and every `sampling` key; and `sampling`, a map of the reader's sampling settings to scalars; never add these for an agent reader.
 
