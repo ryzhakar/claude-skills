@@ -1,4 +1,3 @@
-import hashlib
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, fields
@@ -429,7 +428,7 @@ def _reply_to_turn(
         seconds=(reply_chunk.timestamp - opening.timestamp).total_seconds(),
         tokens=_turn_token_usage(chunks),
         transcript=transcript,
-        transcript_hash=hashlib.sha256(content[: reply_chunk.end]).hexdigest(),
+        transcript_hash=sha256(content[: reply_chunk.end]),
     )
 
 
