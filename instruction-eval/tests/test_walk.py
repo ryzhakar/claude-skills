@@ -1,3 +1,4 @@
+import fnmatch
 import hashlib
 import json
 import os
@@ -431,3 +432,153 @@ def test_no_path_written_or_told_to_an_agent_is_named_as_a_report(walk):
 
     assert told and written
     assert [path for path in written | told if REPORT_NAME.match(path.name)] == []
+
+
+STAGE_ONE_READS_THE_TABLE_OMITS = (f"{CALIBRATION_ATTEMPT}/sample.md",)
+BLIND_READS_THE_TABLE_OMITS = ("{revision}/2-instruction.md",)
+COLLECT_READS_THE_TABLE_OMITS = ("5-reader.yaml#model",)
+REVISION_NEW_READS_THE_TABLE_OMITS = ("7-gate.yaml#done_by",)
+REVISION_RECORD = re.compile(r"r([0-9]+)/.*")
+BORROWED_REPLIES = [f"r1/5-replies/{control}/**" for control in FIRST_CONDITIONS if control != "instruction"]
+
+
+def revision_number(record: str) -> int:
+    """Return the number of the revision a record sits in."""
+    return int(REVISION_RECORD.fullmatch(record).group(1))
+
+
+def earlier_outcomes(number: int) -> list[str]:
+    """Return the outcome records of every revision before `number`."""
+    return [f"r{earlier}/9-outcome.yaml" for earlier in range(1, number)]
+
+
+def sampled_replies(origins: Mapping) -> list[str]:
+    """Return the r1 reply files a calibration attempt's origins name."""
+    return [f"r1/5-replies/{origin['condition']}/{origin['task']}/repeat-{origin['repeat']}.yaml" for origin in origins["ids"].values()]
+
+
+def ask_reads(record: str, present: set[str]) -> list[str]:
+    """Return the Reads cell of `revision ask` for a command reader, expanded for the reply record."""
+    number = revision_number(record)
+    revision = f"r{number}"
+    frozen = "8-frozen.yaml" in present
+    return [
+        "series.yaml", "1-source/*", "2-demands.yaml", "3-tasks.yaml", "4-conditions.yaml", "4-placebo-source.md", "5-reader.yaml", "7-gate.yaml#repeats",
+        f"{revision}/2-instruction.md", f"{revision}/3-coverage.yaml", "r1/3-coverage.yaml", f"{revision}/4-conditions/*.md",
+        *(["8-frozen.yaml"] if frozen else [path for path in present if path.startswith("r1/5-replies/") and path < record]),
+        *(["7-gate.yaml#budget", "r1/4-conditions/*.md", *earlier_outcomes(number)] if number > 1 else []),
+    ]
+
+
+def calibration_reads(record: str, series: Path) -> list[str]:
+    """Return the Reads cell of `judge calibrate` for the stage that writes the record."""
+    stage_one = [
+        "series.yaml", "1-source/*", "2-demands.yaml", f"{CALIBRATION_ATTEMPT}/plan.yaml", f"{CALIBRATION_ATTEMPT}/brief.md",
+        *sampled_replies(yaml.safe_load((series / f"{CALIBRATION_ATTEMPT}/origins.yaml").read_text())),
+    ]
+    if record.endswith("origins.yaml"):
+        return [*stage_one, *STAGE_ONE_READS_THE_TABLE_OMITS]
+    return [*stage_one, f"{CALIBRATION_ATTEMPT}/sample.md", f"{CALIBRATION_ATTEMPT}/origins.yaml", f"{CALIBRATION_ATTEMPT}/candidate-*.yaml", f"{CALIBRATION_ATTEMPT}/reference-*.yaml", ".claude/agents/ie-calib-1-*.md", "3-tasks.yaml"]
+
+
+def score_reads(revision: str) -> list[str]:
+    """Return the Reads cell of `revision score` expanded for the revision."""
+    later = [] if revision == "r1" else BORROWED_REPLIES
+    return [
+        "2-demands.yaml", "3-tasks.yaml", "r1/3-coverage.yaml", "7-gate.yaml#level", "7-gate.yaml#done_by",
+        f"{revision}/5-replies/**", f"{revision}/6-origins.yaml", f"{revision}/7-verdicts/**", f"{revision}/7-collected.yaml", f"{revision}/7-detectors.yaml", *later,
+    ]
+
+
+def gate_reads(number: int) -> list[str]:
+    """Return the Reads cell of `revision gate` expanded for the revision, `7-gate.yaml` read whole."""
+    revision, parent = f"r{number}", f"r{number - 1}"
+    later = [f"{revision}/1-hypothesis.yaml", *(f"{parent}/{part}" for part in ("5-replies/**", "6-origins.yaml", "7-verdicts/**", "7-collected.yaml", "7-detectors.yaml"))]
+    score = [read for read in score_reads(revision) if not read.startswith("7-gate.yaml")]
+    return [*score, "7-gate.yaml", "8-frozen.yaml", f"{revision}/2-instruction.md", *earlier_outcomes(number), *(later if number > 1 else [])]
+
+
+STOP_READS = ("7-gate.yaml#keep_rule", "8-frozen.yaml", "r*/9-outcome.yaml")
+GATE_STOP_READS = (*STOP_READS, "7-gate.yaml#budget")
+
+
+def revision_new_reads(number: int) -> list[str]:
+    """Return the Reads cell of `revision new` writing revision `number` from its parent."""
+    parent = f"r{number - 1}"
+    return [
+        "2-demands.yaml", "3-tasks.yaml", "4-conditions.yaml", "r1/3-coverage.yaml", "r1/4-conditions/placebo.md", "8-frozen.yaml", f"r{number}/1-hypothesis.yaml",
+        *(f"{parent}/{part}" for part in ("2-instruction.md", "2-revision.yaml", "6-origins.yaml", "7-verdicts/**", "7-collected.yaml", "7-detectors.yaml", "9-outcome.yaml")),
+        *REVISION_NEW_READS_THE_TABLE_OMITS,
+    ]
+
+
+def reads_cell(run: CommandRun, record: str, present: set[str]) -> list[str]:
+    """Return the Commands-table Reads cell of the run's command, expanded for the record it wrote, as series paths, globs, and `<path>#<key>` reads."""
+    revision = record.partition("/")[0]
+    if record in ("series.yaml", "r1/2-revision.yaml"):
+        return []
+    if record.startswith(CALIBRATION_ATTEMPT) or record in ("6-judge/calibration.yaml", "6-judge/anchors.yaml"):
+        return calibration_reads(record, run.series)
+    if "/5-replies/" in record:
+        return ask_reads(record, present)
+    if record == "8-frozen.yaml":
+        return ["series.yaml", "1-source/*", "2-demands.yaml", "3-tasks.yaml", "4-conditions.yaml", "4-placebo-source.md", "5-reader.yaml", "6-judge/calibration.yaml", "6-judge/anchors.yaml", "6-judge/calibration/**", "7-gate.yaml", "r1/**"]
+    if record == "9-stop.yaml":
+        return list(GATE_STOP_READS if run.command[:2] == ("revision", "gate") else STOP_READS)
+    if record.endswith("/2-revision.yaml"):
+        return revision_new_reads(revision_number(record))
+    if record.endswith("/6-origins.yaml"):
+        later = [] if revision == "r1" else BORROWED_REPLIES
+        return ["3-tasks.yaml", "4-conditions.yaml", "7-gate.yaml#repeats", f"{revision}/5-replies/**", "6-judge/calibration.yaml", "6-judge/anchors.yaml", *later, *(read.format(revision=revision) for read in BLIND_READS_THE_TABLE_OMITS)]
+    if record.endswith("/7-collected.yaml"):
+        return [
+            "series.yaml", "1-source/*", "2-demands.yaml", "6-judge/calibration.yaml", f"{CALIBRATION_ATTEMPT}/brief.md", "6-judge/anchors.yaml",
+            f"{revision}/6-packets/*.md", f"{revision}/6-origins.yaml", f"{revision}/7-verdicts/**", f".claude/agents/ie-judge-{revision}-*.md", *COLLECT_READS_THE_TABLE_OMITS,
+        ]
+    if record.endswith("/7-detectors.yaml"):
+        return ["2-demands.yaml", "3-tasks.yaml", f"{revision}/5-replies/**", f"{revision}/6-origins.yaml", *([] if revision == "r1" else BORROWED_REPLIES)]
+    if record.endswith("/8-scores.yaml"):
+        return score_reads(revision)
+    if record.endswith("/9-outcome.yaml"):
+        return gate_reads(revision_number(record))
+    raise AssertionError(f"no Reads cell for {record}")
+
+
+def expand_reads(cell: Sequence[str], present: set[str]) -> set[str]:
+    """Return the reads the cell names among the present series files, a `<glob>#<key>` read once per matching file."""
+    expanded = set()
+    for read in cell:
+        pattern, _, key = read.partition("#")
+        expanded |= {f"{path}#{key}" if key else path for path in present if fnmatch.fnmatchcase(path, pattern)}
+    return expanded
+
+
+def read_keys(reads: set[str]) -> dict[str, set[str]]:
+    """Return by file the top-level keys the `<path>#<key>` reads name."""
+    keys: dict[str, set[str]] = {}
+    for read in reads:
+        path, _, key = read.partition("#")
+        if key:
+            keys.setdefault(path, set()).add(key)
+    return keys
+
+
+def written_records(run: CommandRun) -> list[tuple[str, dict[str, str]]]:
+    """Return each YAML record the run wrote with its `inputs`."""
+    documents = {path: yaml.safe_load(run.after[path]) for path in sorted(run.created) if path.endswith(".yaml")}
+    return [(path, document["inputs"]) for path, document in documents.items() if isinstance(document, dict) and "inputs" in document]
+
+
+def present_at_write(run: CommandRun, record: str) -> set[str]:
+    """Return the series files present when the run wrote the record: a reply sees the replies its ask wrote before it in path order."""
+    written_before = {path for path in run.created if path < record} if "/5-replies/" in record else run.created - {record}
+    return set(run.before) | written_before
+
+
+def test_each_record_names_as_inputs_exactly_the_files_its_reads_cell_names(walk):
+    for run in walk.session.runs:
+        for record, inputs in written_records(run):
+            present = present_at_write(run, record)
+            expected = expand_reads(reads_cell(run, record, present), present)
+            assert {read.partition("#")[0] for read in inputs} == {read.partition("#")[0] for read in expected}, (run.command, record)
+            assert {path: keys for path, keys in read_keys(set(inputs)).items() if path in read_keys(expected)} == read_keys(expected), (run.command, record)
