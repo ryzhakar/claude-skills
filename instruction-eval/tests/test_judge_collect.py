@@ -1,8 +1,7 @@
 from pathlib import Path
 
 import pytest
-from series_fixtures import tree, write_yaml
-from test_judge_prepare import (
+from judging_fixtures import (
     JUDGE_MODEL,
     PACKETS,
     SERIES,
@@ -12,10 +11,17 @@ from test_judge_prepare import (
     series_folder,
     write_verdict,
 )
+from series_fixtures import tree, write_yaml
 
 from instruction_eval.judge import judge_collect
 from instruction_eval.reader import Transcript
-from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, sha256, write_record
+from instruction_eval.records import (
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    sha256,
+    write_record,
+)
 
 
 def collect(files: SeriesFolder, transcripts: list[Transcript]) -> str:

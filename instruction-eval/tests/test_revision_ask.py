@@ -3,12 +3,27 @@ from datetime import timedelta
 
 import pytest
 import yaml
+from reader_fixtures import (
+    COMMAND_READER,
+    CONDITION_NAMES,
+    CONVERSATION_TASKS,
+    OPEN_MESSAGE,
+    START,
+    load,
+    prepared_series,
+    stamp,
+    write_yaml,
+)
+from series_fixtures import tree, write_revision
 
 from instruction_eval.coverage import coverage_check
-from instruction_eval.reader import ReaderRun, reader_fingerprint, reader_prepare, revision_ask
+from instruction_eval.reader import (
+    ReaderRun,
+    reader_fingerprint,
+    reader_prepare,
+    revision_ask,
+)
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import tree, write_revision
-from test_reply_collect import COMMAND_READER, CONDITION_NAMES, CONVERSATION_TASKS, OPEN_MESSAGE, START, load, prepared_series, stamp, write_yaml
 
 COVERAGE = {"demands": {"d-one": [1]}, "sentences": {1: ["d-one"]}}
 FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: b1\ntemperature: 0.7\n"

@@ -5,13 +5,13 @@ from pathlib import Path
 import numpy
 import pytest
 import yaml
+from gate_fixtures import first_replies, frozen_series
+from series_fixtures import AGENT_SERIES, sha256, write_revision, write_yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import SeriesFolder, write_record
 from instruction_eval.scores import BOOTSTRAP_SEED
 from instruction_eval.series import series_status
-from series_fixtures import AGENT_SERIES, sha256, write_revision, write_yaml
-from test_revision_gate import first_replies, frozen_series
 
 
 def tree_hash(root: Path) -> str:
