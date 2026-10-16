@@ -10,15 +10,12 @@ from pathlib import Path
 import yaml
 
 from instruction_eval.conditions import (
-    PLACEBO_SNAPSHOT_PATH,
     UnclosedFrontmatter,
     strip_frontmatter,
 )
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.demands import demands_check
 from instruction_eval.gate import (
-    OUTCOME_FILE,
-    REVISION_PREFIX,
     BudgetRefusal,
     SeriesShape,
     _gate_demands,
@@ -30,25 +27,41 @@ from instruction_eval.gate import (
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
 )
-from instruction_eval.judge import SOURCE_FOLDER, WORKING_BRIEF, series_paths
+from instruction_eval.judge import series_paths
 from instruction_eval.records import (
+    AGENTS_FOLDER,
+    AGREEMENT_FILE,
     ANCHORS_RECORD,
+    ATTEMPT_FOLDER_PREFIX,
+    CALIBRATION_FOLDER,
     CALIBRATION_RECORD,
+    COLLECTED_FILE,
     COMMAND_READER,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
+    DETECTORS_FILE,
     FAIL_OUTCOME,
+    FIRST_ATTEMPT,
     FIRST_REVISION,
     FIRST_REVISION_NUMBER,
     FROZEN_RECORD,
     GATE_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    PLACEBO_SNAPSHOT,
+    PLAN_FILE,
     READER_RECORD,
+    REFERENCE_USER_FILE,
     SERIES_RECORD,
+    SOURCE_FOLDER,
     STOP_RECORD,
     TASKS_RECORD,
     UNRESOLVABLE_STOP,
+    VERDICTS_FOLDER,
+    WORKING_BRIEF,
     CompleteGate,
     GateCheck,
     ReaderKind,
@@ -58,6 +71,8 @@ from instruction_eval.records import (
     SeriesRecords,
     attempt_folder,
     load_record,
+    outcome_path,
+    revision_id,
     revision_record_path,
     sha256,
     write_file,
@@ -65,16 +80,12 @@ from instruction_eval.records import (
 )
 from instruction_eval.records import Budget as GateBudget
 from instruction_eval.scores import (
-    COLLECTED_FILE,
-    DETECTORS_FILE,
-    ORIGINS_FILE,
     BootstrapRng,
     Noise,
     measure_noise,
 )
 from instruction_eval.tasks import (
     EVERY_SENTENCE_OMISSIONS,
-    PLACEBO_SNAPSHOT,
     ExpectedReply,
     expected_replies,
     refuse_missing_replies,
@@ -82,7 +93,6 @@ from instruction_eval.tasks import (
 )
 
 SERIES_HOME_FOLDER = "instruction-series"
-AGENTS_FOLDER = ".claude/agents"
 PATH_SEPARATOR = "/"
 STATUS_COMMAND = "series status"
 STOP_COMMAND = "series stop"
@@ -91,7 +101,6 @@ KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
 LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
 MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
-INSTRUCTION_FILE = "2-instruction.md"
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
 
 STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
@@ -226,7 +235,7 @@ def series_stop(files: SeriesFolder, reason: str) -> None:
     guard_series(files, STOP_COMMAND)
     outcomes = _gated_outcomes(files, SeriesRecords(files))
     _refuse_unless_latest_gated_revision_failed(outcomes)
-    reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(_outcome_path(revision) for revision in outcomes)]
+    reads = [KEEP_RULE_INPUT, FROZEN_RECORD, *(outcome_path(revision) for revision in outcomes)]
     write_record(files, STOP_RECORD, {"stop": UNRESOLVABLE_STOP, "kept": kept_revision(outcomes), "reason": reason}, reads)
 
 
@@ -259,12 +268,7 @@ def _refuse_unless_latest_gated_revision_failed(outcomes: Mapping[str, Record]) 
 
 def _gated_outcomes(files: SeriesFolder, records: SeriesRecords) -> dict[str, Record]:
     """Return the outcome of each gated revision by id, in order."""
-    return {revision: records.outcome(revision) for revision in revision_ids(files) if files.holds(_outcome_path(revision))}
-
-
-def _outcome_path(revision: str) -> str:
-    """Return the path of a revision's `9-outcome.yaml`."""
-    return f"{revision}/{OUTCOME_FILE}"
+    return {revision: records.outcome(revision) for revision in revision_ids(files) if files.holds(outcome_path(revision))}
 
 
 def guard_series(files: SeriesFolder, command: str) -> None:
@@ -313,19 +317,17 @@ def _later_revisions(files: SeriesFolder) -> Iterator[str]:
 
 def revision_ids(files: SeriesFolder) -> Iterator[str]:
     """Return the ids of the revisions, in order, up to the first without a record."""
-    revisions = (f"{REVISION_PREFIX}{number}" for number in itertools.count(FIRST_REVISION_NUMBER))
+    revisions = (revision_id(number) for number in itertools.count(FIRST_REVISION_NUMBER))
     return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
 
 
 FREEZE_PARTS = (DEMANDS_RECORD, TASKS_RECORD, CONDITIONS_RECORD, PLACEBO_SNAPSHOT, READER_RECORD)
 FIRST_REVISION_STEPS = {
-    "blinded": f"{FIRST_REVISION}/6-origins.yaml",
-    "judged": f"{FIRST_REVISION}/7-collected.yaml",
-    "detected": f"{FIRST_REVISION}/7-detectors.yaml",
+    "blinded": f"{FIRST_REVISION}/{ORIGINS_FILE}",
+    "judged": f"{FIRST_REVISION}/{COLLECTED_FILE}",
+    "detected": f"{FIRST_REVISION}/{DETECTORS_FILE}",
 }
 RECORD_PATTERN = "*.yaml"
-USER_COVERAGE_FILE = "3-coverage.yaml"
-VERDICTS_FOLDER = "7-verdicts"
 DRIFT_COMPARES = "drift"
 NEAR_SOURCE_COMPARES = "instruction-near-source"
 
@@ -383,7 +385,7 @@ def _refuse_stale_first_revision_records(files: SeriesFolder) -> None:
 def _first_revision_command_records(files: SeriesFolder) -> list[str]:
     """Return the series path of every YAML record under r1 a CLI command wrote, in path order."""
     paths = sorted(path.relative_to(files.root).as_posix() for path in (files.root / FIRST_REVISION).rglob(RECORD_PATTERN))
-    user_and_judge_records = (f"{FIRST_REVISION}/{USER_COVERAGE_FILE}", f"{FIRST_REVISION}/{VERDICTS_FOLDER}/")
+    user_and_judge_records = (f"{FIRST_REVISION}/{COVERAGE_FILE}", f"{FIRST_REVISION}/{VERDICTS_FOLDER}/")
     return [path for path in paths if not path.startswith(user_and_judge_records)]
 
 
@@ -405,7 +407,7 @@ def _refuse_unmeasurable_checks(checks: Sequence[GateCheck], records: SeriesReco
 
 FREEZE_COMMAND = "series freeze"
 EVERY_FILE_PATTERN = "**/*"
-ANY_ATTEMPT_FOLDER = "6-judge/calibration/attempt-*"
+ANY_ATTEMPT_FOLDER = f"{CALIBRATION_FOLDER}/{ATTEMPT_FOLDER_PREFIX}*"
 FROZEN_PART_PATTERNS = (
     SERIES_RECORD,
     f"{SOURCE_FOLDER}/*",
@@ -416,7 +418,7 @@ FROZEN_PART_PATTERNS = (
     READER_RECORD,
     CALIBRATION_RECORD,
     ANCHORS_RECORD,
-    "6-judge/calibration/*",
+    f"{CALIBRATION_FOLDER}/*",
     GATE_RECORD,
     f"{FIRST_REVISION}/*",
 )
@@ -426,9 +428,9 @@ USER_RECORD_PATTERNS = (
     CONDITIONS_RECORD,
     READER_RECORD,
     GATE_RECORD,
-    f"{ANY_ATTEMPT_FOLDER}/plan.yaml",
-    f"{ANY_ATTEMPT_FOLDER}/reference-user.yaml",
-    f"{FIRST_REVISION}/{USER_COVERAGE_FILE}",
+    f"{ANY_ATTEMPT_FOLDER}/{PLAN_FILE}",
+    f"{ANY_ATTEMPT_FOLDER}/{REFERENCE_USER_FILE}",
+    f"{FIRST_REVISION}/{COVERAGE_FILE}",
 )
 
 
@@ -520,7 +522,7 @@ STATUS_PARTS = (
     DEMANDS_RECORD,
     TASKS_RECORD,
     CONDITIONS_RECORD,
-    PLACEBO_SNAPSHOT_PATH,
+    PLACEBO_SNAPSHOT,
     READER_RECORD,
     WORKING_BRIEF,
     CALIBRATION_RECORD,
@@ -529,7 +531,6 @@ STATUS_PARTS = (
     FROZEN_RECORD,
     STOP_RECORD,
 )
-PLAN_FILE = "plan.yaml"
 PARTS_KEY = "parts"
 FROZEN_KEY = "frozen"
 REVISIONS_KEY = "revisions"
@@ -553,7 +554,6 @@ SCALE_KEY = "scale"
 STOP_STANDING_KEYS = ("stop", "kept", "reason")
 MANIFESTO_CLONE_FOLDER = ".claude/manifesto-repo"
 STATUS_DEFAULT_LEVEL = 0.95
-AGREEMENT_FILE = "agreement.yaml"
 UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
 
 
@@ -579,7 +579,7 @@ def series_status(files: SeriesFolder) -> str:
 
 def _revision_standing(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, object]:
     """Return a revision's outcome, change from its parent, and keep ranks, each null while the revision is ungated."""
-    if not files.holds(_outcome_path(revision)):
+    if not files.holds(outcome_path(revision)):
         return dict(UNGATED_STANDING)
     outcome = records.outcome(revision)
     return {key: outcome.get(key) for key in UNGATED_STANDING}
@@ -619,7 +619,7 @@ def _calibration_standing(files: SeriesFolder, records: SeriesRecords) -> dict[s
 
 def _attempt_numbers(files: SeriesFolder) -> Iterator[int]:
     """Return the numbers of the calibration attempts, in order, up to the first without a plan."""
-    numbers = itertools.count(1)
+    numbers = itertools.count(FIRST_ATTEMPT)
     return itertools.takewhile(lambda attempt: files.holds(f"{attempt_folder(attempt)}/{PLAN_FILE}"), numbers)
 
 

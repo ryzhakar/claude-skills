@@ -12,11 +12,17 @@ import numpy
 from instruction_eval.coverage import split_sentences
 from instruction_eval.records import (
     ANCHOR_KEY,
+    COLLECTED_FILE,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
     DETECTOR_DEMANDS,
+    DETECTORS_FILE,
     FIRST_REVISION,
     GATE_RECORD,
+    KEY_SEPARATOR,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    SCORES_FILE,
     TASKS_RECORD,
     Coverage,
     DoneBy,
@@ -30,6 +36,7 @@ from instruction_eval.records import (
     SeriesRecords,
     Split,
     reply_path,
+    verdict_path,
     write_record,
 )
 from instruction_eval.tasks import words
@@ -374,18 +381,14 @@ def require_valid_level(level: float) -> None:
         raise ValueError(f"level must lie strictly between 0 and 1, got {level}")
 
 
-SCORES_FILE = "8-scores.yaml"
 BootstrapRng = Callable[[], numpy.random.Generator]
-ORIGINS_FILE = "6-origins.yaml"
-COLLECTED_FILE = "7-collected.yaml"
-DETECTORS_FILE = "7-detectors.yaml"
-LEVEL_INPUT = f"{GATE_RECORD}#level"
-DONE_BY_INPUT = f"{GATE_RECORD}#done_by"
-DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}#demands", f"{TASKS_RECORD}#tasks", f"{TASKS_RECORD}#conversations")
+LEVEL_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}level"
+DONE_BY_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}done_by"
+DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", f"{TASKS_RECORD}{KEY_SEPARATOR}tasks", f"{TASKS_RECORD}{KEY_SEPARATOR}conversations")
 SCORE_USER_INPUTS = (
     *DEMANDS_AND_TASKS_INPUTS,
-    f"{FIRST_REVISION}/3-coverage.yaml#demands",
-    f"{FIRST_REVISION}/3-coverage.yaml#sentences",
+    f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands",
+    f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences",
     LEVEL_INPUT,
     DONE_BY_INPUT,
 )
@@ -479,7 +482,7 @@ def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]
         *SCORE_USER_INPUTS,
         *_origin_reply_paths(revision, origins).values(),
         f"{revision}/{ORIGINS_FILE}",
-        *(f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()),
+        *(verdict_path(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()),
         f"{revision}/{COLLECTED_FILE}",
         f"{revision}/{DETECTORS_FILE}",
     ]

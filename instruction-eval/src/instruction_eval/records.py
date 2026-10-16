@@ -19,6 +19,49 @@ import yaml
 KEY_SEPARATOR = "#"
 INPUTS_KEY = "inputs"
 
+SERIES_RECORD = "series.yaml"
+DEMANDS_RECORD = "2-demands.yaml"
+TASKS_RECORD = "3-tasks.yaml"
+CONDITIONS_RECORD = "4-conditions.yaml"
+READER_RECORD = "5-reader.yaml"
+GATE_RECORD = "7-gate.yaml"
+FROZEN_RECORD = "8-frozen.yaml"
+STOP_RECORD = "9-stop.yaml"
+SOURCE_FOLDER = "1-source"
+PLACEBO_SNAPSHOT = "4-placebo-source.md"
+AGENTS_FOLDER = ".claude/agents"
+JUDGE_FOLDER = "6-judge"
+WORKING_BRIEF = f"{JUDGE_FOLDER}/brief.md"
+CALIBRATION_RECORD = f"{JUDGE_FOLDER}/calibration.yaml"
+ANCHORS_RECORD = f"{JUDGE_FOLDER}/anchors.yaml"
+CALIBRATION_FOLDER = f"{JUDGE_FOLDER}/calibration"
+ATTEMPT_FOLDER_PREFIX = "attempt-"
+FIRST_ATTEMPT = 1
+PLAN_FILE = "plan.yaml"
+BRIEF_SNAPSHOT_FILE = "brief.md"
+SAMPLE_FILE = "sample.md"
+ATTEMPT_ORIGINS_FILE = "origins.yaml"
+AGREEMENT_FILE = "agreement.yaml"
+REFERENCE_PREFIX = "reference-"
+REVISION_PREFIX = "r"
+FIRST_REVISION_NUMBER = 1
+FIRST_REVISION = f"{REVISION_PREFIX}{FIRST_REVISION_NUMBER}"
+HYPOTHESIS_FILE = "1-hypothesis.yaml"
+INSTRUCTION_FILE = "2-instruction.md"
+REVISION_RECORD_FILE = "2-revision.yaml"
+COVERAGE_FILE = "3-coverage.yaml"
+CONDITIONS_FOLDER = "4-conditions"
+REPLIES_FOLDER = "5-replies"
+REPEAT_PREFIX = "repeat-"
+TURN_PREFIX = "turn-"
+PACKETS_FOLDER = "6-packets"
+ORIGINS_FILE = "6-origins.yaml"
+COLLECTED_FILE = "7-collected.yaml"
+DETECTORS_FILE = "7-detectors.yaml"
+VERDICTS_FOLDER = "7-verdicts"
+SCORES_FILE = "8-scores.yaml"
+OUTCOME_FILE = "9-outcome.yaml"
+
 
 class Refusal(ValueError):
     """A refusal of a command or a record, carrying the one-line message the user reads."""
@@ -181,6 +224,7 @@ TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
 AGENT_READER = "agent"
 COMMAND_READER = "command"
 USER_RATER = "user"
+REFERENCE_USER_FILE = f"{REFERENCE_PREFIX}{USER_RATER}.yaml"
 PERMITTED_RATER_SETS = ((USER_RATER,), (AGENT_READER, AGENT_READER))
 OPEN_SPLIT = "open"
 SEALED_SPLIT = "sealed"
@@ -211,7 +255,6 @@ REPLY_INPUT_TOKEN_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_
 REPLY_COST_KEYS = (*REPLY_INPUT_TOKEN_KEYS, "output_tokens", SPENT_INPUT_TOKENS_KEY)
 PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
 LINEAGE_KEYS = ("parent", "parent_record", "change")
-FIRST_REVISION_NUMBER = 1
 AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
 COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
 
@@ -1519,17 +1562,6 @@ def read_bounded_number(value: object, where: str, lowest: float, highest: float
 
 Parsed = TypeVar("Parsed")
 
-SERIES_RECORD = "series.yaml"
-DEMANDS_RECORD = "2-demands.yaml"
-TASKS_RECORD = "3-tasks.yaml"
-CONDITIONS_RECORD = "4-conditions.yaml"
-READER_RECORD = "5-reader.yaml"
-GATE_RECORD = "7-gate.yaml"
-FROZEN_RECORD = "8-frozen.yaml"
-STOP_RECORD = "9-stop.yaml"
-CALIBRATION_RECORD = "6-judge/calibration.yaml"
-ANCHORS_RECORD = "6-judge/anchors.yaml"
-FIRST_REVISION = "r1"
 OVERREACH_TARGET = "overreach"
 COMPLETION_TARGET = "completion"
 DEMAND_REFERENCE = "demand"
@@ -1623,20 +1655,20 @@ class SeriesRecords:
 
     def plan(self, attempt: int) -> Plan:
         """Load a calibration attempt's `plan.yaml`."""
-        path = f"{attempt_folder(attempt)}/plan.yaml"
+        path = f"{attempt_folder(attempt)}/{PLAN_FILE}"
         return _parsed(path, parse_plan, _read_document(self.files, path))
 
     def hypothesis(self, revision: str) -> Hypothesis:
         """Load a revision's `1-hypothesis.yaml`, its failing demand a gate demand or `completion`."""
-        path = f"{revision}/1-hypothesis.yaml"
+        path = f"{revision}/{HYPOTHESIS_FILE}"
         hypothesis = _parsed(path, parse_hypothesis, _read_document(self.files, path))
         _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self._gate_demand_ids(), COMPLETION_TARGET})
-        _resolve(path, BLIND_ID_REFERENCE, hypothesis.replies_read, self.origins(_parent_revision(revision))["ids"])
+        _resolve(path, BLIND_ID_REFERENCE, hypothesis.replies_read, self.origins(parent_revision(revision))["ids"])
         return hypothesis
 
     def coverage(self, revision: str) -> Coverage:
         """Load a revision's `3-coverage.yaml`, every demand it maps one of the series."""
-        path = f"{revision}/3-coverage.yaml"
+        path = f"{revision}/{COVERAGE_FILE}"
         coverage = _parsed(path, parse_coverage, _read_document(self.files, path))
         sentence_demands = [demand for demands in coverage.sentences.values() for demand in demands]
         _resolve(path, DEMAND_REFERENCE, [*coverage.demands, *sentence_demands], self._demand_ids())
@@ -1665,16 +1697,16 @@ class SeriesRecords:
 
     def origins(self, revision: str) -> Record:
         """Load a revision's `6-origins.yaml`, each reply origin naming a reply file and each anchor origin an anchor."""
-        return self._origins(f"{revision}/6-origins.yaml", revision)
+        return self._origins(f"{revision}/{ORIGINS_FILE}", revision)
 
     def attempt_origins(self, attempt: int) -> Record:
         """Load a calibration attempt's `origins.yaml`, each origin naming an r1 reply file."""
-        return self._origins(f"{attempt_folder(attempt)}/origins.yaml", FIRST_REVISION)
+        return self._origins(f"{attempt_folder(attempt)}/{ATTEMPT_ORIGINS_FILE}", FIRST_REVISION)
 
     def verdict(self, revision: str, packet: str, judging: int) -> Record:
         """Load the verdict of judging `judging` of a revision's packet, judging that packet's blind ids on judge demands only."""
         packet_ids = {blind_id for blind_id, origin in self.origins(revision)["ids"].items() if origin["packet"] == packet}
-        return self._verdict_shaped(f"{revision}/7-verdicts/{packet}/k{judging}.yaml", packet_ids)
+        return self._verdict_shaped(verdict_path(revision, packet, judging), packet_ids)
 
     def rating(self, attempt: int, rating: str) -> Record:
         """Load a calibration attempt's rating file named `rating`, rating the attempt's blind ids on judge demands only."""
@@ -1682,7 +1714,7 @@ class SeriesRecords:
 
     def agreement(self, attempt: int) -> Record:
         """Load a calibration attempt's `agreement.yaml`, measuring judge demands only over the attempt's rating files."""
-        path = f"{attempt_folder(attempt)}/agreement.yaml"
+        path = f"{attempt_folder(attempt)}/{AGREEMENT_FILE}"
         agreement = self._command_record(path, RecordKind.AGREEMENT)
         _resolve(path, JUDGE_DEMAND_REFERENCE, agreement["demands"], self._demand_ids(JudgeDemand))
         self._resolve_files(path, RATING_REFERENCE, agreement["ratings"], lambda rating: f"{attempt_folder(attempt)}/{rating}")
@@ -1692,7 +1724,7 @@ class SeriesRecords:
         """Load `6-judge/calibration.yaml`, naming an attempt with a plan and measuring judge demands only."""
         calibration = self._command_record(CALIBRATION_RECORD, RecordKind.CALIBRATION)
         _resolve(CALIBRATION_RECORD, JUDGE_DEMAND_REFERENCE, calibration["agreement"]["demands"], self._demand_ids(JudgeDemand))
-        self._resolve_files(CALIBRATION_RECORD, ATTEMPT_REFERENCE, [calibration["attempt"]], lambda attempt: f"{attempt_folder(attempt)}/plan.yaml")
+        self._resolve_files(CALIBRATION_RECORD, ATTEMPT_REFERENCE, [calibration["attempt"]], lambda attempt: f"{attempt_folder(attempt)}/{PLAN_FILE}")
         return calibration
 
     def anchors(self) -> Record:
@@ -1704,7 +1736,7 @@ class SeriesRecords:
 
     def collected(self, revision: str) -> Record:
         """Load a revision's `7-collected.yaml`, each packet one the revision blinded, its anchor agreement over judge demands only."""
-        path = f"{revision}/7-collected.yaml"
+        path = f"{revision}/{COLLECTED_FILE}"
         collected = self._command_record(path, RecordKind.COLLECTED)
         anchor_demands = [demand for packet in collected["packets"].values() for demand in packet["anchors"]["breach_difference"]]
         _resolve(path, JUDGE_DEMAND_REFERENCE, anchor_demands, self._demand_ids(JudgeDemand))
@@ -1713,7 +1745,7 @@ class SeriesRecords:
 
     def detectors(self, revision: str) -> Record:
         """Load a revision's `7-detectors.yaml`, counting the revision's blind ids on detector demands only."""
-        path = f"{revision}/7-detectors.yaml"
+        path = f"{revision}/{DETECTORS_FILE}"
         detectors = self._command_record(path, RecordKind.DETECTORS)
         _resolve(path, DETECTOR_DEMAND_REFERENCE, _breach_demands(detectors["verdicts"]), self._demand_ids(*DETECTOR_DEMANDS))
         _resolve(path, BLIND_ID_REFERENCE, [entry["id"] for entry in detectors["verdicts"]], self.origins(revision)["ids"])
@@ -1721,7 +1753,7 @@ class SeriesRecords:
 
     def scores(self, revision: str) -> Record:
         """Load a revision's `8-scores.yaml`, scoring the revision's blind ids on demands, tasks, and prepared conditions of the series."""
-        path = f"{revision}/8-scores.yaml"
+        path = f"{revision}/{SCORES_FILE}"
         scores = self._command_record(path, RecordKind.SCORES)
         condition_demands = [demand for condition in scores["by_condition"].values() for demand in condition["demands"]]
         _resolve(path, DEMAND_REFERENCE, [*_breach_demands(scores["rows"]), *condition_demands], self._demand_ids())
@@ -1735,7 +1767,7 @@ class SeriesRecords:
 
     def outcome(self, revision: str) -> Record:
         """Load a revision's `9-outcome.yaml`, its parent comparison targeting a gate demand or `completion`."""
-        path = f"{revision}/9-outcome.yaml"
+        path = outcome_path(revision)
         outcome = self._command_record(path, RecordKind.OUTCOME)
         targets = [outcome["parent_comparison"]["target"]] if "parent_comparison" in outcome else []
         _resolve(path, GATE_DEMAND_REFERENCE, targets, {*self._gate_demand_ids(), COMPLETION_TARGET})
@@ -1847,20 +1879,45 @@ def _breach_demands(entries: Iterable[Record]) -> list[str]:
     return [demand for entry in entries for demand in entry["breaches"]]
 
 
+def revision_id(number: int) -> str:
+    """Return the id of the revision with the given number."""
+    return f"{REVISION_PREFIX}{number}"
+
+
+def revision_number(revision: str) -> int:
+    """Return the number a revision id carries."""
+    return int(revision.removeprefix(REVISION_PREFIX))
+
+
+def parent_revision(revision: str) -> str:
+    """Return the id of the revision before the given one."""
+    return revision_id(revision_number(revision) - 1)
+
+
 def revision_record_path(revision: str) -> str:
     """Return the path of a revision's `2-revision.yaml`."""
-    return f"{revision}/2-revision.yaml"
+    return f"{revision}/{REVISION_RECORD_FILE}"
 
 
 def condition_path(revision: str, condition: str) -> str:
     """Return the path of the condition text a revision prepared."""
-    return f"{revision}/4-conditions/{condition}.md"
+    return f"{revision}/{CONDITIONS_FOLDER}/{condition}.md"
 
 
 def reply_path(revision: str, condition: str, task: str, repeat: int, turn: int | None) -> str:
     """Return the path of one reply: a task's repeat, or with a turn a conversation turn within a repeat."""
-    repeat_path = f"{revision}/5-replies/{condition}/{task}/repeat-{repeat}"
-    return f"{repeat_path}.yaml" if turn is None else f"{repeat_path}/turn-{turn}.yaml"
+    repeat_path = f"{revision}/{REPLIES_FOLDER}/{condition}/{task}/{REPEAT_PREFIX}{repeat}"
+    return f"{repeat_path}.yaml" if turn is None else f"{repeat_path}/{TURN_PREFIX}{turn}.yaml"
+
+
+def outcome_path(revision: str) -> str:
+    """Return the path of a revision's `9-outcome.yaml`."""
+    return f"{revision}/{OUTCOME_FILE}"
+
+
+def verdict_path(revision: str, packet: str, judging: int) -> str:
+    """Return the path of the verdict judging `judging` of a revision's packet writes."""
+    return f"{revision}/{VERDICTS_FOLDER}/{packet}/k{judging}.yaml"
 
 
 def _origin_reply_path(origin: Record, revision: str) -> str:
@@ -1869,14 +1926,9 @@ def _origin_reply_path(origin: Record, revision: str) -> str:
     return reply_path(home, origin["condition"], origin["task"], origin["repeat"], origin.get("turn"))
 
 
-def _parent_revision(revision: str) -> str:
-    """Return the id of the revision before `revision`."""
-    return f"r{int(revision.removeprefix('r')) - 1}"
-
-
 def attempt_folder(attempt: int) -> str:
     """Return the folder of a calibration attempt."""
-    return f"6-judge/calibration/attempt-{attempt}"
+    return f"{CALIBRATION_FOLDER}/{ATTEMPT_FOLDER_PREFIX}{attempt}"
 
 
 def _read_document(files: SeriesFolder, path: str) -> Any:

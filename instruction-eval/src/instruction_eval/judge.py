@@ -20,19 +20,39 @@ import yaml
 from instruction_eval.conditions import strip_frontmatter
 from instruction_eval.coverage import split_sentences
 from instruction_eval.records import (
+    AGENTS_FOLDER,
+    AGREEMENT_FILE,
     ANCHOR_KEY,
     ANCHORS_RECORD,
+    ATTEMPT_FOLDER_PREFIX,
+    ATTEMPT_ORIGINS_FILE,
+    BRIEF_SNAPSHOT_FILE,
+    CALIBRATION_FOLDER,
     CALIBRATION_RECORD,
+    COLLECTED_FILE,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
+    FIRST_ATTEMPT,
     FIRST_REVISION,
     GATE_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
     OPEN_SPLIT,
+    ORIGINS_FILE,
+    PACKETS_FOLDER,
+    PLAN_FILE,
     READER_RECORD,
+    REFERENCE_PREFIX,
+    REFERENCE_USER_FILE,
+    REPEAT_PREFIX,
+    REPLIES_FOLDER,
+    SAMPLE_FILE,
     SERIES_RECORD,
+    SOURCE_FOLDER,
     TASKS_RECORD,
-    USER_RATER,
+    VERDICTS_FOLDER,
+    WORKING_BRIEF,
     Acceptance,
     AgentRaters,
     Demand,
@@ -50,10 +70,10 @@ from instruction_eval.records import (
     load_record,
     parse_record,
     sha256,
+    verdict_path,
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE
 from instruction_eval.tasks import (
     OMISSION_PREFIX,
     ExpectedReply,
@@ -72,7 +92,6 @@ PLACEHOLDERS = (SOURCE_PLACEHOLDER, DEMANDS_PLACEHOLDER, PACKET_PLACEHOLDER, OUT
 PLACEHOLDER_PATTERN = re.compile("|".join(re.escape(placeholder) for placeholder in PLACEHOLDERS))
 OATH_SKILL = "manifesto:manifesto-oath"
 BRIEF_FORBIDDEN_WORDS = ("empty", "aim", "placebo", "instruction", "omit", "control", "condition", "revision", "reader", "digest")
-SOURCE_FOLDER = "1-source"
 SOURCE_SEPARATOR = "\n\n"
 VERDICT_LABEL = RecordKind.VERDICT.value
 OMISSIONS_PACKET_SUFFIX = "--omissions"
@@ -261,7 +280,6 @@ def _section(blind_id: str, exchanges: Iterable[tuple[str, str]]) -> str:
 
 
 JUDGE_DEFINITION_PREFIX = "ie-judge-"
-AGENTS_FOLDER = ".claude/agents"
 FAILED_JUDGINGS_BEFORE_RECALIBRATION = 3
 RECALIBRATE_REFUSAL = "recalibrate in a new series"
 
@@ -370,7 +388,7 @@ def _judging_outcome(
     """Return the judging's acceptance, `PendingJudging` while its verdict file is absent and its transcript has not ended, or None when it failed."""
     run = _latest_run(judgings.transcripts, judgings.read_transcript, _judging_agent_type(judgings.revision, packet, number))
     reply = run.reply if run else None
-    if not judgings.files.holds(_verdict_file(judgings.revision, packet, number)):
+    if not judgings.files.holds(verdict_path(judgings.revision, packet, number)):
         return None if reply else PendingJudging(number)
     verdict = _valid_verdict(judgings, packet_origins, packet, number)
     if verdict is None or run is None or reply is None or reply.model != judgings.judge_model or _is_rejected(judgings, run, packet, number):
@@ -390,11 +408,6 @@ def _judging_outcome(
 def _judging_agent_type(revision: str, packet: str, number: int) -> str:
     """Return the agent type of judging `number` of a revision's packet."""
     return f"{JUDGE_DEFINITION_PREFIX}{revision}-{packet}-k{number}"
-
-
-def _verdict_file(revision: str, packet: str, number: int) -> str:
-    """Return the series path of judging `number`'s verdict file."""
-    return f"{revision}/7-verdicts/{packet}/k{number}.yaml"
 
 
 @dataclass(frozen=True)
@@ -430,14 +443,14 @@ def _is_rejected(judgings: _Judgings, run: _Run, packet: str, number: int) -> bo
     """Tell whether the judge's transcript shows a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict."""
     from instruction_eval.reader import judge_transcript_rejection
 
-    verdict_path = judgings.files.root / _verdict_file(judgings.revision, packet, number)
-    return judge_transcript_rejection(run.path, run.content, verdict_path) is not None
+    verdict_file = judgings.files.root / verdict_path(judgings.revision, packet, number)
+    return judge_transcript_rejection(run.path, run.content, verdict_file) is not None
 
 
 def _valid_verdict(judgings: _Judgings, packet_origins: Mapping[str, Record], packet: str, number: int) -> Record | None:
     """Return the judging's verdict file parsed against the packet's blind ids and the judge demands, or None when it is not valid."""
     try:
-        document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
+        document = yaml.safe_load(judgings.files.read_bytes(verdict_path(judgings.revision, packet, number)))
         return parse_verdict(document, set(packet_origins), judgings.judge_demand_ids)
     except (yaml.YAMLError, Refusal):
         return None
@@ -484,9 +497,6 @@ def _judging_numbers(files: SeriesFolder, revision: str, packet: str) -> list[in
 
 
 BLIND_COMMAND = "revision blind"
-INSTRUCTION_FILE = "2-instruction.md"
-PACKETS_FOLDER = "6-packets"
-ORIGINS_FILE = "6-origins.yaml"
 TASK_KEYS = ("tasks", "conversations")
 CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
 
@@ -545,26 +555,18 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
 
 
 CALIBRATE_COMMAND = "judge calibrate"
-WORKING_BRIEF = "6-judge/brief.md"
-PLAN_FILE = "plan.yaml"
-COVERAGE_FILE = "3-coverage.yaml"
-BRIEF_SNAPSHOT_FILE = "brief.md"
-ATTEMPT_PATTERN = re.compile(r"attempt-([0-9]+)")
-FIRST_ATTEMPT = 1
+ATTEMPT_PATTERN = re.compile(rf"{ATTEMPT_FOLDER_PREFIX}([0-9]+)")
 CALIBRATION_AGENT_PREFIX = "ie-calib-"
 CANDIDATE_NAME = "candidate"
 RATER_NAME = "rater"
-REFERENCE_PREFIX = "reference-"
 CANDIDATE_RUNS = (1, 2)
 RATER_RUNS = (1, 2)
 LAUNCHES_KEY = "launches"
 AGENT_TYPE_KEY = "agent_type"
 SAMPLE_PACKET = "sample"
-SAMPLE_FILE = "sample.md"
-ATTEMPT_ORIGINS_FILE = "origins.yaml"
 POOL_EXHAUSTED_REFUSAL = "calibration pool exhausted: lower sample_size or start a new series with more repeats"
-OPEN_TASK_REPLY_PATTERN = f"{FIRST_REVISION}/5-replies/*/*/repeat-*.yaml"
-REPEAT_FILE_PATTERN = re.compile(r"repeat-([0-9]+)\.yaml")
+OPEN_TASK_REPLY_PATTERN = f"{FIRST_REVISION}/{REPLIES_FOLDER}/*/*/{REPEAT_PREFIX}*.yaml"
+REPEAT_FILE_PATTERN = re.compile(rf"{REPEAT_PREFIX}([0-9]+)\.yaml")
 
 
 def calibrate_stage_one(
@@ -672,7 +674,7 @@ def _refuse_calibrated_series(files: SeriesFolder) -> None:
 
 def _latest_attempt(files: SeriesFolder) -> int:
     """Return the highest attempt number holding a plan, refusing a series without one."""
-    folders = (files.root / attempt_folder(FIRST_ATTEMPT)).parent.glob(f"attempt-*/{PLAN_FILE}")
+    folders = (files.root / CALIBRATION_FOLDER).glob(f"{ATTEMPT_FOLDER_PREFIX}*/{PLAN_FILE}")
     numbers = [int(match.group(1)) for folder in folders if (match := ATTEMPT_PATTERN.fullmatch(folder.parent.name))]
     if not numbers:
         raise Refusal(f"missing record: {attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}")
@@ -809,8 +811,8 @@ def _judge_definitions(
     definitions = {}
     for packet, judging in judgings:
         agent_type = _judging_agent_type(revision, packet, judging)
-        verdict_path = files.root / _verdict_file(revision, packet, judging)
-        definitions[agent_type] = _judging_definition(files, records, brief, packets[packet], verdict_path, reader_model, agent_type, calibration["judge_model"])
+        verdict_file = files.root / verdict_path(revision, packet, judging)
+        definitions[agent_type] = _judging_definition(files, records, brief, packets[packet], verdict_file, reader_model, agent_type, calibration["judge_model"])
     return definitions
 
 
@@ -836,7 +838,6 @@ def _accepted_brief(files: SeriesFolder, calibration: Record) -> str:
 
 
 JUDGE_COLLECT_COMMAND = "judge collect"
-VERDICTS_FOLDER = "7-verdicts"
 
 
 def judge_collect(files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
@@ -917,8 +918,6 @@ def _launch_list(agent_types: Iterable[str]) -> str:
     return yaml.safe_dump({LAUNCHES_KEY: [{AGENT_TYPE_KEY: agent_type} for agent_type in agent_types]}, sort_keys=False)
 
 
-AGREEMENT_FILE = "agreement.yaml"
-REFERENCE_USER_FILE = f"{REFERENCE_PREFIX}{USER_RATER}.yaml"
 NO_REFERENCE_DONE_REFUSAL = "no reference done in the sample"
 HALF = 0.5
 PLAN_COPIED_KEYS = ("judge_model", "raters", "sample_size", "anchors_per_packet", "acceptance")

@@ -8,9 +8,12 @@ from typing import Final
 from instruction_eval.records import (
     FIRST_REVISION,
     FIRST_REVISION_NUMBER,
+    INSTRUCTION_FILE,
     OPEN_SPLIT,
     OVERREACH_TARGET,
+    PLACEBO_SNAPSHOT,
     SEALED_SPLIT,
+    SOURCE_FOLDER,
     TASKS_RECORD,
     Conditions,
     Omissions,
@@ -20,6 +23,7 @@ from instruction_eval.records import (
     SeriesRecords,
     Tasks,
     reply_path,
+    revision_id,
 )
 
 LabelledText = tuple[str, str]
@@ -32,11 +36,8 @@ HALVES = (OPEN_SPLIT, SEALED_SPLIT)
 FEWEST_CONVERSATIONS_PER_HALF = 2
 FEWEST_TURNS = 2
 ID_SEPARATOR_CLASH = "--"
-REVISION_INSTRUCTION_FILE = "2-instruction.md"
-PLACEBO_SNAPSHOT = "4-placebo-source.md"
 AIM_LABEL = "aim"
 PLACEBO_LABEL = "placebo source"
-SOURCE_FOLDER = "1-source"
 TURN_SUFFIX = re.compile(r"-turn-[0-9]+\Z")
 
 
@@ -200,7 +201,7 @@ def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks, re
 
 def _revision_instructions(files: SeriesFolder) -> list[LabelledText]:
     """Return the path and text of each revision's instruction, in revision order, up to the first revision without one."""
-    paths = itertools.takewhile(files.holds, (f"r{number}/{REVISION_INSTRUCTION_FILE}" for number in itertools.count(FIRST_REVISION_NUMBER)))
+    paths = itertools.takewhile(files.holds, (f"{revision_id(number)}/{INSTRUCTION_FILE}" for number in itertools.count(FIRST_REVISION_NUMBER)))
     return [(path, _read_series_text(files, path)) for path in paths]
 
 

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from itertools import accumulate
 
 from instruction_eval.records import (
+    COVERAGE_FILE,
     FIRST_REVISION,
+    INSTRUCTION_FILE,
     Coverage,
     Demands,
     Dropped,
@@ -191,12 +193,12 @@ def coverage_check(files: SeriesFolder, revision: str) -> None:
 
 def _coverage_path(revision: str) -> str:
     """Return the path of a revision's `3-coverage.yaml`."""
-    return f"{revision}/3-coverage.yaml"
+    return f"{revision}/{COVERAGE_FILE}"
 
 
 def _read_instruction(files: SeriesFolder, revision: str) -> bytes:
     """Return the bytes of a revision's `2-instruction.md`, refusing it absent."""
-    path = f"{revision}/2-instruction.md"
+    path = f"{revision}/{INSTRUCTION_FILE}"
     try:
         return files.read_bytes(path)
     except FileNotFoundError:

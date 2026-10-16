@@ -2,14 +2,13 @@ from collections.abc import Callable, Mapping
 from itertools import cycle, islice
 
 from instruction_eval.coverage import Sentence, split_sentences
-from instruction_eval.records import Conditions, Control, Omissions
+from instruction_eval.records import PLACEBO_SNAPSHOT, Conditions, Control, Omissions
 from instruction_eval.tasks import EVERY_SENTENCE_OMISSIONS, INSTRUCTION_CONDITION, OMISSION_PREFIX, WORD_PATTERN, words
 
 _FENCE = "---"
 _NEWLINE = b"\n"
 SOURCE_SEPARATOR = "\n\n"
 PLACEBO_WORD_SEPARATOR = " "
-PLACEBO_SNAPSHOT_PATH = "4-placebo-source.md"
 EMPTY_CONTROL: Control = "empty"
 AIM_CONTROL: Control = "aim"
 PLACEBO_CONTROL: Control = "placebo"
@@ -37,7 +36,7 @@ def _placebo_text(placebo_source: str, first_instruction: bytes) -> bytes:
     word_count = len(words(first_instruction.decode()))
     placebo_words = WORD_PATTERN.findall(placebo_source)
     if word_count and not placebo_words:
-        raise ValueError(f"placebo source holds no word: {PLACEBO_SNAPSHOT_PATH}")
+        raise ValueError(f"placebo source holds no word: {PLACEBO_SNAPSHOT}")
     repeated = islice(cycle(placebo_words), word_count)
     return PLACEBO_WORD_SEPARATOR.join(repeated).encode()
 

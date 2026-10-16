@@ -3,15 +3,21 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from instruction_eval.conditions import PLACEBO_CONTROL
 from instruction_eval.coverage import split_sentences
-from instruction_eval.gate import COMPLETION_TARGET, OUTCOME_FILE, REVISION_PREFIX, hypothesis_reads, revision_number
+from instruction_eval.gate import COMPLETION_TARGET, hypothesis_reads
 from instruction_eval.records import (
+    COLLECTED_FILE,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
+    DETECTORS_FILE,
     FAIL_OUTCOME,
     FIRST_REVISION,
     FROZEN_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
     OPEN_SPLIT,
+    ORIGINS_FILE,
     Hypothesis,
     MoveChange,
     Record,
@@ -20,13 +26,18 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     Tasks,
+    condition_path,
+    outcome_path,
+    revision_id,
+    revision_number,
     revision_record_path,
     sha256,
+    verdict_path,
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE, DEMANDS_AND_TASKS_INPUTS, DETECTORS_FILE, DONE_BY_INPUT, ORIGINS_FILE, Noise, ReplyRow, join_reply_rows
-from instruction_eval.series import INSTRUCTION_FILE, guard_series, refuse_unclosed_frontmatter, revision_ids
+from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, DONE_BY_INPUT, Noise, ReplyRow, join_reply_rows
+from instruction_eval.series import guard_series, refuse_unclosed_frontmatter, revision_ids
 from instruction_eval.tasks import shared_phrases
 
 NOISE_MULTIPLE = 2
@@ -160,10 +171,10 @@ _CHECKS = {
 
 
 NEW_COMMAND = "revision new"
-COVERAGE_INPUTS = (f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/3-coverage.yaml{KEY_SEPARATOR}sentences")
+COVERAGE_INPUTS = (f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences")
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
 AIM_LABEL = "aim"
-PLACEBO_CONDITION = f"{FIRST_REVISION}/4-conditions/placebo.md"
+PLACEBO_CONDITION = condition_path(FIRST_REVISION, PLACEBO_CONTROL)
 LabelledText = tuple[str, str]
 
 
@@ -195,7 +206,7 @@ def _latest_revision(files: SeriesFolder) -> str:
 
 def _refuse_ungated_or_passed(files: SeriesFolder, records: SeriesRecords, revision: str) -> None:
     """Refuse a new revision unless the latest revision's outcome is `fail`."""
-    if not files.holds(f"{revision}/{OUTCOME_FILE}"):
+    if not files.holds(outcome_path(revision)):
         raise Refusal(f"latest revision {revision} is not gated")
     if records.outcome(revision)["outcome"] != FAIL_OUTCOME:
         raise Refusal(f"latest revision {revision} did not fail")
@@ -203,7 +214,7 @@ def _refuse_ungated_or_passed(files: SeriesFolder, records: SeriesRecords, revis
 
 def _next_revision(revision: str) -> str:
     """Return the id of the revision after the given one."""
-    return f"{REVISION_PREFIX}{revision_number(revision) + 1}"
+    return revision_id(revision_number(revision) + 1)
 
 
 def _live_instruction(path: Path, read_external: Callable[[Path], bytes]) -> bytes:
@@ -263,7 +274,7 @@ def _open_rows(records: SeriesRecords, revision: str) -> list[ReplyRow]:
 
 def _accepted_verdict_paths(revision: str, collected: Record) -> list[str]:
     """Return the path of each packet's accepted verdict."""
-    return [f"{revision}/7-verdicts/{packet}/k{judging['accepted']}.yaml" for packet, judging in collected["packets"].items()]
+    return [verdict_path(revision, packet, judging["accepted"]) for packet, judging in collected["packets"].items()]
 
 
 def _change_record(parent: list[str], child: list[str], change: Change) -> dict[str, object]:
@@ -304,5 +315,5 @@ def _new_reads(revision: str, parent: str, accepted_verdicts: Sequence[str]) -> 
         *accepted_verdicts,
         f"{parent}/{COLLECTED_FILE}",
         f"{parent}/{DETECTORS_FILE}",
-        f"{parent}/{OUTCOME_FILE}",
+        outcome_path(parent),
     ]

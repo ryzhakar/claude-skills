@@ -10,33 +10,39 @@ from typing import Any, TypeVar
 
 import yaml
 
-from instruction_eval.conditions import PLACEBO_SNAPSHOT_PATH, control_texts, revision_condition_texts
+from instruction_eval.conditions import control_texts, revision_condition_texts
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.gate import (
-    OUTCOME_FILE,
     BudgetRefusal,
     _cost_so_far,
     _earlier_outcomes,
     _reply_cost,
     _stop_budget,
     refuse_unaffordable_ask,
-    revision_number,
 )
-from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, SOURCE_FOLDER, TASK_KEYS
+from instruction_eval.judge import CONDITION_KEYS, OATH_SKILL, TASK_KEYS
 from instruction_eval.records import (
     AGENT_READER,
+    AGENTS_FOLDER,
+    COLLECTED_FILE,
     COMMAND_READER,
     CONDITIONS_RECORD,
+    COVERAGE_FILE,
     DEMANDS_RECORD,
     FIRST_REVISION,
     FROZEN_RECORD,
     GATE_RECORD,
+    INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    PLACEBO_SNAPSHOT,
     READER_RECORD,
+    REPLIES_FOLDER,
     REPLY_COST_KEYS,
     SERIES_RECORD,
+    SOURCE_FOLDER,
     SPENT_INPUT_TOKENS_KEY,
     TASKS_RECORD,
+    TURN_PREFIX,
     AgentReader,
     CommandReader,
     Conversation,
@@ -48,13 +54,14 @@ from instruction_eval.records import (
     Tasks,
     _dump_canonical_yaml,
     condition_path,
+    outcome_path,
     reply_path,
+    revision_number,
     sha256,
     write_file,
     write_record,
 )
-from instruction_eval.scores import COLLECTED_FILE
-from instruction_eval.series import AGENTS_FOLDER, INSTRUCTION_FILE, _refuse_other_reader_build, guard_series, revision_ids
+from instruction_eval.series import _refuse_other_reader_build, guard_series, revision_ids
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"
@@ -737,7 +744,7 @@ def reader_prepare(
     placebo_source = _external_placebo_source(revision, records, read_external)
     texts = _condition_texts(files, revision, records, placebo_source)
     if placebo_source is not None:
-        write_file(files, PLACEBO_SNAPSHOT_PATH, placebo_source)
+        write_file(files, PLACEBO_SNAPSHOT, placebo_source)
     for condition, text in texts.items():
         write_file(files, condition_path(revision, condition), text)
     if isinstance(reader, AgentReader):
@@ -763,7 +770,7 @@ def _condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords,
         return own_texts
     sources = {path: _utf8_text(files.read_bytes(path), path) for path in _source_paths(records)}
     try:
-        controls = control_texts(records.conditions(), instruction, sources, _utf8_text(placebo_source, PLACEBO_SNAPSHOT_PATH))
+        controls = control_texts(records.conditions(), instruction, sources, _utf8_text(placebo_source, PLACEBO_SNAPSHOT))
     except ValueError as refused:
         raise Refusal(str(refused)) from None
     return {**own_texts, **controls}
@@ -900,7 +907,7 @@ def revision_collect(
 
 def _verified_condition_texts(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader) -> dict[str, bytes]:
     """Return the text of each condition the revision prepares, recomputed from the series files, refusing a condition file or an agent reader's definition that differs from its recomputation."""
-    placebo_source = _read_series_file(files, PLACEBO_SNAPSHOT_PATH) if revision == FIRST_REVISION else None
+    placebo_source = _read_series_file(files, PLACEBO_SNAPSHOT) if revision == FIRST_REVISION else None
     texts = _condition_texts(files, revision, records, placebo_source)
     for condition, text in texts.items():
         _refuse_edited_file(files, condition_path(revision, condition), text)
@@ -938,7 +945,7 @@ def _reader_reads(revision: str, records: SeriesRecords, reader: Reader, texts: 
         *_source_paths(records),
         *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
         *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
-        PLACEBO_SNAPSHOT_PATH,
+        PLACEBO_SNAPSHOT,
         *(f"{READER_RECORD}{KEY_SEPARATOR}{key}" for key in (READER_RECORD_KIND_KEY, *(field.name for field in fields(reader)))),
         f"{GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}",
         f"{revision}/{INSTRUCTION_FILE}",
@@ -1078,9 +1085,9 @@ ROLE_KEY = "role"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
 CONDITION_PLACEHOLDER = "{condition}"
-TURN_FILE_PREFIX = "/turn-"
+TURN_FILE_PREFIX = f"/{TURN_PREFIX}"
 COVERAGE_KEYS = ("demands", "sentences")
-FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/5-replies"
+FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/{REPLIES_FOLDER}"
 REPLY_PATTERN = "*.yaml"
 ANY_CONDITION = "*"
 
@@ -1157,7 +1164,7 @@ def _answer_replies(
 
 def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
     """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
-    coverage = (f"{coverage_revision}/3-coverage.yaml{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
+    coverage = (f"{coverage_revision}/{COVERAGE_FILE}{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
     reads = [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
     return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
 
@@ -1166,7 +1173,7 @@ def _later_revision_reads(files: SeriesFolder, revision: str) -> list[str]:
     """Return what an ask of a later revision reads besides an ask of r1: the budget, r1's condition files, and each earlier gated revision's outcome."""
     first_conditions = sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(condition_path(FIRST_REVISION, ANY_CONDITION)))
     earlier = (earlier for earlier in revision_ids(files) if revision_number(earlier) < revision_number(revision))
-    return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(f"{other}/{OUTCOME_FILE}" for other in earlier if files.holds(f"{other}/{OUTCOME_FILE}"))]
+    return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(outcome_path(other) for other in earlier if files.holds(outcome_path(other)))]
 
 
 def _state_reads(files: SeriesFolder) -> list[str]:
