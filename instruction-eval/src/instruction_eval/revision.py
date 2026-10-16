@@ -49,7 +49,7 @@ from instruction_eval.tasks import AIM_LABEL, LabelledText, refuse_shared_phrase
 NOISE_MULTIPLE = 2
 
 
-def refuse_unfit_hypothesis(hypothesis: Hypothesis, open_rows: Sequence[ReplyRow], noise: Noise) -> None:
+def _refuse_unfit_hypothesis(hypothesis: Hypothesis, open_rows: Sequence[ReplyRow], noise: Noise) -> None:
     """Raise Refusal when the hypothesis reads a reply outside the parent's open replies or none that shows its failing demand, or predicts no more than twice its target's change noise."""
     _refuse_unopen_replies(hypothesis.replies_read, open_rows)
     _refuse_unshown_failure(hypothesis.failing_demand, _rows_read(hypothesis.replies_read, open_rows))
@@ -196,7 +196,7 @@ def revision_new(files: SeriesFolder, read_external: Callable[[Path], bytes]) ->
     change = _named_change(hypothesis.change)
     _refuse_unmade_change(parent_sentences, sentences, change)
     refuse_shared_phrases([(f"revision {revision}", instruction.decode())], _echo_sources(files, records.tasks(), records.conditions().aim))
-    refuse_unfit_hypothesis(hypothesis, _open_rows(records, parent), records.frozen()["noise"])
+    _refuse_unfit_hypothesis(hypothesis, _open_rows(records, parent), records.frozen()["noise"])
     accepted_verdicts = accepted_verdict_paths(parent, records.collected(parent))
     write_file(files, f"{revision}/{INSTRUCTION_FILE}", instruction)
     record = _revision_record(files, revision, parent, instruction, _change_record(parent_sentences, sentences, change))
