@@ -26,7 +26,7 @@ from instruction_eval.records import (
     PatternDemand,
     Plan,
     PredictedMovement,
-    RecordRefused,
+    Refusal,
     SentenceChange,
     Series,
     Task,
@@ -88,7 +88,7 @@ def edited(name: str, **changes: object) -> dict:
     ],
 )
 def test_series_refuses_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_series(edited("series.yaml", **changes))
 
 
@@ -142,12 +142,12 @@ LONG_SENTENCES, PATTERN, JUDGE = 0, 1, 2
     ],
 )
 def test_demands_refuse_a_malformed_demand(index, changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_demands(edited_entry("2-demands.yaml", "demands", index, **changes))
 
 
 def test_demands_refuse_an_empty_list():
-    with pytest.raises(RecordRefused, match="non-empty"):
+    with pytest.raises(Refusal, match="non-empty"):
         parse_demands({"demands": []})
 
 
@@ -184,7 +184,7 @@ def test_tasks_load_with_compiled_answer_keys():
     ],
 )
 def test_tasks_refuse_a_malformed_entry(list_key, changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_tasks(edited_entry("3-tasks.yaml", list_key, 0, **changes))
 
 
@@ -221,7 +221,7 @@ def test_conditions_load_without_source_control_when_the_series_has_no_sources()
     ],
 )
 def test_conditions_refuse_a_control_set_the_sources_do_not_call_for(controls, series):
-    with pytest.raises(RecordRefused, match="controls"):
+    with pytest.raises(Refusal, match="controls"):
         parse_conditions(edited("4-conditions.yaml", controls=controls), series())
 
 
@@ -238,7 +238,7 @@ def test_conditions_refuse_a_control_set_the_sources_do_not_call_for(controls, s
     ],
 )
 def test_conditions_refuse_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_conditions(edited("4-conditions.yaml", **changes), series_with_sources())
 
 
@@ -258,26 +258,26 @@ def test_command_reader_loads_as_its_variant():
 @pytest.mark.parametrize("key", ["command", "fingerprint", "sampling"])
 def test_agent_reader_refuses_a_command_reader_key(key):
     command_reader = fixture("5-reader-command.yaml")
-    with pytest.raises(RecordRefused, match=key):
+    with pytest.raises(Refusal, match=key):
         parse_reader(edited("5-reader-agent.yaml", **{key: command_reader[key]}))
 
 
 @pytest.mark.parametrize("key", ["command", "fingerprint", "sampling"])
 def test_command_reader_refuses_a_missing_variant_key(key):
-    with pytest.raises(RecordRefused, match=key):
+    with pytest.raises(Refusal, match=key):
         parse_reader(edited("5-reader-command.yaml", **{key: ABSENT}))
 
 
 @pytest.mark.parametrize("alias", ["sonnet", "opus", "haiku", "fable", "inherit"])
 @pytest.mark.parametrize("variant", ["5-reader-agent.yaml", "5-reader-command.yaml"])
 def test_reader_refuses_a_model_alias(variant, alias):
-    with pytest.raises(RecordRefused, match="model"):
+    with pytest.raises(Refusal, match="model"):
         parse_reader(edited(variant, model=alias))
 
 
 @pytest.mark.parametrize("model", ["gpt-5-mini", "claude", "claude-", "Claude-sonnet-4-5", "claude-sonnet-4-5 ", "claude-sonnet-4-5\n"])
 def test_agent_reader_refuses_a_model_outside_the_claude_pattern(model):
-    with pytest.raises(RecordRefused, match="model"):
+    with pytest.raises(Refusal, match="model"):
         parse_reader(edited("5-reader-agent.yaml", model=model))
 
 
@@ -295,7 +295,7 @@ def test_agent_reader_refuses_a_model_outside_the_claude_pattern(model):
     ],
 )
 def test_command_reader_refuses_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_reader(edited("5-reader-command.yaml", **changes))
 
 
@@ -329,13 +329,13 @@ def test_gate_loads_an_unbounded_budget():
 @pytest.mark.parametrize("compares", ["instruction-vs-empty", "instruction-vs-aim", "instruction-vs-placebo", "completion"])
 def test_gate_refuses_checks_lacking_a_required_comparison(compares):
     checks = [check for check in fixture("7-gate.yaml")["checks"] if check["compares"] != compares]
-    with pytest.raises(RecordRefused, match=re.escape(compares)):
+    with pytest.raises(Refusal, match=re.escape(compares)):
         parse_gate(edited("7-gate.yaml", checks=checks))
 
 
 def test_gate_refuses_a_repeated_comparison():
     checks = fixture("7-gate.yaml")["checks"] + [{"compares": "drift", "gap": 2}]
-    with pytest.raises(RecordRefused, match="drift"):
+    with pytest.raises(Refusal, match="drift"):
         parse_gate(edited("7-gate.yaml", checks=checks))
 
 
@@ -359,7 +359,7 @@ def test_gate_refuses_a_repeated_comparison():
     ],
 )
 def test_gate_refuses_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_gate(edited("7-gate.yaml", **changes))
 
 
@@ -379,12 +379,12 @@ def test_plan_loads_with_the_user_as_rater():
 
 @pytest.mark.parametrize("raters", [["agent"], ["user", "user"], ["user", "agent"], ["agent", "agent", "agent"], [], "user"])
 def test_plan_refuses_another_rater_set(raters):
-    with pytest.raises(RecordRefused, match="raters"):
+    with pytest.raises(Refusal, match="raters"):
         parse_plan(edited("plan.yaml", raters=raters))
 
 
 def test_plan_refuses_a_rater_model_equal_to_the_judge_model():
-    with pytest.raises(RecordRefused, match="rater_model"):
+    with pytest.raises(Refusal, match="rater_model"):
         parse_plan(edited("plan.yaml", rater_model="claude-opus-4-1"))
 
 
@@ -405,7 +405,7 @@ def test_plan_refuses_a_rater_model_equal_to_the_judge_model():
     ],
 )
 def test_plan_refuses_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_plan(edited("plan.yaml", **changes))
 
 
@@ -425,12 +425,12 @@ def test_hypothesis_loads_a_change_in_place(action):
 
 
 def test_hypothesis_refuses_a_cause():
-    with pytest.raises(RecordRefused, match="cause"):
+    with pytest.raises(Refusal, match="cause"):
         parse_hypothesis(edited("1-hypothesis.yaml", cause="the rule sits too late"))
 
 
 def test_hypothesis_refuses_a_cause_inside_the_change():
-    with pytest.raises(RecordRefused, match="cause"):
+    with pytest.raises(Refusal, match="cause"):
         parse_hypothesis(edited("1-hypothesis.yaml", change={"action": "move", "sentence": 4, "to": 1, "cause": "buried"}))
 
 
@@ -452,7 +452,7 @@ def test_hypothesis_refuses_a_cause_inside_the_change():
     ],
 )
 def test_hypothesis_refuses_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_hypothesis(edited("1-hypothesis.yaml", **changes))
 
 
@@ -483,5 +483,5 @@ def test_coverage_loads_both_maps():
     ],
 )
 def test_coverage_refuses_a_malformed_key(changes, named):
-    with pytest.raises(RecordRefused, match=re.escape(named)):
+    with pytest.raises(Refusal, match=re.escape(named)):
         parse_coverage(edited("3-coverage.yaml", **changes))

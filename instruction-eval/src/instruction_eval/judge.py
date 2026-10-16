@@ -41,7 +41,6 @@ from instruction_eval.records import (
     JudgeDemand,
     Plan,
     Record,
-    RecordError,
     RecordKind,
     Refusal,
     SeriesFolder,
@@ -136,7 +135,7 @@ def _demand_list(demands: Iterable[Demand]) -> str:
 
 
 def parse_verdict(document: object, blind_ids: AbstractSet[str], judge_demand_ids: AbstractSet[str]) -> Record:
-    """Return the verdict document when it holds every blind id of its packet once, each counting every judge demand, values in range, and raise RecordError otherwise."""
+    """Return the verdict document when it holds every blind id of its packet once, each counting every judge demand, values in range, and raise Refusal otherwise."""
     verdict = parse_record(RecordKind.VERDICT, document)
     _refuse_other_blind_ids(verdict, blind_ids)
     for index, entry in enumerate(verdict["verdicts"]):
@@ -145,24 +144,24 @@ def parse_verdict(document: object, blind_ids: AbstractSet[str], judge_demand_id
 
 
 def _refuse_other_blind_ids(verdict: Record, blind_ids: AbstractSet[str]) -> None:
-    """Raise RecordError when the verdict misses a blind id of the packet or judges one outside it."""
+    """Raise Refusal when the verdict misses a blind id of the packet or judges one outside it."""
     judged = {entry["id"] for entry in verdict["verdicts"]}
     missing = sorted(blind_ids - judged)
     if missing:
-        raise RecordError(f"{VERDICT_LABEL}: missing blind id {missing[0]}")
+        raise Refusal(f"{VERDICT_LABEL}: missing blind id {missing[0]}")
     foreign = sorted(judged - blind_ids)
     if foreign:
-        raise RecordError(f"{VERDICT_LABEL}: blind id {foreign[0]} is not in the packet")
+        raise Refusal(f"{VERDICT_LABEL}: blind id {foreign[0]} is not in the packet")
 
 
 def _refuse_other_demands(breaches: Mapping[str, int], path: str, judge_demand_ids: AbstractSet[str]) -> None:
-    """Raise RecordError when a breaches map misses a judge demand or counts another demand."""
+    """Raise Refusal when a breaches map misses a judge demand or counts another demand."""
     missing = sorted(judge_demand_ids - breaches.keys())
     if missing:
-        raise RecordError(f"{path}: missing judge demand {missing[0]}")
+        raise Refusal(f"{path}: missing judge demand {missing[0]}")
     foreign = sorted(breaches.keys() - judge_demand_ids)
     if foreign:
-        raise RecordError(f"{path}: {foreign[0]} is not a judge demand")
+        raise Refusal(f"{path}: {foreign[0]} is not a judge demand")
 
 
 @dataclass(frozen=True)
@@ -440,7 +439,7 @@ def _valid_verdict(judgings: _Judgings, packet_origins: Mapping[str, Record], pa
     try:
         document = yaml.safe_load(judgings.files.read_bytes(_verdict_file(judgings.revision, packet, number)))
         return parse_verdict(document, set(packet_origins), judgings.judge_demand_ids)
-    except (yaml.YAMLError, RecordError):
+    except (yaml.YAMLError, Refusal):
         return None
 
 
@@ -744,9 +743,10 @@ def _reply_of_file(path: Path) -> ExpectedReply:
 
 def _load_reply(files: SeriesFolder, path: str) -> Record:
     """Return the reply record at the path, refusing it stale or malformed."""
+    document = load_record(files, path)
     try:
-        return parse_record(RecordKind.REPLY, load_record(files, path))
-    except RecordError as error:
+        return parse_record(RecordKind.REPLY, document)
+    except Refusal as error:
         raise Refusal(f"malformed record: {path} ({error})") from None
 
 
@@ -1020,7 +1020,7 @@ def _rating_entries(files: SeriesFolder, folder: str, name: str, blind_ids: Abst
     path = f"{folder}/{name}"
     try:
         verdict = parse_verdict(yaml.safe_load(files.read_bytes(path)), blind_ids, judge_demand_ids)
-    except (yaml.YAMLError, RecordError) as error:
+    except (yaml.YAMLError, Refusal) as error:
         raise Refusal(f"invalid rating: {path} ({error})") from None
     return {entry["id"]: entry for entry in verdict["verdicts"]}
 

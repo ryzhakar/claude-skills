@@ -20,8 +20,8 @@ KEY_SEPARATOR = "#"
 INPUTS_KEY = "inputs"
 
 
-class Refusal(Exception):
-    """A command's refusal, carrying the one-line message the user reads."""
+class Refusal(ValueError):
+    """A refusal of a command or a record, carrying the one-line message the user reads."""
 
 
 @dataclass(frozen=True)
@@ -216,10 +216,6 @@ AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
 COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
 
 
-class RecordError(ValueError):
-    """Raised when a record breaks its schema."""
-
-
 class RecordKind(StrEnum):
     """Names each record shape that parse_record accepts."""
 
@@ -239,8 +235,8 @@ class RecordKind(StrEnum):
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
-    """Raise a RecordError naming the path and the reason."""
-    raise RecordError(f"{path}: {reason}")
+    """Raise a Refusal naming the path and the reason."""
+    raise Refusal(f"{path}: {reason}")
 
 
 def _matching(pattern: str, description: str) -> Check:
@@ -786,7 +782,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
 
 
 def parse_record(kind: RecordKind, document: Any) -> Record:
-    """Return the document when it matches the kind's schema and raise RecordError otherwise."""
+    """Return the document when it matches the kind's schema and raise Refusal otherwise."""
     _SCHEMAS[kind](document, kind.value)
     return document
 
@@ -845,10 +841,6 @@ CHANGE_KEYS_BY_ACTION: Mapping[ChangeAction, AbstractSet[str]] = {
     **{action: {"action", "sentence"} for action in get_args(InPlaceAction)},
     MOVE_ACTION: {"action", "sentence", "to"},
 }
-
-
-class RecordRefused(ValueError):
-    """A record document that breaks its schema, its message naming the offending key."""
 
 
 @dataclass(frozen=True)
@@ -936,7 +928,7 @@ def read_demand_id(value: object, where: str) -> str:
     """Return a demand id, refusing the ids that name task and hypothesis targets."""
     demand_id = read_id(value, where)
     if demand_id in RESERVED_DEMAND_IDS:
-        raise RecordRefused(f"{where}: {demand_id!r} is reserved")
+        raise Refusal(f"{where}: {demand_id!r} is reserved")
     return demand_id
 
 
@@ -1025,7 +1017,7 @@ def read_controls(value: object, where: str, sources: tuple[Path, ...]) -> tuple
     controls = read_entries(value, where, lambda item, item_where: read_choice(item, item_where, get_args(Control)))
     expected = get_args(Control) if sources else CONTROLS_WITHOUT_SOURCES
     if sorted(controls) != sorted(expected):
-        raise RecordRefused(f"{where}: expected exactly {', '.join(expected)}, got {', '.join(controls)}")
+        raise Refusal(f"{where}: expected exactly {', '.join(expected)}, got {', '.join(controls)}")
     return controls
 
 
@@ -1066,7 +1058,7 @@ def read_agent_model(value: object, where: str) -> str:
     """Return a full Claude model id."""
     model = read_model(value, where)
     if not AGENT_MODEL_PATTERN.match(model):
-        raise RecordRefused(f"{where}: expected a model id matching {AGENT_MODEL_PATTERN.pattern}, got {model!r}")
+        raise Refusal(f"{where}: expected a model id matching {AGENT_MODEL_PATTERN.pattern}, got {model!r}")
     return model
 
 
@@ -1074,7 +1066,7 @@ def read_model(value: object, where: str) -> str:
     """Return a non-empty model name that is not a Claude alias."""
     model = read_string(value, where)
     if model in MODEL_ALIASES:
-        raise RecordRefused(f"{where}: alias {model!r} is refused; name the full model id")
+        raise Refusal(f"{where}: alias {model!r} is refused; name the full model id")
     return model
 
 
@@ -1082,14 +1074,14 @@ def read_command(value: object, where: str) -> tuple[str, ...]:
     """Return a command line holding the condition placeholder exactly once."""
     command = read_entries(value, where, read_string)
     if sum(part.count(CONDITION_PLACEHOLDER) for part in command) != 1:
-        raise RecordRefused(f"{where}: expected {CONDITION_PLACEHOLDER} exactly once")
+        raise Refusal(f"{where}: expected {CONDITION_PLACEHOLDER} exactly once")
     return command
 
 
 def read_scalar(value: object, where: str) -> Scalar:
     """Return a string, number, or boolean."""
     if not isinstance(value, Scalar):
-        raise RecordRefused(f"{where}: expected a scalar, got {value!r}")
+        raise Refusal(f"{where}: expected a scalar, got {value!r}")
     return value
 
 
@@ -1138,7 +1130,7 @@ def read_level(value: object, where: str) -> float:
     """Return a confidence level strictly between 0 and 1."""
     level = read_number(value, where)
     if not 0 < level < 1:
-        raise RecordRefused(f"{where}: expected a number in (0, 1), got {value!r}")
+        raise Refusal(f"{where}: expected a number in (0, 1), got {value!r}")
     return level
 
 
@@ -1148,10 +1140,10 @@ def read_checks(value: object, where: str) -> tuple[GateCheck, ...]:
     compared = [check.compares for check in checks]
     repeated = sorted({compares for compares in compared if compared.count(compares) > 1})
     if repeated:
-        raise RecordRefused(f"{where}: repeated {', '.join(repeated)}")
+        raise Refusal(f"{where}: repeated {', '.join(repeated)}")
     missing = [compares for compares in REQUIRED_COMPARES if compares not in compared]
     if missing:
-        raise RecordRefused(f"{where}: missing {', '.join(missing)}")
+        raise Refusal(f"{where}: missing {', '.join(missing)}")
     return checks
 
 
@@ -1229,20 +1221,20 @@ def read_raters(keys: Mapping[str, object], judge_model: str) -> UserRaters | Ag
     """Return the rater set, `[user]` or `[agent, agent]`, carrying `rater_model` exactly when agents rate."""
     if keys["raters"] == USER_RATERS:
         if "rater_model" in keys:
-            raise RecordRefused("rater_model: only [agent, agent] raters carry it")
+            raise Refusal("rater_model: only [agent, agent] raters carry it")
         return UserRaters()
     if keys["raters"] == AGENT_RATERS:
         if "rater_model" not in keys:
-            raise RecordRefused("rater_model: missing for [agent, agent] raters")
+            raise Refusal("rater_model: missing for [agent, agent] raters")
         return AgentRaters(rater_model=read_rater_model(keys["rater_model"], "rater_model", judge_model))
-    raise RecordRefused(f"raters: expected [user] or [agent, agent], got {keys['raters']!r}")
+    raise Refusal(f"raters: expected [user] or [agent, agent], got {keys['raters']!r}")
 
 
 def read_rater_model(value: object, where: str, judge_model: str) -> str:
     """Return an agent rater's model, which differs from the judge's."""
     rater_model = read_agent_model(value, where)
     if rater_model == judge_model:
-        raise RecordRefused(f"{where}: must differ from judge_model {judge_model!r}")
+        raise Refusal(f"{where}: must differ from judge_model {judge_model!r}")
     return rater_model
 
 
@@ -1304,7 +1296,7 @@ def parse_hypothesis(document: object) -> Hypothesis:
 def read_blind_id(value: object, where: str) -> str:
     """Return a blind id: `b` and eight lowercase hex digits."""
     if not isinstance(value, str) or not BLIND_ID_PATTERN.match(value):
-        raise RecordRefused(f"{where}: expected a blind id matching {BLIND_ID_PATTERN.pattern}, got {value!r}")
+        raise Refusal(f"{where}: expected a blind id matching {BLIND_ID_PATTERN.pattern}, got {value!r}")
     return value
 
 
@@ -1377,13 +1369,13 @@ def read_keys(value: object, where: str, required: AbstractSet[str], optional: A
     """Return a mapping holding every required key and no key outside required and optional."""
     location = where or DOCUMENT_LABEL
     if not isinstance(value, Mapping):
-        raise RecordRefused(f"{location}: expected a mapping, got {value!r}")
+        raise Refusal(f"{location}: expected a mapping, got {value!r}")
     missing = required - value.keys()
     if missing:
-        raise RecordRefused(f"{location}: missing {', '.join(sorted(missing))}")
+        raise Refusal(f"{location}: missing {', '.join(sorted(missing))}")
     unknown = value.keys() - required - optional
     if unknown:
-        raise RecordRefused(f"{location}: unknown {', '.join(sorted(map(str, unknown)))}")
+        raise Refusal(f"{location}: unknown {', '.join(sorted(map(str, unknown)))}")
     return value
 
 
@@ -1407,7 +1399,7 @@ def read_nullable(value: object, where: str, read_value: Callable[[object, str],
 def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
     """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
     if not isinstance(value, list):
-        raise RecordRefused(f"{where}: expected a list, got {value!r}")
+        raise Refusal(f"{where}: expected a list, got {value!r}")
     return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(value))
 
 
@@ -1415,7 +1407,7 @@ def read_non_empty_entries(value: object, where: str, read_entry: Callable[[obje
     """Return every item of a non-empty YAML sequence read by `read_entry`."""
     entries = read_entries(value, where, read_entry)
     if not entries:
-        raise RecordRefused(f"{where}: expected a non-empty list")
+        raise Refusal(f"{where}: expected a non-empty list")
     return entries
 
 
@@ -1427,14 +1419,14 @@ def read_map(
 ) -> Mapping[Key, Entry]:
     """Return a YAML mapping with every key read by `read_key` and every value by `read_value`."""
     if not isinstance(value, Mapping):
-        raise RecordRefused(f"{where}: expected a mapping, got {value!r}")
+        raise Refusal(f"{where}: expected a mapping, got {value!r}")
     return {read_key(key, f"{where} key"): read_value(item, f"{where}[{key}]") for key, item in value.items()}
 
 
 def read_string(value: object, where: str) -> str:
     """Return a non-empty string."""
     if not isinstance(value, str) or not value:
-        raise RecordRefused(f"{where}: expected a non-empty string, got {value!r}")
+        raise Refusal(f"{where}: expected a non-empty string, got {value!r}")
     return value
 
 
@@ -1442,21 +1434,21 @@ def read_line(value: object, where: str) -> str:
     """Return a non-empty string holding no line break."""
     line = read_string(value, where)
     if line != line.splitlines()[0]:
-        raise RecordRefused(f"{where}: expected one line, got {value!r}")
+        raise Refusal(f"{where}: expected one line, got {value!r}")
     return line
 
 
 def read_id(value: object, where: str) -> str:
     """Return an id matching the series id pattern."""
     if not isinstance(value, str) or not ID_PATTERN.match(value):
-        raise RecordRefused(f"{where}: expected an id matching {ID_PATTERN.pattern}, got {value!r}")
+        raise Refusal(f"{where}: expected an id matching {ID_PATTERN.pattern}, got {value!r}")
     return value
 
 
 def read_hash(value: object, where: str) -> str:
     """Return a lowercase sha256 hex digest."""
     if not isinstance(value, str) or not HASH_DIGEST_PATTERN.match(value):
-        raise RecordRefused(f"{where}: expected a lowercase sha256 hex, got {value!r}")
+        raise Refusal(f"{where}: expected a lowercase sha256 hex, got {value!r}")
     return value
 
 
@@ -1464,14 +1456,14 @@ def read_absolute_path(value: object, where: str) -> Path:
     """Return an absolute path."""
     path = Path(read_string(value, where))
     if not path.is_absolute():
-        raise RecordRefused(f"{where}: expected an absolute path, got {value!r}")
+        raise Refusal(f"{where}: expected an absolute path, got {value!r}")
     return path
 
 
 def read_choice(value: object, where: str, choices: tuple[Choice, ...]) -> Choice:
     """Return a value drawn from a closed enum."""
     if value not in choices:
-        raise RecordRefused(f"{where}: {value!r} is not one of {', '.join(choices)}")
+        raise Refusal(f"{where}: {value!r} is not one of {', '.join(choices)}")
     return value
 
 
@@ -1483,7 +1475,7 @@ def read_timestamp(value: object, where: str) -> datetime:
         except ValueError:
             pass
     if not isinstance(value, datetime) or value.tzinfo is None:
-        raise RecordRefused(f"{where}: expected an ISO 8601 timestamp with offset, got {value!r}")
+        raise Refusal(f"{where}: expected an ISO 8601 timestamp with offset, got {value!r}")
     return value
 
 
@@ -1492,20 +1484,20 @@ def read_regex(value: object, where: str) -> re.Pattern[str]:
     try:
         return re.compile(read_string(value, where))
     except re.error as error:
-        raise RecordRefused(f"{where}: {error}") from error
+        raise Refusal(f"{where}: {error}") from error
 
 
 def read_integer(value: object, where: str, minimum: int) -> int:
     """Return an integer at or above `minimum`."""
     if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
-        raise RecordRefused(f"{where}: expected an integer >= {minimum}, got {value!r}")
+        raise Refusal(f"{where}: expected an integer >= {minimum}, got {value!r}")
     return value
 
 
 def read_number(value: object, where: str) -> float:
     """Return an integer or float, never a boolean."""
     if not isinstance(value, int | float) or isinstance(value, bool):
-        raise RecordRefused(f"{where}: expected a number, got {value!r}")
+        raise Refusal(f"{where}: expected a number, got {value!r}")
     return value
 
 
@@ -1513,7 +1505,7 @@ def read_positive_number(value: object, where: str) -> float:
     """Return a finite number above 0."""
     number = read_number(value, where)
     if not 0 < number < math.inf:
-        raise RecordRefused(f"{where}: expected a finite number > 0, got {value!r}")
+        raise Refusal(f"{where}: expected a finite number > 0, got {value!r}")
     return number
 
 
@@ -1521,7 +1513,7 @@ def read_bounded_number(value: object, where: str, lowest: float, highest: float
     """Return a number in the closed interval from `lowest` to `highest`."""
     number = read_number(value, where)
     if not lowest <= number <= highest:
-        raise RecordRefused(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
+        raise Refusal(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
     return number
 
 
@@ -1896,5 +1888,5 @@ def _parsed(path: str, parse: Callable[[Any], Parsed], document: Any) -> Parsed:
     """Return the document parsed by its schema, refusing a schema break as a malformed record at `path`."""
     try:
         return parse(document)
-    except (RecordRefused, RecordError) as error:
+    except Refusal as error:
         raise Refusal(f"malformed record: {path} ({error})") from None
