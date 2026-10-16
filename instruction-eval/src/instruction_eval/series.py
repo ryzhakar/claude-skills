@@ -63,6 +63,7 @@ from instruction_eval.records import (
     UNRESOLVABLE_STOP,
     VERDICTS_FOLDER,
     WORKING_BRIEF,
+    Budget,
     CompleteGate,
     GateCheck,
     ReaderKind,
@@ -82,7 +83,6 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.records import Budget as GateBudget
 from instruction_eval.scores import (
     BootstrapRng,
     Noise,
@@ -604,7 +604,7 @@ def _sum_unless_null(values: Sequence[int | None]) -> int | None:
 def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[str, object] | None:
     """Return the gate's budget as written, `none` or its unit and ceiling, or None while the gate or its budget is unwritten."""
     budget = records.gate().budget if files.holds(GATE_RECORD) else None
-    if isinstance(budget, GateBudget):
+    if isinstance(budget, Budget):
         return {"unit": budget.unit, "ceiling": budget.ceiling}
     return budget
 

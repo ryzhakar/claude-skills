@@ -26,17 +26,22 @@ from instruction_eval.records import (
     INSTRUCTION_FILE,
     KEY_SEPARATOR,
     NEAR_SOURCE_COMPARES,
+    NO_BUDGET,
     NO_EFFECT_STOP,
     ORIGINS_FILE,
     PASS_OUTCOME,
     PASSED_STOP,
     SEALED_SPLIT,
+    SECONDS_UNIT,
     SOURCE_CONTROL,
     SPENT_INPUT_TOKENS_KEY,
     STOP_RECORD,
+    TOKENS_UNIT,
     VS_AIM_COMPARES,
     VS_EMPTY_COMPARES,
     VS_PLACEBO_COMPARES,
+    Budget,
+    BudgetUnit,
     Compares,
     Direction,
     DoneBy,
@@ -55,7 +60,6 @@ from instruction_eval.records import (
     revision_number,
     write_record,
 )
-from instruction_eval.records import Budget as GateBudget
 from instruction_eval.scores import (
     SCORE_USER_INPUTS,
     BootstrapRng,
@@ -195,9 +199,6 @@ def series_least_repeats(checks: Sequence[GateCheck], noise: Noise) -> int | Non
     return None if None in per_check else max(per_check, default=FEWEST_REPEATS)
 
 
-BudgetUnit = Literal["tokens", "seconds"]
-TOKENS_UNIT: BudgetUnit = "tokens"
-SECONDS_UNIT: BudgetUnit = "seconds"
 
 
 class BudgetRefusal(Exception):
@@ -216,12 +217,6 @@ class ReplyCost:
     input_tokens: int | None
     output_tokens: int | None
     seconds: float
-
-
-@dataclass(frozen=True)
-class Budget:
-    unit: BudgetUnit
-    ceiling: float
 
 
 @dataclass(frozen=True)
@@ -413,7 +408,6 @@ GATE_COMMAND = "revision gate"
 GATE_KEYS = ("repeats", "level", "done_by", "checks", "keep_rule", "budget")
 STOP_GATE_KEYS = ("keep_rule", "budget")
 HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
-NO_BUDGET: NoBudget = "none"
 
 
 def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
@@ -540,9 +534,9 @@ def hypothesis_reads(revision: str) -> list[str]:
     return [f"{revision}/{HYPOTHESIS_FILE}{KEY_SEPARATOR}{key}" for key in HYPOTHESIS_KEYS]
 
 
-def _stop_budget(budget: GateBudget | NoBudget) -> Budget | None:
+def _stop_budget(budget: Budget | NoBudget) -> Budget | None:
     """Return the gate's budget as the stop rules take it, null without a ceiling."""
-    return None if budget == NO_BUDGET else Budget(budget.unit, budget.ceiling)
+    return None if budget == NO_BUDGET else budget
 
 
 def _cost_so_far(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
