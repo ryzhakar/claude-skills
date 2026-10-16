@@ -15,13 +15,17 @@ Let the writer, in any session, make the change; run every command with the seri
 <make-the-one-change>
 Read `change` in `r<n+1>/1-hypothesis.yaml`: `action` `rewrite`, `add`, `delete`, or `move`; `sentence`; and `to` for `move`.
 
-Number the parent's sentences, `r<n>/2-instruction.md`, as `check-coverage` numbers them; never count by eye.
+Number the sentences of the parent, `r<n>/2-instruction.md`, from 1 in reading order; never count by eye.
+
+Count as one sentence each leading `---` frontmatter block, fenced code block, heading line, table row line (separator included), blockquote line, and horizontal rule.
+
+Split paragraphs and list items after `.`, `!`, or `?` plus any closing `"`, `'`, `)`, `]`, before whitespace or the unit's end; never split after `e.g`, `i.e`, `etc`, `vs`, `cf`, `Mr`, `Mrs`, `Dr`, `St`, `No`, or a single letter.
 
 Edit the live instruction at `series.yaml` `instruction` so it equals the parent except for that one change; never touch a second sentence.
 
 For `rewrite s`, replace sentence s; for `delete s`, remove it; for `add s`, insert a sentence at position s of the new text; for `move s` with `to t`, place sentence s unchanged at position t.
 
-Keep every three-word sequence of tasks, turns, the `aim`, and `r1/4-conditions/placebo.md` out of the new text; never borrow their wording.
+Keep every three-word sequence of the `3-tasks.yaml` task `message`s and conversation `turns`, the `4-conditions.yaml` `aim`, and `r1/4-conditions/placebo.md` out of the new text; never borrow their wording.
 </make-the-one-change>
 
 <record-the-revision>
