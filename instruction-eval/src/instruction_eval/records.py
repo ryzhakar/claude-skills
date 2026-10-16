@@ -1876,8 +1876,13 @@ def _completed(gate: Gate) -> CompleteGate:
     keys = {field.name: getattr(gate, field.name) for field in fields(gate)}
     absent = next((key for key, value in keys.items() if value is None), None)
     if absent is not None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{absent}")
+        raise missing_gate_key(absent)
     return CompleteGate(**keys)
+
+
+def missing_gate_key(key: str) -> Refusal:
+    """Return the refusal of a `7-gate.yaml` key still unwritten."""
+    return Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{key}")
 
 
 def _resolve(path: str, kind: str, names: Iterable[str], known: Container[str]) -> None:

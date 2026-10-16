@@ -19,7 +19,7 @@ import yaml
 
 from instruction_eval.conditions import SOURCE_SEPARATOR, strip_frontmatter
 from instruction_eval.coverage import split_sentences
-from instruction_eval.reader import OATH_SKILL
+from instruction_eval.reader import OATH_SKILL, REPEATS_KEY
 from instruction_eval.records import (
     AGENTS_FOLDER,
     AGREEMENT_FILE,
@@ -69,6 +69,7 @@ from instruction_eval.records import (
     Task,
     attempt_folder,
     load_record,
+    missing_gate_key,
     parse_record,
     series_paths,
     sha256,
@@ -524,7 +525,7 @@ def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords
     """Return the replies the revision expects, refusing a gate whose repeats are unwritten."""
     repeats = records.gate().repeats
     if repeats is None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}repeats")
+        raise missing_gate_key(REPEATS_KEY)
     sentence_count = len(split_sentences(files.read_bytes(f"{revision}/{INSTRUCTION_FILE}")))
     return expected_replies(revision, records.tasks(), records.conditions(), repeats, sentence_count)
 
@@ -545,7 +546,7 @@ def _blind_reads(revision: str, expected: Iterable[ExpectedReply]) -> list[str]:
     return [
         *(f"{TASKS_RECORD}{KEY_SEPARATOR}{key}" for key in TASK_KEYS),
         *(f"{CONDITIONS_RECORD}{KEY_SEPARATOR}{key}" for key in CONDITION_KEYS),
-        f"{GATE_RECORD}{KEY_SEPARATOR}repeats",
+        f"{GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}",
         f"{revision}/{INSTRUCTION_FILE}",
         *(reply.path for reply in expected),
         CALIBRATION_RECORD,

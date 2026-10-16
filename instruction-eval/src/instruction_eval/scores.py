@@ -35,11 +35,11 @@ from instruction_eval.records import (
     LongSentencesDemand,
     PatternDemand,
     Record,
-    Refusal,
     SeriesFolder,
     SeriesRecords,
     Split,
     accepted_verdict_paths,
+    missing_gate_key,
     origin_reply_paths,
     write_record,
 )
@@ -382,8 +382,10 @@ def require_valid_level(level: float) -> None:
 
 
 BootstrapRng = Callable[[], numpy.random.Generator]
-LEVEL_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}level"
-DONE_BY_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}done_by"
+LEVEL_KEY = "level"
+DONE_BY_KEY = "done_by"
+LEVEL_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{LEVEL_KEY}"
+DONE_BY_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{DONE_BY_KEY}"
 DEMANDS_AND_TASKS_INPUTS = (f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", f"{TASKS_RECORD}{KEY_SEPARATOR}tasks", f"{TASKS_RECORD}{KEY_SEPARATOR}conversations")
 SCORE_USER_INPUTS = (
     *DEMANDS_AND_TASKS_INPUTS,
@@ -460,9 +462,9 @@ def revision_score(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapR
 def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
     """Return the gate's level and done mode, refusing either key unwritten."""
     if gate.level is None:
-        raise Refusal(f"missing key: {LEVEL_INPUT}")
+        raise missing_gate_key(LEVEL_KEY)
     if gate.done_by is None:
-        raise Refusal(f"missing key: {DONE_BY_INPUT}")
+        raise missing_gate_key(DONE_BY_KEY)
     return gate.level, gate.done_by
 
 

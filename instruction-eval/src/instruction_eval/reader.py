@@ -55,6 +55,7 @@ from instruction_eval.records import (
     Tasks,
     _dump_canonical_yaml,
     condition_path,
+    missing_gate_key,
     outcome_path,
     read_series_file,
     reply_path,
@@ -832,7 +833,7 @@ def _gate_repeats(records: SeriesRecords) -> int:
     """Return the repeats the gate holds, refusing them unwritten."""
     repeats = records.gate().repeats
     if repeats is None:
-        raise Refusal(f"missing key: {GATE_RECORD}{KEY_SEPARATOR}{REPEATS_KEY}")
+        raise missing_gate_key(REPEATS_KEY)
     return repeats
 
 
