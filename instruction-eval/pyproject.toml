@@ -5,6 +5,9 @@ description = "Measure whether an LLM instruction changes model behavior."
 requires-python = ">=3.11"
 dependencies = ["pyyaml>=6", "numpy>=1.26"]
 
+[project.scripts]
+instruction-eval = "instruction_eval.cli:main"
+
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
 default = true

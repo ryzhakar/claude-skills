@@ -1,7 +1,68 @@
 import argparse
+import json
+import os
+import random
 import re
+import subprocess
+import sys
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import datetime
+from functools import partial
+from pathlib import Path
+from typing import TextIO, get_args
 
-_READER_KINDS = ("agent", "command")
+import numpy
+
+from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.demands import demands_check
+from instruction_eval.gate import revision_gate
+from instruction_eval.judge import (
+    ATTEMPT_PATTERN,
+    calibrate_stage_one,
+    calibrate_stage_two,
+    judge_collect,
+    judge_prepare,
+    revision_blind,
+)
+from instruction_eval.reader import (
+    ASK_TIMEOUT_SECONDS,
+    CONFIG_DIR_VARIABLE,
+    AgentReader,
+    NeutralLoginRefused,
+    ReaderRun,
+    RunReader,
+    Transcript,
+    locate_transcripts,
+    reader_fingerprint,
+    reader_prepare,
+    revision_ask,
+    revision_collect,
+)
+from instruction_eval.records import (
+    ATTEMPT_ORIGINS_FILE,
+    CALIBRATION_FOLDER,
+    INSTRUCTION_FILE,
+    ReaderKind,
+    Refusal,
+    SeriesFolder,
+    SeriesRecords,
+    attempt_folder,
+    dump_canonical_yaml,
+    guard_series,
+)
+from instruction_eval.revision import revision_new
+from instruction_eval.scores import BOOTSTRAP_SEED, BootstrapRng, revision_detect, revision_score
+from instruction_eval.series import (
+    series_freeze,
+    series_keep,
+    series_new,
+    series_status,
+    series_stop,
+)
+from instruction_eval.tasks import expected_replies, tasks_check
+
+_READER_KINDS = get_args(ReaderKind)
 _REVISION_ID_PATTERN = re.compile(r"r[0-9]+")
 
 _ORDER_OF_WORK = """\
@@ -98,3 +159,302 @@ def build_parser() -> argparse.ArgumentParser:
         for verb, add_arguments in verbs.items():
             add_arguments(verb_parsers.add_parser(verb))
     return parser
+
+
+READER_TIMEOUT_SECONDS = ASK_TIMEOUT_SECONDS
+REFUSAL_EXIT_CODE = 1
+PLUGIN_ROOT = Path(__file__).resolve().parents[2]
+PLUGIN_MANIFEST = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
+BRIEF_TEMPLATE = Path(__file__).resolve().parent / "templates" / "judge-brief.md"
+GUARDED_COMMANDS = frozenset({("demands", "check"), ("coverage", "check"), ("tasks", "check"), ("revision", "score"), ("revision", "detect")})
+CALIBRATION_PLAN_PATTERN = "attempt-*/plan.yaml"
+FINGERPRINT_KEY = "fingerprint"
+FINGERPRINT_HASH_KEY = "fingerprint_hash"
+
+
+@dataclass(frozen=True)
+class Effects:
+    """Every effect a command takes: the clock, the folders, the environment, the random sources, and the readers of files and processes."""
+
+    now: Callable[[], datetime]
+    home: Path
+    working_dir: Path
+    environ: Mapping[str, str]
+    random: random.Random
+    bootstrap_rng: BootstrapRng
+    read_external: Callable[[Path], bytes]
+    read_transcript: Callable[[Path], bytes]
+    run_reader: RunReader
+    run_fingerprint: Callable[[Sequence[str]], str]
+    tool_version: str
+    brief_template: Path
+
+
+def _run_process(command: Sequence[str], stdin: str | None) -> subprocess.CompletedProcess[str] | None:
+    """Run the command to its end, returning None when it exceeds the time limit and refusing a command that cannot start."""
+    try:
+        return subprocess.run(list(command), input=stdin, capture_output=True, text=True, timeout=READER_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        return None
+    except OSError as error:
+        raise Refusal(f"cannot run {command[0]}: {error.strerror}") from None
+
+
+def _run_reader(now: Callable[[], datetime], command: Sequence[str], stdin: str, timeout_seconds: int) -> ReaderRun:
+    """Run a command reader on the messages and return when it started, how long it ran, its exit code, and its stdout."""
+    started = now()
+    finished = _run_process(command, stdin)
+    seconds = (now() - started).total_seconds()
+    return ReaderRun(started, seconds, None, "") if finished is None else ReaderRun(started, seconds, finished.returncode, finished.stdout)
+
+
+def _run_fingerprint(command: Sequence[str]) -> str:
+    """Run a command reader's fingerprint and return its stdout, refusing a failed or overlong run."""
+    finished = _run_process(command, None)
+    if finished is None:
+        raise Refusal(f"fingerprint exceeded {READER_TIMEOUT_SECONDS} seconds")
+    if finished.returncode != 0:
+        raise Refusal(f"fingerprint exited {finished.returncode}")
+    return finished.stdout
+
+
+def real_effects() -> Effects:
+    """Build the effects of the running process: the system clock, home, working directory, environment, and OS randomness."""
+    now = lambda: datetime.now().astimezone()
+    return Effects(
+        now=now,
+        home=Path.home(),
+        working_dir=Path.cwd(),
+        environ=dict(os.environ),
+        random=random.SystemRandom(),
+        bootstrap_rng=lambda: numpy.random.default_rng(BOOTSTRAP_SEED),
+        read_external=Path.read_bytes,
+        read_transcript=Path.read_bytes,
+        run_reader=partial(_run_reader, now),
+        run_fingerprint=_run_fingerprint,
+        tool_version=json.loads(PLUGIN_MANIFEST.read_text())["version"],
+        brief_template=BRIEF_TEMPLATE,
+    )
+
+
+Handler = Callable[[argparse.Namespace, Effects], str]
+
+
+def _series_folder(effects: Effects) -> SeriesFolder:
+    """Return the series folder the command runs in."""
+    return SeriesFolder(effects.working_dir)
+
+
+def _command_name(arguments: argparse.Namespace) -> str:
+    """Return the command's group and verb as the guard names it."""
+    return f"{arguments.group} {arguments.verb}"
+
+
+def _transcripts(effects: Effects) -> list[Transcript]:
+    """Return the subagent transcripts of the series folder's sessions, none when the session names no config dir."""
+    config_dir = effects.environ.get(CONFIG_DIR_VARIABLE)
+    if not config_dir:
+        return []
+    try:
+        return locate_transcripts(Path(config_dir), effects.working_dir, effects.working_dir)
+    except ValueError as unreadable:
+        raise Refusal(str(unreadable)) from None
+
+
+def _refuse_unknown_conditions(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> None:
+    """Refuse the first named condition outside the revision's condition set."""
+    if not conditions:
+        return
+    instruction_path = f"{revision}/{INSTRUCTION_FILE}"
+    if not files.holds(instruction_path):
+        raise Refusal(f"missing record: {instruction_path}")
+    records = SeriesRecords(files)
+    sentence_count = len(split_sentences(files.read_bytes(instruction_path)))
+    replies = expected_replies(revision, records.tasks(), records.conditions(), 1, sentence_count)
+    known = sorted({reply.condition for reply in replies if reply.revision == revision})
+    for condition in conditions:
+        if condition not in known:
+            raise Refusal(f"unknown condition: {condition} (revision {revision} has {', '.join(known)})")
+
+
+def _latest_attempt_holds_origins(files: SeriesFolder) -> bool:
+    """Tell whether the highest attempt holding a plan has written its origins."""
+    plans = (files.root / CALIBRATION_FOLDER).glob(CALIBRATION_PLAN_PATTERN)
+    numbers = [int(match.group(1)) for plan in plans if (match := ATTEMPT_PATTERN.fullmatch(plan.parent.name))]
+    return bool(numbers) and files.holds(f"{attempt_folder(max(numbers))}/{ATTEMPT_ORIGINS_FILE}")
+
+
+def _fresh_fingerprint_hash(files: SeriesFolder, effects: Effects) -> str | None:
+    """Return a command reader's fresh fingerprint hash, None for an agent reader."""
+    if isinstance(SeriesRecords(files).reader(), AgentReader):
+        return None
+    return reader_fingerprint(files, effects.run_fingerprint).fingerprint_hash
+
+
+def _new_series(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Make the series folder and return its path."""
+    files = series_new(arguments.name, arguments.instruction, arguments.sources, arguments.reader_kind, effects.working_dir, effects.home, effects.now())
+    return f"{files.root}\n"
+
+
+def _status(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Return the series' standing."""
+    return series_status(_series_folder(effects))
+
+
+def _freeze(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Freeze the series with a command reader's fresh fingerprint hash."""
+    files = _series_folder(effects)
+    guard_series(files, _command_name(arguments))
+    series_freeze(files, _fresh_fingerprint_hash(files, effects), effects.read_external, effects.bootstrap_rng, effects.tool_version, effects.now())
+    return ""
+
+
+def _stop(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Stop the series for the reason given."""
+    series_stop(_series_folder(effects), arguments.reason)
+    return ""
+
+
+def _keep(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Write the kept revision over the live instruction."""
+    series_keep(_series_folder(effects))
+    return ""
+
+
+def _check_demands(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Check the demands record."""
+    demands_check(_series_folder(effects))
+    return ""
+
+
+def _check_coverage(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Check the coverage record of the revision."""
+    coverage_check(_series_folder(effects), arguments.revision)
+    return ""
+
+
+def _check_tasks(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Check the task record."""
+    tasks_check(_series_folder(effects), effects.read_external)
+    return ""
+
+
+def _fingerprint(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Return the command reader's parsed fingerprint and its hash."""
+    fingerprint = reader_fingerprint(_series_folder(effects), effects.run_fingerprint)
+    return dump_canonical_yaml({FINGERPRINT_KEY: fingerprint.output, FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash}).decode()
+
+
+def _prepare_reader(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Write the condition files and reader definitions of the revision."""
+    reader_prepare(_series_folder(effects), arguments.revision, effects.read_external, effects.environ, effects.home, effects.working_dir)
+    return ""
+
+
+def _ask(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Ask the revision's missing replies and return an agent reader's launch list."""
+    files = _series_folder(effects)
+    guard_series(files, _command_name(arguments))
+    _refuse_unknown_conditions(files, arguments.revision, arguments.conditions)
+    return revision_ask(files, arguments.revision, arguments.conditions, effects.run_reader, effects.run_fingerprint)
+
+
+def _collect(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Collect the revision's replies and return the surplus transcripts."""
+    return revision_collect(_series_folder(effects), arguments.revision, _transcripts(effects), effects.read_transcript)
+
+
+def _blind(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Blind the revision's replies into packets."""
+    revision_blind(_series_folder(effects), arguments.revision, effects.random)
+    return ""
+
+
+def _detect(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Run the detectors over the revision's replies."""
+    revision_detect(_series_folder(effects), arguments.revision)
+    return ""
+
+
+def _score(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Score the revision."""
+    revision_score(_series_folder(effects), arguments.revision, effects.bootstrap_rng)
+    return ""
+
+
+def _gate(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Write the revision's outcome."""
+    revision_gate(_series_folder(effects), arguments.revision, effects.bootstrap_rng)
+    return ""
+
+
+def _new_revision(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Record the next revision from the live instruction."""
+    revision_new(_series_folder(effects), effects.read_external)
+    return ""
+
+
+def _calibrate(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Run stage two of calibration when the latest attempt holds origins, else stage one."""
+    files = _series_folder(effects)
+    if _latest_attempt_holds_origins(files):
+        return calibrate_stage_two(files, _transcripts(effects), effects.read_transcript)
+    return calibrate_stage_one(files, effects.brief_template, effects.environ, effects.home, effects.working_dir, effects.random)
+
+
+def _prepare_judge(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Write the judgings of the revision and return their launch list."""
+    return judge_prepare(_series_folder(effects), arguments.revision, effects.environ, effects.home, effects.working_dir, _transcripts(effects), effects.read_transcript)
+
+
+def _collect_judge(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Collect the revision's verdicts."""
+    return judge_collect(_series_folder(effects), arguments.revision, _transcripts(effects), effects.read_transcript)
+
+
+HANDLERS: dict[tuple[str, str], Handler] = {
+    ("series", "new"): _new_series,
+    ("series", "status"): _status,
+    ("series", "freeze"): _freeze,
+    ("series", "stop"): _stop,
+    ("series", "keep"): _keep,
+    ("demands", "check"): _check_demands,
+    ("coverage", "check"): _check_coverage,
+    ("tasks", "check"): _check_tasks,
+    ("reader", "fingerprint"): _fingerprint,
+    ("reader", "prepare"): _prepare_reader,
+    ("revision", "ask"): _ask,
+    ("revision", "collect"): _collect,
+    ("revision", "blind"): _blind,
+    ("revision", "detect"): _detect,
+    ("revision", "score"): _score,
+    ("revision", "gate"): _gate,
+    ("revision", "new"): _new_revision,
+    ("judge", "calibrate"): _calibrate,
+    ("judge", "prepare"): _prepare_judge,
+    ("judge", "collect"): _collect_judge,
+}
+
+
+def run_command(arguments: argparse.Namespace, effects: Effects) -> str:
+    """Run the parsed command with its effects and return the text it prints."""
+    if (arguments.group, arguments.verb) in GUARDED_COMMANDS:
+        guard_series(_series_folder(effects), _command_name(arguments))
+    return HANDLERS[(arguments.group, arguments.verb)](arguments, effects)
+
+
+def execute(argv: Sequence[str], effects: Effects, stdout: TextIO, stderr: TextIO) -> int:
+    """Run the command `argv` names, printing its text to `stdout` or its refusal to `stderr`, and return the exit code."""
+    arguments = build_parser().parse_args(list(argv))
+    try:
+        stdout.write(run_command(arguments, effects))
+    except (Refusal, NeutralLoginRefused) as refusal:
+        stderr.write(f"{refusal}\n")
+        return REFUSAL_EXIT_CODE
+    return 0
+
+
+def main() -> None:
+    """Run the command line of the process with the effects of the running process."""
+    raise SystemExit(execute(sys.argv[1:], real_effects(), sys.stdout, sys.stderr))
