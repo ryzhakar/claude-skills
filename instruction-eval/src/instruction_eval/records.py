@@ -243,11 +243,14 @@ INTERVAL_LENGTH = 2
 MINIMUM_ANCHORS_PER_PACKET = 3
 TOTAL_REFUSAL = "breach totals derive from breaches maps and are never stored"
 
-AGENT_READER = "agent"
-COMMAND_READER = "command"
+ReaderKind = Literal["agent", "command"]
+AGENT_READER, COMMAND_READER = get_args(ReaderKind)
 USER_RATER = "user"
+AGENT_RATER = "agent"
+USER_RATERS = [USER_RATER]
+AGENT_RATERS = [AGENT_RATER, AGENT_RATER]
 REFERENCE_USER_FILE = f"{REFERENCE_PREFIX}{USER_RATER}.yaml"
-PERMITTED_RATER_SETS = ((USER_RATER,), (AGENT_READER, AGENT_READER))
+PERMITTED_RATER_SETS = (tuple(USER_RATERS), tuple(AGENT_RATERS))
 OPEN_SPLIT = "open"
 SEALED_SPLIT = "sealed"
 
@@ -867,12 +870,7 @@ AGENT_MODEL_PATTERN = re.compile(r"^claude-[a-z0-9]+(-[a-z0-9]+)+\Z")
 MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
 RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
 CONDITION_PLACEHOLDER = "{condition}"
-USER_RATERS = ["user"]
-AGENT_RATERS = ["agent", "agent"]
 
-ReaderKind = Literal["agent", "command"]
-AGENT_KIND: Final[ReaderKind] = "agent"
-COMMAND_KIND: Final[ReaderKind] = "command"
 Counter = Literal["judge", "pattern", "long-sentences"]
 JUDGE_COUNTER: Final[Counter] = "judge"
 PATTERN_COUNTER: Final[Counter] = "pattern"
@@ -895,8 +893,8 @@ DEMAND_KEYS_BY_COUNTER: Mapping[Counter, AbstractSet[str]] = {
     LONG_SENTENCES_COUNTER: DEMAND_KEYS | {"limit"},
 }
 READER_KEYS_BY_KIND: Mapping[ReaderKind, AbstractSet[str]] = {
-    AGENT_KIND: {"kind", "model"},
-    COMMAND_KIND: {"kind", "model", "command", "fingerprint", "sampling"},
+    AGENT_READER: {"kind", "model"},
+    COMMAND_READER: {"kind", "model", "command", "fingerprint", "sampling"},
 }
 CHANGE_KEYS_BY_ACTION: Mapping[ChangeAction, AbstractSet[str]] = {
     **{action: {"action", "sentence"} for action in get_args(InPlaceAction)},
@@ -1111,7 +1109,7 @@ Reader = AgentReader | CommandReader
 def parse_reader(document: object) -> Reader:
     """Build the `5-reader.yaml` record as the variant its `kind` names, refusing the other variant's keys."""
     kind, keys = read_variant(document, DOCUMENT, "kind", READER_KEYS_BY_KIND)
-    if kind == AGENT_KIND:
+    if kind == AGENT_READER:
         return AgentReader(model=read_agent_model(keys["model"], "model"))
     return CommandReader(
         model=read_model(keys["model"], "model"),
@@ -1661,7 +1659,7 @@ class SeriesRecords:
     def reader(self) -> Reader:
         """Load `5-reader.yaml`, its kind the series reader kind."""
         reader = _parsed(READER_RECORD, parse_reader, _read_document(self.files, READER_RECORD))
-        self._refuse_other_reader_kind(READER_RECORD, AGENT_KIND if isinstance(reader, AgentReader) else COMMAND_KIND)
+        self._refuse_other_reader_kind(READER_RECORD, AGENT_READER if isinstance(reader, AgentReader) else COMMAND_READER)
         return reader
 
     def gate(self) -> Gate:
