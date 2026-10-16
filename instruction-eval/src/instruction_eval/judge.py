@@ -937,9 +937,31 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence[Transcript], 
     guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
     attempt = latest_attempt_number(files)
-    folder = attempt_folder(attempt)
     records = SeriesRecords(files)
     plan = records.plan(attempt)
+    ratings = _validated_ratings(files, records, attempt, plan, transcripts, read_transcript)
+    return _scored_decision(files, records, attempt, plan, ratings)
+
+
+@dataclass(frozen=True)
+class _ValidatedRatings:
+    """An attempt's ratings once validated: the sample by blind id and its replies, the candidate and agent ratings, the reference files, each agent rating's run, and each rating file's entries."""
+
+    sampled: Mapping[str, ExpectedReply]
+    replies: Mapping[str, Record]
+    candidates: Sequence[_Rating]
+    agent_ratings: Sequence[_Rating]
+    reference_files: Sequence[str]
+    runs: Mapping[str, dict[str, str]]
+    entries: Mapping[str, Mapping[str, Record]]
+    judge_demand_ids: Sequence[str]
+
+
+def _validated_ratings(
+    files: SeriesFolder, records: SeriesRecords, attempt: int, plan: Plan, transcripts: Sequence[Transcript], read_transcript: Callable[[Path], bytes]
+) -> _ValidatedRatings:
+    """Return the attempt's ratings, refusing a missing rating, an edited rating definition, a rating without a valid run, or a rating that is not a valid verdict of the sample."""
+    folder = attempt_folder(attempt)
     sampled = _sampled_replies(records.attempt_origins(attempt))
     candidates, raters = _candidate_ratings(attempt, plan), _agent_rater_ratings(attempt, plan)
     agent_ratings = [*candidates, *raters]
@@ -950,11 +972,16 @@ def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence[Transcript], 
     runs = {rating.file: _rating_run(files, folder, rating, transcripts, read_transcript) for rating in agent_ratings}
     judge_demand_ids = sorted(demand.id for demand in records.demands().demands if isinstance(demand, JudgeDemand))
     entries = {name: _rating_entries(files, folder, name, sampled.keys(), set(judge_demand_ids)) for name in [*runs, *reference_files]}
-    reference = _reference([entries[name] for name in reference_files], judge_demand_ids)
-    measures = _agreement([entries[rating.file] for rating in candidates], reference, judge_demand_ids)
-    anchors = _anchors(reference, replies)
-    reads = _stage_two_reads(files, records, attempt, list(sampled.values()), agent_ratings, reference_files)
-    write_record(files, f"{folder}/{AGREEMENT_FILE}", {**dataclasses.asdict(measures), "ratings": runs}, reads)
+    return _ValidatedRatings(sampled, replies, candidates, agent_ratings, reference_files, runs, entries, judge_demand_ids)
+
+
+def _scored_decision(files: SeriesFolder, records: SeriesRecords, attempt: int, plan: Plan, ratings: _ValidatedRatings) -> str:
+    """Score the candidate ratings against the reference, write the agreement, and on acceptance the anchors and the calibration, returning the acceptance or rejection."""
+    reference = _reference([ratings.entries[name] for name in ratings.reference_files], ratings.judge_demand_ids)
+    measures = _agreement([ratings.entries[rating.file] for rating in ratings.candidates], reference, ratings.judge_demand_ids)
+    anchors = _anchors(reference, ratings.replies)
+    reads = _stage_two_reads(files, records, attempt, list(ratings.sampled.values()), ratings.agent_ratings, ratings.reference_files)
+    write_record(files, f"{attempt_folder(attempt)}/{AGREEMENT_FILE}", {**dataclasses.asdict(measures), "ratings": ratings.runs}, reads)
     rejection = _threshold_miss(measures, plan.acceptance) or _anchor_shortfall(anchors, records.tasks().tasks, plan.anchors_per_packet)
     if rejection:
         return f"rejected: attempt {attempt} ({rejection})\n"
