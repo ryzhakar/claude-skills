@@ -196,7 +196,7 @@ def _refuse_echoes(files: SeriesFolder, records: SeriesRecords, tasks: Tasks, re
     aim = (AIM_LABEL, conditions.aim)
     placebo = _placebo_source(files, conditions, read_external)
     _, placebo_text = placebo
-    _refuse_shared_phrases(_task_messages(tasks), [*instructions, aim, placebo])
+    _refuse_shared_phrases(task_messages(tasks), [*instructions, aim, placebo])
     _refuse_shared_phrases([aim], instructions)
     _refuse_shared_phrases([(PLACEBO_LABEL, placebo_text)], _source_files(files, records.series()))
 
@@ -233,7 +233,7 @@ def _source_files(files: SeriesFolder, series: Series) -> list[LabelledText]:
     return [(path, utf8_text(read_series_file(files, path), path)) for path in paths]
 
 
-def _task_messages(tasks: Tasks) -> list[LabelledText]:
+def task_messages(tasks: Tasks) -> list[LabelledText]:
     """Return the label and text of every task message and every conversation turn."""
     turns = [(f"conversation {conversation.id} turn {number}", turn) for conversation in tasks.conversations for number, turn in enumerate(conversation.turns, 1)]
     return [*((f"task {task.id}", task.message) for task in tasks.tasks), *turns]

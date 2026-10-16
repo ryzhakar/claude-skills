@@ -42,7 +42,7 @@ from instruction_eval.records import (
 )
 from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, DONE_BY_INPUT, Noise, ReplyRow, join_reply_rows
 from instruction_eval.series import guard_series, refuse_unclosed_frontmatter, revision_ids
-from instruction_eval.tasks import AIM_LABEL, shared_phrases
+from instruction_eval.tasks import AIM_LABEL, LabelledText, shared_phrases, task_messages
 
 NOISE_MULTIPLE = 2
 
@@ -178,7 +178,6 @@ NEW_COMMAND = "revision new"
 COVERAGE_INPUTS = (f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences")
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
 PLACEBO_CONDITION = condition_path(FIRST_REVISION, PLACEBO_CONTROL)
-LabelledText = tuple[str, str]
 
 
 def revision_new(files: SeriesFolder, read_external: Callable[[Path], bytes]) -> None:
@@ -251,10 +250,8 @@ def _refuse_unmade_change(parent: list[str], child: list[str], change: Change) -
 
 def _echo_sources(files: SeriesFolder, tasks: Tasks, aim: str) -> list[LabelledText]:
     """Return the label and text of every task message and conversation turn, the aim, and r1's placebo condition."""
-    turns = [(f"conversation {conversation.id} turn {number}", turn) for conversation in tasks.conversations for number, turn in enumerate(conversation.turns, 1)]
     return [
-        *((f"task {task.id}", task.message) for task in tasks.tasks),
-        *turns,
+        *task_messages(tasks),
         (AIM_LABEL, aim),
         (PLACEBO_CONDITION, files.read_bytes(PLACEBO_CONDITION).decode()),
     ]
