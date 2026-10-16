@@ -39,8 +39,6 @@ Make each task answerable from its message alone: put the code or text it needs 
 
 Give an agent reader no task needing a tool; never invite one.
 
-PR1 measured generated reader definitions registering with no tools.
-
 Give a command reader's task a tool only when the message declares it; never assume one.
 
 Write `answer_key` as a Python `re` regex, no flags, matching a correct reply's substance anywhere, fenced code included; set it null only where no pattern exists, and never for `overreach`.
@@ -50,8 +48,6 @@ Check a quoted-evidence answer with a key matching the quoted text literally; ne
 Give ids lowercase letters, digits, and hyphens, unique across tasks and conversations, without `--` or a `-turn-<digits>` ending; never give two tasks, or a task and a first turn, the same message.
 
 Write `conversations: []` for an agent reader; never give it a conversation.
-
-PR6 measured `SendMessage` wrapping each later turn in harness text.
 
 For a command reader, write no conversations or at least two per half, each of at least two turns.
 </write-the-tasks>
