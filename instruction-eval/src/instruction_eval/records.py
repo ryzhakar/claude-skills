@@ -1963,6 +1963,11 @@ def outcome_path(revision: str) -> str:
     return f"{revision}/{OUTCOME_FILE}"
 
 
+def packet_path(revision: str, packet: str) -> str:
+    """Return the path of a revision's blinded packet."""
+    return f"{revision}/{PACKETS_FOLDER}/{packet}.md"
+
+
 def verdict_path(revision: str, packet: str, judging: int) -> str:
     """Return the path of the verdict judging `judging` of a revision's packet writes."""
     return f"{revision}/{VERDICTS_FOLDER}/{packet}/k{judging}.yaml"

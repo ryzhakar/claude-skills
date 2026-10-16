@@ -54,7 +54,6 @@ from instruction_eval.records import (
     KEY_SEPARATOR,
     OPEN_SPLIT,
     ORIGINS_FILE,
-    PACKETS_FOLDER,
     PLAN_FILE,
     READER_RECORD,
     REFERENCE_PREFIX,
@@ -84,6 +83,7 @@ from instruction_eval.records import (
     guard_series,
     load_record,
     missing_gate_key,
+    packet_path,
     parse_record,
     series_paths,
     sha256,
@@ -533,7 +533,7 @@ def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords
 def _write_packets(files: SeriesFolder, revision: str, packets: Mapping[str, str]) -> None:
     """Write each packet's text to the revision's packets folder."""
     for packet, text in packets.items():
-        write_file(files, f"{revision}/{PACKETS_FOLDER}/{packet}.md", text.encode())
+        write_file(files, packet_path(revision, packet), text.encode())
 
 
 def _origins_record(origins: Mapping[str, Record], packets: Mapping[str, str]) -> dict[str, object]:
@@ -812,7 +812,7 @@ def _blinded_packets(files: SeriesFolder, revision: str, origins: Record) -> dic
 
 def _blinded_packet(files: SeriesFolder, revision: str, packet: str, packet_hash: str) -> str:
     """Return the packet's text, refusing it missing, or edited when its bytes differ from the hash its origins hold."""
-    path = f"{revision}/{PACKETS_FOLDER}/{packet}.md"
+    path = packet_path(revision, packet)
     if not files.holds(path):
         raise Refusal(f"missing packet: {path}")
     content = files.read_bytes(path)
@@ -888,7 +888,7 @@ def _collect_reads(files: SeriesFolder, records: SeriesRecords, revision: str, o
         CALIBRATION_RECORD,
         f"{attempt_folder(calibration['attempt'])}/{BRIEF_SNAPSHOT_FILE}",
         ANCHORS_RECORD,
-        *(f"{revision}/{PACKETS_FOLDER}/{packet}.md" for packet in origins["packets"]),
+        *(packet_path(revision, packet) for packet in origins["packets"]),
         f"{revision}/{ORIGINS_FILE}",
         *series_paths(files, f"{revision}/{VERDICTS_FOLDER}/**/*.yaml"),
         *series_paths(files, f"{AGENTS_FOLDER}/{JUDGE_DEFINITION_PREFIX}{revision}-*.md"),
