@@ -170,6 +170,17 @@ def test_revision_ask_through_a_command_reader_answers_only_the_named_conditions
     assert collected.stderr == "missing replies: 12, first r1/5-replies/aim/t-open/repeat-1.yaml\n"
 
 
+def test_coverage_check_and_tasks_check_pass_in_silence_on_a_valid_series(command_series, run):
+    overreach = [
+        {"id": f"t-overreach-{half}", "tempts": "overreach", "split": half, "message": f"Describe {half} gardens.", "answer_key": "Yes."}
+        for half in ("open", "sealed")
+    ]
+    write_yaml(command_series / "3-tasks.yaml", {**TASKS, "tasks": [*TASKS["tasks"], *overreach]})
+    for command in (["coverage", "check", "r1"], ["tasks", "check"]):
+        result = run(command_series, *command)
+        assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), command
+
+
 def test_judge_calibrate_runs_stage_one_until_the_latest_attempt_holds_origins_then_stage_two(command_series, run):
     attempt = command_series / "6-judge/calibration/attempt-1"
     attempt.mkdir(parents=True)
