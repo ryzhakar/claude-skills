@@ -67,6 +67,14 @@ re-prescription after a failed review, escalation at the third failed cycle). Ag
 holds `Agent`, runs `lite-cycle` at depth 1, reviews each unit itself), `executor` (`model: haiku`, `isolation: worktree`,
 disposable, executes the prescription's exact text, matches gates as Python `re` patterns, reports `DONE` or `BLOCKED`).
 
+**instruction-eval** — measures whether an LLM instruction changes model behavior, 0.1.0 (added 2026-10-14, see
+`architecture_log.md`), depends on `manifesto`, no agents, no hooks. Eleven skills, one per step of a measurement
+series: `start-series`, `list-demands`, `check-coverage`, `write-tasks`, `freeze-series`, `revise`,
+`judge-replies`, `calibrate-judge`, `measure-revision`, `keep-revision`, `diagnose`. CLI `instruction-eval`
+(`bin/instruction-eval`, a `uv run --locked` wrapper): on PATH while the plugin is enabled; needs `uv`. Spec and
+journal under `orchestration_log/history/2026-10-12/`; open findings in
+`orchestration_log/recon/2026-10-14/reports/final-review.md`.
+
 **manifesto** — constitution binding.
 Skills: `manifesto-oath` (identity construction from loaded constitution elements; tiered name
 resolution), `manifesto-writing`.
