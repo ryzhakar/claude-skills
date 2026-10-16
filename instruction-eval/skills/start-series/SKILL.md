@@ -7,37 +7,33 @@ description: >
 ---
 
 <gather-the-inputs>
-Ask the user for the instruction path, each source path, a series name without `/`, and whether the reader is a Claude model; never guess one.
+Ask the user for the instruction path, each source path, a series name without `/`, and the reader: a Claude model (`agent`) or another model served by a command (`command`); never guess one.
 
 Turn every path into an absolute path; never pass a relative one.
 </gather-the-inputs>
 
 <set-up-the-neutral-login-once>
-Skip this section when `$(claudes path readers)/settings.json` already holds both allow rules and both plugins below; never skip on the folder's existence alone.
+Skip this section when `$(claudes path readers)/settings.json` holds both allow rules and both plugins below; never skip on the folder's existence alone.
 
-Run the whole section when `claudes path readers` fails or that file is absent; never run part of it.
+When `claudes ls` lists no `readers`, hand the user `/plugin marketplace add ryzhakar/claude-skills` and then `/plugin install instruction-eval@my-claude-skills` to type in the default login, and ask for each command's result; never continue before two reports of success.
 
-Hand the user `/plugin marketplace add ryzhakar/claude-skills` and then `/plugin install instruction-eval@my-claude-skills` to type in the default login, and ask for each command's result; never run `claudes new` before two reports of success.
+On a failure report, stop and report its text; never retry it yourself.
 
-Make the neutral login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`; never name another plugin.
+Then make the login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`; never name another plugin.
 
-When `claudes ls` already lists `readers`, skip `claudes new` and edit its `settings.json`; never make the login twice.
+When `claudes ls` lists `readers`, skip the plugin commands and `claudes new`; never make the login twice.
 
-Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing entry.
+Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing allow entry.
 
-Keep `enabledPlugins` exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true; never add a `CLAUDE.md`, a skill, or an agent to the bare login.
+Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true, removing every other key; never add a `CLAUDE.md`, a skill, or an agent to the bare login.
 
 Read `settings.json` back and confirm both allow rules and both plugins; never continue with a gap.
 
-Hand the user `claudes run readers` to start once in their own terminal; never start it yourself.
-
-Ask the user to run `/login` there with the same account and to report success; never continue before that report.
+When `claudes new` ran, hand the user `claudes run readers` to start once in their own terminal and ask them to run `/login` there with the same account and report success; never continue before that report.
 </set-up-the-neutral-login-once>
 
 <make-the-series-folder>
-Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` from the Bash tool in any working directory; never start a session in the folder before it.
-
-The installed plugin puts `instruction-eval` on the Bash tool's PATH.
+Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` by bare name from the Bash tool in any working directory; never start a session in the folder before it.
 
 When Bash finds no `instruction-eval`, hand the user `/reload-plugins` and rerun; never call the CLI by its cache path.
 
@@ -65,10 +61,12 @@ On `unclosed frontmatter: <path>`, ask the user to close the frontmatter in that
 
 On `missing file`, correct the path; never create the file.
 
-On any other refusal, or the same refusal after a fix, stop and report its text; never run `series new` after its third refusal.
+On any other refusal, or the same refusal after a fix, stop and report its text; stop after three refusals of any kind; never run `series new` a fourth time.
 </answer-each-refusal>
 
-<launch-the-neutral-session>
+<rules-for-the-neutral-session>
+Take no action on these rules here; apply them in the neutral session, where later skills run.
+
 Run every other instruction-eval skill in the neutral session; never run `reader prepare`, `judge prepare`, or `judge calibrate` stage one in another.
 
 Launch every generated agent from that session's main thread; never from a subagent.
@@ -76,8 +74,8 @@ Launch every generated agent from that session's main thread; never from a subag
 After each `reader prepare`, `judge prepare`, and `judge calibrate` stage one, check the Agent tool's list of available agent types for the new ones, rechecking after each of up to three 20-second waits; never restart the session for them.
 
 When a type stays absent after the third wait, stop and report it to the user; never launch a missing type.
-</launch-the-neutral-session>
+</rules-for-the-neutral-session>
 
 <hand-off>
-End the turn with one message holding the folder path, `cd ~/instruction-series/<name> && claudes run readers` for the user's own terminal, and `/instruction-eval:list-demands` to type first in that session; never launch the session or load `list-demands` yourself.
+End the turn with one message holding the absolute folder path, `cd ~/instruction-series/<name> && claudes run readers` for the user's own terminal, and `/instruction-eval:list-demands` to type first in that session; never launch the session or load `list-demands` yourself.
 </hand-off>
