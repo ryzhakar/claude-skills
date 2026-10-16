@@ -8,10 +8,9 @@ import instruction_eval
 from instruction_eval.judge import judge_prepare
 from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, sha256, write_file, write_record
-from series_fixtures import tree, write_yaml
+from series_fixtures import NeutralLogin, tree, write_yaml
 
 TEMPLATE = Path(instruction_eval.__file__).parent / "templates" / "judge-brief.md"
-REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
 JUDGE_MODEL = "claude-opus-4-1"
 RATER_MODEL = "claude-sonnet-5-5"
 READER_MODEL = "claude-haiku-4-5"
@@ -76,19 +75,6 @@ def series_folder(tmp_path: Path, brief: str = TEMPLATE.read_text()) -> SeriesFo
     packets = {packet: sha256(files.read_bytes(f"r1/6-packets/{packet}.md")) for packet in PACKETS}
     write_record(files, "r1/6-origins.yaml", {"ids": ids, "packets": packets}, [])
     return files
-
-
-class NeutralLogin:
-    """A neutral login under a home folder, as the judge commands check it."""
-
-    def __init__(self, home: Path):
-        self.home = home
-        self.config_dir = home / ".claudes-bare" / "readers"
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        (self.config_dir / "settings.json").write_text(json.dumps({"enabledPlugins": REQUIRED_PLUGINS}))
-
-    def environ(self) -> dict[str, str]:
-        return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
 
 
 def prepare(tmp_path: Path, files: SeriesFolder, transcripts: list[Transcript] = ()) -> str:

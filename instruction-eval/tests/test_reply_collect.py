@@ -9,8 +9,7 @@ import yaml
 
 from instruction_eval.reader import Transcript, reader_prepare, revision_collect
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import tree, write_revision
-from test_reader_prepare import NeutralLogin
+from series_fixtures import NeutralLogin, tree, write_revision
 
 MODEL = "claude-sonnet-5-5"
 SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}

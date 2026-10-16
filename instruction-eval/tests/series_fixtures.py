@@ -1,4 +1,5 @@
 import hashlib
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,6 +74,23 @@ def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
     target = files.root / path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(yaml.safe_dump(document, sort_keys=False))
+
+
+REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
+
+
+class NeutralLogin:
+    """A neutral login under a home folder enabling the required plugins, as the commands launching agents check it."""
+
+    def __init__(self, home: Path):
+        self.home = home
+        self.config_dir = home / ".claudes-bare" / "readers"
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        (self.config_dir / "settings.json").write_text(json.dumps({"enabledPlugins": REQUIRED_PLUGINS}))
+
+    def environ(self) -> dict[str, str]:
+        """Return the environment naming the login's config folder."""
+        return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
 
 
 def write_agent_series(files: SeriesFolder, demands: dict, tasks: dict, anchors: dict) -> None:

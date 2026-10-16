@@ -10,10 +10,9 @@ import instruction_eval
 from instruction_eval.judge import calibrate_stage_one, calibrate_stage_two
 from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
-from series_fixtures import sha256, tree, write_yaml
+from series_fixtures import NeutralLogin, sha256, tree, write_yaml
 
 TEMPLATE = Path(instruction_eval.__file__).parent / "templates" / "judge-brief.md"
-REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
 JUDGE_MODEL = "claude-opus-4-1"
 RATER_MODEL = "claude-sonnet-5-5"
 READER_MODEL = "claude-haiku-4-5"
@@ -57,19 +56,6 @@ def write_reply(files: SeriesFolder, condition: str, task: str, repeat: int) -> 
         "cost": COST,
     }
     write_record(files, reply_path("r1", condition, task, repeat, None), record, [])
-
-
-class NeutralLogin:
-    """A neutral login under a home folder, as stage one checks it."""
-
-    def __init__(self, home: Path):
-        self.home = home
-        self.config_dir = home / ".claudes-bare" / "readers"
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        (self.config_dir / "settings.json").write_text(json.dumps({"enabledPlugins": REQUIRED_PLUGINS}))
-
-    def environ(self) -> dict[str, str]:
-        return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
 
 
 def stage_one(tmp_path: Path, files: SeriesFolder) -> None:

@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -6,9 +5,7 @@ import yaml
 
 from instruction_eval.reader import reader_prepare
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import sha256, tree
-
-REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
+from series_fixtures import NeutralLogin, sha256, tree
 
 SOURCE_PATH = Path("/home/writer/policy.md")
 PLACEBO_PATH = Path("/home/writer/gardening.md")
@@ -94,17 +91,6 @@ def test_first_revision_writes_its_instruction_every_control_and_every_omission_
 
 def forbidden_read(path: Path) -> bytes:
     raise AssertionError(f"read external file {path}")
-
-
-class NeutralLogin:
-    def __init__(self, home: Path):
-        self.home = home
-        self.config_dir = home / ".claudes-bare" / "readers"
-        self.config_dir.mkdir(parents=True)
-        (self.config_dir / "settings.json").write_text(json.dumps({"enabledPlugins": REQUIRED_PLUGINS}))
-
-    def environ(self) -> dict[str, str]:
-        return {"CLAUDE_CONFIG_DIR": str(self.config_dir)}
 
 
 def split_definition(definition: bytes) -> tuple[dict, bytes]:
