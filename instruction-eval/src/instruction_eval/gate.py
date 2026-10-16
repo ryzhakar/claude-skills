@@ -297,7 +297,7 @@ def refuse_unaffordable_ask(
         raise BudgetRefusal(f"projected cost {projected:g} exceeds ceiling {budget.ceiling:g}")
 
 
-def _sum_unless_null(values: list[int | None]) -> int | None:
+def sum_unless_null(values: Sequence[int | None]) -> int | None:
     """Sum the values, or return null when any value is null."""
     return None if None in values else sum(values)
 
@@ -306,8 +306,8 @@ def sum_revision_cost(replies: list[ReplyCost]) -> RevisionCost:
     """Sum replies into the cost record of a revision's asks, token sums null when any reply's are."""
     return {
         "replies": len(replies),
-        "input_tokens": _sum_unless_null([reply.input_tokens for reply in replies]),
-        "output_tokens": _sum_unless_null([reply.output_tokens for reply in replies]),
+        "input_tokens": sum_unless_null([reply.input_tokens for reply in replies]),
+        "output_tokens": sum_unless_null([reply.output_tokens for reply in replies]),
         "seconds": sum(reply.seconds for reply in replies),
     }
 

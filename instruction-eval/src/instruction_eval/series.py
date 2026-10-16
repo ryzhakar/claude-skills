@@ -26,6 +26,7 @@ from instruction_eval.gate import (
     near_source_without_sources,
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
+    sum_unless_null,
 )
 from instruction_eval.records import (
     AGENTS_FOLDER,
@@ -589,16 +590,11 @@ def _cost_standing(files: SeriesFolder, records: SeriesRecords) -> dict[str, obj
     costs = [outcome[COST_KEY] for outcome in _gated_outcomes(files, records).values()]
     spent = {
         REPLIES_KEY: sum(cost[REPLIES_KEY] for cost in costs),
-        INPUT_TOKENS_KEY: _sum_unless_null([cost[INPUT_TOKENS_KEY] for cost in costs]),
-        OUTPUT_TOKENS_KEY: _sum_unless_null([cost[OUTPUT_TOKENS_KEY] for cost in costs]),
+        INPUT_TOKENS_KEY: sum_unless_null([cost[INPUT_TOKENS_KEY] for cost in costs]),
+        OUTPUT_TOKENS_KEY: sum_unless_null([cost[OUTPUT_TOKENS_KEY] for cost in costs]),
         SECONDS_KEY: sum(cost[SECONDS_KEY] for cost in costs),
     }
     return {SPENT_KEY: spent, BUDGET_KEY: _written_budget(files, records)}
-
-
-def _sum_unless_null(values: Sequence[int | None]) -> int | None:
-    """Sum the values, or return None when any value is None."""
-    return None if None in values else sum(values)
 
 
 def _written_budget(files: SeriesFolder, records: SeriesRecords) -> str | dict[str, object] | None:
