@@ -104,7 +104,7 @@ from instruction_eval.tasks import (
 SERIES_HOME_FOLDER = "instruction-series"
 PATH_SEPARATOR = "/"
 STOP_COMMAND = "series stop"
-KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
+KEEP_RULE_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}keep_rule"
 GIT_ENTRY = ".git"
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
 
