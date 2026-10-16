@@ -311,10 +311,10 @@ def test_series_keep_writes_the_kept_revision_over_the_live_instruction(walk):
 TASKS = [task["id"] for task in yaml.safe_load((FIXTURES / "3-tasks.yaml").read_text())["tasks"]]
 REPEATS = yaml.safe_load((FIXTURES / "7-gate-started.yaml").read_text())["repeats"]
 FIRST_CONDITIONS = ("aim", "empty", "instruction", "placebo", "source")
-SILENT_CHECKS = (("demands", "check"), ("coverage", "check", "r1"), ("tasks", "check"), ("reader", "fingerprint"))
+COMMANDS_WRITING_NOTHING = (("demands", "check"), ("coverage", "check", "r1"), ("tasks", "check"), ("reader", "fingerprint"))
 
 
-def replies(revision: str, conditions: Sequence[str]) -> set[str]:
+def reply_files(revision: str, conditions: Sequence[str]) -> set[str]:
     """Return the reply files of every task and repeat of the conditions in the revision."""
     return {f"{revision}/5-replies/{condition}/{task}/repeat-{repeat}.yaml" for condition in conditions for task in TASKS for repeat in range(1, REPEATS + 1)}
 
@@ -333,9 +333,9 @@ def first_revision_writes() -> list[tuple[tuple[str, ...], set[str]]]:
     """Return the runs of r1 from `series new` to its gate, each with the files it writes."""
     return [
         (SERIES_NEW, {"series.yaml", "1-source/policy.md", "r1/2-instruction.md", "r1/2-revision.yaml"}),
-        *((command, set()) for command in SILENT_CHECKS),
+        *((command, set()) for command in COMMANDS_WRITING_NOTHING),
         (("reader", "prepare", "r1"), {"4-placebo-source.md", *(f"r1/4-conditions/{condition}.md" for condition in FIRST_CONDITIONS)}),
-        (("revision", "ask", "r1"), replies("r1", FIRST_CONDITIONS)),
+        (("revision", "ask", "r1"), reply_files("r1", FIRST_CONDITIONS)),
         (("revision", "collect", "r1"), set()),
         (
             ("judge", "calibrate"),
@@ -361,7 +361,7 @@ def later_revision_writes(number: int) -> list[tuple[tuple[str, ...], set[str]]]
         (("revision", "new"), {f"{revision}/2-instruction.md", f"{revision}/2-revision.yaml"}),
         (("coverage", "check", revision), set()),
         (("reader", "prepare", revision), {f"{revision}/4-conditions/instruction.md"}),
-        (("revision", "ask", revision, "--conditions", "instruction"), replies(revision, ["instruction"])),
+        (("revision", "ask", revision, "--conditions", "instruction"), reply_files(revision, ["instruction"])),
         (("revision", "collect", revision), set()),
         *judged_revision_writes(revision),
         (("revision", "score", revision), {f"{revision}/8-scores.yaml"}),
