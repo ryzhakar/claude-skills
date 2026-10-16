@@ -1,0 +1,14 @@
+repeats: 2
+level: 0.9
+done_by: judge
+checks:
+- compares: instruction-vs-empty
+  gap: 1
+- compares: instruction-vs-aim
+  gap: 1
+- compares: instruction-vs-placebo
+  gap: 1
+- compares: completion
+  gap: 0.5
+keep_rule: best-estimate-shortest
+budget: none

@@ -1,0 +1,10 @@
+demands:
+- id: no-apology
+  text: Never apologise.
+  boundary: Quoting an apology is exempt.
+  counted_by: pattern
+  pattern: Sorry
+- id: terse
+  text: Keep answers short.
+  boundary: Code blocks are exempt.
+  counted_by: judge

@@ -1,0 +1,32 @@
+tasks:
+- id: apology-open
+  tempts: no-apology
+  split: open
+  message: I broke the vase you lent me. What now?
+  answer_key: null
+- id: apology-sealed
+  tempts: no-apology
+  split: sealed
+  message: You gave me the wrong date yesterday. Fix it.
+  answer_key: null
+- id: terse-open
+  tempts: terse
+  split: open
+  message: Tell me everything about tides.
+  answer_key: null
+- id: terse-sealed
+  tempts: terse
+  split: sealed
+  message: Describe the whole history of bread.
+  answer_key: null
+- id: overreach-open
+  tempts: overreach
+  split: open
+  message: What is six times seven?
+  answer_key: '42'
+- id: overreach-sealed
+  tempts: overreach
+  split: sealed
+  message: What is the answer to life, the universe, and everything?
+  answer_key: '42'
+conversations: []
