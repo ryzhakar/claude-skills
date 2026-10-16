@@ -22,6 +22,8 @@ STATUS_COMMAND = "series status"
 KEEP_COMMAND = "series keep"
 STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 INPUTS_KEY = "inputs"
+FEWEST_REPEATS = 2
+_UNBOUNDED = float("inf")
 
 SERIES_RECORD = "series.yaml"
 DEMANDS_RECORD = "2-demands.yaml"
@@ -482,7 +484,7 @@ def _reply_reader_kind_rule(reply: Record, path: str) -> None:
 
 _NOISE = _mapping(
     {
-        "repeats": _integer(2),
+        "repeats": _integer(FEWEST_REPEATS),
         "level": _LEVEL,
         "z": _POSITIVE,
         "sigma": _mapping(
@@ -706,7 +708,7 @@ def _raters(value: Any, path: str) -> None:
 
 _AGREEMENT = _mapping(
     {
-        "inputs": _INPUTS,
+        INPUTS_KEY: _INPUTS,
         "demands": _map_of(
             _IDENTIFIER,
             _mapping({"breach_difference": _ANY_NUMBER, "self_difference": _ANY_NUMBER}),
@@ -744,7 +746,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     RecordKind.AGREEMENT: _AGREEMENT,
     RecordKind.CALIBRATION: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "attempt": _POSITION,
             "judge_model": _AGENT_MODEL,
             "raters": _raters,
@@ -756,11 +758,11 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
         }
     ),
     RecordKind.ANCHORS: _mapping(
-        {"inputs": _INPUTS, "anchors": _list_of(_ANCHOR, "id", non_empty=True)}
+        {INPUTS_KEY: _INPUTS, "anchors": _list_of(_ANCHOR, "id", non_empty=True)}
     ),
     RecordKind.SCORES: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "split": _enum(OPEN_SPLIT),
             "rows": _list_of(_ROW),
             "by_condition": _map_of(_IDENTIFIER, _CONDITION_SCORES),
@@ -771,7 +773,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.OUTCOME: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "outcome": _enum(PASS_OUTCOME, FAIL_OUTCOME),
             "checks": _list_of(_OUTCOME_CHECK),
             "instruction_breaches": _NON_NEGATIVE,
@@ -786,22 +788,22 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
         _outcome_parent_fields_rule,
     ),
     RecordKind.DETECTORS: _mapping(
-        {"inputs": _INPUTS, "verdicts": _list_of(_DETECTOR_ENTRY, "id", non_empty=True)}
+        {INPUTS_KEY: _INPUTS, "verdicts": _list_of(_DETECTOR_ENTRY, "id", non_empty=True)}
     ),
     RecordKind.COLLECTED: _mapping(
-        {"inputs": _INPUTS, "packets": _map_of(_IDENTIFIER, _COLLECTED_PACKET)}
+        {INPUTS_KEY: _INPUTS, "packets": _map_of(_IDENTIFIER, _COLLECTED_PACKET)}
     ),
     RecordKind.VERDICT: _mapping({"verdicts": _list_of(_VERDICT_ENTRY, "id", non_empty=True)}),
     RecordKind.ORIGINS: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "ids": _map_of(_IDENTIFIER, _origin),
             "packets": _map_of(_IDENTIFIER, _HASH),
         }
     ),
     RecordKind.STOP: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "stop": _enum(PASSED_STOP, NO_EFFECT_STOP, CAPPED_STOP, UNRESOLVABLE_STOP),
             "kept": _nullable(_REVISION_ID),
         },
@@ -810,7 +812,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.REVISION: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "number": _POSITION,
             "parent": _nullable(_REVISION_ID),
             "hash": _HASH,
@@ -821,7 +823,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.FROZEN: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "hashes": _map_of(_text, _HASH),
             "noise": _NOISE,
             "tool_version": _text,
@@ -831,7 +833,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     ),
     RecordKind.REPLY: _mapping(
         {
-            "inputs": _INPUTS,
+            INPUTS_KEY: _INPUTS,
             "condition": _IDENTIFIER,
             "task": _IDENTIFIER,
             "split": _SPLIT,
@@ -867,7 +869,6 @@ Choice = TypeVar("Choice", bound=str)
 
 DOCUMENT = ""
 DOCUMENT_LABEL = "record"
-FEWEST_REPEATS = 2
 HASH_DIGEST_PATTERN = re.compile(rf"^{HASH_PATTERN}\Z")
 ID_PATTERN = re.compile(rf"^{IDENTIFIER_PATTERN}\Z")
 BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
@@ -922,13 +923,13 @@ class Series:
 
 def parse_series(document: object) -> Series:
     """Build the `series.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "created", "inputs"})
+    keys = read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "created", INPUTS_KEY})
     return Series(
         instruction=read_absolute_path(keys["instruction"], "instruction"),
         sources=read_entries(keys["sources"], "sources", read_absolute_path),
         reader_kind=read_choice(keys["reader_kind"], "reader_kind", get_args(ReaderKind)),
         created=read_timestamp(keys["created"], "created"),
-        inputs=read_map(keys["inputs"], "inputs", read_string, read_hash),
+        inputs=read_map(keys[INPUTS_KEY], INPUTS_KEY, read_string, read_hash),
     )
 
 
@@ -1319,8 +1320,8 @@ def read_acceptance(value: object, where: str) -> Acceptance:
     """Return the acceptance thresholds of a calibration plan."""
     keys = read_keys(value, where, required={"breach_difference", "self_difference", "done_agreement"})
     return Acceptance(
-        breach_difference=read_bounded_number(keys["breach_difference"], child(where, "breach_difference"), 0, float("inf")),
-        self_difference=read_bounded_number(keys["self_difference"], child(where, "self_difference"), 0, float("inf")),
+        breach_difference=read_bounded_number(keys["breach_difference"], child(where, "breach_difference"), 0, _UNBOUNDED),
+        self_difference=read_bounded_number(keys["self_difference"], child(where, "self_difference"), 0, _UNBOUNDED),
         done_agreement=read_bounded_number(keys["done_agreement"], child(where, "done_agreement"), 0, 1),
     )
 
