@@ -125,7 +125,7 @@ def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], read
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256, refusing a record carrying its own."""
     if INPUTS_KEY in record:
         raise Refusal(f"record {path} carries inputs; inputs come from its reads")
-    write_file(files, path, _dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(files, reads)}))
+    write_file(files, path, dump_canonical_yaml({**record, INPUTS_KEY: _hash_inputs(files, reads)}))
 
 
 def load_record(files: SeriesFolder, path: str) -> dict[str, Any]:
@@ -180,7 +180,7 @@ def _hash_input(read_file: Callable[[str], bytes], parse_file: Callable[[str], A
     file_path, separator, key = entry.partition(KEY_SEPARATOR)
     if not separator:
         return sha256(read_file(file_path))
-    return sha256(_dump_canonical_yaml(_read_top_level_value(parse_file(file_path), entry, key)))
+    return sha256(dump_canonical_yaml(_read_top_level_value(parse_file(file_path), entry, key)))
 
 
 def _read_top_level_value(document: Any, entry: str, key: str) -> Any:
@@ -213,7 +213,7 @@ def _stage_beside(target: Path, content: bytes) -> Path:
     return Path(staged.name)
 
 
-def _dump_canonical_yaml(value: Any) -> bytes:
+def dump_canonical_yaml(value: Any) -> bytes:
     """Dump a value as YAML with sorted keys in block style."""
     return yaml.safe_dump(value, sort_keys=True, default_flow_style=False, allow_unicode=True).encode()
 

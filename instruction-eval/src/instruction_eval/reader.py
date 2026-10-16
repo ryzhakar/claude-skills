@@ -52,8 +52,8 @@ from instruction_eval.records import (
     SeriesRecords,
     Task,
     Tasks,
-    _dump_canonical_yaml,
     condition_path,
+    dump_canonical_yaml,
     missing_gate_key,
     outcome_path,
     read_series_file,
@@ -705,7 +705,7 @@ def reader_fingerprint(files: SeriesFolder, run_fingerprint: Callable[[Sequence[
     reader = _command_reader(SeriesRecords(files).reader())
     output = _parse_fingerprint_output(run_fingerprint(reader.fingerprint))
     _refuse_missing_key(output, (*FINGERPRINT_KEYS, *reader.sampling))
-    return Fingerprint(output=output, fingerprint_hash=sha256(_dump_canonical_yaml(output)))
+    return Fingerprint(output=output, fingerprint_hash=sha256(dump_canonical_yaml(output)))
 
 
 def _command_reader(reader: Reader) -> CommandReader:
