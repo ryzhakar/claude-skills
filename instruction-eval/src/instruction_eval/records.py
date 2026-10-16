@@ -13,7 +13,7 @@ from dataclasses import dataclass, fields
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Final, Literal, NoReturn, TypeVar, get_args
+from typing import Any, Literal, NoReturn, TypeVar, get_args
 
 import yaml
 
@@ -264,14 +264,18 @@ USER_RATERS = [USER_RATER]
 AGENT_RATERS = [AGENT_RATER, AGENT_RATER]
 REFERENCE_USER_FILE = f"{REFERENCE_PREFIX}{USER_RATER}.yaml"
 PERMITTED_RATER_SETS = (tuple(USER_RATERS), tuple(AGENT_RATERS))
-OPEN_SPLIT = "open"
-SEALED_SPLIT = "sealed"
+Split = Literal["open", "sealed"]
+OPEN_SPLIT, SEALED_SPLIT = get_args(Split)
 
-REWRITE_ACTION = "rewrite"
-ADD_ACTION = "add"
-DELETE_ACTION = "delete"
-MOVE_ACTION = "move"
+InPlaceAction = Literal["rewrite", "add", "delete"]
+MoveAction = Literal["move"]
+ChangeAction = InPlaceAction | MoveAction
+REWRITE_ACTION, ADD_ACTION, DELETE_ACTION = get_args(InPlaceAction)
+(MOVE_ACTION,) = get_args(MoveAction)
 MOVE_TARGET_KEY = "to"
+
+ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
+CHANGED, REVERSED, UNCHANGED, UNRESOLVED = get_args(ChangedFromParent)
 
 PASSED_STOP = "passed"
 NO_EFFECT_STOP = "no-effect"
@@ -787,7 +791,7 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
             "cost": _OUTCOME_COST,
         },
         {
-            "changed_from_parent": _enum("changed", "reversed", "unchanged", "unresolved"),
+            "changed_from_parent": _enum(*get_args(ChangedFromParent)),
             "parent_comparison": _PARENT_COMPARISON,
         },
         _outcome_parent_fields_rule,
@@ -883,10 +887,7 @@ RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
 CONDITION_PLACEHOLDER = "{condition}"
 
 Counter = Literal["judge", "pattern", "long-sentences"]
-JUDGE_COUNTER: Final[Counter] = "judge"
-PATTERN_COUNTER: Final[Counter] = "pattern"
-LONG_SENTENCES_COUNTER: Final[Counter] = "long-sentences"
-Split = Literal["open", "sealed"]
+JUDGE_COUNTER, PATTERN_COUNTER, LONG_SENTENCES_COUNTER = get_args(Counter)
 Omissions = Literal["every-sentence", "none"]
 DoneBy = Literal["answer-key", "judge"]
 KeepRule = Literal["best-estimate-shortest"]
@@ -894,8 +895,6 @@ BudgetUnit = Literal["tokens", "seconds"]
 TOKENS_UNIT, SECONDS_UNIT = get_args(BudgetUnit)
 NoBudget = Literal["none"]
 (NO_BUDGET,) = get_args(NoBudget)
-InPlaceAction = Literal["rewrite", "add", "delete"]
-ChangeAction = InPlaceAction | Literal["move"]
 Direction = Literal["down", "up"]
 Scalar = str | int | float | bool
 

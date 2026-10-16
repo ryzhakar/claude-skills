@@ -4,14 +4,19 @@ from dataclasses import dataclass
 from fractions import Fraction
 from functools import partial
 from statistics import fmean
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 import numpy
 
 from instruction_eval.records import (
     BUDGET_REASON,
     CAPPED_STOP,
+    CHANGED,
     COMPLETION_COMPARES,
+    REVERSED,
+    UNCHANGED,
+    UNRESOLVED,
+    ChangedFromParent,
     DRIFT_COMPARES,
     EMPTY_CONTROL,
     FAIL_OUTCOME,
@@ -324,11 +329,6 @@ def _keep_rank(revision: str, outcome: Record) -> tuple[bool, float, int, int]:
 
 DOWN: Direction = "down"
 UP: Direction = "up"
-ChangedFromParent = Literal["changed", "reversed", "unchanged", "unresolved"]
-CHANGED: ChangedFromParent = "changed"
-REVERSED: ChangedFromParent = "reversed"
-UNCHANGED: ChangedFromParent = "unchanged"
-UNRESOLVED: ChangedFromParent = "unresolved"
 
 
 @dataclass(frozen=True)
