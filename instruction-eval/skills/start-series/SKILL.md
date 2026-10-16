@@ -25,7 +25,9 @@ When `claudes ls` lists `readers`, skip the plugin commands, `claudes new`, and 
 
 Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing allow entry.
 
-Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true, removing every other key; never add a `CLAUDE.md`, a skill, or an agent to the bare login.
+Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true; never list another plugin in `enabledPlugins`.
+
+Keep the bare login free of a `CLAUDE.md`, a skill, and an agent; never add one.
 
 Read `settings.json` back and confirm both allow rules and both plugins; never continue with a gap.
 
