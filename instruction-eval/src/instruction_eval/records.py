@@ -1955,8 +1955,13 @@ def condition_path(revision: str, condition: str) -> str:
 
 def reply_path(revision: str, condition: str, task: str, repeat: int, turn: int | None) -> str:
     """Return the path of one reply: a task's repeat, or with a turn a conversation turn within a repeat."""
-    repeat_path = f"{revision}/{REPLIES_FOLDER}/{condition}/{task}/{REPEAT_PREFIX}{repeat}"
-    return f"{repeat_path}.yaml" if turn is None else f"{repeat_path}/{TURN_PREFIX}{turn}.yaml"
+    path = repeat_path(revision, condition, task, repeat)
+    return f"{path}.yaml" if turn is None else f"{path}/{TURN_PREFIX}{turn}.yaml"
+
+
+def repeat_path(revision: str, condition: str, task: str, repeat: int) -> str:
+    """Return the path a repeat's reply file or turn folder is named by, without its suffix."""
+    return f"{revision}/{REPLIES_FOLDER}/{condition}/{task}/{REPEAT_PREFIX}{repeat}"
 
 
 def outcome_path(revision: str) -> str:

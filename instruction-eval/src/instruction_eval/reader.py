@@ -41,7 +41,6 @@ from instruction_eval.records import (
     SPENT_INPUT_TOKENS_KEY,
     TASK_KEYS,
     TASKS_RECORD,
-    TURN_PREFIX,
     AgentReader,
     CommandReader,
     Conversation,
@@ -58,6 +57,7 @@ from instruction_eval.records import (
     missing_gate_key,
     outcome_path,
     read_series_file,
+    repeat_path,
     reply_path,
     revision_ids,
     revision_number,
@@ -1072,7 +1072,6 @@ MESSAGES_KEY = "messages"
 ROLE_KEY = "role"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
-TURN_FILE_PREFIX = f"/{TURN_PREFIX}"
 COVERAGE_KEYS = ("demands", "sentences")
 FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/{REPLIES_FOLDER}"
 REPLY_PATTERN = "*.yaml"
@@ -1190,8 +1189,8 @@ def _refuse_changed_fingerprint(files: SeriesFolder, records: SeriesRecords, fin
 
 
 def _serial_order(reply: ExpectedReply) -> tuple[str, int]:
-    """Return the sort key that orders replies by path, a conversation's turns in numeric order."""
-    return (reply.path.rpartition(TURN_FILE_PREFIX)[0] or reply.path, reply.turn or 0)
+    """Return the sort key that orders replies by their repeat's path, a conversation's turns in numeric order."""
+    return (repeat_path(reply.revision, reply.condition, reply.task, reply.repeat), reply.turn or 0)
 
 
 def _reader_command(files: SeriesFolder, reader: CommandReader, reply: ExpectedReply) -> list[str]:
