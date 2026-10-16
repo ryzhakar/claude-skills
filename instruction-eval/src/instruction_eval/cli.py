@@ -190,10 +190,10 @@ class Effects:
     brief_template: Path
 
 
-def _run_process(command: Sequence[str], stdin: str | None) -> subprocess.CompletedProcess[str] | None:
+def _run_process(command: Sequence[str], stdin: str | None, timeout_seconds: int) -> subprocess.CompletedProcess[str] | None:
     """Run the command to its end, returning None when it exceeds the time limit and refusing a command that cannot start."""
     try:
-        return subprocess.run(list(command), input=stdin, capture_output=True, text=True, timeout=READER_TIMEOUT_SECONDS)
+        return subprocess.run(list(command), input=stdin, capture_output=True, text=True, timeout=timeout_seconds)
     except subprocess.TimeoutExpired:
         return None
     except OSError as error:
@@ -203,14 +203,14 @@ def _run_process(command: Sequence[str], stdin: str | None) -> subprocess.Comple
 def _run_reader(now: Callable[[], datetime], command: Sequence[str], stdin: str, timeout_seconds: int) -> ReaderRun:
     """Run a command reader on the messages and return when it started, how long it ran, its exit code, and its stdout."""
     started = now()
-    finished = _run_process(command, stdin)
+    finished = _run_process(command, stdin, timeout_seconds)
     seconds = (now() - started).total_seconds()
     return ReaderRun(started, seconds, None, "") if finished is None else ReaderRun(started, seconds, finished.returncode, finished.stdout)
 
 
 def _run_fingerprint(command: Sequence[str]) -> str:
     """Run a command reader's fingerprint and return its stdout, refusing a failed or overlong run."""
-    finished = _run_process(command, None)
+    finished = _run_process(command, None, READER_TIMEOUT_SECONDS)
     if finished is None:
         raise Refusal(f"fingerprint exceeded {READER_TIMEOUT_SECONDS} seconds")
     if finished.returncode != 0:
