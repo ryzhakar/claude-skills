@@ -4,13 +4,20 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy
 import yaml
 
 from instruction_eval.records import SeriesFolder, reply_path, write_file, write_record
+from instruction_eval.scores import BOOTSTRAP_SEED
 
 
 def sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def bootstrap_rng() -> numpy.random.Generator:
+    """Return the fresh seeded random source the composition root hands each bootstrap."""
+    return numpy.random.default_rng(BOOTSTRAP_SEED)
 
 
 def tree(root: Path) -> list[str]:

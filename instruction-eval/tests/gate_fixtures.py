@@ -4,13 +4,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy
 import pytest
-from series_fixtures import Reply, sha256, write_origins, write_yaml
+from series_fixtures import Reply, bootstrap_rng, sha256, write_origins, write_yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from instruction_eval.scores import BOOTSTRAP_SEED
 
 FIRST_INSTRUCTION = b"Be terse. Avoid hedges.\n"
 DEMANDS = {
@@ -137,11 +135,6 @@ def frozen_series(tmp_path: Path, replies: Sequence[Reply], gate: dict = GATE) -
     write_measured_revision(files, "r1", replies)
     write_record(files, "8-frozen.yaml", {"hashes": {}, "noise": NOISE, "tool_version": "0.1.0", "frozen_at": "2026-10-14T10:00:00+00:00"}, [])
     return files
-
-
-def bootstrap_rng() -> numpy.random.Generator:
-    """Return the fresh seeded random source the composition root hands each bootstrap."""
-    return numpy.random.default_rng(BOOTSTRAP_SEED)
 
 
 def measured_reads(revision: str, replies: Sequence[Reply]) -> set[str]:

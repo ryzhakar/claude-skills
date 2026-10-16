@@ -2,9 +2,8 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy
 import pytest
-from series_fixtures import Reply, sha256, tree, write_origins, write_yaml
+from series_fixtures import Reply, bootstrap_rng, sha256, tree, write_origins, write_yaml
 
 from instruction_eval.records import (
     Refusal,
@@ -14,7 +13,6 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.scores import BOOTSTRAP_SEED
 from instruction_eval.series import series_freeze
 
 INSTRUCTION = b"Be terse. Avoid hedges.\n"
@@ -129,11 +127,6 @@ def ready_series(tmp_path: Path, replies: list[Reply] | None = None, gate: dict 
 def read_nothing(path: Path) -> bytes:
     """Stand in for the external file reader, which a series holding its placebo snapshot never calls."""
     raise AssertionError(f"read an external file: {path}")
-
-
-def bootstrap_rng() -> numpy.random.Generator:
-    """Return the fresh seeded random source the composition root hands each bootstrap."""
-    return numpy.random.default_rng(BOOTSTRAP_SEED)
 
 
 def freeze(files: SeriesFolder, fingerprint_hash: str | None = None) -> None:

@@ -8,7 +8,6 @@ from gate_fixtures import (
     HYPOTHESIS_KEYS,
     REPLY_COST,
     assert_refused_writing_nothing,
-    bootstrap_rng,
     first_replies,
     frozen_series,
     gate_reads,
@@ -18,7 +17,7 @@ from gate_fixtures import (
     write_measured_revision,
     write_revision_instruction,
 )
-from series_fixtures import Reply, write_yaml
+from series_fixtures import Reply, bootstrap_rng, write_yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import Refusal, SeriesRecords
