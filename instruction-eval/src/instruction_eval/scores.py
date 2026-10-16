@@ -469,9 +469,13 @@ def _scoring_keys(gate: Gate) -> tuple[float, DoneBy]:
 
 
 def _score_reads(revision: str, origins: Record, collected: Record) -> list[str]:
-    """Return what `revision score` reads: the user keys, every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
+    """Return what `revision score` reads: the user keys and the revision's measured records."""
+    return [*SCORE_USER_INPUTS, *measured_reads(revision, origins, collected)]
+
+
+def measured_reads(revision: str, origins: Record, collected: Record) -> list[str]:
+    """Return a measured revision's records: every reply file the origins name, the origins, the accepted verdicts, the collection, and the detector counts."""
     return [
-        *SCORE_USER_INPUTS,
         *origin_reply_paths(origins, revision).values(),
         f"{revision}/{ORIGINS_FILE}",
         *accepted_verdict_paths(revision, collected),

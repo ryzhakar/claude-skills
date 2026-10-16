@@ -11,9 +11,7 @@ import numpy
 from instruction_eval.records import (
     BUDGET_REASON,
     CAPPED_STOP,
-    COLLECTED_FILE,
     COMPLETION_COMPARES,
-    DETECTORS_FILE,
     DRIFT_COMPARES,
     EMPTY_CONTROL,
     FAIL_OUTCOME,
@@ -28,7 +26,6 @@ from instruction_eval.records import (
     NEAR_SOURCE_COMPARES,
     NO_BUDGET,
     NO_EFFECT_STOP,
-    ORIGINS_FILE,
     PASS_OUTCOME,
     PASSED_STOP,
     SEALED_SPLIT,
@@ -52,7 +49,6 @@ from instruction_eval.records import (
     Refusal,
     SeriesFolder,
     SeriesRecords,
-    accepted_verdict_paths,
     guard_series,
     origin_reply_paths,
     outcome_path,
@@ -73,6 +69,7 @@ from instruction_eval.scores import (
     done_value,
     instruction_comparisons,
     join_reply_rows,
+    measured_reads,
     paired_units,
     task_means,
 )
@@ -454,7 +451,7 @@ def measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) ->
     return MeasuredRevision(
         sealed_rows=join_reply_rows(origins, verdicts, records.detectors(revision), done_by, SEALED_SPLIT),
         own_replies=[reply_cost(records.reply(path)) for path in own_paths],
-        reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *accepted_verdict_paths(revision, collected), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
+        reads=measured_reads(revision, origins, collected),
     )
 
 
