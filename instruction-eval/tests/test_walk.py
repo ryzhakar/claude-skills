@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -357,3 +358,26 @@ def test_each_command_writes_exactly_the_files_its_writes_cell_names(walk):
 def test_no_command_rewrites_or_removes_a_series_file(walk):
     for run in walk.session.runs:
         assert {path: run.after.get(path) for path in run.before} == run.before, run.command
+
+
+def current_hash(series: Path, entry: str) -> str:
+    """Return the sha256 an input entry names now: of the whole series file, or of a `<path>#<key>` value dumped as canonical YAML."""
+    path, _, key = entry.partition("#")
+    content = (series / path).read_bytes()
+    if key:
+        content = yaml.safe_dump(yaml.safe_load(content)[key], sort_keys=True, default_flow_style=False).encode()
+    return hashlib.sha256(content).hexdigest()
+
+
+def recorded_hashes(series: Path) -> dict[str, dict[str, str]]:
+    """Return by record every hash the series stores: each CLI record's `inputs` and `8-frozen.yaml`'s `hashes`."""
+    records = {path: yaml.safe_load(content) for path, content in tree_bytes(series).items() if path.endswith(".yaml")}
+    hashes = {path: record["inputs"] for path, record in records.items() if isinstance(record, dict) and "inputs" in record}
+    return {**hashes, "8-frozen.yaml#hashes": records["8-frozen.yaml"]["hashes"]}
+
+
+def test_after_series_keep_every_stored_hash_still_names_its_series_file_unchanged(walk):
+    for series in (walk.series, walk.stopped_series):
+        for record, hashes in recorded_hashes(series).items():
+            assert all((series / entry.partition("#")[0]).resolve().is_relative_to(series) for entry in hashes), record
+            assert {entry: current_hash(series, entry) for entry in hashes} == hashes, record
