@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from instruction_eval.conditions import strip_frontmatter
+from instruction_eval.conditions import SOURCE_SEPARATOR, strip_frontmatter
 from instruction_eval.coverage import split_sentences
 from instruction_eval.reader import OATH_SKILL
 from instruction_eval.records import (
@@ -94,7 +94,6 @@ OUT_PLACEHOLDER = "{OUT}"
 PLACEHOLDERS = (SOURCE_PLACEHOLDER, DEMANDS_PLACEHOLDER, PACKET_PLACEHOLDER, OUT_PLACEHOLDER)
 PLACEHOLDER_PATTERN = re.compile("|".join(re.escape(placeholder) for placeholder in PLACEHOLDERS))
 BRIEF_FORBIDDEN_WORDS = ("empty", "aim", "placebo", "instruction", "omit", "control", "condition", "revision", "reader", "digest")
-SOURCE_SEPARATOR = "\n\n"
 VERDICT_LABEL = RecordKind.VERDICT.value
 OMISSIONS_PACKET_SUFFIX = "--omissions"
 TURN_PACKET_INFIX = "-turn-"
