@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -287,6 +288,18 @@ def test_an_edited_condition_text_or_reader_definition_refuses_before_any_reply_
 
     with pytest.raises(Refusal, match=rf"^{edited.replace('.', r'[.]')} differs from its recomputation$"):
         collect(files, task_transcripts(tmp_path))
+
+    assert not (files.root / "r1/5-replies").exists()
+
+
+@pytest.mark.parametrize("bad_line", [b"not json", b"[1, 2]", b'{"type": "user"}'], ids=["not-json", "not-object", "malformed-entry"])
+def test_a_transcript_line_that_cannot_be_read_refuses_in_one_line_before_any_reply_is_written(tmp_path, bad_line):
+    files = prepared_series(tmp_path)
+    transcripts = task_transcripts(tmp_path)
+    transcripts[0].path.write_bytes(transcripts[0].path.read_bytes() + bad_line + b"\n")
+
+    with pytest.raises(Refusal, match=rf"^{re.escape(str(transcripts[0].path))}: line 3 "):
+        collect(files, transcripts)
 
     assert not (files.root / "r1/5-replies").exists()
 

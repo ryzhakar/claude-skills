@@ -302,14 +302,14 @@ def _parse_transcript_line(
     try:
         return _entry_from_json(entry, end)
     except _MalformedEntry as fault:
-        raise ValueError(f"{transcript}: line {number} {fault}") from fault
+        raise Refusal(f"{transcript}: line {number} {fault}") from fault
 
 
 def _decode_object_line(transcript: Path, number: int, raw_line: bytes) -> dict[str, Any]:
     """Decode one transcript line as a JSON object, refusing with the transcript and line number when it is not."""
     entry = _decode_transcript_line(transcript, number, raw_line)
     if not isinstance(entry, dict):
-        raise ValueError(f"{transcript}: line {number} is not a JSON object")
+        raise Refusal(f"{transcript}: line {number} is not a JSON object")
     return entry
 
 
@@ -318,7 +318,7 @@ def _decode_transcript_line(transcript: Path, number: int, raw_line: bytes) -> o
     try:
         return json.loads(raw_line)
     except json.JSONDecodeError as error:
-        raise ValueError(f"{transcript}: line {number} is not JSON") from error
+        raise Refusal(f"{transcript}: line {number} is not JSON") from error
 
 
 def _entry_from_json(entry: dict[str, Any], end: int) -> _TurnOpening | _AssistantChunk | None:
@@ -619,7 +619,7 @@ def _screen_entry(
     try:
         return tuple(exposure for screen in screens for exposure in screen(entry))
     except _MalformedEntry as fault:
-        raise ValueError(f"{transcript}: line {number} {fault}") from fault
+        raise Refusal(f"{transcript}: line {number} {fault}") from fault
 
 
 def _outside_context_exposures(entry: dict[str, Any]) -> tuple[str, ...]:
