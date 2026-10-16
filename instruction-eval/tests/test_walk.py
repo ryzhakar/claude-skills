@@ -352,3 +352,8 @@ def test_each_command_writes_exactly_the_files_its_writes_cell_names(walk):
     ]
 
     assert [(run.command, run.created) for run in walk.session.runs] == expected
+
+
+def test_no_command_rewrites_or_removes_a_series_file(walk):
+    for run in walk.session.runs:
+        assert {path: run.after.get(path) for path in run.before} == run.before, run.command
