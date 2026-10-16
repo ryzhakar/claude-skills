@@ -150,7 +150,7 @@ def measure_noise(
     task_repeat_units = repeats * _unit_count(task_replies)
     sigma: NoiseSigma = {
         "breaches": _repeat_variances(task_replies, conditions, partial(breach_total, demands=gate_demands)),
-        "done": _repeat_variances(task_replies, conditions, _done_value),
+        "done": _repeat_variances(task_replies, conditions, done_value),
         "drift": {
             condition: _mean_repeat_variance(_drift_slopes_by_unit(turn_replies, condition, gate_demands))
             for condition in conditions
@@ -263,7 +263,7 @@ def breach_total(reply: ScoredReply, demands: Sequence[str]) -> int:
     return sum(reply["breaches"][demand] for demand in demands)
 
 
-def _done_value(reply: ScoredReply) -> float | None:
+def done_value(reply: ScoredReply) -> float | None:
     """Return the reply's done as 1 or 0, or null when done is null."""
     return None if reply["done"] is None else float(reply["done"])
 
@@ -515,7 +515,7 @@ def instruction_comparisons(
     comparisons = {VS_COMPARES[control]: _instruction_minus(task_breaches, control, level, bootstrap_rng) for control in controls if control != SOURCE_CONTROL}
     if SOURCE_CONTROL in controls:
         comparisons[NEAR_SOURCE_COMPARES] = _instruction_minus(task_breaches, SOURCE_CONTROL, level, bootstrap_rng)
-    comparisons[COMPLETION_COMPARES] = _instruction_minus(partial(_task_means_of, task_rows, _done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
+    comparisons[COMPLETION_COMPARES] = _instruction_minus(partial(_task_means_of, task_rows, done_value), _best_done_control(task_rows, controls), level, bootstrap_rng)
     if turn_rows:
         comparisons[DRIFT_COMPARES] = _instruction_minus(partial(_conversation_slopes, turn_rows, gate_demands), _drift_control(controls), level, bootstrap_rng)
     return comparisons

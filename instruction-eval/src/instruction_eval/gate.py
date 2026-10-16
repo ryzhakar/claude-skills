@@ -70,6 +70,7 @@ from instruction_eval.scores import (
     ScoredReply,
     breach_total,
     compare_paired,
+    done_value,
     instruction_comparisons,
     join_reply_rows,
     paired_units,
@@ -361,8 +362,8 @@ def compare_with_parent(
 def _reply_value(row: ScoredReply, target: str) -> float | None:
     """Return the reply's breaches of the target demand, or its done as 1 or 0 for `completion`, null when done is null."""
     if target == COMPLETION_COMPARES:
-        return None if row["done"] is None else float(row["done"])
-    return float(row["breaches"][target])
+        return done_value(row)
+    return float(breach_total(row, [target]))
 
 
 def _movement_verdict(
