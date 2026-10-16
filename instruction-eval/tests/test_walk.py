@@ -582,3 +582,22 @@ def test_each_record_names_as_inputs_exactly_the_files_its_reads_cell_names(walk
             expected = expand_reads(reads_cell(run, record, present), present)
             assert {read.partition("#")[0] for read in inputs} == {read.partition("#")[0] for read in expected}, (run.command, record)
             assert {path: keys for path, keys in read_keys(set(inputs)).items() if path in read_keys(expected)} == read_keys(expected), (run.command, record)
+
+
+USER_WRITTEN_YAML = re.compile(r"(2-demands|3-tasks|4-conditions|5-reader|7-gate)\.yaml|.*/(plan|reference-user|1-hypothesis|3-coverage)\.yaml")
+STAGE_TWO_RECORDS = (f"{CALIBRATION_ATTEMPT}/agreement.yaml", "6-judge/anchors.yaml", "6-judge/calibration.yaml")
+WHOLE_FILE_USER_READS = {(record, REFERENCE_USER_RATING) for record in STAGE_TWO_RECORDS}
+
+
+def test_user_written_yaml_enters_inputs_per_top_level_key(walk):
+    whole_file_reads = {
+        (record, read)
+        for run in walk.session.runs
+        for record, inputs in written_records(run)
+        for read in inputs
+        if USER_WRITTEN_YAML.fullmatch(read)
+    }
+    keyed_reads = {read.partition("#")[0] for run in walk.session.runs for _, inputs in written_records(run) for read in inputs if "#" in read}
+
+    assert whole_file_reads == WHOLE_FILE_USER_READS
+    assert all(USER_WRITTEN_YAML.fullmatch(path) for path in keyed_reads)
