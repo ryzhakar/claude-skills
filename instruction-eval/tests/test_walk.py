@@ -434,10 +434,6 @@ def test_no_path_written_or_told_to_an_agent_is_named_as_a_report(walk):
     assert [path for path in written | told if REPORT_NAME.match(path.name)] == []
 
 
-STAGE_ONE_READS_THE_TABLE_OMITS = (f"{CALIBRATION_ATTEMPT}/sample.md",)
-BLIND_READS_THE_TABLE_OMITS = ("{revision}/2-instruction.md",)
-COLLECT_READS_THE_TABLE_OMITS = ("5-reader.yaml#model",)
-REVISION_NEW_READS_THE_TABLE_OMITS = ("7-gate.yaml#done_by",)
 REVISION_RECORD = re.compile(r"r([0-9]+)/.*")
 BORROWED_REPLIES = [f"r1/5-replies/{control}/**" for control in FIRST_CONDITIONS if control != "instruction"]
 
@@ -471,14 +467,14 @@ def ask_reads(record: str, present: set[str]) -> list[str]:
 
 
 def calibration_reads(record: str, series: Path) -> list[str]:
-    """Return the Reads cell of `judge calibrate` for the stage that writes the record."""
+    """Return the amended Reads cell of `judge calibrate` for the stage that writes the record."""
     stage_one = [
-        "series.yaml", "1-source/*", "2-demands.yaml", f"{CALIBRATION_ATTEMPT}/plan.yaml", f"{CALIBRATION_ATTEMPT}/brief.md",
+        "series.yaml", "1-source/*", "2-demands.yaml", f"{CALIBRATION_ATTEMPT}/plan.yaml", f"{CALIBRATION_ATTEMPT}/brief.md", f"{CALIBRATION_ATTEMPT}/sample.md",
         *sampled_replies(yaml.safe_load((series / f"{CALIBRATION_ATTEMPT}/origins.yaml").read_text())),
     ]
     if record.endswith("origins.yaml"):
-        return [*stage_one, *STAGE_ONE_READS_THE_TABLE_OMITS]
-    return [*stage_one, f"{CALIBRATION_ATTEMPT}/sample.md", f"{CALIBRATION_ATTEMPT}/origins.yaml", f"{CALIBRATION_ATTEMPT}/candidate-*.yaml", f"{CALIBRATION_ATTEMPT}/reference-*.yaml", ".claude/agents/ie-calib-1-*.md", "3-tasks.yaml"]
+        return stage_one
+    return [*stage_one, f"{CALIBRATION_ATTEMPT}/origins.yaml", f"{CALIBRATION_ATTEMPT}/candidate-*.yaml", f"{CALIBRATION_ATTEMPT}/reference-*.yaml", ".claude/agents/ie-calib-1-*.md", "3-tasks.yaml"]
 
 
 def score_reads(revision: str) -> list[str]:
@@ -503,17 +499,17 @@ GATE_STOP_READS = (*STOP_READS, "7-gate.yaml#budget")
 
 
 def revision_new_reads(number: int) -> list[str]:
-    """Return the Reads cell of `revision new` writing revision `number` from its parent."""
+    """Return the amended Reads cell of `revision new` writing revision `number` from its parent."""
     parent = f"r{number - 1}"
     return [
         "2-demands.yaml", "3-tasks.yaml", "4-conditions.yaml", "r1/3-coverage.yaml", "r1/4-conditions/placebo.md", "8-frozen.yaml", f"r{number}/1-hypothesis.yaml",
         *(f"{parent}/{part}" for part in ("2-instruction.md", "2-revision.yaml", "6-origins.yaml", "7-verdicts/**", "7-collected.yaml", "7-detectors.yaml", "9-outcome.yaml")),
-        *REVISION_NEW_READS_THE_TABLE_OMITS,
+        "7-gate.yaml#done_by",
     ]
 
 
 def reads_cell(run: CommandRun, record: str, present: set[str]) -> list[str]:
-    """Return the Commands-table Reads cell of the run's command, expanded for the record it wrote, as series paths, globs, and `<path>#<key>` reads."""
+    """Return the Commands-table Reads cell, as amended after build, of the run's command, expanded for the record it wrote, as series paths, globs, and `<path>#<key>` reads."""
     revision = record.partition("/")[0]
     if record in ("series.yaml", "r1/2-revision.yaml"):
         return []
@@ -529,11 +525,11 @@ def reads_cell(run: CommandRun, record: str, present: set[str]) -> list[str]:
         return revision_new_reads(revision_number(record))
     if record.endswith("/6-origins.yaml"):
         later = [] if revision == "r1" else BORROWED_REPLIES
-        return ["3-tasks.yaml", "4-conditions.yaml", "7-gate.yaml#repeats", f"{revision}/5-replies/**", "6-judge/calibration.yaml", "6-judge/anchors.yaml", *later, *(read.format(revision=revision) for read in BLIND_READS_THE_TABLE_OMITS)]
+        return ["3-tasks.yaml", "4-conditions.yaml", "7-gate.yaml#repeats", f"{revision}/5-replies/**", "6-judge/calibration.yaml", "6-judge/anchors.yaml", *later, f"{revision}/2-instruction.md"]
     if record.endswith("/7-collected.yaml"):
         return [
             "series.yaml", "1-source/*", "2-demands.yaml", "6-judge/calibration.yaml", f"{CALIBRATION_ATTEMPT}/brief.md", "6-judge/anchors.yaml",
-            f"{revision}/6-packets/*.md", f"{revision}/6-origins.yaml", f"{revision}/7-verdicts/**", f".claude/agents/ie-judge-{revision}-*.md", *COLLECT_READS_THE_TABLE_OMITS,
+            f"{revision}/6-packets/*.md", f"{revision}/6-origins.yaml", f"{revision}/7-verdicts/**", f".claude/agents/ie-judge-{revision}-*.md", "5-reader.yaml#model",
         ]
     if record.endswith("/7-detectors.yaml"):
         return ["2-demands.yaml", "3-tasks.yaml", f"{revision}/5-replies/**", f"{revision}/6-origins.yaml", *([] if revision == "r1" else BORROWED_REPLIES)]
