@@ -15,11 +15,15 @@ Calibrate once per series; never copy a calibration, anchors, or a brief's accep
 </cover-the-calibration-stage>
 
 <write-the-brief-and-plan>
-Start `6-judge/brief.md` from the template whose absolute path stage one prints when the brief is missing; never write one from memory.
+Run `instruction-eval judge calibrate` first; with no brief it refuses and prints the template's absolute path.
+
+Copy that template to `6-judge/brief.md`; never write a brief from memory.
 
 Keep `{SOURCE}`, `{DEMANDS}`, `{PACKET}`, and `{OUT}` once each and the literal `manifesto:manifesto-oath`; never name a condition, the reader, the reader's model ID, the series folder, or the words `empty`, `aim`, `placebo`, `instruction`, `omit`, `control`, `condition`, `revision`, `reader`, or `digest`.
 
-Write `6-judge/calibration/attempt-<n>/plan.yaml` before any rating: `judge_model` and `rater_model` (full IDs beginning `claude-`, different from each other), `raters` (`[user]` or `[agent, agent]`, `rater_model` only for agents), `sample_size`, `anchors_per_packet` (at least 3), and `acceptance` with `breach_difference`, `self_difference`, and `done_agreement` (0 to 1); never change a plan after its stage one.
+Ask the user for every plan value; never choose one.
+
+Write `6-judge/calibration/attempt-<n>/plan.yaml`, `attempt-1` first, before any rating: `judge_model` and `rater_model` (full IDs beginning `claude-`, different from each other), `raters` (`[user]` or `[agent, agent]`, `rater_model` only for agents), `sample_size`, `anchors_per_packet` (at least 3), and `acceptance` with `breach_difference`, `self_difference`, and `done_agreement` (0 to 1); never change a plan after its stage one.
 </write-the-brief-and-plan>
 
 <run-stage-one>
@@ -27,11 +31,15 @@ Run `instruction-eval judge calibrate`; with no `origins.yaml` in the latest att
 
 Wait up to three 20-second waits for the new agent types to list in the Agent tool; never restart the session for them.
 
+When a type stays unlisted after the third wait, report it to the user and stop; never launch a missing type.
+
 Launch each listed agent type once from the main thread with the Agent tool and a prompt adding nothing to its definition; never launch from a subagent.
 
 Launch at most twenty agents at once; the twenty-first is refused.
 
 Each agent writes its own rating file; never write, paste, or edit a rating by hand.
+
+Run no collect command during calibration; stage two reads each rating file and its transcript itself.
 
 Take every reply as its transcript's last assistant message, collected only by `revision collect` or `judge collect`; never paste a reply by hand.
 
