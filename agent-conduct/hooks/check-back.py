@@ -14,6 +14,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 STATE_TTL_SECONDS = 7 * 24 * 3600
+OBSERVED_STATES_FILE = "observed-task-states"
+OBSERVED_STATES_LINE_CAP = 200
+FINISHED_OR_IDLE_STATUSES = frozenset(
+    {"idle", "completed", "finished", "done", "stopped", "failed", "killed", "cancelled"}
+)
 LABELS = {"shell": "the background command", "subagent": "the background agent", "monitor": "the Monitor watch"}
 
 
@@ -37,9 +42,48 @@ def describe(task):
     return f"{label} \"{what}\" (task {ident})" if what else f"{label} (task {ident})"
 
 
+def task_status(task):
+    """Return the task's status lower-cased and stripped, empty when absent."""
+    return str(task.get("status") or "").strip().lower()
+
+
+def is_awaited(task):
+    """Tell whether the task's status marks it as neither finished nor idle."""
+    return task_status(task) not in FINISHED_OR_IDLE_STATUSES
+
+
+def observed_state_line(task):
+    """Return the task's type and status as one tab-separated line."""
+    return f"{task.get('type') or ''}\t{task_status(task)}"
+
+
+def fresh_observed_lines(known, tasks):
+    """Return the unrecorded type-status lines that still fit under the line cap."""
+    fresh = []
+    for line in map(observed_state_line, tasks):
+        if line not in known and line not in fresh:
+            fresh.append(line)
+    return fresh[: max(OBSERVED_STATES_LINE_CAP - len(known), 0)]
+
+
+def record_observed_states(directory, tasks):
+    """Append the tasks' unrecorded type-status lines to the observed-states file, never raising."""
+    path = directory / OBSERVED_STATES_FILE
+    try:
+        known = path.read_text().splitlines() if path.exists() else []
+        fresh = fresh_observed_lines(known, tasks)
+        if fresh:
+            with path.open("a") as handle:
+                handle.write("\n".join(fresh) + "\n")
+    except (OSError, ValueError):
+        pass
+
+
 def prune(directory):
     cutoff = time.time() - STATE_TTL_SECONDS
     for path in directory.glob("*"):
+        if path.name == OBSERVED_STATES_FILE:
+            continue
         try:
             if path.stat().st_mtime < cutoff:
                 path.unlink()
@@ -54,24 +98,26 @@ def stop(data):
     if not isinstance(tasks, list) or not isinstance(crons, list):
         return
 
+    awaited = [t for t in tasks if is_awaited(t)]
     path = state_file(data.get("session_id"))
     if path is not None:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             prune(path.parent)
-            if tasks:
-                path.write_text("\n".join(describe(t) for t in tasks) + "\n")
+            if awaited:
+                path.write_text("\n".join(describe(t) for t in awaited) + "\n")
             elif path.exists():
                 path.unlink()
         except OSError:
             pass
+        record_observed_states(path.parent, tasks)
 
     # Loop guard: a turn already continued by a Stop hook ends.
     if data.get("stop_hook_active"):
         return
     # A running Monitor watch is itself a wake.
-    watches = [t for t in tasks if t.get("type") == "monitor"]
-    pending = [t for t in tasks if t.get("type") != "monitor"]
+    watches = [t for t in awaited if t.get("type") == "monitor"]
+    pending = [t for t in awaited if t.get("type") != "monitor"]
     if not pending or crons or watches:
         return
 
