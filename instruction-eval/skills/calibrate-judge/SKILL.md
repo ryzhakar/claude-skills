@@ -15,15 +15,15 @@ Calibrate once per series; never copy a calibration, anchors, or a brief's accep
 </cover-the-calibration-stage>
 
 <write-the-brief-and-plan>
-Run `instruction-eval judge calibrate` first; with no brief it refuses and prints the template's absolute path.
+Ask the user for every plan value; never choose one.
+
+Write `6-judge/calibration/attempt-<n>/plan.yaml`, `attempt-1` first, before any rating: `judge_model` and `rater_model` (full IDs beginning `claude-`, different from each other), `raters` (`[user]` or `[agent, agent]`, `rater_model` only for agents), `sample_size`, `anchors_per_packet` (at least 3), and `acceptance` with `breach_difference`, `self_difference`, and `done_agreement` (0 to 1); never change a plan after its stage one.
+
+Run `instruction-eval judge calibrate` once the plan exists; with no brief it refuses with `missing brief: 6-judge/brief.md, start from <template path>`.
 
 Copy that template to `6-judge/brief.md`; never write a brief from memory.
 
 Keep `{SOURCE}`, `{DEMANDS}`, `{PACKET}`, and `{OUT}` once each and the literal `manifesto:manifesto-oath`; never name a condition, the reader, the reader's model ID, the series folder, or the words `empty`, `aim`, `placebo`, `instruction`, `omit`, `control`, `condition`, `revision`, `reader`, or `digest`.
-
-Ask the user for every plan value; never choose one.
-
-Write `6-judge/calibration/attempt-<n>/plan.yaml`, `attempt-1` first, before any rating: `judge_model` and `rater_model` (full IDs beginning `claude-`, different from each other), `raters` (`[user]` or `[agent, agent]`, `rater_model` only for agents), `sample_size`, `anchors_per_packet` (at least 3), and `acceptance` with `breach_difference`, `self_difference`, and `done_agreement` (0 to 1); never change a plan after its stage one.
 </write-the-brief-and-plan>
 
 <run-stage-one>
