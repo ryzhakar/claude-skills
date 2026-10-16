@@ -29,6 +29,7 @@ from instruction_eval.reader import (
     ASK_TIMEOUT_SECONDS,
     CONFIG_DIR_VARIABLE,
     FINGERPRINT_HASH_KEY,
+    REPEATS_KEY,
     AgentReader,
     ReaderRun,
     RunReader,
@@ -40,7 +41,21 @@ from instruction_eval.reader import (
     revision_collect,
 )
 from instruction_eval.records import (
+    ATTEMPT_FOLDER_PREFIX,
     ATTEMPT_ORIGINS_FILE,
+    CONDITIONS_RECORD,
+    COVERAGE_FILE,
+    DEMANDS_RECORD,
+    FIRST_ATTEMPT,
+    FIRST_REVISION,
+    FIRST_REVISION_NUMBER,
+    GATE_RECORD,
+    HYPOTHESIS_FILE,
+    PLAN_FILE,
+    READER_RECORD,
+    REVISION_PREFIX,
+    TASKS_RECORD,
+    WORKING_BRIEF,
     ReaderKind,
     Refusal,
     SeriesFolder,
@@ -50,7 +65,7 @@ from instruction_eval.records import (
     guard_series,
 )
 from instruction_eval.revision import revision_new
-from instruction_eval.scores import BOOTSTRAP_SEED, BootstrapRng, revision_detect, revision_score
+from instruction_eval.scores import BOOTSTRAP_SEED, DONE_BY_KEY, LEVEL_KEY, BootstrapRng, revision_detect, revision_score
 from instruction_eval.series import (
     series_freeze,
     series_keep,
@@ -63,19 +78,20 @@ from instruction_eval.tasks import tasks_check
 _READER_KINDS = get_args(ReaderKind)
 _REVISION_ID_PATTERN = re.compile(r"r[0-9]+")
 
-_ORDER_OF_WORK = """\
+_SECOND_REVISION = f"{REVISION_PREFIX}{FIRST_REVISION_NUMBER + 1}"
+_ORDER_OF_WORK = f"""\
 Order of work:
 1. in any shell: `series new`; then start the neutral session there: `cd <series folder> && claudes run readers`; every later step runs in that session
-2. user writes `2-demands.yaml`; `demands check`
-3. user writes `r1/3-coverage.yaml`; `coverage check r1`
-4. user writes `4-conditions.yaml`, `5-reader.yaml`, and `7-gate.yaml` `repeats`, `level`, `done_by`
-5. user writes `3-tasks.yaml`; `tasks check`
-6. `reader fingerprint` (command kind); `reader prepare r1`; `revision ask r1`; agents launched; `revision collect r1`
-7. user writes `6-judge/brief.md` and `6-judge/calibration/attempt-1/plan.yaml`; `judge calibrate` (snapshots the brief); ratings; `judge calibrate`; on rejection, the user edits the brief, writes `attempt-<n+1>/plan.yaml`, and repeats
-8. `revision blind r1`; `judge prepare r1`; judges; `judge collect r1`; `revision detect r1`
-9. `series status` prints the noise; user completes `7-gate.yaml`; `series freeze`
-10. `revision score r1`; `revision gate r1`. `series status` is available at any step
-11. on `fail`: user writes `r2/1-hypothesis.yaml`; writer edits the instruction; `revision new`; user writes `r2/3-coverage.yaml`; `coverage check r2`; `reader prepare r2`; `revision ask r2 --conditions instruction …`; `revision collect r2`; `revision blind r2`; `judge prepare r2`; `judge collect r2`; `revision detect r2`; `revision score r2`; `revision gate r2`
+2. user writes `{DEMANDS_RECORD}`; `demands check`
+3. user writes `{FIRST_REVISION}/{COVERAGE_FILE}`; `coverage check {FIRST_REVISION}`
+4. user writes `{CONDITIONS_RECORD}`, `{READER_RECORD}`, and `{GATE_RECORD}` `{REPEATS_KEY}`, `{LEVEL_KEY}`, `{DONE_BY_KEY}`
+5. user writes `{TASKS_RECORD}`; `tasks check`
+6. `reader fingerprint` (command kind); `reader prepare {FIRST_REVISION}`; `revision ask {FIRST_REVISION}`; agents launched; `revision collect {FIRST_REVISION}`
+7. user writes `{WORKING_BRIEF}` and `{attempt_folder(FIRST_ATTEMPT)}/{PLAN_FILE}`; `judge calibrate` (snapshots the brief); ratings; `judge calibrate`; on rejection, the user edits the brief, writes `{ATTEMPT_FOLDER_PREFIX}<n+1>/{PLAN_FILE}`, and repeats
+8. `revision blind {FIRST_REVISION}`; `judge prepare {FIRST_REVISION}`; judges; `judge collect {FIRST_REVISION}`; `revision detect {FIRST_REVISION}`
+9. `series status` prints the noise; user completes `{GATE_RECORD}`; `series freeze`
+10. `revision score {FIRST_REVISION}`; `revision gate {FIRST_REVISION}`. `series status` is available at any step
+11. on `fail`: user writes `{_SECOND_REVISION}/{HYPOTHESIS_FILE}`; writer edits the instruction; `revision new`; user writes `{_SECOND_REVISION}/{COVERAGE_FILE}`; `coverage check {_SECOND_REVISION}`; `reader prepare {_SECOND_REVISION}`; `revision ask {_SECOND_REVISION} --conditions instruction …`; `revision collect {_SECOND_REVISION}`; `revision blind {_SECOND_REVISION}`; `judge prepare {_SECOND_REVISION}`; `judge collect {_SECOND_REVISION}`; `revision detect {_SECOND_REVISION}`; `revision score {_SECOND_REVISION}`; `revision gate {_SECOND_REVISION}`
 12. at a stop: `series keep` writes the kept snapshot to the live instruction path
 """
 
