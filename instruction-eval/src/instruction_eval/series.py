@@ -88,9 +88,9 @@ from instruction_eval.scores import (
     measure_noise,
 )
 from instruction_eval.tasks import (
-    EVERY_SENTENCE_OMISSIONS,
     ExpectedReply,
     expected_replies,
+    omission_conditions,
     refuse_missing_replies,
     tasks_check,
 )
@@ -485,13 +485,12 @@ def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gat
 def _series_shape(files: SeriesFolder, records: SeriesRecords, repeats: int) -> SeriesShape:
     """Return the counts the cost prediction scales by: tasks, open tasks, conversation turns, repeats, and r1's omitted sentences."""
     tasks = records.tasks()
-    omits_sentences = records.conditions().omissions == EVERY_SENTENCE_OMISSIONS
     return SeriesShape(
         task_count=len(tasks.tasks),
         open_task_count=sum(task.split == OPEN_SPLIT for task in tasks.tasks),
         conversation_turns=sum(len(conversation.turns) for conversation in tasks.conversations),
         repeats=repeats,
-        omission_sentences=len(split_sentences(files.read_bytes(FIRST_INSTRUCTION))) if omits_sentences else 0,
+        omission_sentences=len(omission_conditions(records.conditions().omissions, len(split_sentences(files.read_bytes(FIRST_INSTRUCTION))))),
     )
 
 

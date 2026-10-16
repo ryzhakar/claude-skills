@@ -63,7 +63,7 @@ def expected_replies(revision: str, tasks: Tasks, conditions: Conditions, repeat
     """Return the expected reply set of a revision in path order: its own instruction and omission replies, and the controls' replies r1 holds."""
     replies = [
         *_every_task_and_turn(revision, INSTRUCTION_CONDITION, tasks, repeats),
-        *(reply for omission in _omission_conditions(conditions, sentence_count) for reply in _open_tasks(revision, omission, tasks, repeats)),
+        *(reply for omission in omission_conditions(conditions.omissions, sentence_count) for reply in _open_tasks(revision, omission, tasks, repeats)),
         *(reply for control in conditions.controls for reply in _every_task_and_turn(FIRST_REVISION, control, tasks, repeats)),
     ]
     return tuple(sorted(replies, key=lambda reply: reply.path))
@@ -90,9 +90,9 @@ def _open_tasks(revision: str, condition: str, tasks: Tasks, repeats: int) -> It
         yield from (ExpectedReply(revision, condition, task.id, repeat, None) for task in tasks.tasks if task.split == OPEN_SPLIT)
 
 
-def _omission_conditions(conditions: Conditions, sentence_count: int) -> tuple[str, ...]:
-    """Return one `omit-<n>` condition per sentence when the conditions call for omissions, else none."""
-    if conditions.omissions != EVERY_SENTENCE_OMISSIONS:
+def omission_conditions(omissions: Omissions, sentence_count: int) -> tuple[str, ...]:
+    """Return one `omit-<n>` condition per sentence, numbered from 1, when omissions are every sentence, else none."""
+    if omissions != EVERY_SENTENCE_OMISSIONS:
         return ()
     return tuple(f"{OMISSION_PREFIX}{sentence}" for sentence in range(1, sentence_count + 1))
 
