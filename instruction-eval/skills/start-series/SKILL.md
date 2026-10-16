@@ -21,7 +21,7 @@ On a failure report, stop and report its text; never retry it yourself.
 
 Then make the login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`; never name another plugin.
 
-When `claudes ls` lists `readers`, skip the plugin commands and `claudes new`; never make the login twice.
+When `claudes ls` lists `readers`, skip the plugin commands, `claudes new`, and the `/login` hand-off, and only fix `settings.json`; never make the login twice.
 
 Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing allow entry.
 
@@ -29,7 +29,7 @@ Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `manifes
 
 Read `settings.json` back and confirm both allow rules and both plugins; never continue with a gap.
 
-When `claudes new` ran, hand the user `claudes run readers` to start once in their own terminal and ask them to run `/login` there with the same account and report success; never continue before that report.
+Only when `claudes new` ran in this turn, hand the user `claudes run readers` to start once in their own terminal and ask them to run `/login` there with the same account and report success; never continue before that report.
 </set-up-the-neutral-login-once>
 
 <make-the-series-folder>
@@ -61,11 +61,11 @@ On `unclosed frontmatter: <path>`, ask the user to close the frontmatter in that
 
 On `missing file`, correct the path; never create the file.
 
-On any other refusal, or the same refusal after a fix, stop and report its text; stop after three refusals of any kind; never run `series new` a fourth time.
+On any other refusal, or the same refusal after a fix, stop and report its text; never run `series new` after three refusals of any kind in a row.
 </answer-each-refusal>
 
 <rules-for-the-neutral-session>
-Take no action on these rules here; apply them in the neutral session, where later skills run.
+These rules apply to later skills; apply them in the neutral session; never act on them in this skill.
 
 Run every other instruction-eval skill in the neutral session; never run `reader prepare`, `judge prepare`, or `judge calibrate` stage one in another.
 
