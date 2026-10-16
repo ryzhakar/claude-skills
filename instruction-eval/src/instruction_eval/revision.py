@@ -6,19 +6,23 @@ from pathlib import Path
 from instruction_eval.coverage import split_sentences
 from instruction_eval.gate import hypothesis_reads
 from instruction_eval.records import (
+    ADD_ACTION,
     COLLECTED_FILE,
     COMPLETION_COMPARES,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
+    DELETE_ACTION,
     DETECTORS_FILE,
     FAIL_OUTCOME,
     FIRST_REVISION,
     FROZEN_RECORD,
     INSTRUCTION_FILE,
     KEY_SEPARATOR,
+    MOVE_ACTION,
     OPEN_SPLIT,
     ORIGINS_FILE,
     PLACEBO_CONTROL,
+    REWRITE_ACTION,
     Hypothesis,
     MoveChange,
     Refusal,
@@ -91,10 +95,10 @@ def _refuse_unopen_replies(replies_read: Sequence[str], open_rows: Sequence[Repl
 
 
 class Action(StrEnum):
-    REWRITE = "rewrite"
-    ADD = "add"
-    DELETE = "delete"
-    MOVE = "move"
+    REWRITE = REWRITE_ACTION
+    ADD = ADD_ACTION
+    DELETE = DELETE_ACTION
+    MOVE = MOVE_ACTION
 
 
 @dataclass(frozen=True)
