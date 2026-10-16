@@ -417,24 +417,24 @@ def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRn
     gate = records.complete_gate()
     records.frozen()
     gate_demands = records.gate_demands()
-    measured = _measured_revision(records, revision, gate.done_by)
+    measured = measured_revision(records, revision, gate.done_by)
     outcome = _outcome(files, records, revision, measured, gate_demands, gate.checks, gate.level, bootstrap_rng)
-    earlier = _earlier_outcomes(files, records, revision)
+    earlier = earlier_outcomes(files, records, revision)
     reads = _gate_reads(revision, measured, earlier)
     if revision != FIRST_REVISION:
-        parent = _measured_revision(records, parent_revision(revision), gate.done_by)
+        parent = measured_revision(records, parent_revision(revision), gate.done_by)
         outcome = {**outcome, **_parent_fields(records.hypothesis(revision), measured.sealed_rows, parent.sealed_rows, gate.level, bootstrap_rng)}
         reads = [*reads, *hypothesis_reads(revision), *parent.reads]
     outcomes = {**earlier, revision: outcome}
-    budget = _stop_budget(gate.budget)
-    stop = stop_after(revision, outcomes, budget, _cost_so_far(outcomes, budget))
+    budget = stop_budget(gate.budget)
+    stop = stop_after(revision, outcomes, budget, gated_cost(outcomes, budget))
     write_record(files, outcome_path(revision), outcome, reads)
     if stop is not None:
         write_record(files, STOP_RECORD, stop, _stop_reads(outcomes))
 
 
 @dataclass(frozen=True)
-class _MeasuredRevision:
+class MeasuredRevision:
     """A revision's sealed reply rows, the cost of its own replies, and the files they were read from."""
 
     sealed_rows: list[ReplyRow]
@@ -449,21 +449,21 @@ def _refuse_unusable_series(files: SeriesFolder) -> None:
     guard_series(files, GATE_COMMAND)
 
 
-def _measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> _MeasuredRevision:
+def measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> MeasuredRevision:
     """Load a revision's sealed rows and own reply costs, refusing a missing collection or a reply origin without its reply file."""
     collected = records.collected(revision)
     origins = records.origins(revision)
     verdicts = records.accepted_verdicts(revision, collected)
     reply_paths = origin_reply_paths(origins, revision)
     own_paths = [path for path in reply_paths.values() if path.startswith(f"{revision}/")]
-    return _MeasuredRevision(
+    return MeasuredRevision(
         sealed_rows=join_reply_rows(origins, verdicts, records.detectors(revision), done_by, SEALED_SPLIT),
-        own_replies=[_reply_cost(records.reply(path)) for path in own_paths],
+        own_replies=[reply_cost(records.reply(path)) for path in own_paths],
         reads=[*reply_paths.values(), f"{revision}/{ORIGINS_FILE}", *accepted_verdict_paths(revision, collected), f"{revision}/{COLLECTED_FILE}", f"{revision}/{DETECTORS_FILE}"],
     )
 
 
-def _reply_cost(reply: Record) -> ReplyCost:
+def reply_cost(reply: Record) -> ReplyCost:
     """Return a reply's spent input tokens, output tokens, and seconds."""
     return ReplyCost(reply["cost"][SPENT_INPUT_TOKENS_KEY], reply["cost"]["output_tokens"], reply["seconds"])
 
@@ -472,7 +472,7 @@ def _outcome(
     files: SeriesFolder,
     records: SeriesRecords,
     revision: str,
-    measured: _MeasuredRevision,
+    measured: MeasuredRevision,
     gate_demands: Sequence[str],
     checks: Sequence[GateCheck],
     level: float,
@@ -511,13 +511,13 @@ def _parent_fields(hypothesis: Hypothesis, rows: Sequence[ScoredReply], parent_r
     }
 
 
-def _earlier_outcomes(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, Record]:
+def earlier_outcomes(files: SeriesFolder, records: SeriesRecords, revision: str) -> dict[str, Record]:
     """Return the outcome of each gated revision before the given one, by id in order."""
     earlier = (revision_id(number) for number in range(FIRST_REVISION_NUMBER, revision_number(revision)))
     return {other: records.outcome(other) for other in earlier if files.holds(outcome_path(other))}
 
 
-def _gate_reads(revision: str, measured: _MeasuredRevision, earlier: Mapping[str, Record]) -> list[str]:
+def _gate_reads(revision: str, measured: MeasuredRevision, earlier: Mapping[str, Record]) -> list[str]:
     """Return what `revision gate` reads of every revision: `revision score`'s reads, every gate key, the freeze, the instruction, and every earlier outcome."""
     return [
         *SCORE_USER_INPUTS,
@@ -534,12 +534,12 @@ def hypothesis_reads(revision: str) -> list[str]:
     return [f"{revision}/{HYPOTHESIS_FILE}{KEY_SEPARATOR}{key}" for key in HYPOTHESIS_KEYS]
 
 
-def _stop_budget(budget: Budget | NoBudget) -> Budget | None:
+def stop_budget(budget: Budget | NoBudget) -> Budget | None:
     """Return the gate's budget as the stop rules take it, null without a ceiling."""
     return None if budget == NO_BUDGET else budget
 
 
-def _cost_so_far(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
+def gated_cost(outcomes: Mapping[str, Record], budget: Budget | None) -> float:
     """Return every gated revision's ask cost summed in the budget unit, zero without a budget, refusing a tokens budget over a revision without token counts."""
     if budget is None:
         return 0

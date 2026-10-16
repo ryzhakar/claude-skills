@@ -13,11 +13,11 @@ from instruction_eval.conditions import control_texts, revision_condition_texts
 from instruction_eval.coverage import coverage_check, split_sentences
 from instruction_eval.gate import (
     BudgetRefusal,
-    _cost_so_far,
-    _earlier_outcomes,
-    _reply_cost,
-    _stop_budget,
+    earlier_outcomes,
+    gated_cost,
     refuse_unaffordable_ask,
+    reply_cost,
+    stop_budget,
 )
 from instruction_eval.records import (
     AGENT_READER,
@@ -1114,11 +1114,11 @@ def revision_ask(
 
 def _refuse_unaffordable_later_ask(files: SeriesFolder, records: SeriesRecords, revision: str, ask_reply_count: int) -> None:
     """Refuse an ask of a later revision whose replies, each at r1's mean cost, take the cost so far past the gate's ceiling."""
-    budget = None if revision == FIRST_REVISION else _stop_budget(records.complete_gate().budget)
+    budget = None if revision == FIRST_REVISION else stop_budget(records.complete_gate().budget)
     if budget is None:
         return
-    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _expected_reply_set(files, FIRST_REVISION, records)]
-    cost_so_far = _cost_so_far(_earlier_outcomes(files, records, revision), budget)
+    first_replies = [reply_cost(records.reply(reply.path)) for reply in _expected_reply_set(files, FIRST_REVISION, records)]
+    cost_so_far = gated_cost(earlier_outcomes(files, records, revision), budget)
     try:
         refuse_unaffordable_ask(budget, first_replies, cost_so_far, ask_reply_count)
     except BudgetRefusal as unaffordable:

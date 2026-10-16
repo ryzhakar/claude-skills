@@ -18,14 +18,14 @@ from instruction_eval.demands import demands_check
 from instruction_eval.gate import (
     BudgetRefusal,
     SeriesShape,
-    _measured_revision,
-    _reply_cost,
-    _stop_budget,
     kept_revision,
     least_repeats,
+    measured_revision,
     near_source_without_sources,
     refuse_unaffordable_freeze,
     refuse_unresolvable_gaps,
+    reply_cost,
+    stop_budget,
     sum_unless_null,
 )
 from instruction_eval.records import (
@@ -448,7 +448,7 @@ def series_freeze(
     refuse_unready_freeze(files, fingerprint_hash, read_external)
     records = SeriesRecords(files)
     gate = records.complete_gate()
-    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    sealed_rows = measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
     gate_demands = records.gate_demands()
     noise = measure_noise(sealed_rows, gate_demands, records.conditions().controls, gate.repeats, gate.level)
     refuse_unresolvable_gaps(gate.checks, noise, sealed_rows, gate_demands, bool(records.series().sources), bootstrap_rng())
@@ -477,9 +477,9 @@ def _user_record_keys(files: SeriesFolder, path: str) -> list[str]:
 
 def _refuse_unaffordable_series(files: SeriesFolder, records: SeriesRecords, gate: CompleteGate) -> None:
     """Refuse a budget ceiling below the series' cost predicted from r1's replies."""
-    first_replies = [_reply_cost(records.reply(reply.path)) for reply in _first_revision_replies(files, records, gate.repeats)]
+    first_replies = [reply_cost(records.reply(reply.path)) for reply in _first_revision_replies(files, records, gate.repeats)]
     try:
-        refuse_unaffordable_freeze(_stop_budget(gate.budget), first_replies, _series_shape(files, records, gate.repeats))
+        refuse_unaffordable_freeze(stop_budget(gate.budget), first_replies, _series_shape(files, records, gate.repeats))
     except BudgetRefusal as unaffordable:
         raise Refusal(str(unaffordable)) from None
 
@@ -637,7 +637,7 @@ def _first_revision_noise(files: SeriesFolder, records: SeriesRecords) -> Noise 
     gate = records.gate() if measured and files.holds(GATE_RECORD) else None
     if gate is None or gate.repeats is None or gate.done_by is None:
         return None
-    sealed_rows = _measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
+    sealed_rows = measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
     level = STATUS_DEFAULT_LEVEL if gate.level is None else gate.level
     return measure_noise(sealed_rows, records.gate_demands(), records.conditions().controls, gate.repeats, level)
 
