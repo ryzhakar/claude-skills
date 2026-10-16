@@ -28,6 +28,7 @@ from instruction_eval.judge import (
 from instruction_eval.reader import (
     ASK_TIMEOUT_SECONDS,
     CONFIG_DIR_VARIABLE,
+    FINGERPRINT_HASH_KEY,
     AgentReader,
     ReaderRun,
     RunReader,
@@ -177,7 +178,6 @@ _GUARDED_COMMANDS = frozenset(
     }
 )
 _FINGERPRINT_KEY = "fingerprint"
-_FINGERPRINT_HASH_KEY = "fingerprint_hash"
 
 
 @dataclass(frozen=True)
@@ -348,7 +348,7 @@ def _check_tasks(arguments: argparse.Namespace, effects: _Effects) -> str:
 def _fingerprint(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Return the command reader's parsed fingerprint and its hash."""
     fingerprint = reader_fingerprint(_series_folder(effects), effects.run_fingerprint)
-    return dump_canonical_yaml({_FINGERPRINT_KEY: fingerprint.output, _FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash}).decode()
+    return dump_canonical_yaml({_FINGERPRINT_KEY: fingerprint.output, FINGERPRINT_HASH_KEY: fingerprint.fingerprint_hash}).decode()
 
 
 def _prepare_reader(arguments: argparse.Namespace, effects: _Effects) -> str:

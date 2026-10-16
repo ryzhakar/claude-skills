@@ -46,7 +46,7 @@ from instruction_eval.records import (
     CONDITION_KEYS,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
-    DEMANDS_RECORD,
+    DEMANDS_INPUT,
     FIRST_ATTEMPT,
     FIRST_REVISION,
     GATE_RECORD,
@@ -727,7 +727,7 @@ def _binding_reads(records: SeriesRecords) -> list[str]:
         SERIES_RECORD,
         *(source_snapshot_path(source.name) for source in sources),
         *([] if sources else [f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands"]),
-        f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands",
+        DEMANDS_INPUT,
     ]
 
 

@@ -25,6 +25,7 @@ INPUTS_KEY = "inputs"
 
 SERIES_RECORD = "series.yaml"
 DEMANDS_RECORD = "2-demands.yaml"
+DEMANDS_INPUT = f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands"
 TASKS_RECORD = "3-tasks.yaml"
 CONDITIONS_RECORD = "4-conditions.yaml"
 READER_RECORD = "5-reader.yaml"

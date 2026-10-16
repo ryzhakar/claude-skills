@@ -27,7 +27,7 @@ from instruction_eval.records import (
     CONDITION_PLACEHOLDER,
     CONDITIONS_RECORD,
     COVERAGE_FILE,
-    DEMANDS_RECORD,
+    DEMANDS_INPUT,
     FIRST_REVISION,
     FROZEN_RECORD,
     GATE_RECORD,
@@ -87,7 +87,8 @@ REPEAT_KEY = "repeat"
 LAUNCH_MESSAGE_KEY = "message"
 SEND_MESSAGES_KEY = "send_messages"
 FINGERPRINT_COMMAND = "reader fingerprint"
-FINGERPRINT_KEYS = ("model", "build")
+FINGERPRINT_MODEL_KEY = "model"
+FINGERPRINT_KEYS = (FINGERPRINT_MODEL_KEY, "build")
 AGENT_READER_FINGERPRINT_REFUSAL = f"{FINGERPRINT_COMMAND} refuses an agent reader"
 
 
@@ -1151,7 +1152,7 @@ def _answer_replies(
 def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
     """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
     coverage = (f"{coverage_revision}/{COVERAGE_FILE}{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
-    reads = [*_reader_reads(revision, records, reader, texts), f"{DEMANDS_RECORD}{KEY_SEPARATOR}demands", *coverage]
+    reads = [*_reader_reads(revision, records, reader, texts), DEMANDS_INPUT, *coverage]
     return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
 
 
@@ -1176,7 +1177,7 @@ def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
 def refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
     """Refuse the first r1 reply a command reader wrote under another fingerprint hash than the fresh one."""
     for path in reply_paths:
-        if records.reply(path)["fingerprint_hash"] != fingerprint_hash:
+        if records.reply(path)[FINGERPRINT_HASH_KEY] != fingerprint_hash:
             raise Refusal(f"reader fingerprint changed since {path}")
 
 
@@ -1231,7 +1232,7 @@ def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fi
     return {
         **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
         _TEXT_KEY: run.stdout,
-        REPLY_MODEL_KEY: fingerprint.output[REPLY_MODEL_KEY],
+        REPLY_MODEL_KEY: fingerprint.output[FINGERPRINT_MODEL_KEY],
         READER_KIND_KEY: COMMAND_READER,
         STARTED_KEY: run.started.isoformat(),
         SECONDS_KEY: run.seconds,
