@@ -105,7 +105,7 @@ plus a changes report).
 **python-tools** — skills: `python-ast-mass-edit` (AST-based edits across 3+ files),
 `uv-pyright-debug` (true pyright diagnostics in uv-managed projects).
 
-**agent-conduct** — domain-free conduct skills, 1.8.0 (2026-10-14): `check-back` (set the agent's own next wake before a turn ends with work pending), `work-silently` (tool calls only until told otherwise); hooks for check-back and the silence mandate. The peer protocol and its join hook left for `peers` 2026-10-14.
+**agent-conduct** — domain-free conduct skills, 1.9.0 (2026-10-16): `check-back` (set the agent's own next wake before a turn ends with work pending), `work-silently` (tool calls only until told otherwise; every silent turn ends with an empty final message), `git-etiquette` (the owner's version-control orders); hooks for check-back and the silence mandate. The peer protocol and its join hook left for `peers` 2026-10-14.
 
 **peers** — left this marketplace 2026-10-14 (`cdea00d`) for `the-agents-of-anarchy/marketplace` (marketplace `agents-of-anarchy`, install `peers@agents-of-anarchy`), carried there at 0.4.1, protocol 9.1 (adopted unanimously), `2b3eac1`; 62 tests pass there — measured 2026-10-14.
 

@@ -456,3 +456,10 @@ KNOWN ISSUES:  open Important findings, eleven listed in the review:
                - gate-scores: Helpers beneath the barrier are public
                - tests: Same-named helpers redefined per file
                - tests: Copy-pasted helpers beyond series_fixtures
+
+## 2026-10-16 — agent-conduct 1.8.1 and 1.9.0: idle fix, silent-turn ending, git-etiquette
+BEFORE:        the `check-back` Stop hook treated every task as pending; `work-silently` set no turn ending; no skill carried the owner's version-control orders; agent-conduct 1.8.0
+AFTER:         the `check-back` Stop hook skips tasks whose status is finished or idle and records observed (type, status) pairs in the plugin data directory, because the idle value is undocumented. `work-silently` ends every silent turn with an empty zero-length final message. `git-etiquette` carries the owner's version-control orders. agent-conduct 1.9.0
+WHY:           the hook blocked turns over tasks that had already finished; the owner ruled the empty final message the core of silence; the owner's version-control orders lived in no skill
+INVALIDATES:   the `agent-conduct` description of 1.8.0 (two skills); any reading of an idle task as pending
+SOURCE:        `orchestration_log/history/2026-10-12/packet-silence-digest.md`, `packet-vcs-digest.md`, and the events journal `events.md` there; this change
