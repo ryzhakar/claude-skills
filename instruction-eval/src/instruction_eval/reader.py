@@ -54,10 +54,12 @@ from instruction_eval.records import (
     Tasks,
     condition_path,
     dump_canonical_yaml,
+    guard_series,
     missing_gate_key,
     outcome_path,
     read_series_file,
     reply_path,
+    revision_ids,
     revision_number,
     sha256,
     source_snapshot_path,
@@ -66,7 +68,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from instruction_eval.series import _refuse_other_reader_build, guard_series, revision_ids
+from instruction_eval.series import _refuse_other_reader_build
 from instruction_eval.tasks import ExpectedReply, expected_replies, refuse_missing_replies
 
 FRONTMATTER_FENCE = "---\n"

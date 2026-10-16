@@ -1,4 +1,4 @@
-"""Series commands `series new`, `series freeze`, `series stop`, and `series keep`, and the guard of every command but `series new` against a folder that is no series, a stopped series, a changed frozen part, and a broken revision chain."""
+"""Series commands `series new`, `series freeze`, `series stop`, `series keep`, and `series status`."""
 
 import fnmatch
 import itertools
@@ -49,6 +49,7 @@ from instruction_eval.records import (
     FROZEN_RECORD,
     GATE_RECORD,
     INSTRUCTION_FILE,
+    KEEP_COMMAND,
     KEY_SEPARATOR,
     NEAR_SOURCE_COMPARES,
     OPEN_SPLIT,
@@ -59,6 +60,7 @@ from instruction_eval.records import (
     REFERENCE_USER_FILE,
     SERIES_RECORD,
     SOURCE_FOLDER,
+    STATUS_COMMAND,
     STOP_RECORD,
     TASKS_RECORD,
     UNRESOLVABLE_STOP,
@@ -73,9 +75,10 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     attempt_folder,
+    guard_series,
     load_record,
     outcome_path,
-    revision_id,
+    revision_ids,
     revision_record_path,
     series_paths,
     sha256,
@@ -99,16 +102,12 @@ from instruction_eval.tasks import (
 
 SERIES_HOME_FOLDER = "instruction-series"
 PATH_SEPARATOR = "/"
-STATUS_COMMAND = "series status"
 STOP_COMMAND = "series stop"
-KEEP_COMMAND = "series keep"
 KEEP_RULE_INPUT = f"{GATE_RECORD}#keep_rule"
 GIT_ENTRY = ".git"
 LOGIN_MEMORY_FILE = ".claude/CLAUDE.md"
 MEMORY_FILES = ("CLAUDE.md", LOGIN_MEMORY_FILE, "CLAUDE.local.md", ".manifestos.yaml")
 FIRST_INSTRUCTION = f"{FIRST_REVISION}/{INSTRUCTION_FILE}"
-
-STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 
 
 def series_new(
@@ -272,56 +271,6 @@ def _refuse_unless_latest_gated_revision_failed(outcomes: Mapping[str, Record]) 
 def _gated_outcomes(files: SeriesFolder, records: SeriesRecords) -> dict[str, Record]:
     """Return the outcome of each gated revision by id, in order."""
     return {revision: records.outcome(revision) for revision in revision_ids(files) if files.holds(outcome_path(revision))}
-
-
-def guard_series(files: SeriesFolder, command: str) -> None:
-    """Refuse running `command` in a folder lacking `series.yaml`, in a stopped series, after a frozen part changed, or past a broken revision chain."""
-    _refuse_missing_series(files)
-    _refuse_stopped_series(files, command)
-    records = SeriesRecords(files)
-    _refuse_changed_frozen_parts(files, records)
-    _refuse_broken_revision_chain(files, records)
-
-
-def _refuse_missing_series(files: SeriesFolder) -> None:
-    """Refuse a working directory lacking `series.yaml`."""
-    if not files.holds(SERIES_RECORD):
-        raise Refusal(f"not a series folder: no {SERIES_RECORD}")
-
-
-def _refuse_stopped_series(files: SeriesFolder, command: str) -> None:
-    """Refuse a stopped series to every command but `series status` and `series keep`."""
-    if files.holds(STOP_RECORD) and command not in STOPPED_SERIES_COMMANDS:
-        raise Refusal(f"series stopped: only {' and '.join(STOPPED_SERIES_COMMANDS)} run")
-
-
-def _refuse_changed_frozen_parts(files: SeriesFolder, records: SeriesRecords) -> None:
-    """Refuse a frozen series when a path `8-frozen.yaml` hashes no longer holds the hashed bytes."""
-    if not files.holds(FROZEN_RECORD):
-        return
-    for path, frozen_hash in records.frozen()["hashes"].items():
-        if not files.holds(path) or sha256(files.read_bytes(path)) != frozen_hash:
-            raise Refusal(f"frozen part changed: {path}")
-
-
-def _refuse_broken_revision_chain(files: SeriesFolder, records: SeriesRecords) -> None:
-    """Refuse a series whose revision record names a parent record other than the parent's bytes."""
-    for revision in _later_revisions(files):
-        record = records.revision(revision)
-        parent_path = revision_record_path(record["parent"])
-        if record["parent_record"] != sha256(files.read_bytes(parent_path)):
-            raise Refusal(f"broken revision chain: {revision_record_path(revision)} (parent record {parent_path} differs)")
-
-
-def _later_revisions(files: SeriesFolder) -> Iterator[str]:
-    """Return the ids of the revisions after the first, in order, up to the first without a record."""
-    return itertools.islice(revision_ids(files), 1, None)
-
-
-def revision_ids(files: SeriesFolder) -> Iterator[str]:
-    """Return the ids of the revisions, in order, up to the first without a record."""
-    revisions = (revision_id(number) for number in itertools.count(FIRST_REVISION_NUMBER))
-    return itertools.takewhile(lambda revision: files.holds(revision_record_path(revision)), revisions)
 
 
 FREEZE_PARTS = (DEMANDS_RECORD, TASKS_RECORD, CONDITIONS_RECORD, PLACEBO_SNAPSHOT, READER_RECORD)

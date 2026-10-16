@@ -32,8 +32,10 @@ from instruction_eval.records import (
     Tasks,
     accepted_verdict_paths,
     condition_path,
+    guard_series,
     outcome_path,
     revision_id,
+    revision_ids,
     revision_number,
     revision_record_path,
     sha256,
@@ -41,7 +43,7 @@ from instruction_eval.records import (
     write_record,
 )
 from instruction_eval.scores import DEMANDS_AND_TASKS_INPUTS, DONE_BY_INPUT, Noise, ReplyRow, join_reply_rows
-from instruction_eval.series import guard_series, refuse_unclosed_frontmatter, revision_ids
+from instruction_eval.series import refuse_unclosed_frontmatter
 from instruction_eval.tasks import AIM_LABEL, LabelledText, shared_phrases, task_messages
 
 NOISE_MULTIPLE = 2

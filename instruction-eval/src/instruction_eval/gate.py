@@ -53,6 +53,7 @@ from instruction_eval.records import (
     SeriesFolder,
     SeriesRecords,
     accepted_verdict_paths,
+    guard_series,
     origin_reply_paths,
     outcome_path,
     parent_revision,
@@ -412,7 +413,7 @@ HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_moveme
 
 def revision_gate(files: SeriesFolder, revision: str, bootstrap_rng: BootstrapRng) -> None:
     """Write the revision's `9-outcome.yaml` from its sealed rows, each bootstrap drawing on a fresh `bootstrap_rng()`, and `9-stop.yaml` when a stop applies."""
-    _refuse_unusable_series(files)
+    guard_series(files, GATE_COMMAND)
     records = SeriesRecords(files)
     gate = records.complete_gate()
     records.frozen()
@@ -440,13 +441,6 @@ class MeasuredRevision:
     sealed_rows: list[ReplyRow]
     own_replies: list[ReplyCost]
     reads: list[str]
-
-
-def _refuse_unusable_series(files: SeriesFolder) -> None:
-    """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
-    from instruction_eval.series import guard_series
-
-    guard_series(files, GATE_COMMAND)
 
 
 def measured_revision(records: SeriesRecords, revision: str, done_by: DoneBy) -> MeasuredRevision:

@@ -68,6 +68,7 @@ from instruction_eval.records import (
     SeriesRecords,
     Task,
     attempt_folder,
+    guard_series,
     load_record,
     missing_gate_key,
     parse_record,
@@ -503,7 +504,7 @@ BLIND_COMMAND = "revision blind"
 
 def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     """Write the revision's blinded packets and their origins, a later revision borrowing every control reply from r1, refusing without calibration, a gap in the expected replies, or too few anchors."""
-    _refuse_unusable_series(files, BLIND_COMMAND)
+    guard_series(files, BLIND_COMMAND)
     records = SeriesRecords(files)
     calibration = records.calibration()
     expected = _expected_replies(files, revision, records)
@@ -512,13 +513,6 @@ def revision_blind(files: SeriesFolder, revision: str, random: Random) -> None:
     blinded = blind_replies(revision, replies, records.anchors()["anchors"], calibration["anchors_per_packet"], random)
     _write_packets(files, revision, blinded.packets)
     write_record(files, f"{revision}/{ORIGINS_FILE}", _origins_record(blinded.origins, blinded.packets), _blind_reads(revision, expected))
-
-
-def _refuse_unusable_series(files: SeriesFolder, command: str) -> None:
-    """Refuse a folder that is no series, a stopped series, a changed frozen part, or a broken revision chain."""
-    from instruction_eval.series import guard_series
-
-    guard_series(files, command)
 
 
 def _expected_replies(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
@@ -573,7 +567,7 @@ def calibrate_stage_one(
     files: SeriesFolder, brief_template: Path, environ: Mapping[str, str], home: Path, working_dir: Path, random: Random
 ) -> str:
     """Run stage one of `judge calibrate` on the latest attempt: snapshot the brief, blind a sample of r1's open replies, write the rating definitions, and return their launch list."""
-    _refuse_unusable_series(files, CALIBRATE_COMMAND)
+    guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     brief = _working_brief(files, brief_template)
@@ -787,7 +781,7 @@ def judge_prepare(
     read_transcript: Callable[[Path], bytes],
 ) -> str:
     """Write the next judging of each packet with no accepted or pending judging and return a pending line per packet awaiting its judge, then the launch list of the judgings written."""
-    _refuse_unusable_series(files, JUDGE_PREPARE_COMMAND)
+    guard_series(files, JUDGE_PREPARE_COMMAND)
     _refuse_outside_neutral_login(environ, home, working_dir)
     records = SeriesRecords(files)
     origins = records.origins(revision)
@@ -842,7 +836,7 @@ JUDGE_COLLECT_COMMAND = "judge collect"
 
 def judge_collect(files: SeriesFolder, revision: str, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
     """Write the revision's collection of every packet's accepted judging and return nothing, or return the packets to re-judge, refusing a pending judging."""
-    _refuse_unusable_series(files, JUDGE_COLLECT_COMMAND)
+    guard_series(files, JUDGE_COLLECT_COMMAND)
     records = SeriesRecords(files)
     origins = records.origins(revision)
     calibration = records.calibration()
@@ -945,7 +939,7 @@ class _Measures:
 
 def calibrate_stage_two(files: SeriesFolder, transcripts: Sequence["Transcript"], read_transcript: Callable[[Path], bytes]) -> str:
     """Run stage two of `judge calibrate` on the latest attempt: score its candidate ratings against the raters' reference, write its agreement, and on acceptance the calibration and the anchors, returning the attempt's acceptance or rejection."""
-    _refuse_unusable_series(files, CALIBRATE_COMMAND)
+    guard_series(files, CALIBRATE_COMMAND)
     _refuse_calibrated_series(files)
     attempt = _latest_attempt(files)
     folder = attempt_folder(attempt)
