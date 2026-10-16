@@ -816,9 +816,18 @@ def _launch_list(replies: Sequence[ExpectedReply], records: SeriesRecords) -> st
 
 
 def _asked_replies(files: SeriesFolder, revision: str, records: SeriesRecords, conditions: Sequence[str]) -> tuple[ExpectedReply, ...]:
-    """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named."""
+    """Return the expected replies of the revision no file holds yet, those of the named conditions when any are named, refusing a named condition the revision does not ask."""
     expected = _expected_reply_set(files, revision, records)
+    _refuse_unknown_conditions(revision, expected, conditions)
     return tuple(reply for reply in expected if (not conditions or reply.condition in conditions) and not files.holds(reply.path))
+
+
+def _refuse_unknown_conditions(revision: str, expected: Iterable[ExpectedReply], conditions: Sequence[str]) -> None:
+    """Refuse the first named condition outside the conditions the revision's own expected replies hold."""
+    known = sorted({reply.condition for reply in expected if reply.revision == revision})
+    unknown = next((condition for condition in conditions if condition not in known), None)
+    if unknown is not None:
+        raise Refusal(f"unknown condition: {unknown} (revision {revision} has {', '.join(known)})")
 
 
 def _expected_reply_set(files: SeriesFolder, revision: str, records: SeriesRecords) -> tuple[ExpectedReply, ...]:
@@ -1094,14 +1103,14 @@ RunReader = Callable[[Sequence[str], str, int], ReaderRun]
 def revision_ask(
     files: SeriesFolder, revision: str, conditions: Sequence[str], run_reader: RunReader, run_fingerprint: Callable[[Sequence[str]], str]
 ) -> str:
-    """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
+    """Return an agent reader's launch list, or answer every missing reply serially through a command reader and return an empty text, refusing an unknown condition, a failing coverage, an edited condition or definition, a changed reader build, or a failed reader run."""
     guard_series(files, ASK_COMMAND)
     _refuse_collected_revision(files, revision)
     records = SeriesRecords(files)
     reader = records.reader()
+    asked = _asked_replies(files, revision, records, conditions)
     coverage_check(files, revision)
     texts = _verified_condition_texts(files, revision, records, reader)
-    asked = _asked_replies(files, revision, records, conditions)
     _refuse_unaffordable_later_ask(files, records, revision, len(asked))
     if isinstance(reader, AgentReader):
         return _launch_list(asked, records)

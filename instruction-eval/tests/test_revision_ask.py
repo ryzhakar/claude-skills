@@ -174,6 +174,15 @@ def test_an_agent_reader_prints_the_launch_list_of_the_named_conditions_and_runs
     assert tree(files.root) == before
 
 
+def test_a_named_condition_the_revision_does_not_ask_refuses_before_any_reader_runs(tmp_path):
+    files = command_series(tmp_path)
+
+    with pytest.raises(Refusal, match=r"^unknown condition: omit-3 \(revision r1 has aim, empty, instruction, placebo\)$"):
+        revision_ask(files, "r1", ["instruction", "omit-3"], forbidden_run, forbidden_run)
+
+    assert not (files.root / "r1/5-replies").exists()
+
+
 def test_a_coverage_failing_its_check_refuses_the_ask_before_any_reader_runs(tmp_path):
     files = command_series(tmp_path)
     (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump({"demands": {"d-one": [1]}, "sentences": {}}))

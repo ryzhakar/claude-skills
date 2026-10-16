@@ -14,7 +14,7 @@ from typing import TextIO, get_args
 
 import numpy
 
-from instruction_eval.coverage import coverage_check, split_sentences
+from instruction_eval.coverage import coverage_check
 from instruction_eval.demands import demands_check
 from instruction_eval.gate import revision_gate
 from instruction_eval.judge import (
@@ -41,7 +41,6 @@ from instruction_eval.reader import (
 )
 from instruction_eval.records import (
     ATTEMPT_ORIGINS_FILE,
-    INSTRUCTION_FILE,
     ReaderKind,
     Refusal,
     SeriesFolder,
@@ -59,7 +58,7 @@ from instruction_eval.series import (
     series_status,
     series_stop,
 )
-from instruction_eval.tasks import expected_replies, tasks_check
+from instruction_eval.tasks import tasks_check
 
 _READER_KINDS = get_args(ReaderKind)
 _REVISION_ID_PATTERN = re.compile(r"r[0-9]+")
@@ -269,22 +268,6 @@ def _transcripts(effects: _Effects) -> list[Transcript]:
         raise Refusal(str(unreadable)) from None
 
 
-def _refuse_unknown_conditions(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> None:
-    """Refuse the first named condition outside the revision's condition set."""
-    if not conditions:
-        return
-    instruction_path = f"{revision}/{INSTRUCTION_FILE}"
-    if not files.holds(instruction_path):
-        raise Refusal(f"missing record: {instruction_path}")
-    records = SeriesRecords(files)
-    sentence_count = len(split_sentences(files.read_bytes(instruction_path)))
-    replies = expected_replies(revision, records.tasks(), records.conditions(), 1, sentence_count)
-    known = sorted({reply.condition for reply in replies if reply.revision == revision})
-    for condition in conditions:
-        if condition not in known:
-            raise Refusal(f"unknown condition: {condition} (revision {revision} has {', '.join(known)})")
-
-
 def _latest_attempt_holds_origins(files: SeriesFolder) -> bool:
     """Tell whether the latest attempt has written its origins."""
     return files.holds(f"{attempt_folder(latest_attempt_number(files))}/{ATTEMPT_ORIGINS_FILE}")
@@ -360,7 +343,6 @@ def _prepare_reader(arguments: argparse.Namespace, effects: _Effects) -> str:
 def _ask(arguments: argparse.Namespace, effects: _Effects) -> str:
     """Ask the revision's missing replies and return an agent reader's launch list."""
     files = _series_folder(effects)
-    _refuse_unknown_conditions(files, arguments.revision, arguments.conditions)
     return revision_ask(files, arguments.revision, arguments.conditions, effects.run_reader, effects.run_fingerprint)
 
 
