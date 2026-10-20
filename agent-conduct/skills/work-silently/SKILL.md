@@ -60,7 +60,7 @@ Phrase each tool-call description as a bare label of the action, such as `Run th
 
 Settle each open question the instructions and records answer; never ask the user while silent.
 
-Leave undone any step that needs the user's decision; never make that decision yourself.
+Follow the decide-while-away skill for any step that needs the user's decision; never handle that decision another way.
 
 <never_do_this reason="answer in the conversation">
 <final_message>The cache key is the request hash.</final_message>
@@ -157,4 +157,8 @@ When silence and the check-back skill collide, check-back wins: the look at pend
 End silence when the user tells you to stop working silently; never on inference from any other message.
 
 Delete the marker as silence ends; never leave it in place afterward.
+
+Remove the marker when a temporary reason calls for it, and restore it the moment that reason ends; never leave it removed past then.
+
+Hold no silence while the marker is removed, and resume silence as you restore it; never apply these silence rules in between.
 </end-silence-when-told>
