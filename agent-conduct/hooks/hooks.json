@@ -1,6 +1,18 @@
 {
-  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while background work runs with no wake set, and after a resume names the work the old session left running",
+  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while background work runs with no wake set, and after a resume names the work the old session left running; office-hours denies AskUserQuestion while the silence marker exists",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/office-hours.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "startup|resume|compact|fork",

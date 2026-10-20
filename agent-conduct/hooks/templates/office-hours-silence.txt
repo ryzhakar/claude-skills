@@ -1,0 +1,1 @@
+Silent mode is on: the marker `.claude/work-silently` exists, so `AskUserQuestion` is blocked. Your question stays in the queue in your records; keep working.
