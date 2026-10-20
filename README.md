@@ -1,12 +1,12 @@
 # my-claude-skills
 
-32 skills · 14 agents across 12 plugins
+35 skills · 14 agents across 12 plugins
 
 ## Plugins
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.9.0` | 3S |
+| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.10.0` | 6S |
 | [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
@@ -21,15 +21,18 @@
 
 ---
 
-## [agent-conduct](agent-conduct/) `1.9.0`
+## [agent-conduct](agent-conduct/) `1.10.0`
 
 Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.
 
 ### Skills
 
 - **[check-back](agent-conduct/skills/check-back/SKILL.md)** — Before ending a turn that leaves a run pending, set the agent's own next wake, and on waking look at what was pending. "check back",...
+- **[decide-while-away](agent-conduct/skills/decide-while-away/SKILL.md)** — Settle the owner's decisions while the owner is away: decide each reversible choice, write it beside its single closest alternative, act...
 - **[git-etiquette](agent-conduct/skills/git-etiquette/SKILL.md)** — Commit, push, and integrate with git: revertible commits, ten-word subjects, zero attribution, a linear main, one worktree per sibling...
+- **[office-hours](agent-conduct/skills/office-hours/SKILL.md)** — Hold an office-hours round: one event in which the owner answers the questions the agent queued. "office hours", "questioning round", or...
 - **[work-silently](agent-conduct/skills/work-silently/SKILL.md)** — Keep working while writing nothing to the conversation, ending every turn with an empty message, until the user says to stop. Use when...
+- **[write-well](agent-conduct/skills/write-well/SKILL.md)** — Write all prose by Strunk's rules of grammar, composition, and usage, and reread each draft against them, most serious fault first. Use...
 ## [dev-cycle](dev-cycle/) `1.0.0`
 
 Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, spec and code-quality reviewers, and a review chain enforced by hooks.
