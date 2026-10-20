@@ -206,6 +206,8 @@ Write `almost` for nearly, as in `almost every test`; never `most`.
 
 Use `shall` for the plain future in the first person and `will` in the others or for resolve; never `you shall` for the plain future.
 
+Refer to a person of unstated sex, as after `each`, `everyone`, `anybody`, or `someone`, with `they`, `them`, and `their`; never `everyone signs his own commit` or `his or her own commit`.
+
 Use `while` for `during the time that`; never for `and`, `but`, or `although`.
 </fix-misused-words>
 
