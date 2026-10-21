@@ -1,6 +1,6 @@
 {
   "name": "instruction-eval",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Measure whether an LLM instruction changes model behavior.",
   "author": {
     "name": "ryzhakar"
@@ -11,6 +11,5 @@
     "instruction",
     "evaluation",
     "prompt"
-  ],
-  "dependencies": ["manifesto"]
+  ]
 }

@@ -17,7 +17,7 @@ MODULE_NAMES = {
 
 def test_manifest_declares_version_and_no_plugin_dependency():
     manifest = json.loads((PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text())
-    assert manifest["version"] == "0.1.0"
+    assert manifest["version"] == "0.2.0"
     assert "dependencies" not in manifest
 
 
