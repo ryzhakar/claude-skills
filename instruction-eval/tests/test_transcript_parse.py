@@ -105,6 +105,12 @@ def test_harness_injected_meta_messages_open_no_turn_while_send_message_turns_do
     assert replies[1].message.startswith("The coordinator sent a message while you were working:\n")
 
 
+def test_reply_handed_back_through_subagent_handback_is_the_handback_message():
+    [reply] = replies_of("subagent-handback.jsonl")
+    assert reply.message == "Explain tides."
+    assert reply.text == "Tides are the regular rise and fall of sea level, driven mainly by the Moon's gravity."
+
+
 def test_a_line_that_is_not_json_is_refused_naming_transcript_and_line():
     transcript = FIXTURES / "single-turn.jsonl"
     truncated = transcript.read_bytes() + b'{"type":"assist'

@@ -2,14 +2,14 @@ import pytest
 
 from instruction_eval.records import Refusal, SeriesFolder, replace_whole, write_record
 from instruction_eval.series import series_keep
-from series_fixtures import sha256, tree, write_revision
+from series_fixtures import SERIES_BINDING, sha256, tree, write_revision
 
 
-def series(tmp_path, stop: dict | None) -> SeriesFolder:
+def kept_series(tmp_path, stop: dict | None) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
     live = tmp_path / "live.md"
     live.write_bytes(b"Edited while the series ran.\n")
-    document = {"instruction": str(live), "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+    document = {"instruction": str(live), "sources": [], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
     write_record(files, "series.yaml", document, [])
     write_revision(files, 1)
     write_revision(files, 2)
@@ -19,7 +19,7 @@ def series(tmp_path, stop: dict | None) -> SeriesFolder:
 
 
 def test_a_stopped_series_writes_the_kept_snapshot_to_the_live_instruction_path_leaving_the_series_folder_unchanged(tmp_path):
-    files = series(tmp_path, {"stop": "capped", "kept": "r1"})
+    files = kept_series(tmp_path, {"stop": "capped", "kept": "r1"})
     before = tree(files.root)
     series_hash = sha256(files.read_bytes("series.yaml"))
 
@@ -32,7 +32,7 @@ def test_a_stopped_series_writes_the_kept_snapshot_to_the_live_instruction_path_
 
 
 def test_the_kept_snapshot_reaches_the_live_instruction_only_through_the_replacement_it_is_handed(tmp_path):
-    files = series(tmp_path, {"stop": "capped", "kept": "r2"})
+    files = kept_series(tmp_path, {"stop": "capped", "kept": "r2"})
     replaced = []
 
     series_keep(files, lambda target, content: replaced.append((target, content)))
@@ -42,7 +42,7 @@ def test_the_kept_snapshot_reaches_the_live_instruction_only_through_the_replace
 
 
 def test_an_unstopped_series_refuses_and_leaves_the_live_instruction(tmp_path):
-    files = series(tmp_path, None)
+    files = kept_series(tmp_path, None)
 
     with pytest.raises(Refusal, match=r"^series not stopped$"):
         series_keep(files, replace_whole)
@@ -50,7 +50,7 @@ def test_an_unstopped_series_refuses_and_leaves_the_live_instruction(tmp_path):
 
 
 def test_a_stop_keeping_nothing_refuses_and_leaves_the_live_instruction(tmp_path):
-    files = series(tmp_path, {"stop": "unresolvable", "kept": None, "reason": "none clears the noise"})
+    files = kept_series(tmp_path, {"stop": "unresolvable", "kept": None, "reason": "none clears the noise"})
 
     with pytest.raises(Refusal, match=r"^no revision passed completion$"):
         series_keep(files, replace_whole)

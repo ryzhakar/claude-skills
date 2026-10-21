@@ -16,10 +16,10 @@ from judging_fixtures import (
     write_definition,
     write_verdict,
 )
-from series_fixtures import tree
+from series_fixtures import DISK_LOGIN_FILES, OTHER_BINDING, tree
 
 from instruction_eval.judge import judge_prepare
-from instruction_eval.records import Refusal
+from instruction_eval.records import DEFAULT_BINDING, Refusal
 
 
 def test_each_unjudged_packet_gets_judging_one_rendered_from_the_accepted_brief_and_the_launch_list_names_them(tmp_path):
@@ -98,9 +98,29 @@ def test_outside_the_neutral_login_it_refuses_for_every_reader_kind_and_writes_n
     before = tree(files.root)
 
     with pytest.raises(Refusal):
-        judge_prepare(files, "r1", {}, tmp_path / "home", files.root, [], Path.read_bytes)
+        judge_prepare(files, "r1", {}, tmp_path / "home", files.root, [], Path.read_bytes, DISK_LOGIN_FILES)
 
     assert tree(files.root) == before
+
+
+def test_under_a_login_lacking_the_series_binding_plugin_it_refuses_naming_it_and_writes_nothing(tmp_path):
+    files = series_folder(tmp_path, binding=OTHER_BINDING)
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=r"lacks binding\.plugin oath@elsewhere$"):
+        prepare(tmp_path, files)
+
+    assert tree(files.root) == before
+
+
+def test_under_a_login_enabling_the_series_binding_plugin_the_judge_brief_names_the_series_binding_skill(tmp_path):
+    files = series_folder(tmp_path, binding=OTHER_BINDING)
+
+    prepare(tmp_path, files, binding_plugin=OTHER_BINDING["plugin"])
+
+    _, body = definition(files, "ie-judge-r1-t1-k1")
+    assert "invoke the `oath:bind` skill" in body
+    assert DEFAULT_BINDING.skill not in body
 
 
 def test_a_packet_holding_three_failed_judgings_refuses_to_recalibrate_in_a_new_series_and_writes_nothing(tmp_path):

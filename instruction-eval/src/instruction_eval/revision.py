@@ -6,11 +6,12 @@ from pathlib import Path
 from instruction_eval.coverage import split_sentences
 from instruction_eval.gate import hypothesis_reads
 from instruction_eval.records import (
+    COVERAGE_KEYS,
+    coverage_input,
     ADD_ACTION,
     COLLECTED_FILE,
     COMPLETION_COMPARES,
     CONDITIONS_RECORD,
-    COVERAGE_FILE,
     DELETE_ACTION,
     DETECTORS_FILE,
     FAIL_OUTCOME,
@@ -96,7 +97,7 @@ def _refuse_unopen_replies(replies_read: Sequence[str], open_rows: Sequence[Repl
         raise Refusal(f"replies_read holds no open reply: {', '.join(unopen)}")
 
 
-class Action(StrEnum):
+class _Action(StrEnum):
     REWRITE = REWRITE_ACTION
     ADD = ADD_ACTION
     DELETE = DELETE_ACTION
@@ -104,20 +105,20 @@ class Action(StrEnum):
 
 
 @dataclass(frozen=True)
-class Change:
-    action: Action
+class _Change:
+    action: _Action
     sentence: int
     destination: int | None = None
 
     def __post_init__(self) -> None:
         """Refuse a move without a destination and any other action with one."""
-        if self.action == Action.MOVE and self.destination is None:
+        if self.action == _Action.MOVE and self.destination is None:
             raise ValueError("move needs a destination")
-        if self.action != Action.MOVE and self.destination is not None:
+        if self.action != _Action.MOVE and self.destination is not None:
             raise ValueError("only move takes a destination")
 
 
-def change_holds(parent: list[str], child: list[str], change: Change) -> bool:
+def _change_holds(parent: list[str], child: list[str], change: _Change) -> bool:
     """Say whether the child sentence list is the parent with exactly the named change applied."""
     return _CHECKS[change.action](parent, child, change)
 
@@ -137,7 +138,7 @@ def _is_number(sentences: list[str], number: int | None) -> bool:
     return number is not None and 1 <= number <= len(sentences)
 
 
-def _rewrite_holds(parent: list[str], child: list[str], change: Change) -> bool:
+def _rewrite_holds(parent: list[str], child: list[str], change: _Change) -> bool:
     """Say whether only the named sentence differs between equal-length lists."""
     return (
         len(parent) == len(child)
@@ -147,17 +148,17 @@ def _rewrite_holds(parent: list[str], child: list[str], change: Change) -> bool:
     )
 
 
-def _add_holds(parent: list[str], child: list[str], change: Change) -> bool:
+def _add_holds(parent: list[str], child: list[str], change: _Change) -> bool:
     """Say whether removing the named child sentence leaves the parent."""
     return _is_number(child, change.sentence) and _without(child, change.sentence) == parent
 
 
-def _delete_holds(parent: list[str], child: list[str], change: Change) -> bool:
+def _delete_holds(parent: list[str], child: list[str], change: _Change) -> bool:
     """Say whether removing the named parent sentence leaves the child."""
     return _is_number(parent, change.sentence) and _without(parent, change.sentence) == child
 
 
-def _move_holds(parent: list[str], child: list[str], change: Change) -> bool:
+def _move_holds(parent: list[str], child: list[str], change: _Change) -> bool:
     """Say whether the named parent sentence reappears at the destination with the rest in order."""
     return (
         _is_number(parent, change.sentence)
@@ -169,15 +170,15 @@ def _move_holds(parent: list[str], child: list[str], change: Change) -> bool:
 
 
 _CHECKS = {
-    Action.REWRITE: _rewrite_holds,
-    Action.ADD: _add_holds,
-    Action.DELETE: _delete_holds,
-    Action.MOVE: _move_holds,
+    _Action.REWRITE: _rewrite_holds,
+    _Action.ADD: _add_holds,
+    _Action.DELETE: _delete_holds,
+    _Action.MOVE: _move_holds,
 }
 
 
 NEW_COMMAND = "revision new"
-COVERAGE_INPUTS = (f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands", f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences")
+COVERAGE_INPUTS = tuple(coverage_input(FIRST_REVISION, key) for key in COVERAGE_KEYS)
 AIM_INPUT = f"{CONDITIONS_RECORD}{KEY_SEPARATOR}aim"
 PLACEBO_CONDITION = condition_path(FIRST_REVISION, PLACEBO_CONTROL)
 
@@ -236,16 +237,16 @@ def _sentence_texts(text: bytes) -> list[str]:
     return [text[sentence.start : sentence.end].decode() for sentence in split_sentences(text)]
 
 
-def _named_change(change: SentenceChange | MoveChange) -> Change:
+def _named_change(change: SentenceChange | MoveChange) -> _Change:
     """Return the change a hypothesis names as the sentence-list check takes it."""
     if isinstance(change, MoveChange):
-        return Change(Action.MOVE, change.sentence, change.to)
-    return Change(Action(change.action), change.sentence)
+        return _Change(_Action.MOVE, change.sentence, change.to)
+    return _Change(_Action(change.action), change.sentence)
 
 
-def _refuse_unmade_change(parent: list[str], child: list[str], change: Change) -> None:
+def _refuse_unmade_change(parent: list[str], child: list[str], change: _Change) -> None:
     """Refuse an instruction whose sentences differ from the parent's by anything but the named change."""
-    if not change_holds(parent, child, change):
+    if not _change_holds(parent, child, change):
         destination = "" if change.destination is None else f" to {change.destination}"
         raise Refusal(f"the instruction does not make the named change: {change.action} {change.sentence}{destination}")
 
@@ -266,13 +267,13 @@ def _open_rows(records: SeriesRecords, revision: str) -> list[ReplyRow]:
     return join_reply_rows(records.origins(revision), verdicts, records.detectors(revision), records.complete_gate().done_by, OPEN_SPLIT)
 
 
-def _change_record(parent: list[str], child: list[str], change: Change) -> dict[str, object]:
+def _change_record(parent: list[str], child: list[str], change: _Change) -> dict[str, object]:
     """Return the change as `2-revision.yaml` holds it: action, sentence, `to` on a move, the removed text, and the added text."""
     record: dict[str, object] = {
         "action": str(change.action),
         "sentence": change.sentence,
-        "old": "" if change.action == Action.ADD else _sentence(parent, change.sentence),
-        "new": "" if change.action == Action.DELETE else _sentence(child, change.destination or change.sentence),
+        "old": "" if change.action == _Action.ADD else _sentence(parent, change.sentence),
+        "new": "" if change.action == _Action.DELETE else _sentence(child, change.destination or change.sentence),
     }
     return record if change.destination is None else {**record, "to": change.destination}
 

@@ -11,10 +11,19 @@ import numpy
 
 from instruction_eval.coverage import CODE_FENCE_OPENING, closing_code_fence, split_sentences
 from instruction_eval.records import (
+    CONDITION_KEY,
+    REPEAT_KEY,
+    SPLIT_KEY,
+    TASK_KEY,
+    TURN_KEY,
+    REPLY_TEXT_KEY,
+    DONE_BY_KEY,
+    LEVEL_KEY,
+    COVERAGE_KEYS,
+    coverage_input,
     ANCHOR_KEY,
     COLLECTED_FILE,
     COMPLETION_COMPARES,
-    COVERAGE_FILE,
     DEMANDS_INPUT,
     DETECTOR_DEMANDS,
     DETECTORS_FILE,
@@ -81,7 +90,7 @@ def join_reply_rows(
     return [
         _reply_row(blind_id, origin, judged[blind_id], detected[blind_id], done_by)
         for blind_id, origin in origins["ids"].items()
-        if ANCHOR_KEY not in origin and origin["split"] == split
+        if ANCHOR_KEY not in origin and origin[SPLIT_KEY] == split
     ]
 
 
@@ -94,10 +103,10 @@ def _reply_row(blind_id: str, origin: Record, judged: Record, detected: Record, 
     """Return the row of one reply from its origin, its judge entry, and its detector entry."""
     return {
         "id": blind_id,
-        "condition": origin["condition"],
-        "task": origin["task"],
-        "repeat": origin["repeat"],
-        "turn": origin.get("turn"),
+        CONDITION_KEY: origin[CONDITION_KEY],
+        TASK_KEY: origin[TASK_KEY],
+        REPEAT_KEY: origin[REPEAT_KEY],
+        TURN_KEY: origin.get(TURN_KEY),
         "borrowed_from": origin["borrowed_from"],
         "breaches": {**judged["breaches"], **detected["breaches"]},
         "kind": judged["kind"],
@@ -143,10 +152,10 @@ def measure_noise(
     level: float,
 ) -> Noise:
     """Return r1's noise: each condition's repeat variances and the half-width each check and change can resolve."""
-    z = z_for_level(level)
+    z = _z_for_level(level)
     conditions = [INSTRUCTION_CONDITION, *controls]
-    task_replies = [row for row in sealed_rows if row["turn"] is None]
-    turn_replies = [row for row in sealed_rows if row["turn"] is not None]
+    task_replies = [row for row in sealed_rows if row[TURN_KEY] is None]
+    turn_replies = [row for row in sealed_rows if row[TURN_KEY] is not None]
     task_repeat_units = repeats * _unit_count(task_replies)
     sigma: NoiseSigma = {
         "breaches": _repeat_variances(task_replies, conditions, partial(breach_total, demands=gate_demands)),
@@ -212,7 +221,7 @@ def _drift_control(controls: Sequence[str]) -> str:
 
 def _unit_count(replies: Sequence[ScoredReply]) -> int:
     """Return how many distinct tasks or conversations the replies span."""
-    return len({reply["task"] for reply in replies})
+    return len({reply[TASK_KEY] for reply in replies})
 
 
 def _repeat_variances(
@@ -230,8 +239,8 @@ def _metric_values_by_unit(
     """Map each unit to its condition's metric values, one per repeat."""
     values: dict[str, list[float | None]] = {}
     for reply in replies:
-        if reply["condition"] == condition:
-            values.setdefault(reply["task"], []).append(metric(reply))
+        if reply[CONDITION_KEY] == condition:
+            values.setdefault(reply[TASK_KEY], []).append(metric(reply))
     return values
 
 
@@ -241,8 +250,8 @@ def _drift_slopes_by_unit(
     """Map each conversation to its condition's least-squares slopes of breach totals over turns, one per repeat."""
     turn_totals: dict[tuple[str, int], tuple[list[int], list[int]]] = {}
     for reply in replies:
-        if reply["condition"] == condition and (turn := reply["turn"]) is not None:
-            turns, totals = turn_totals.setdefault((reply["task"], reply["repeat"]), ([], []))
+        if reply[CONDITION_KEY] == condition and (turn := reply[TURN_KEY]) is not None:
+            turns, totals = turn_totals.setdefault((reply[TASK_KEY], reply[REPEAT_KEY]), ([], []))
             turns.append(turn)
             totals.append(breach_total(reply, demands))
     slopes: dict[str, list[float | None]] = {}
@@ -273,7 +282,7 @@ def _best_done_control(replies: Sequence[ScoredReply], controls: Sequence[str]) 
     done_rates = {
         control: done_rate
         for control in controls
-        if (done_rate := _done_rate([reply for reply in replies if reply["condition"] == control])) is not None
+        if (done_rate := _done_rate([reply for reply in replies if reply[CONDITION_KEY] == control])) is not None
     }
     return max(done_rates, key=done_rates.__getitem__, default=None)
 
@@ -341,8 +350,8 @@ def task_means(rows: Sequence[ScoredReply], condition: str, reply_value: Callabl
     values_by_task: dict[str, list[float]] = {}
     for row in rows:
         value = reply_value(row)
-        if row["condition"] == condition and row["turn"] is None and value is not None:
-            values_by_task.setdefault(row["task"], []).append(value)
+        if row[CONDITION_KEY] == condition and row[TURN_KEY] is None and value is not None:
+            values_by_task.setdefault(row[TASK_KEY], []).append(value)
     return {task: mean(values) for task, values in values_by_task.items()}
 
 
@@ -364,7 +373,7 @@ def _percentile_interval(resample_means: numpy.ndarray, level: float) -> tuple[f
     return float(low), float(high)
 
 
-def z_for_level(level: float) -> float:
+def _z_for_level(level: float) -> float:
     """Return the standard normal quantile at (1 + `level`) / 2."""
     _require_valid_level(level)
     return NormalDist().inv_cdf(_upper_tail_probability(level))
@@ -382,15 +391,12 @@ def _require_valid_level(level: float) -> None:
 
 
 BootstrapRng = Callable[[], numpy.random.Generator]
-LEVEL_KEY = "level"
-DONE_BY_KEY = "done_by"
 LEVEL_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{LEVEL_KEY}"
 DONE_BY_INPUT = f"{GATE_RECORD}{KEY_SEPARATOR}{DONE_BY_KEY}"
 DEMANDS_AND_TASKS_INPUTS = (DEMANDS_INPUT, f"{TASKS_RECORD}{KEY_SEPARATOR}tasks", f"{TASKS_RECORD}{KEY_SEPARATOR}conversations")
 SCORE_USER_INPUTS = (
     *DEMANDS_AND_TASKS_INPUTS,
-    f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}demands",
-    f"{FIRST_REVISION}/{COVERAGE_FILE}{KEY_SEPARATOR}sentences",
+    *(coverage_input(FIRST_REVISION, key) for key in COVERAGE_KEYS),
     LEVEL_INPUT,
     DONE_BY_INPUT,
 )
@@ -407,7 +413,7 @@ def revision_detect(files: SeriesFolder, revision: str) -> None:
     reply_paths = origin_reply_paths(origins, revision)
     replies = {blind_id: records.reply(path) for blind_id, path in reply_paths.items()}
     verdicts = [
-        _detector_entry(blind_id, reply["text"], detector_demands, answer_keys.get(reply["task"])) for blind_id, reply in replies.items()
+        _detector_entry(blind_id, reply[REPLY_TEXT_KEY], detector_demands, answer_keys.get(reply[TASK_KEY])) for blind_id, reply in replies.items()
     ]
     write_record(files, f"{revision}/{DETECTORS_FILE}", {"verdicts": verdicts}, [*DEMANDS_AND_TASKS_INPUTS, *reply_paths.values(), f"{revision}/{ORIGINS_FILE}"])
 
@@ -486,13 +492,13 @@ def measured_reads(revision: str, origins: Record, collected: Record) -> list[st
 
 def _open_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str], level: float, bootstrap_rng: BootstrapRng) -> dict[str, object]:
     """Return the scores record of the open rows: the rows, per-condition means, comparisons, drift, and done disagreements."""
-    task_rows = [row for row in rows if row["turn"] is None]
-    turn_rows = [row for row in rows if row["turn"] is not None]
+    task_rows = [row for row in rows if row[TURN_KEY] is None]
+    turn_rows = [row for row in rows if row[TURN_KEY] is not None]
     return {
-        "split": OPEN_SPLIT,
+        SPLIT_KEY: OPEN_SPLIT,
         "rows": list(rows),
         "by_condition": {
-            condition: _condition_scores([row for row in task_rows if row["condition"] == condition], gate_demands)
+            condition: _condition_scores([row for row in task_rows if row[CONDITION_KEY] == condition], gate_demands)
             for condition in _conditions_of(task_rows)
         },
         "comparisons": instruction_comparisons(task_rows, turn_rows, gate_demands, level, bootstrap_rng),
@@ -560,7 +566,7 @@ def _comparison_record(comparison: Comparison) -> dict[str, object]:
 
 def _conditions_of(rows: Sequence[ScoredReply]) -> list[str]:
     """Return the conditions the rows hold, in order of first appearance."""
-    return list(dict.fromkeys(row["condition"] for row in rows))
+    return list(dict.fromkeys(row[CONDITION_KEY] for row in rows))
 
 
 def _condition_scores(rows: Sequence[ReplyRow], gate_demands: Sequence[str]) -> dict[str, object]:

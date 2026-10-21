@@ -5,7 +5,7 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 
-from instruction_eval.gate import least_repeats, refuse_unresolvable_gaps, series_least_repeats
+from instruction_eval.gate import least_repeats, refuse_unresolvable_gaps
 from instruction_eval.records import GateCheck, Refusal
 from instruction_eval.scores import Noise, ScoredReply
 
@@ -52,13 +52,6 @@ def test_several_unresolvable_gaps_refuse_naming_each_check_and_the_least_repeat
     expected = r"^unresolvable gap: instruction-vs-aim \(noise 0\.6 > gap / 2 0\.5\), completion \(noise 0\.85 > gap / 2 0\.5\); least repeats 6$"
     with pytest.raises(Refusal, match=expected):
         refuse(REQUIRED_GAPS, half_widths)
-
-
-def test_the_series_least_repeats_is_the_most_any_check_needs_and_null_when_a_check_has_no_noise():
-    half_widths = {**REQUIRED_HALF_WIDTHS, "instruction-vs-aim": 0.6, "completion": 0.85}
-
-    assert series_least_repeats(gate_checks(REQUIRED_GAPS), noise(half_widths)) == 6
-    assert series_least_repeats(gate_checks({**REQUIRED_GAPS, "drift": 1.0}), noise(half_widths)) is None
 
 
 def test_a_gap_exactly_twice_its_noise_resolves():

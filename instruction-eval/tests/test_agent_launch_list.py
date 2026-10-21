@@ -19,11 +19,11 @@ from instruction_eval.reader import (
     agent_launch_list,
 )
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import ONE_DEMAND, write_revision
+from series_fixtures import ONE_DEMAND, SERIES_BINDING, write_revision, write_yaml
 
 TIDES_MESSAGE = "Explain tides.\nBe brief.  \n"
 TRIP_TURNS = ["Plan a trip.", "Which week?", "Thanks."]
-SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
 TASKS = {
     "tasks": [
         {"id": "t-open", "tempts": "d-judge", "split": "open", "message": TIDES_MESSAGE, "answer_key": None},
@@ -34,10 +34,6 @@ TASKS = {
 CONDITIONS = {"controls": ["empty", "aim", "placebo"], "aim": "Be terse.", "placebo_source": "/home/writer/gardening.md", "omissions": "none"}
 READER = {"kind": "agent", "model": "claude-sonnet-5-5"}
 GATE = {"repeats": 2}
-
-
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    write_file(files, path, yaml.safe_dump(document).encode())
 
 
 def agent_series(tmp_path, gate: dict = GATE, conditions: dict = CONDITIONS) -> SeriesFolder:

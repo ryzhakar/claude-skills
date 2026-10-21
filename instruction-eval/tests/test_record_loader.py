@@ -1,7 +1,4 @@
-import hashlib
 import re
-from collections import Counter
-from dataclasses import dataclass, field
 
 import pytest
 import yaml
@@ -14,7 +11,7 @@ from instruction_eval.records import (
     write_file,
     write_record,
 )
-from series_fixtures import write_yaml
+from series_fixtures import SERIES_BINDING, ReadCountingFolder, sha256, write_yaml
 
 CHECKS = [
     {"compares": "instruction-vs-empty", "gap": 0.5},
@@ -187,84 +184,81 @@ TASKS = {
 COVERAGE = {"demands": {"d-judge": [1], "d-pattern": {"dropped": "Unmeasured here."}}, "sentences": {1: ["d-judge"]}}
 
 
-def sha256(files: SeriesFolder, path: str) -> str:
-    return hashlib.sha256((files.root / path).read_bytes()).hexdigest()
-
-
-def rewrite_record(files: SeriesFolder, path: str, record: dict, reads: list[str]) -> None:
-    (files.root / path).unlink()
-    write_record(files, path, record, reads)
+def rewrite_record(consistent_files: SeriesFolder, path: str, record: dict, reads: list[str]) -> None:
+    (consistent_files.root / path).unlink()
+    write_record(consistent_files, path, record, reads)
 
 
 @pytest.fixture
-def files(tmp_path):
-    files = SeriesFolder(tmp_path)
+def consistent_files(tmp_path):
+    consistent_files = SeriesFolder(tmp_path)
     series = {
         "instruction": "/home/writer/terse.md",
         "sources": [],
         "reader_kind": "agent",
+        "binding": SERIES_BINDING,
         "created": "2026-10-14T10:00:00+00:00",
     }
-    write_record(files, "series.yaml", series, [])
-    write_yaml(files, "2-demands.yaml", {
+    write_record(consistent_files, "series.yaml", series, [])
+    write_yaml(consistent_files, "2-demands.yaml", {
         "demands": [
             {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
             {"id": "d-pattern", "text": "No hedges.", "boundary": "None.", "counted_by": "pattern", "pattern": "maybe"},
         ]
     })
-    write_yaml(files, "3-tasks.yaml", TASKS)
-    write_yaml(files, "4-conditions.yaml", {
+    write_yaml(consistent_files, "3-tasks.yaml", TASKS)
+    write_yaml(consistent_files, "4-conditions.yaml", {
         "controls": ["empty", "aim", "placebo"],
         "aim": "Make replies short.",
         "placebo_source": "/home/writer/placebo.md",
         "omissions": "none",
     })
-    write_yaml(files, "5-reader.yaml", {"kind": "agent", "model": "claude-sonnet-4-5"})
-    write_yaml(files, "7-gate.yaml", GATE)
-    write_file(files, "r1/2-instruction.md", b"Be terse.\n")
-    write_record(files, "r1/2-revision.yaml", {
-        "number": 1, "parent": None, "hash": sha256(files, "r1/2-instruction.md"), "parent_record": None, "change": None,
+    write_yaml(consistent_files, "5-reader.yaml", {"kind": "agent", "model": "claude-sonnet-4-5"})
+    write_yaml(consistent_files, "7-gate.yaml", GATE)
+    write_file(consistent_files, "r1/2-instruction.md", b"Be terse.\n")
+    write_record(consistent_files, "r1/2-revision.yaml", {
+        "number": 1, "parent": None, "hash": sha256(consistent_files.read_bytes("r1/2-instruction.md")), "parent_record": None, "change": None,
     }, [])
-    write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
+    write_yaml(consistent_files, "r1/3-coverage.yaml", COVERAGE)
     for condition in ("instruction", "empty", "aim", "placebo"):
-        write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
-    write_record(files, REPLY_PATH, REPLY, REPLY_READS)
-    write_yaml(files, f"{ATTEMPT}/plan.yaml", {
+        write_file(consistent_files, f"r1/4-conditions/{condition}.md", condition.encode())
+    write_record(consistent_files, REPLY_PATH, REPLY, REPLY_READS)
+    write_yaml(consistent_files, f"{ATTEMPT}/plan.yaml", {
         "judge_model": "claude-opus-4-1",
         "raters": ["user"],
         "sample_size": 1,
         "anchors_per_packet": 3,
         "acceptance": ACCEPTANCE,
     })
-    write_record(files, f"{ATTEMPT}/origins.yaml", ATTEMPT_ORIGINS, [f"{ATTEMPT}/plan.yaml", REPLY_PATH])
-    write_yaml(files, f"{ATTEMPT}/candidate-1.yaml", RATING)
-    write_record(files, f"{ATTEMPT}/agreement.yaml", AGREEMENT, [f"{ATTEMPT}/plan.yaml", f"{ATTEMPT}/candidate-1.yaml"])
-    write_record(files, "6-judge/calibration.yaml", CALIBRATION, [f"{ATTEMPT}/plan.yaml"])
-    write_record(files, "6-judge/anchors.yaml", ANCHORS, [f"{ATTEMPT}/plan.yaml"])
-    write_record(files, "r1/6-origins.yaml", ORIGINS, ["3-tasks.yaml", "7-gate.yaml#repeats", REPLY_PATH])
-    write_yaml(files, "r1/7-verdicts/t-open/k1.yaml", VERDICT)
-    write_record(files, "r1/7-collected.yaml", COLLECTED, ["r1/6-origins.yaml", "r1/7-verdicts/t-open/k1.yaml"])
-    write_record(files, "r1/7-detectors.yaml", DETECTORS, ["2-demands.yaml", "r1/6-origins.yaml"])
-    write_record(files, "r1/8-scores.yaml", SCORES, ["7-gate.yaml#level", "r1/7-collected.yaml"])
-    write_record(files, "r1/9-outcome.yaml", OUTCOME, ["7-gate.yaml", "r1/8-scores.yaml"])
-    write_record(files, "8-frozen.yaml", FROZEN, ["7-gate.yaml"])
-    write_yaml(files, "r2/1-hypothesis.yaml", HYPOTHESIS)
-    write_file(files, "r2/2-instruction.md", b"Be brief.\n")
-    write_record(files, "r2/2-revision.yaml", {
+    write_record(consistent_files, f"{ATTEMPT}/origins.yaml", ATTEMPT_ORIGINS, [f"{ATTEMPT}/plan.yaml", REPLY_PATH])
+    write_yaml(consistent_files, f"{ATTEMPT}/candidate-1.yaml", RATING)
+    write_record(consistent_files, f"{ATTEMPT}/agreement.yaml", AGREEMENT, [f"{ATTEMPT}/plan.yaml", f"{ATTEMPT}/candidate-1.yaml"])
+    write_record(consistent_files, "6-judge/calibration.yaml", CALIBRATION, [f"{ATTEMPT}/plan.yaml"])
+    write_record(consistent_files, "6-judge/anchors.yaml", ANCHORS, [f"{ATTEMPT}/plan.yaml"])
+    write_record(consistent_files, "r1/6-origins.yaml", ORIGINS, ["3-tasks.yaml", "7-gate.yaml#repeats", REPLY_PATH])
+    write_yaml(consistent_files, "r1/7-verdicts/t-open/k1.yaml", VERDICT)
+    write_record(consistent_files, "r1/7-collected.yaml", COLLECTED, ["r1/6-origins.yaml", "r1/7-verdicts/t-open/k1.yaml"])
+    write_record(consistent_files, "r1/7-detectors.yaml", DETECTORS, ["2-demands.yaml", "r1/6-origins.yaml"])
+    write_record(consistent_files, "r1/8-scores.yaml", SCORES, ["7-gate.yaml#level", "r1/7-collected.yaml"])
+    write_record(consistent_files, "r1/9-outcome.yaml", OUTCOME, ["7-gate.yaml", "r1/8-scores.yaml"])
+    write_record(consistent_files, "8-frozen.yaml", FROZEN, ["7-gate.yaml"])
+    write_yaml(consistent_files, "r2/1-hypothesis.yaml", HYPOTHESIS)
+    write_file(consistent_files, "r2/2-instruction.md", b"Be brief.\n")
+    write_record(consistent_files, "r2/2-revision.yaml", {
         "number": 2,
         "parent": "r1",
-        "hash": sha256(files, "r2/2-instruction.md"),
-        "parent_record": sha256(files, "r1/2-revision.yaml"),
+        "hash": sha256(consistent_files.read_bytes("r2/2-instruction.md")),
+        "parent_record": sha256(consistent_files.read_bytes("r1/2-revision.yaml")),
         "change": {"action": "rewrite", "sentence": 1, "old": "Be terse.", "new": "Be brief."},
     }, ["r1/2-revision.yaml", "r2/1-hypothesis.yaml"])
-    write_yaml(files, "r2/3-coverage.yaml", COVERAGE)
-    write_record(files, "r2/9-outcome.yaml", R2_OUTCOME, ["7-gate.yaml"])
-    write_record(files, "9-stop.yaml", {"stop": "capped", "kept": "r1"}, ["7-gate.yaml#keep_rule"])
-    return files
+    write_yaml(consistent_files, "r2/3-coverage.yaml", COVERAGE)
+    write_record(consistent_files, "r2/9-outcome.yaml", R2_OUTCOME, ["7-gate.yaml"])
+    write_record(consistent_files, "9-stop.yaml", {"stop": "capped", "kept": "r1"}, ["7-gate.yaml#keep_rule"])
+    return consistent_files
 
 
-def test_every_record_of_a_consistent_series_loads_typed(files):
-    records = SeriesRecords(files)
+def test_every_record_of_a_consistent_series_loads_typed(consistent_files):
+    records = SeriesRecords(consistent_files)
     assert records.series().reader_kind == "agent"
     assert [demand.id for demand in records.demands().demands] == ["d-judge", "d-pattern"]
     assert [task.id for task in records.tasks().tasks] == ["t-open", "t-sealed", "t-over"]
@@ -292,21 +286,12 @@ def test_every_record_of_a_consistent_series_loads_typed(files):
     assert records.stop()["kept"] == "r1"
 
 
-@dataclass(frozen=True)
-class ReadCountingFolder(SeriesFolder):
-    reads: Counter = field(default_factory=Counter)
-
-    def read_bytes(self, path):
-        self.reads[path] += 1
-        return super().read_bytes(path)
-
-
 @pytest.mark.parametrize(
     "load",
     [lambda records: records.scores("r1"), lambda records: records.hypothesis("r2"), lambda records: records.reply(REPLY_PATH)],
 )
-def test_one_loader_reads_each_shared_record_once_however_many_records_reference_it(files, load):
-    counting = ReadCountingFolder(files.root)
+def test_one_loader_reads_each_shared_record_once_however_many_records_reference_it(consistent_files, load):
+    counting = ReadCountingFolder(consistent_files.root)
     load(SeriesRecords(counting))
     shared = {path: counting.reads[path] for path in ("2-demands.yaml", "r1/3-coverage.yaml") if counting.reads[path]}
     assert shared == dict.fromkeys(shared, 1)
@@ -322,14 +307,14 @@ def at(*keys: object, value: object):
     return change
 
 
-def edit(files: SeriesFolder, path: str, change) -> None:
-    document = yaml.safe_load((files.root / path).read_text())
+def edit(consistent_files: SeriesFolder, path: str, change) -> None:
+    document = yaml.safe_load((consistent_files.root / path).read_text())
     reads = document.pop("inputs", None)
     change(document)
     if reads is None:
-        write_yaml(files, path, document)
+        write_yaml(consistent_files, path, document)
     else:
-        rewrite_record(files, path, document, list(reads))
+        rewrite_record(consistent_files, path, document, list(reads))
 
 
 def refusal(path: str, kind: str, name: str) -> str:
@@ -357,10 +342,10 @@ def refusal(path: str, kind: str, name: str) -> str:
         ("r1/8-scores.yaml", at("by_condition", "instruction", "demands", value={"d-gone": 0}), lambda records: records.scores("r1"), "demand", "d-gone"),
     ],
 )
-def test_a_record_naming_a_demand_the_series_lacks_refuses_naming_it(files, path, change, load, kind, name):
-    edit(files, path, change)
+def test_a_record_naming_a_demand_the_series_lacks_refuses_naming_it(consistent_files, path, change, load, kind, name):
+    edit(consistent_files, path, change)
     with pytest.raises(Refusal, match=refusal(path, kind, name)):
-        load(SeriesRecords(files))
+        load(SeriesRecords(consistent_files))
 
 
 @pytest.mark.parametrize(
@@ -394,43 +379,43 @@ def test_a_record_naming_a_demand_the_series_lacks_refuses_naming_it(files, path
         ("r1/8-scores.yaml", at("by_condition", value={"omit-9": SCORES["by_condition"]["instruction"]}), lambda records: records.scores("r1"), "condition", "omit-9"),
     ],
 )
-def test_a_record_naming_an_entry_the_series_lacks_refuses_naming_it(files, path, change, load, kind, name):
-    edit(files, path, change)
+def test_a_record_naming_an_entry_the_series_lacks_refuses_naming_it(consistent_files, path, change, load, kind, name):
+    edit(consistent_files, path, change)
     with pytest.raises(Refusal, match=refusal(path, kind, name)):
-        load(SeriesRecords(files))
+        load(SeriesRecords(consistent_files))
 
 
-def test_a_verdict_naming_a_blind_id_of_another_packet_refuses_naming_it(files):
-    edit(files, "r1/6-origins.yaml", at("ids", "b00000002", "packet", value="t-other"))
-    edit(files, "r1/6-origins.yaml", at("packets", "t-other", value=HASH))
+def test_a_verdict_naming_a_blind_id_of_another_packet_refuses_naming_it(consistent_files):
+    edit(consistent_files, "r1/6-origins.yaml", at("ids", "b00000002", "packet", value="t-other"))
+    edit(consistent_files, "r1/6-origins.yaml", at("packets", "t-other", value=HASH))
     path = "r1/7-verdicts/t-open/k1.yaml"
     with pytest.raises(Refusal, match=refusal(path, "blind id", "b00000002")):
-        SeriesRecords(files).verdict("r1", "t-open", 1)
+        SeriesRecords(consistent_files).verdict("r1", "t-open", 1)
 
 
 TURN_PATH = "r1/5-replies/instruction/c-open/repeat-1/turn-2.yaml"
 TURN_REPLY = {**REPLY, "task": "c-open", "turn": 2}
 
 
-def test_a_conversation_turn_reply_within_its_turns_loads(files):
-    write_record(files, TURN_PATH, TURN_REPLY, REPLY_READS)
-    assert SeriesRecords(files).reply(TURN_PATH)["turn"] == 2
+def test_a_conversation_turn_reply_within_its_turns_loads(consistent_files):
+    write_record(consistent_files, TURN_PATH, TURN_REPLY, REPLY_READS)
+    assert SeriesRecords(consistent_files).reply(TURN_PATH)["turn"] == 2
 
 
 @pytest.mark.parametrize(("reply", "name"), [({**TURN_REPLY, "turn": 3}, "3"), ({k: v for k, v in TURN_REPLY.items() if k != "turn"}, "absent")])
-def test_a_conversation_reply_naming_no_turn_or_a_turn_past_its_last_refuses_naming_it(files, reply, name):
-    write_record(files, TURN_PATH, reply, REPLY_READS)
+def test_a_conversation_reply_naming_no_turn_or_a_turn_past_its_last_refuses_naming_it(consistent_files, reply, name):
+    write_record(consistent_files, TURN_PATH, reply, REPLY_READS)
     with pytest.raises(Refusal, match=refusal(TURN_PATH, "turn", name)):
-        SeriesRecords(files).reply(TURN_PATH)
+        SeriesRecords(consistent_files).reply(TURN_PATH)
 
 
-def test_scores_holding_a_control_row_borrowed_from_r1_load(files):
-    write_file(files, "r2/4-conditions/instruction.md", b"instruction")
+def test_scores_holding_a_control_row_borrowed_from_r1_load(consistent_files):
+    write_file(consistent_files, "r2/4-conditions/instruction.md", b"instruction")
     borrowed_row = {**SCORES["rows"][0], "condition": "empty", "borrowed_from": "r1"}
-    write_record(files, "r2/6-origins.yaml", {"ids": {"b00000001": {**REPLY_ORIGIN, "borrowed_from": "r1"}}, "packets": {"t-open": HASH}}, [])
+    write_record(consistent_files, "r2/6-origins.yaml", {"ids": {"b00000001": {**REPLY_ORIGIN, "borrowed_from": "r1"}}, "packets": {"t-open": HASH}}, [])
     by_condition = {"instruction": SCORES["by_condition"]["instruction"], "empty": SCORES["by_condition"]["instruction"]}
-    write_record(files, "r2/8-scores.yaml", {**SCORES, "rows": [borrowed_row], "by_condition": by_condition}, [])
-    assert SeriesRecords(files).scores("r2")["rows"] == [borrowed_row]
+    write_record(consistent_files, "r2/8-scores.yaml", {**SCORES, "rows": [borrowed_row], "by_condition": by_condition}, [])
+    assert SeriesRecords(consistent_files).scores("r2")["rows"] == [borrowed_row]
 
 
 COMMAND_READER = {
@@ -443,62 +428,62 @@ COMMAND_READER = {
 NULL_COST = dict.fromkeys(AGENT_COST)
 
 
-def test_a_reader_of_another_kind_than_the_series_refuses_naming_both(files):
-    write_yaml(files, "5-reader.yaml", COMMAND_READER)
+def test_a_reader_of_another_kind_than_the_series_refuses_naming_both(consistent_files):
+    write_yaml(consistent_files, "5-reader.yaml", COMMAND_READER)
     with pytest.raises(Refusal, match=r"^reader kind mismatch: 5-reader\.yaml \(command, series\.yaml agent\)$"):
-        SeriesRecords(files).reader()
+        SeriesRecords(consistent_files).reader()
 
 
-def test_a_reply_of_another_reader_kind_than_the_series_refuses_naming_both(files):
+def test_a_reply_of_another_reader_kind_than_the_series_refuses_naming_both(consistent_files):
     command_reply = {key: value for key, value in REPLY.items() if key not in ("transcript", "transcript_hash")}
-    rewrite_record(files, REPLY_PATH, {**command_reply, "reader_kind": "command", "fingerprint_hash": HASH, "cost": NULL_COST}, REPLY_READS)
+    rewrite_record(consistent_files, REPLY_PATH, {**command_reply, "reader_kind": "command", "fingerprint_hash": HASH, "cost": NULL_COST}, REPLY_READS)
     with pytest.raises(Refusal, match=rf"^reader kind mismatch: {re.escape(REPLY_PATH)} \(command, series\.yaml agent\)$"):
-        SeriesRecords(files).reply(REPLY_PATH)
+        SeriesRecords(consistent_files).reply(REPLY_PATH)
 
 
-def test_a_reply_whose_consumed_gate_key_changed_refuses_as_stale(files):
-    write_yaml(files, "7-gate.yaml", {**GATE, "repeats": 3})
+def test_a_reply_whose_consumed_gate_key_changed_refuses_as_stale(consistent_files):
+    write_yaml(consistent_files, "7-gate.yaml", {**GATE, "repeats": 3})
     with pytest.raises(Refusal, match=rf"^stale: {re.escape(REPLY_PATH)} \(input 7-gate\.yaml#repeats changed\)$"):
-        SeriesRecords(files).reply(REPLY_PATH)
+        SeriesRecords(consistent_files).reply(REPLY_PATH)
 
 
-def test_a_reply_loads_after_the_user_edits_gate_checks_it_never_read(files):
-    write_yaml(files, "7-gate.yaml", {**GATE, "checks": [*CHECKS, {"compares": "drift", "gap": 1}]})
-    assert SeriesRecords(files).reply(REPLY_PATH)["text"] == REPLY["text"]
+def test_a_reply_loads_after_the_user_edits_gate_checks_it_never_read(consistent_files):
+    write_yaml(consistent_files, "7-gate.yaml", {**GATE, "checks": [*CHECKS, {"compares": "drift", "gap": 1}]})
+    assert SeriesRecords(consistent_files).reply(REPLY_PATH)["text"] == REPLY["text"]
 
 
-def test_a_reply_whose_input_was_deleted_refuses_naming_the_input(files):
-    (files.root / "r1/4-conditions/instruction.md").unlink()
+def test_a_reply_whose_input_was_deleted_refuses_naming_the_input(consistent_files):
+    (consistent_files.root / "r1/4-conditions/instruction.md").unlink()
     with pytest.raises(Refusal, match=r"^missing input: r1/4-conditions/instruction\.md$"):
-        SeriesRecords(files).reply(REPLY_PATH)
+        SeriesRecords(consistent_files).reply(REPLY_PATH)
 
 
-def test_a_complete_gate_refuses_an_unwritten_key_naming_it(files):
-    write_yaml(files, "7-gate.yaml", {key: value for key, value in GATE.items() if key != "keep_rule"})
+def test_a_complete_gate_refuses_an_unwritten_key_naming_it(consistent_files):
+    write_yaml(consistent_files, "7-gate.yaml", {key: value for key, value in GATE.items() if key != "keep_rule"})
     with pytest.raises(Refusal, match=r"^missing key: 7-gate\.yaml#keep_rule$"):
-        SeriesRecords(files).complete_gate()
+        SeriesRecords(consistent_files).complete_gate()
 
 
-def test_a_frozen_series_refuses_a_gate_with_an_unwritten_key(files):
-    write_yaml(files, "7-gate.yaml", {key: value for key, value in GATE.items() if key != "budget"})
+def test_a_frozen_series_refuses_a_gate_with_an_unwritten_key(consistent_files):
+    write_yaml(consistent_files, "7-gate.yaml", {key: value for key, value in GATE.items() if key != "budget"})
     with pytest.raises(Refusal, match=r"^missing key: 7-gate\.yaml#budget$"):
-        SeriesRecords(files).gate()
+        SeriesRecords(consistent_files).gate()
 
 
-def test_an_unfrozen_series_loads_a_gate_holding_only_the_step_four_keys(files):
-    (files.root / "8-frozen.yaml").unlink()
-    write_yaml(files, "7-gate.yaml", {"repeats": 2, "level": 0.9, "done_by": "judge"})
-    gate = SeriesRecords(files).gate()
+def test_an_unfrozen_series_loads_a_gate_holding_only_the_step_four_keys(consistent_files):
+    (consistent_files.root / "8-frozen.yaml").unlink()
+    write_yaml(consistent_files, "7-gate.yaml", {"repeats": 2, "level": 0.9, "done_by": "judge"})
+    gate = SeriesRecords(consistent_files).gate()
     assert (gate.repeats, gate.checks, gate.keep_rule, gate.budget) == (2, None, None, None)
 
 
-def test_a_record_breaking_its_schema_refuses_as_malformed_naming_the_file(files):
-    edit(files, "2-demands.yaml", at("demands", 0, "counted_by", value="eyeball"))
+def test_a_record_breaking_its_schema_refuses_as_malformed_naming_the_file(consistent_files):
+    edit(consistent_files, "2-demands.yaml", at("demands", 0, "counted_by", value="eyeball"))
     with pytest.raises(Refusal, match=r"^malformed record: 2-demands\.yaml \(demands\[0\]\.counted_by: 'eyeball' is not one of"):
-        SeriesRecords(files).demands()
+        SeriesRecords(consistent_files).demands()
 
 
-def test_an_absent_user_record_refuses_naming_it(files):
-    (files.root / "3-tasks.yaml").unlink()
+def test_an_absent_user_record_refuses_naming_it(consistent_files):
+    (consistent_files.root / "3-tasks.yaml").unlink()
     with pytest.raises(Refusal, match=r"^missing record: 3-tasks\.yaml$"):
-        SeriesRecords(files).tasks()
+        SeriesRecords(consistent_files).tasks()

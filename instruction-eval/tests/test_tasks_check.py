@@ -8,7 +8,7 @@ from hypothesis import strategies as st
 
 from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.tasks import tasks_check
-from series_fixtures import write_yaml
+from series_fixtures import SERIES_BINDING, write_yaml
 
 DEMANDS = [{"id": "d-a", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"}]
 INSTRUCTION = "Be terse. Never pad answers with filler.\n"
@@ -46,7 +46,7 @@ def tasks_series(
     if placebo is not None:
         external_placebo.write_bytes(placebo if isinstance(placebo, bytes) else placebo.encode())
     sources = source_files or {}
-    series = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{name}" for name in sources], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+    series = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{name}" for name in sources], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
     write_record(files, "series.yaml", series, [])
     write_yaml(files, "2-demands.yaml", {"demands": DEMANDS})
     write_yaml(files, "3-tasks.yaml", {"tasks": tasks, "conversations": conversations or []})

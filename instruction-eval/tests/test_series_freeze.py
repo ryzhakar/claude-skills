@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-from series_fixtures import Reply, bootstrap_rng, sha256, tree, write_origins, write_yaml
+from series_fixtures import SERIES_BINDING, Reply, bootstrap_rng, read_nothing, sha256, tree, write_origins, write_yaml
 
 from instruction_eval.records import (
     Refusal,
@@ -57,13 +57,13 @@ FROZEN_AT = datetime(2026, 10, 15, 9, 30, tzinfo=timezone.utc)
 TOOL_VERSION = "0.1.0"
 
 
-def first_replies() -> list[Reply]:
+def unbreached_first_replies() -> list[Reply]:
     """Build r1's replies: every task at both repeats under every condition, none breaching."""
     pairs = [(condition, task, repeat) for condition in CONDITION_NAMES for task in TASKS["tasks"] for repeat in (1, 2)]
     return [Reply(f"b{index:08x}", condition, task["id"], repeat=repeat, split=task["split"]) for index, (condition, task, repeat) in enumerate(pairs, 1)]
 
 
-def reply_record(reply: Reply, reader_kind: str) -> dict:
+def reader_reply_record(reply: Reply, reader_kind: str) -> dict:
     """Return the reply record of a fixture reply by a reader of the kind."""
     task = next(task for task in TASKS["tasks"] if task["id"] == reply.task)
     record = {
@@ -88,7 +88,7 @@ def write_measured_first_revision(files: SeriesFolder, replies: list[Reply], rea
     for condition in CONDITION_NAMES:
         write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
     for reply in replies:
-        write_record(files, reply_path("r1", reply.condition, reply.task, reply.repeat, None), reply_record(reply, reader_kind), [])
+        write_record(files, reply_path("r1", reply.condition, reply.task, reply.repeat, None), reader_reply_record(reply, reader_kind), [])
     anchor_ids = write_origins(files, "r1", replies, "a-one")
     for packet, anchor_id in anchor_ids.items():
         entries = [{"id": reply.id, "breaches": {"d-judge": reply.judged}, "done": reply.done, "kind": "answer", "notes": ""} for reply in replies if reply.packet == packet]
@@ -103,7 +103,7 @@ def write_measured_first_revision(files: SeriesFolder, replies: list[Reply], rea
 def ready_series(tmp_path: Path, replies: list[Reply] | None = None, gate: dict = GATE, reader: dict = AGENT_READER) -> SeriesFolder:
     """Write a series whose r1 is asked, collected, calibrated, blinded, judged, and detected, and whose gate is complete."""
     files = SeriesFolder(tmp_path / "series")
-    write_record(files, "series.yaml", {"instruction": "/tmp/terse.md", "sources": [], "reader_kind": reader["kind"], "created": "2026-10-14T10:00:00+00:00"}, [])
+    write_record(files, "series.yaml", {"instruction": "/tmp/terse.md", "sources": [], "reader_kind": reader["kind"], "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}, [])
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "3-tasks.yaml", TASKS)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
@@ -119,14 +119,9 @@ def ready_series(tmp_path: Path, replies: list[Reply] | None = None, gate: dict 
     write_file(files, "r1/2-instruction.md", INSTRUCTION)
     write_record(files, "r1/2-revision.yaml", {"number": 1, "parent": None, "hash": sha256(INSTRUCTION), "parent_record": None, "change": None}, [])
     write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
-    write_measured_first_revision(files, first_replies() if replies is None else replies, reader["kind"])
+    write_measured_first_revision(files, unbreached_first_replies() if replies is None else replies, reader["kind"])
     write_file(files, ".claude/agents/ie-reader-r1-instruction.md", b"definition")
     return files
-
-
-def read_nothing(path: Path) -> bytes:
-    """Stand in for the external file reader, which a series holding its placebo snapshot never calls."""
-    raise AssertionError(f"read an external file: {path}")
 
 
 def freeze(files: SeriesFolder, fingerprint_hash: str | None = None) -> None:
@@ -176,7 +171,7 @@ def test_a_command_reader_series_records_the_fresh_fingerprint_hash(tmp_path):
 
 def noisy_instruction_replies() -> list[Reply]:
     """Build r1's replies with the instruction's second repeat of every sealed task breaching three times, so its repeats disagree."""
-    return [replace(reply, judged=3) if reply.condition == "instruction" and reply.split == "sealed" and reply.repeat == 2 else reply for reply in first_replies()]
+    return [replace(reply, judged=3) if reply.condition == "instruction" and reply.split == "sealed" and reply.repeat == 2 else reply for reply in unbreached_first_replies()]
 
 
 def test_a_gap_the_noise_cannot_resolve_refuses_naming_the_checks_and_the_least_repeats_and_writes_nothing(tmp_path):
@@ -260,7 +255,7 @@ def test_a_series_not_ready_to_freeze_refuses_and_writes_nothing(tmp_path):
 
 
 def test_a_first_revision_whose_sealed_instruction_replies_hold_no_done_refuses_its_null_done_change_noise(tmp_path):
-    replies = [replace(reply, done=None) if reply.condition == "instruction" and reply.split == "sealed" else reply for reply in first_replies()]
+    replies = [replace(reply, done=None) if reply.condition == "instruction" and reply.split == "sealed" else reply for reply in unbreached_first_replies()]
     files = ready_series(tmp_path, replies)
 
     with pytest.raises(Refusal, match=r"^null noise: done_change$"):

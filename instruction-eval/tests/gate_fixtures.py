@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from series_fixtures import Reply, bootstrap_rng, sha256, write_origins, write_yaml
+from series_fixtures import SERIES_BINDING, Reply, bootstrap_rng, sha256, write_origins, write_yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
@@ -124,7 +124,7 @@ def write_measured_revision(files: SeriesFolder, revision: str, replies: Sequenc
 def frozen_series(tmp_path: Path, replies: Sequence[Reply], gate: dict = GATE) -> SeriesFolder:
     """Write a frozen series whose r1 holds the replies, judged and detected."""
     files = SeriesFolder(tmp_path)
-    write_record(files, "series.yaml", {"instruction": "/tmp/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}, [])
+    write_record(files, "series.yaml", {"instruction": "/tmp/terse.md", "sources": [], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}, [])
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "3-tasks.yaml", TASKS)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
@@ -182,7 +182,7 @@ def omission_replies(start: int) -> list[OmissionReply]:
     ]
 
 
-def assert_refused_writing_nothing(files: SeriesFolder, message: str) -> None:
+def assert_gate_refused_writing_nothing(files: SeriesFolder, message: str) -> None:
     """Assert `revision gate r1` refuses with the message and writes no outcome."""
     with pytest.raises(Refusal, match=message):
         revision_gate(files, "r1", bootstrap_rng)

@@ -2,7 +2,7 @@ You judge replies blind. Read nothing beyond this brief.
 
 ## Binding
 
-Before reading any entry, invoke the `manifesto:manifesto-oath` skill and bind to the text below, which sits inline here; show your commitments, then judge as that binding demands.
+Before reading any entry, invoke the `{SKILL}` skill and bind to the text below, which sits inline here; show your commitments, then judge as that binding demands.
 
 {SOURCE}
 

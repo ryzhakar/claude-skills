@@ -22,6 +22,8 @@ STATUS_COMMAND = "series status"
 KEEP_COMMAND = "series keep"
 STOPPED_SERIES_COMMANDS = (STATUS_COMMAND, KEEP_COMMAND)
 INPUTS_KEY = "inputs"
+_RECORD_ROLE = "record"
+_INPUT_ROLE = "input"
 FEWEST_REPEATS = 2
 _UNBOUNDED = float("inf")
 
@@ -84,6 +86,10 @@ class SeriesFolder:
         """Return the bytes at `path`, raising FileNotFoundError when it is absent."""
         return (self.root / path).read_bytes()
 
+    def paths(self, pattern: str) -> list[str]:
+        """Return the series path of every file the glob pattern matches, in path order."""
+        return sorted(path.relative_to(self.root).as_posix() for path in self.root.glob(pattern) if path.is_file())
+
     def holds(self, path: str) -> bool:
         """Tell whether a file exists at `path`."""
         return (self.root / path).is_file()
@@ -123,11 +129,6 @@ def utf8_text(content: bytes, label: str) -> str:
         raise Refusal(f"not UTF-8: {label}") from None
 
 
-def series_paths(files: SeriesFolder, pattern: str) -> list[str]:
-    """Return the series path of every file the glob pattern matches, in path order."""
-    return sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(pattern) if path.is_file())
-
-
 def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], reads: Iterable[str]) -> None:
     """Write a YAML record whose `inputs` map each read, a series path or `<path>#<key>`, to its sha256, refusing a record carrying its own."""
     if INPUTS_KEY in record:
@@ -137,7 +138,7 @@ def write_record(files: SeriesFolder, path: str, record: Mapping[str, Any], read
 
 def load_record(files: SeriesFolder, path: str) -> dict[str, Any]:
     """Load the CLI record at `path`, refusing when an input no longer hashes as written."""
-    record = _parse_record(_read_record(files, path), path)
+    record = _parse_record(_read_yaml_bytes(files, path, _RECORD_ROLE), path)
     written_hashes = record[INPUTS_KEY]
     current_hashes = _hash_inputs(files, written_hashes)
     for entry, written_hash in written_hashes.items():
@@ -146,28 +147,28 @@ def load_record(files: SeriesFolder, path: str) -> dict[str, Any]:
     return record
 
 
-def _read_record(files: SeriesFolder, path: str) -> bytes:
-    """Read the CLI record at `path`, refusing when it is absent."""
+def _read_yaml_bytes(files: SeriesFolder, path: str, role: str) -> bytes:
+    """Read the YAML file at `path`, refusing it absent as a missing `role`."""
     try:
         return files.read_bytes(path)
     except FileNotFoundError:
-        raise Refusal(f"missing record: {path}") from None
+        raise Refusal(f"missing {role}: {path}") from None
 
 
 def _parse_record(content: bytes, path: str) -> dict[str, Any]:
     """Parse a CLI record, refusing it as malformed unless it is a YAML mapping holding an `inputs` mapping of strings to strings."""
-    record = _parse_yaml(content, path)
+    record = _parse_yaml(content, path, _RECORD_ROLE)
     if not isinstance(record, dict) or not _is_text_map(record.get(INPUTS_KEY)):
         raise Refusal(f"malformed record: {path} (no inputs map)")
     return record
 
 
-def _parse_yaml(content: bytes, path: str) -> Any:
-    """Parse the YAML record at `path`, refusing it as malformed when it is not YAML."""
+def _parse_yaml(content: bytes, path: str, role: str) -> Any:
+    """Parse the YAML file at `path`, refusing it as a malformed `role` when it is not YAML."""
     try:
         return yaml.safe_load(content)
     except yaml.YAMLError:
-        raise Refusal(f"malformed record: {path} (not YAML)") from None
+        raise Refusal(f"malformed {role}: {path} (not YAML)") from None
 
 
 def _is_text_map(value: Any) -> bool:
@@ -177,8 +178,8 @@ def _is_text_map(value: Any) -> bool:
 
 def _hash_inputs(files: SeriesFolder, reads: Iterable[str]) -> dict[str, str]:
     """Map each read to the sha256 of what it names, reading and parsing each named file once."""
-    read_file = functools.cache(lambda file_path: _read_input(files, file_path))
-    parse_file = functools.cache(lambda file_path: _parse_input(read_file(file_path), file_path))
+    read_file = functools.cache(lambda file_path: _read_yaml_bytes(files, file_path, _INPUT_ROLE))
+    parse_file = functools.cache(lambda file_path: _parse_yaml(read_file(file_path), file_path, _INPUT_ROLE))
     return {entry: _hash_input(read_file, parse_file, entry) for entry in reads}
 
 
@@ -195,22 +196,6 @@ def _read_top_level_value(document: Any, entry: str, key: str) -> Any:
     if not isinstance(document, dict) or key not in document:
         raise Refusal(f"missing input: {entry}")
     return document[key]
-
-
-def _parse_input(content: bytes, path: str) -> Any:
-    """Parse the YAML series input at `path`, refusing it as malformed when it is not YAML."""
-    try:
-        return yaml.safe_load(content)
-    except yaml.YAMLError:
-        raise Refusal(f"malformed input: {path}") from None
-
-
-def _read_input(files: SeriesFolder, path: str) -> bytes:
-    """Read the series input at `path`, refusing when it is absent."""
-    try:
-        return files.read_bytes(path)
-    except FileNotFoundError:
-        raise Refusal(f"missing input: {path}") from None
 
 
 def _stage_beside(target: Path, content: bytes) -> Path:
@@ -297,8 +282,23 @@ REPLY_INPUT_TOKEN_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_
 REPLY_COST_KEYS = (*REPLY_INPUT_TOKEN_KEYS, "output_tokens", SPENT_INPUT_TOKENS_KEY)
 PARENT_OUTCOME_KEYS = ("changed_from_parent", "parent_comparison")
 LINEAGE_KEYS = ("parent", "parent_record", "change")
-AGENT_ONLY_REPLY_KEYS = ("transcript", "transcript_hash")
-COMMAND_ONLY_REPLY_KEYS = ("fingerprint_hash",)
+CONDITION_KEY = "condition"
+TASK_KEY = "task"
+SPLIT_KEY = "split"
+REPEAT_KEY = "repeat"
+TURN_KEY = "turn"
+REPLY_MESSAGE_KEY = "message"
+REPLY_TEXT_KEY = "text"
+REPLY_MODEL_KEY = "model"
+READER_KIND_KEY = "reader_kind"
+STARTED_KEY = "started"
+SECONDS_KEY = "seconds"
+COST_KEY = "cost"
+TRANSCRIPT_KEY = "transcript"
+TRANSCRIPT_HASH_KEY = "transcript_hash"
+FINGERPRINT_HASH_KEY = "fingerprint_hash"
+AGENT_ONLY_REPLY_KEYS = (TRANSCRIPT_KEY, TRANSCRIPT_HASH_KEY)
+COMMAND_ONLY_REPLY_KEYS = (FINGERPRINT_HASH_KEY,)
 
 
 class RecordKind(StrEnum):
@@ -317,6 +317,213 @@ class RecordKind(StrEnum):
     AGREEMENT = "agreement"
     CALIBRATION = "calibration"
     ANCHORS = "anchors"
+
+
+Entry = TypeVar("Entry")
+Key = TypeVar("Key")
+Choice = TypeVar("Choice", bound=str)
+
+DOCUMENT = ""
+DOCUMENT_LABEL = "record"
+HASH_DIGEST_PATTERN = re.compile(rf"^{HASH_PATTERN}\Z")
+ID_PATTERN = re.compile(rf"^{IDENTIFIER_PATTERN}\Z")
+BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
+AGENT_MODEL_PATTERN = re.compile(rf"^{AGENT_MODEL_ID_PATTERN}\Z")
+MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
+RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
+CONDITION_PLACEHOLDER = "{condition}"
+
+def _child(where: str, key: str) -> str:
+    """Return the location of `key` inside the mapping at `where`."""
+    return f"{where}.{key}" if where else key
+
+
+def _read_keys(value: object, where: str, required: AbstractSet[str], optional: AbstractSet[str] = frozenset()) -> Mapping[str, object]:
+    """Return a mapping holding every required key and no key outside required and optional."""
+    location = where or DOCUMENT_LABEL
+    if not isinstance(value, Mapping):
+        raise Refusal(f"{location}: expected a mapping, got {value!r}")
+    missing = required - value.keys()
+    if missing:
+        raise Refusal(f"{location}: missing {', '.join(sorted(missing))}")
+    unknown = value.keys() - required - optional
+    if unknown:
+        raise Refusal(f"{location}: unknown {', '.join(sorted(map(str, unknown)))}")
+    return value
+
+
+def _read_variant(value: object, where: str, tag: str, keys_by_variant: Mapping[Choice, AbstractSet[str]]) -> tuple[Choice, Mapping[str, object]]:
+    """Return the variant a mapping's `tag` key names and the mapping, which holds exactly that variant's keys."""
+    every_key = set().union(*keys_by_variant.values())
+    variant = _read_choice(_read_keys(value, where, required={tag}, optional=every_key)[tag], _child(where, tag), tuple(keys_by_variant))
+    return variant, _read_keys(value, where, required=keys_by_variant[variant])
+
+
+def _read_present(keys: Mapping[str, object], key: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
+    """Return the key's value read by `read_value`, or None when the key is absent."""
+    return read_value(keys[key], key) if key in keys else None
+
+
+def _read_nullable(value: object, where: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
+    """Return None for a YAML null, else the value read by `read_value`."""
+    return None if value is None else read_value(value, where)
+
+
+def _read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
+    """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
+    if not isinstance(value, list):
+        raise Refusal(f"{where}: expected a list, got {value!r}")
+    return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(value))
+
+
+def _read_non_empty_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
+    """Return every item of a non-empty YAML sequence read by `read_entry`."""
+    entries = _read_entries(value, where, read_entry)
+    if not entries:
+        raise Refusal(f"{where}: expected a non-empty list")
+    return entries
+
+
+def _read_map(
+    value: object,
+    where: str,
+    read_key: Callable[[object, str], Key],
+    read_value: Callable[[object, str], Entry],
+) -> Mapping[Key, Entry]:
+    """Return a YAML mapping with every key read by `read_key` and every value by `read_value`."""
+    if not isinstance(value, Mapping):
+        raise Refusal(f"{where}: expected a mapping, got {value!r}")
+    return {read_key(key, f"{where} key"): read_value(item, f"{where}[{key}]") for key, item in value.items()}
+
+
+def _is_non_empty_string(value: object) -> bool:
+    """Tell whether the value is a string holding at least one character."""
+    return isinstance(value, str) and bool(value)
+
+
+def _is_integer_at_least(value: object, minimum: int) -> bool:
+    """Tell whether the value is an integer, never a boolean, at or above `minimum`."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum
+
+
+def _is_number(value: object) -> bool:
+    """Tell whether the value is an integer or float, never a boolean."""
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _is_level(number: float) -> bool:
+    """Tell whether the number lies strictly between 0 and 1, as a confidence level does."""
+    return 0 < number < 1
+
+
+def _offset_timestamp(value: object) -> datetime | None:
+    """Return the value as an ISO 8601 timestamp carrying an offset, or None when it is not one."""
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        return None
+    return value
+
+
+def _read_string(value: object, where: str) -> str:
+    """Return a non-empty string."""
+    if not _is_non_empty_string(value):
+        raise Refusal(f"{where}: expected a non-empty string, got {value!r}")
+    return value
+
+
+def _read_line(value: object, where: str) -> str:
+    """Return a non-empty string holding no line break."""
+    line = _read_string(value, where)
+    if line != line.splitlines()[0]:
+        raise Refusal(f"{where}: expected one line, got {value!r}")
+    return line
+
+
+def _read_id(value: object, where: str) -> str:
+    """Return an id matching the series id pattern."""
+    if not isinstance(value, str) or not ID_PATTERN.match(value):
+        raise Refusal(f"{where}: expected an id matching {ID_PATTERN.pattern}, got {value!r}")
+    return value
+
+
+def _read_hash(value: object, where: str) -> str:
+    """Return a lowercase sha256 hex digest."""
+    if not isinstance(value, str) or not HASH_DIGEST_PATTERN.match(value):
+        raise Refusal(f"{where}: expected a lowercase sha256 hex, got {value!r}")
+    return value
+
+
+def _read_absolute_path(value: object, where: str) -> Path:
+    """Return an absolute path."""
+    path = Path(_read_string(value, where))
+    if not path.is_absolute():
+        raise Refusal(f"{where}: expected an absolute path, got {value!r}")
+    return path
+
+
+def _read_choice(value: object, where: str, choices: tuple[Choice, ...]) -> Choice:
+    """Return a value drawn from a closed enum."""
+    if value not in choices:
+        raise Refusal(f"{where}: {value!r} is not one of {', '.join(choices)}")
+    return value
+
+
+def _read_timestamp(value: object, where: str) -> datetime:
+    """Return an ISO 8601 timestamp carrying an offset."""
+    timestamp = _offset_timestamp(value)
+    if timestamp is None:
+        raise Refusal(f"{where}: expected an ISO 8601 timestamp with offset, got {value!r}")
+    return timestamp
+
+
+def _read_regex(value: object, where: str) -> re.Pattern[str]:
+    """Return a Python regex compiled with no flags."""
+    try:
+        return re.compile(_read_string(value, where))
+    except re.error as error:
+        raise Refusal(f"{where}: {error}") from error
+
+
+def _read_integer(value: object, where: str, minimum: int) -> int:
+    """Return an integer at or above `minimum`."""
+    if not _is_integer_at_least(value, minimum):
+        raise Refusal(f"{where}: expected an integer >= {minimum}, got {value!r}")
+    return value
+
+
+def _read_number(value: object, where: str) -> float:
+    """Return an integer or float, never a boolean."""
+    if not _is_number(value):
+        raise Refusal(f"{where}: expected a number, got {value!r}")
+    return value
+
+
+def _read_positive_number(value: object, where: str) -> float:
+    """Return a finite number above 0."""
+    number = _read_number(value, where)
+    if not 0 < number < math.inf:
+        raise Refusal(f"{where}: expected a finite number > 0, got {value!r}")
+    return number
+
+
+def _read_bounded_number(value: object, where: str, lowest: float, highest: float) -> float:
+    """Return a number in the closed interval from `lowest` to `highest`."""
+    number = _read_number(value, where)
+    if not lowest <= number <= highest:
+        raise Refusal(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
+    return number
+
+
+def _read_level(value: object, where: str) -> float:
+    """Return a confidence level strictly between 0 and 1."""
+    level = _read_number(value, where)
+    if not _is_level(level):
+        raise Refusal(f"{where}: expected a number in (0, 1), got {value!r}")
+    return level
 
 
 def _refuse(path: str, reason: str) -> NoReturn:
@@ -346,6 +553,12 @@ def _enum(*allowed: str) -> Check:
     return check
 
 
+def _text(value: Any, path: str) -> None:
+    """Refuse a value that is not a non-empty string."""
+    if not _is_non_empty_string(value):
+        _refuse(path, f"expected non-empty string, got {value!r}")
+
+
 def _nullable(inner: Check) -> Check:
     """Return a check that accepts null or whatever the inner check accepts."""
 
@@ -355,12 +568,6 @@ def _nullable(inner: Check) -> Check:
             inner(value, path)
 
     return check
-
-
-def _text(value: Any, path: str) -> None:
-    """Refuse a value that is not a non-empty string."""
-    if not isinstance(value, str) or not value:
-        _refuse(path, f"expected non-empty string, got {value!r}")
 
 
 def _map_of(key_check: Check, value_check: Check) -> Check:
@@ -416,7 +623,7 @@ def _integer(minimum: int) -> Check:
 
     def check(value: Any, path: str) -> None:
         """Refuse a value that is not an integer at or above the minimum."""
-        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        if not _is_integer_at_least(value, minimum):
             _refuse(path, f"expected integer >= {minimum}, got {value!r}")
 
     return check
@@ -427,8 +634,7 @@ def _number(description: str, accepts: Callable[[float], bool]) -> Check:
 
     def check(value: Any, path: str) -> None:
         """Refuse a value that is not a number the predicate accepts."""
-        is_number = isinstance(value, int | float) and not isinstance(value, bool)
-        if not is_number or not accepts(value):
+        if not _is_number(value) or not accepts(value):
             _refuse(path, f"expected number {description}, got {value!r}")
 
     return check
@@ -436,21 +642,14 @@ def _number(description: str, accepts: Callable[[float], bool]) -> Check:
 
 def _timestamp(value: Any, path: str) -> None:
     """Refuse a value that is not an ISO 8601 timestamp with an offset."""
-    if isinstance(value, datetime):
-        parsed = value
-    else:
-        try:
-            parsed = datetime.fromisoformat(value)
-        except (TypeError, ValueError):
-            _refuse(path, f"expected ISO 8601 timestamp with offset, got {value!r}")
-    if parsed.tzinfo is None:
+    if _offset_timestamp(value) is None:
         _refuse(path, f"expected ISO 8601 timestamp with offset, got {value!r}")
 
 
 _ANY_NUMBER = _number("", lambda value: True)
 _NON_NEGATIVE = _number(">= 0", lambda value: value >= 0)
 _POSITIVE = _number("> 0", lambda value: value > 0)
-_LEVEL = _number("in (0, 1)", lambda value: 0 < value < 1)
+_LEVEL = _number("in (0, 1)", _is_level)
 _IDENTIFIER = _matching(IDENTIFIER_PATTERN, "an id")
 _HASH = _matching(HASH_PATTERN, "lowercase sha256 hex")
 _REVISION_ID = _matching(REVISION_ID_PATTERN, "a revision id")
@@ -480,15 +679,15 @@ _REPLY_COST = _mapping({key: _NULLABLE_COUNT for key in REPLY_COST_KEYS}, rule=_
 
 def _reply_reader_kind_rule(reply: Record, path: str) -> None:
     """Refuse a reply whose transcript, fingerprint, or cost fields disagree with its reader kind."""
-    is_agent = reply["reader_kind"] == AGENT_READER
+    is_agent = reply[READER_KIND_KEY] == AGENT_READER
     for key in AGENT_ONLY_REPLY_KEYS:
         if (key in reply) != is_agent:
             _refuse(f"{path}.{key}", f"present iff reader_kind is {AGENT_READER}")
     for key in COMMAND_ONLY_REPLY_KEYS:
         if (key in reply) == is_agent:
             _refuse(f"{path}.{key}", f"present iff reader_kind is {COMMAND_READER}")
-    if not is_agent and reply["cost"][SPENT_INPUT_TOKENS_KEY] is not None:
-        _refuse(f"{path}.cost", f"null for {COMMAND_READER} readers")
+    if not is_agent and reply[COST_KEY][SPENT_INPUT_TOKENS_KEY] is not None:
+        _refuse(f"{path}.{COST_KEY}", f"null for {COMMAND_READER} readers")
 
 
 _NOISE = _mapping(
@@ -626,8 +825,8 @@ _COLLECTED_PACKET = _mapping(
     {
         "accepted": _POSITION,
         "judge_model": _AGENT_MODEL,
-        "transcript": _ABSOLUTE_PATH,
-        "transcript_hash": _HASH,
+        TRANSCRIPT_KEY: _ABSOLUTE_PATH,
+        TRANSCRIPT_HASH_KEY: _HASH,
         "anchors": _mapping(
             {
                 "breach_difference": _map_of(_breach_demand_id, _ANY_NUMBER),
@@ -727,7 +926,7 @@ _AGREEMENT = _mapping(
         "ratings": _map_of(
             _text,
             _mapping(
-                {"model": _AGENT_MODEL, "transcript": _ABSOLUTE_PATH, "transcript_hash": _HASH}
+                {REPLY_MODEL_KEY: _AGENT_MODEL, TRANSCRIPT_KEY: _ABSOLUTE_PATH, TRANSCRIPT_HASH_KEY: _HASH}
             ),
         ),
     }
@@ -743,8 +942,8 @@ _ANCHOR = _mapping(
     {
         "id": _IDENTIFIER,
         "task": _IDENTIFIER,
-        "message": _string,
-        "text": _string,
+        REPLY_MESSAGE_KEY: _string,
+        REPLY_TEXT_KEY: _string,
         "breaches": _BREACHES,
         "done": _boolean_or_null,
     }
@@ -843,23 +1042,23 @@ _SCHEMAS: Mapping[RecordKind, Check] = {
     RecordKind.REPLY: _mapping(
         {
             INPUTS_KEY: _INPUTS,
-            "condition": _IDENTIFIER,
-            "task": _IDENTIFIER,
-            "split": _SPLIT,
-            "repeat": _POSITION,
-            "message": _string,
-            "text": _string,
-            "model": _text,
-            "reader_kind": _READER_KIND,
-            "started": _timestamp,
-            "seconds": _NON_NEGATIVE,
-            "cost": _REPLY_COST,
+            CONDITION_KEY: _IDENTIFIER,
+            TASK_KEY: _IDENTIFIER,
+            SPLIT_KEY: _SPLIT,
+            REPEAT_KEY: _POSITION,
+            REPLY_MESSAGE_KEY: _string,
+            REPLY_TEXT_KEY: _string,
+            REPLY_MODEL_KEY: _text,
+            READER_KIND_KEY: _READER_KIND,
+            STARTED_KEY: _timestamp,
+            SECONDS_KEY: _NON_NEGATIVE,
+            COST_KEY: _REPLY_COST,
         },
         {
-            "turn": _POSITION,
-            "transcript": _ABSOLUTE_PATH,
-            "transcript_hash": _HASH,
-            "fingerprint_hash": _HASH,
+            TURN_KEY: _POSITION,
+            TRANSCRIPT_KEY: _ABSOLUTE_PATH,
+            TRANSCRIPT_HASH_KEY: _HASH,
+            FINGERPRINT_HASH_KEY: _HASH,
         },
         _reply_reader_kind_rule,
     ),
@@ -871,20 +1070,6 @@ def parse_record(kind: RecordKind, document: Any) -> Record:
     _SCHEMAS[kind](document, kind.value)
     return document
 
-
-Entry = TypeVar("Entry")
-Key = TypeVar("Key")
-Choice = TypeVar("Choice", bound=str)
-
-DOCUMENT = ""
-DOCUMENT_LABEL = "record"
-HASH_DIGEST_PATTERN = re.compile(rf"^{HASH_PATTERN}\Z")
-ID_PATTERN = re.compile(rf"^{IDENTIFIER_PATTERN}\Z")
-BLIND_ID_PATTERN = re.compile(r"^b[0-9a-f]{8}\Z")
-AGENT_MODEL_PATTERN = re.compile(rf"^{AGENT_MODEL_ID_PATTERN}\Z")
-MODEL_ALIASES = ("sonnet", "opus", "haiku", "fable", "inherit")
-RESERVED_DEMAND_IDS = (OVERREACH_TARGET, COMPLETION_COMPARES)
-CONDITION_PLACEHOLDER = "{condition}"
 
 Counter = Literal["judge", "pattern", "long-sentences"]
 JUDGE_COUNTER, PATTERN_COUNTER, LONG_SENTENCES_COUNTER = get_args(Counter)
@@ -915,26 +1100,45 @@ CHANGE_KEYS_BY_ACTION: Mapping[ChangeAction, AbstractSet[str]] = {
 
 
 @dataclass(frozen=True)
+class Binding:
+    """The plugin the neutral login enables beside instruction-eval and the skill every judge loads first to bind."""
+
+    plugin: str
+    skill: str
+
+
+DEFAULT_BINDING = Binding(plugin="manifesto@llm-manifestos", skill="manifesto:manifesto-oath")
+
+
+@dataclass(frozen=True)
 class Series:
     """The `series.yaml` record."""
 
     instruction: Path
     sources: tuple[Path, ...]
     reader_kind: ReaderKind
+    binding: Binding
     created: datetime
     inputs: Mapping[str, str]
 
 
-def parse_series(document: object) -> Series:
+def _parse_series(document: object) -> Series:
     """Build the `series.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "created", INPUTS_KEY})
+    keys = _read_keys(document, DOCUMENT, required={"instruction", "sources", "reader_kind", "binding", "created", INPUTS_KEY})
     return Series(
-        instruction=read_absolute_path(keys["instruction"], "instruction"),
-        sources=read_entries(keys["sources"], "sources", read_absolute_path),
-        reader_kind=read_choice(keys["reader_kind"], "reader_kind", get_args(ReaderKind)),
-        created=read_timestamp(keys["created"], "created"),
-        inputs=read_map(keys[INPUTS_KEY], INPUTS_KEY, read_string, read_hash),
+        instruction=_read_absolute_path(keys["instruction"], "instruction"),
+        sources=_read_entries(keys["sources"], "sources", _read_absolute_path),
+        reader_kind=_read_choice(keys["reader_kind"], "reader_kind", get_args(ReaderKind)),
+        binding=_read_binding(keys["binding"], "binding"),
+        created=_read_timestamp(keys["created"], "created"),
+        inputs=_read_map(keys[INPUTS_KEY], INPUTS_KEY, _read_string, _read_hash),
     )
+
+
+def _read_binding(value: object, where: str) -> Binding:
+    """Return the binding plugin and skill, each one line."""
+    keys = _read_keys(value, where, required={"plugin", "skill"})
+    return Binding(plugin=_read_line(keys["plugin"], f"{where}.plugin"), skill=_read_line(keys["skill"], f"{where}.skill"))
 
 
 @dataclass(frozen=True)
@@ -976,28 +1180,28 @@ class Demands:
     demands: tuple[Demand, ...]
 
 
-def parse_demands(document: object) -> Demands:
+def _parse_demands(document: object) -> Demands:
     """Build the `2-demands.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required={"demands"})
-    return Demands(demands=read_non_empty_entries(keys["demands"], "demands", read_demand))
+    keys = _read_keys(document, DOCUMENT, required={"demands"})
+    return Demands(demands=_read_non_empty_entries(keys["demands"], "demands", _read_demand))
 
 
-def read_demand(value: object, where: str) -> Demand:
+def _read_demand(value: object, where: str) -> Demand:
     """Return the demand variant its `counted_by` names, refusing the other variants' keys."""
-    counted_by, keys = read_variant(value, where, "counted_by", DEMAND_KEYS_BY_COUNTER)
-    demand_id = read_demand_id(keys["id"], child(where, "id"))
-    text = read_string(keys["text"], child(where, "text"))
-    boundary = read_string(keys["boundary"], child(where, "boundary"))
+    counted_by, keys = _read_variant(value, where, "counted_by", DEMAND_KEYS_BY_COUNTER)
+    demand_id = _read_demand_id(keys["id"], _child(where, "id"))
+    text = _read_string(keys["text"], _child(where, "text"))
+    boundary = _read_string(keys["boundary"], _child(where, "boundary"))
     if counted_by == PATTERN_COUNTER:
-        return PatternDemand(id=demand_id, text=text, boundary=boundary, pattern=read_regex(keys["pattern"], child(where, "pattern")))
+        return PatternDemand(id=demand_id, text=text, boundary=boundary, pattern=_read_regex(keys["pattern"], _child(where, "pattern")))
     if counted_by == LONG_SENTENCES_COUNTER:
-        return LongSentencesDemand(id=demand_id, text=text, boundary=boundary, limit=read_integer(keys["limit"], child(where, "limit"), minimum=1))
+        return LongSentencesDemand(id=demand_id, text=text, boundary=boundary, limit=_read_integer(keys["limit"], _child(where, "limit"), minimum=1))
     return JudgeDemand(id=demand_id, text=text, boundary=boundary)
 
 
-def read_demand_id(value: object, where: str) -> str:
+def _read_demand_id(value: object, where: str) -> str:
     """Return a demand id, refusing the ids that name task and hypothesis targets."""
-    demand_id = read_id(value, where)
+    demand_id = _read_id(value, where)
     if demand_id in RESERVED_DEMAND_IDS:
         raise Refusal(f"{where}: {demand_id!r} is reserved")
     return demand_id
@@ -1039,34 +1243,34 @@ def task_entries(tasks: Tasks) -> dict[str, Task | Conversation]:
     return {entry.id: entry for entry in (*tasks.tasks, *tasks.conversations)}
 
 
-def parse_tasks(document: object) -> Tasks:
+def _parse_tasks(document: object) -> Tasks:
     """Build the `3-tasks.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required=set(TASK_KEYS))
+    keys = _read_keys(document, DOCUMENT, required=set(TASK_KEYS))
     return Tasks(
-        tasks=read_entries(keys["tasks"], "tasks", read_task),
-        conversations=read_entries(keys["conversations"], "conversations", read_conversation),
+        tasks=_read_entries(keys["tasks"], "tasks", _read_task),
+        conversations=_read_entries(keys["conversations"], "conversations", _read_conversation),
     )
 
 
-def read_task(value: object, where: str) -> Task:
+def _read_task(value: object, where: str) -> Task:
     """Return one task entry."""
-    keys = read_keys(value, where, required={"id", "tempts", "split", "message", "answer_key"})
+    keys = _read_keys(value, where, required={"id", "tempts", "split", "message", "answer_key"})
     return Task(
-        id=read_id(keys["id"], child(where, "id")),
-        tempts=read_id(keys["tempts"], child(where, "tempts")),
-        split=read_choice(keys["split"], child(where, "split"), get_args(Split)),
-        message=read_string(keys["message"], child(where, "message")),
-        answer_key=read_nullable(keys["answer_key"], child(where, "answer_key"), read_regex),
+        id=_read_id(keys["id"], _child(where, "id")),
+        tempts=_read_id(keys["tempts"], _child(where, "tempts")),
+        split=_read_choice(keys["split"], _child(where, "split"), get_args(Split)),
+        message=_read_string(keys["message"], _child(where, "message")),
+        answer_key=_read_nullable(keys["answer_key"], _child(where, "answer_key"), _read_regex),
     )
 
 
-def read_conversation(value: object, where: str) -> Conversation:
+def _read_conversation(value: object, where: str) -> Conversation:
     """Return one conversation entry."""
-    keys = read_keys(value, where, required={"id", "split", "turns"})
+    keys = _read_keys(value, where, required={"id", "split", "turns"})
     return Conversation(
-        id=read_id(keys["id"], child(where, "id")),
-        split=read_choice(keys["split"], child(where, "split"), get_args(Split)),
-        turns=read_entries(keys["turns"], child(where, "turns"), read_string),
+        id=_read_id(keys["id"], _child(where, "id")),
+        split=_read_choice(keys["split"], _child(where, "split"), get_args(Split)),
+        turns=_read_entries(keys["turns"], _child(where, "turns"), _read_string),
     )
 
 
@@ -1083,20 +1287,20 @@ class Conditions:
 CONDITION_KEYS = ("controls", "aim", "placebo_source", "omissions")
 
 
-def parse_conditions(document: object, series: Series) -> Conditions:
+def _parse_conditions(document: object, series: Series) -> Conditions:
     """Build the `4-conditions.yaml` record, refusing controls other than the set the series sources call for."""
-    keys = read_keys(document, DOCUMENT, required=set(CONDITION_KEYS))
+    keys = _read_keys(document, DOCUMENT, required=set(CONDITION_KEYS))
     return Conditions(
-        controls=read_controls(keys["controls"], "controls", series.sources),
-        aim=read_line(keys["aim"], "aim"),
-        placebo_source=read_absolute_path(keys["placebo_source"], "placebo_source"),
-        omissions=read_choice(keys["omissions"], "omissions", get_args(Omissions)),
+        controls=_read_controls(keys["controls"], "controls", series.sources),
+        aim=_read_line(keys["aim"], "aim"),
+        placebo_source=_read_absolute_path(keys["placebo_source"], "placebo_source"),
+        omissions=_read_choice(keys["omissions"], "omissions", get_args(Omissions)),
     )
 
 
-def read_controls(value: object, where: str, sources: tuple[Path, ...]) -> tuple[Control, ...]:
+def _read_controls(value: object, where: str, sources: tuple[Path, ...]) -> tuple[Control, ...]:
     """Return the controls, which hold `source` exactly when the series has sources."""
-    controls = read_entries(value, where, lambda item, item_where: read_choice(item, item_where, get_args(Control)))
+    controls = _read_entries(value, where, lambda item, item_where: _read_choice(item, item_where, get_args(Control)))
     expected = get_args(Control) if sources else CONTROLS_WITHOUT_SOURCES
     if sorted(controls) != sorted(expected):
         raise Refusal(f"{where}: expected exactly {', '.join(expected)}, got {', '.join(controls)}")
@@ -1123,44 +1327,44 @@ class CommandReader:
 Reader = AgentReader | CommandReader
 
 
-def parse_reader(document: object) -> Reader:
+def _parse_reader(document: object) -> Reader:
     """Build the `5-reader.yaml` record as the variant its `kind` names, refusing the other variant's keys."""
-    kind, keys = read_variant(document, DOCUMENT, "kind", READER_KEYS_BY_KIND)
+    kind, keys = _read_variant(document, DOCUMENT, "kind", READER_KEYS_BY_KIND)
     if kind == AGENT_READER:
-        return AgentReader(model=read_agent_model(keys["model"], "model"))
+        return AgentReader(model=_read_agent_model(keys["model"], "model"))
     return CommandReader(
-        model=read_model(keys["model"], "model"),
-        command=read_command(keys["command"], "command"),
-        fingerprint=read_entries(keys["fingerprint"], "fingerprint", read_string),
-        sampling=read_map(keys["sampling"], "sampling", read_string, read_scalar),
+        model=_read_model(keys["model"], "model"),
+        command=_read_command(keys["command"], "command"),
+        fingerprint=_read_entries(keys["fingerprint"], "fingerprint", _read_string),
+        sampling=_read_map(keys["sampling"], "sampling", _read_string, _read_scalar),
     )
 
 
-def read_agent_model(value: object, where: str) -> str:
+def _read_agent_model(value: object, where: str) -> str:
     """Return a full Claude model id."""
-    model = read_model(value, where)
+    model = _read_model(value, where)
     if not AGENT_MODEL_PATTERN.match(model):
         raise Refusal(f"{where}: expected a model id matching {AGENT_MODEL_PATTERN.pattern}, got {model!r}")
     return model
 
 
-def read_model(value: object, where: str) -> str:
+def _read_model(value: object, where: str) -> str:
     """Return a non-empty model name that is not a Claude alias."""
-    model = read_string(value, where)
+    model = _read_string(value, where)
     if model in MODEL_ALIASES:
         raise Refusal(f"{where}: alias {model!r} is refused; name the full model id")
     return model
 
 
-def read_command(value: object, where: str) -> tuple[str, ...]:
+def _read_command(value: object, where: str) -> tuple[str, ...]:
     """Return a command line holding the condition placeholder exactly once."""
-    command = read_entries(value, where, read_string)
+    command = _read_entries(value, where, _read_string)
     if sum(part.count(CONDITION_PLACEHOLDER) for part in command) != 1:
         raise Refusal(f"{where}: expected {CONDITION_PLACEHOLDER} exactly once")
     return command
 
 
-def read_scalar(value: object, where: str) -> Scalar:
+def _read_scalar(value: object, where: str) -> Scalar:
     """Return a string, number, or boolean."""
     if not isinstance(value, Scalar):
         raise Refusal(f"{where}: expected a scalar, got {value!r}")
@@ -1195,30 +1399,31 @@ class Gate:
     budget: Budget | NoBudget | None
 
 
-def parse_gate(document: object) -> Gate:
+REPEATS_KEY = "repeats"
+LEVEL_KEY = "level"
+DONE_BY_KEY = "done_by"
+CHECKS_KEY = "checks"
+KEEP_RULE_KEY = "keep_rule"
+BUDGET_KEY = "budget"
+GATE_KEYS = (REPEATS_KEY, LEVEL_KEY, DONE_BY_KEY, CHECKS_KEY, KEEP_RULE_KEY, BUDGET_KEY)
+
+
+def _parse_gate(document: object) -> Gate:
     """Build the `7-gate.yaml` record from its parsed document, any key absent."""
-    keys = read_keys(document, DOCUMENT, required=set(), optional={"repeats", "level", "done_by", "checks", "keep_rule", "budget"})
+    keys = _read_keys(document, DOCUMENT, required=set(), optional=set(GATE_KEYS))
     return Gate(
-        repeats=read_present(keys, "repeats", lambda value, where: read_integer(value, where, minimum=FEWEST_REPEATS)),
-        level=read_present(keys, "level", read_level),
-        done_by=read_present(keys, "done_by", lambda value, where: read_choice(value, where, get_args(DoneBy))),
-        checks=read_present(keys, "checks", read_checks),
-        keep_rule=read_present(keys, "keep_rule", lambda value, where: read_choice(value, where, get_args(KeepRule))),
-        budget=read_present(keys, "budget", read_budget),
+        repeats=_read_present(keys, REPEATS_KEY, lambda value, where: _read_integer(value, where, minimum=FEWEST_REPEATS)),
+        level=_read_present(keys, LEVEL_KEY, _read_level),
+        done_by=_read_present(keys, DONE_BY_KEY, lambda value, where: _read_choice(value, where, get_args(DoneBy))),
+        checks=_read_present(keys, CHECKS_KEY, _read_checks),
+        keep_rule=_read_present(keys, KEEP_RULE_KEY, lambda value, where: _read_choice(value, where, get_args(KeepRule))),
+        budget=_read_present(keys, BUDGET_KEY, _read_budget),
     )
 
 
-def read_level(value: object, where: str) -> float:
-    """Return a confidence level strictly between 0 and 1."""
-    level = read_number(value, where)
-    if not 0 < level < 1:
-        raise Refusal(f"{where}: expected a number in (0, 1), got {value!r}")
-    return level
-
-
-def read_checks(value: object, where: str) -> tuple[GateCheck, ...]:
+def _read_checks(value: object, where: str) -> tuple[GateCheck, ...]:
     """Return the gate checks, each comparison once and every required comparison present."""
-    checks = read_entries(value, where, read_check)
+    checks = _read_entries(value, where, _read_check)
     compared = [check.compares for check in checks]
     repeated = sorted({compares for compares in compared if compared.count(compares) > 1})
     if repeated:
@@ -1229,23 +1434,23 @@ def read_checks(value: object, where: str) -> tuple[GateCheck, ...]:
     return checks
 
 
-def read_check(value: object, where: str) -> GateCheck:
+def _read_check(value: object, where: str) -> GateCheck:
     """Return one gate check."""
-    keys = read_keys(value, where, required={"compares", "gap"})
+    keys = _read_keys(value, where, required={"compares", "gap"})
     return GateCheck(
-        compares=read_choice(keys["compares"], child(where, "compares"), get_args(Compares)),
-        gap=read_positive_number(keys["gap"], child(where, "gap")),
+        compares=_read_choice(keys["compares"], _child(where, "compares"), get_args(Compares)),
+        gap=_read_positive_number(keys["gap"], _child(where, "gap")),
     )
 
 
-def read_budget(value: object, where: str) -> Budget | NoBudget:
+def _read_budget(value: object, where: str) -> Budget | NoBudget:
     """Return a cost ceiling, or `none` for an unbounded series."""
     if value in get_args(NoBudget):
         return value
-    keys = read_keys(value, where, required={"unit", "ceiling"})
+    keys = _read_keys(value, where, required={"unit", "ceiling"})
     return Budget(
-        unit=read_choice(keys["unit"], child(where, "unit"), get_args(BudgetUnit)),
-        ceiling=read_positive_number(keys["ceiling"], child(where, "ceiling")),
+        unit=_read_choice(keys["unit"], _child(where, "unit"), get_args(BudgetUnit)),
+        ceiling=_read_positive_number(keys["ceiling"], _child(where, "ceiling")),
     )
 
 
@@ -1281,25 +1486,25 @@ class Plan:
     acceptance: Acceptance
 
 
-def parse_plan(document: object) -> Plan:
+def _parse_plan(document: object) -> Plan:
     """Build the `6-judge/calibration/attempt-<n>/plan.yaml` record from its parsed document."""
-    keys = read_keys(
+    keys = _read_keys(
         document,
         DOCUMENT,
         required={"judge_model", "raters", "sample_size", "anchors_per_packet", "acceptance"},
         optional={"rater_model"},
     )
-    judge_model = read_agent_model(keys["judge_model"], "judge_model")
+    judge_model = _read_agent_model(keys["judge_model"], "judge_model")
     return Plan(
         judge_model=judge_model,
-        raters=read_raters(keys, judge_model),
-        sample_size=read_integer(keys["sample_size"], "sample_size", minimum=1),
-        anchors_per_packet=read_integer(keys["anchors_per_packet"], "anchors_per_packet", minimum=FEWEST_ANCHORS_PER_PACKET),
-        acceptance=read_acceptance(keys["acceptance"], "acceptance"),
+        raters=_read_raters(keys, judge_model),
+        sample_size=_read_integer(keys["sample_size"], "sample_size", minimum=1),
+        anchors_per_packet=_read_integer(keys["anchors_per_packet"], "anchors_per_packet", minimum=FEWEST_ANCHORS_PER_PACKET),
+        acceptance=_read_acceptance(keys["acceptance"], "acceptance"),
     )
 
 
-def read_raters(keys: Mapping[str, object], judge_model: str) -> UserRaters | AgentRaters:
+def _read_raters(keys: Mapping[str, object], judge_model: str) -> UserRaters | AgentRaters:
     """Return the rater set, `[user]` or `[agent, agent]`, carrying `rater_model` exactly when agents rate."""
     if keys["raters"] == USER_RATERS:
         if "rater_model" in keys:
@@ -1308,25 +1513,25 @@ def read_raters(keys: Mapping[str, object], judge_model: str) -> UserRaters | Ag
     if keys["raters"] == AGENT_RATERS:
         if "rater_model" not in keys:
             raise Refusal("rater_model: missing for [agent, agent] raters")
-        return AgentRaters(rater_model=read_rater_model(keys["rater_model"], "rater_model", judge_model))
+        return AgentRaters(rater_model=_read_rater_model(keys["rater_model"], "rater_model", judge_model))
     raise Refusal(f"raters: expected [user] or [agent, agent], got {keys['raters']!r}")
 
 
-def read_rater_model(value: object, where: str, judge_model: str) -> str:
+def _read_rater_model(value: object, where: str, judge_model: str) -> str:
     """Return an agent rater's model, which differs from the judge's."""
-    rater_model = read_agent_model(value, where)
+    rater_model = _read_agent_model(value, where)
     if rater_model == judge_model:
         raise Refusal(f"{where}: must differ from judge_model {judge_model!r}")
     return rater_model
 
 
-def read_acceptance(value: object, where: str) -> Acceptance:
+def _read_acceptance(value: object, where: str) -> Acceptance:
     """Return the acceptance thresholds of a calibration plan."""
-    keys = read_keys(value, where, required={"breach_difference", "self_difference", "done_agreement"})
+    keys = _read_keys(value, where, required={"breach_difference", "self_difference", "done_agreement"})
     return Acceptance(
-        breach_difference=read_bounded_number(keys["breach_difference"], child(where, "breach_difference"), 0, _UNBOUNDED),
-        self_difference=read_bounded_number(keys["self_difference"], child(where, "self_difference"), 0, _UNBOUNDED),
-        done_agreement=read_bounded_number(keys["done_agreement"], child(where, "done_agreement"), 0, 1),
+        breach_difference=_read_bounded_number(keys["breach_difference"], _child(where, "breach_difference"), 0, _UNBOUNDED),
+        self_difference=_read_bounded_number(keys["self_difference"], _child(where, "self_difference"), 0, _UNBOUNDED),
+        done_agreement=_read_bounded_number(keys["done_agreement"], _child(where, "done_agreement"), 0, 1),
     )
 
 
@@ -1364,39 +1569,39 @@ class Hypothesis:
     predicted_movement: PredictedMovement
 
 
-def parse_hypothesis(document: object) -> Hypothesis:
+def _parse_hypothesis(document: object) -> Hypothesis:
     """Build the `r<n>/1-hypothesis.yaml` record, which holds no cause."""
-    keys = read_keys(document, DOCUMENT, required={"failing_demand", "replies_read", "change", "predicted_movement"})
+    keys = _read_keys(document, DOCUMENT, required={"failing_demand", "replies_read", "change", "predicted_movement"})
     return Hypothesis(
-        failing_demand=read_id(keys["failing_demand"], "failing_demand"),
-        replies_read=read_entries(keys["replies_read"], "replies_read", read_blind_id),
-        change=read_change(keys["change"], "change"),
-        predicted_movement=read_predicted_movement(keys["predicted_movement"], "predicted_movement"),
+        failing_demand=_read_id(keys["failing_demand"], "failing_demand"),
+        replies_read=_read_entries(keys["replies_read"], "replies_read", _read_blind_id),
+        change=_read_change(keys["change"], "change"),
+        predicted_movement=_read_predicted_movement(keys["predicted_movement"], "predicted_movement"),
     )
 
 
-def read_blind_id(value: object, where: str) -> str:
+def _read_blind_id(value: object, where: str) -> str:
     """Return a blind id: `b` and eight lowercase hex digits."""
     if not isinstance(value, str) or not BLIND_ID_PATTERN.match(value):
         raise Refusal(f"{where}: expected a blind id matching {BLIND_ID_PATTERN.pattern}, got {value!r}")
     return value
 
 
-def read_change(value: object, where: str) -> SentenceChange | MoveChange:
+def _read_change(value: object, where: str) -> SentenceChange | MoveChange:
     """Return the one change a hypothesis makes, carrying `to` exactly when it moves a sentence."""
-    action, keys = read_variant(value, where, "action", CHANGE_KEYS_BY_ACTION)
-    sentence = read_integer(keys["sentence"], child(where, "sentence"), minimum=1)
+    action, keys = _read_variant(value, where, "action", CHANGE_KEYS_BY_ACTION)
+    sentence = _read_integer(keys["sentence"], _child(where, "sentence"), minimum=1)
     if action == MOVE_ACTION:
-        return MoveChange(sentence=sentence, to=read_integer(keys["to"], child(where, "to"), minimum=1))
+        return MoveChange(sentence=sentence, to=_read_integer(keys["to"], _child(where, "to"), minimum=1))
     return SentenceChange(action=action, sentence=sentence)
 
 
-def read_predicted_movement(value: object, where: str) -> PredictedMovement:
+def _read_predicted_movement(value: object, where: str) -> PredictedMovement:
     """Return a hypothesis's predicted movement."""
-    keys = read_keys(value, where, required={"direction", "size"})
+    keys = _read_keys(value, where, required={"direction", "size"})
     return PredictedMovement(
-        direction=read_choice(keys["direction"], child(where, "direction"), get_args(Direction)),
-        size=read_positive_number(keys["size"], child(where, "size")),
+        direction=_read_choice(keys["direction"], _child(where, "direction"), get_args(Direction)),
+        size=_read_positive_number(keys["size"], _child(where, "size")),
     )
 
 
@@ -1415,188 +1620,41 @@ class Coverage:
     sentences: Mapping[int, tuple[str, ...]]
 
 
-def parse_coverage(document: object) -> Coverage:
+COVERAGE_DEMANDS_KEY = "demands"
+COVERAGE_SENTENCES_KEY = "sentences"
+COVERAGE_KEYS = (COVERAGE_DEMANDS_KEY, COVERAGE_SENTENCES_KEY)
+
+
+def coverage_input(revision: str, key: str) -> str:
+    """Return the read of one key of a revision's `3-coverage.yaml`."""
+    return f"{revision}/{COVERAGE_FILE}{KEY_SEPARATOR}{key}"
+
+
+def _parse_coverage(document: object) -> Coverage:
     """Build the `r<n>/3-coverage.yaml` record from its parsed document."""
-    keys = read_keys(document, DOCUMENT, required={"demands", "sentences"})
+    keys = _read_keys(document, DOCUMENT, required=set(COVERAGE_KEYS))
     return Coverage(
-        demands=read_map(keys["demands"], "demands", read_id, read_demand_coverage),
-        sentences=read_map(keys["sentences"], "sentences", read_sentence_number, read_sentence_coverage),
+        demands=_read_map(keys[COVERAGE_DEMANDS_KEY], COVERAGE_DEMANDS_KEY, _read_id, _read_demand_coverage),
+        sentences=_read_map(keys[COVERAGE_SENTENCES_KEY], COVERAGE_SENTENCES_KEY, _read_sentence_number, _read_sentence_coverage),
     )
 
 
-def read_demand_coverage(value: object, where: str) -> tuple[int, ...] | Dropped:
+def _read_demand_coverage(value: object, where: str) -> tuple[int, ...] | Dropped:
     """Return the sentences covering a demand, or its drop with a reason."""
     if isinstance(value, list):
-        return read_non_empty_entries(value, where, read_sentence_number)
-    keys = read_keys(value, where, required={"dropped"})
-    return Dropped(reason=read_string(keys["dropped"], child(where, "dropped")))
+        return _read_non_empty_entries(value, where, _read_sentence_number)
+    keys = _read_keys(value, where, required={"dropped"})
+    return Dropped(reason=_read_string(keys["dropped"], _child(where, "dropped")))
 
 
-def read_sentence_coverage(value: object, where: str) -> tuple[str, ...]:
+def _read_sentence_coverage(value: object, where: str) -> tuple[str, ...]:
     """Return the demand ids a sentence carries."""
-    return read_non_empty_entries(value, where, read_id)
+    return _read_non_empty_entries(value, where, _read_id)
 
 
-def read_sentence_number(value: object, where: str) -> int:
+def _read_sentence_number(value: object, where: str) -> int:
     """Return a sentence number, counted from 1."""
-    return read_integer(value, where, minimum=1)
-
-
-def child(where: str, key: str) -> str:
-    """Return the location of `key` inside the mapping at `where`."""
-    return f"{where}.{key}" if where else key
-
-
-def read_keys(value: object, where: str, required: AbstractSet[str], optional: AbstractSet[str] = frozenset()) -> Mapping[str, object]:
-    """Return a mapping holding every required key and no key outside required and optional."""
-    location = where or DOCUMENT_LABEL
-    if not isinstance(value, Mapping):
-        raise Refusal(f"{location}: expected a mapping, got {value!r}")
-    missing = required - value.keys()
-    if missing:
-        raise Refusal(f"{location}: missing {', '.join(sorted(missing))}")
-    unknown = value.keys() - required - optional
-    if unknown:
-        raise Refusal(f"{location}: unknown {', '.join(sorted(map(str, unknown)))}")
-    return value
-
-
-def read_variant(value: object, where: str, tag: str, keys_by_variant: Mapping[Choice, AbstractSet[str]]) -> tuple[Choice, Mapping[str, object]]:
-    """Return the variant a mapping's `tag` key names and the mapping, which holds exactly that variant's keys."""
-    every_key = set().union(*keys_by_variant.values())
-    variant = read_choice(read_keys(value, where, required={tag}, optional=every_key)[tag], child(where, tag), tuple(keys_by_variant))
-    return variant, read_keys(value, where, required=keys_by_variant[variant])
-
-
-def read_present(keys: Mapping[str, object], key: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
-    """Return the key's value read by `read_value`, or None when the key is absent."""
-    return read_value(keys[key], key) if key in keys else None
-
-
-def read_nullable(value: object, where: str, read_value: Callable[[object, str], Entry]) -> Entry | None:
-    """Return None for a YAML null, else the value read by `read_value`."""
-    return None if value is None else read_value(value, where)
-
-
-def read_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
-    """Return every item of a YAML sequence read by `read_entry`, each refused under its index."""
-    if not isinstance(value, list):
-        raise Refusal(f"{where}: expected a list, got {value!r}")
-    return tuple(read_entry(item, f"{where}[{index}]") for index, item in enumerate(value))
-
-
-def read_non_empty_entries(value: object, where: str, read_entry: Callable[[object, str], Entry]) -> tuple[Entry, ...]:
-    """Return every item of a non-empty YAML sequence read by `read_entry`."""
-    entries = read_entries(value, where, read_entry)
-    if not entries:
-        raise Refusal(f"{where}: expected a non-empty list")
-    return entries
-
-
-def read_map(
-    value: object,
-    where: str,
-    read_key: Callable[[object, str], Key],
-    read_value: Callable[[object, str], Entry],
-) -> Mapping[Key, Entry]:
-    """Return a YAML mapping with every key read by `read_key` and every value by `read_value`."""
-    if not isinstance(value, Mapping):
-        raise Refusal(f"{where}: expected a mapping, got {value!r}")
-    return {read_key(key, f"{where} key"): read_value(item, f"{where}[{key}]") for key, item in value.items()}
-
-
-def read_string(value: object, where: str) -> str:
-    """Return a non-empty string."""
-    if not isinstance(value, str) or not value:
-        raise Refusal(f"{where}: expected a non-empty string, got {value!r}")
-    return value
-
-
-def read_line(value: object, where: str) -> str:
-    """Return a non-empty string holding no line break."""
-    line = read_string(value, where)
-    if line != line.splitlines()[0]:
-        raise Refusal(f"{where}: expected one line, got {value!r}")
-    return line
-
-
-def read_id(value: object, where: str) -> str:
-    """Return an id matching the series id pattern."""
-    if not isinstance(value, str) or not ID_PATTERN.match(value):
-        raise Refusal(f"{where}: expected an id matching {ID_PATTERN.pattern}, got {value!r}")
-    return value
-
-
-def read_hash(value: object, where: str) -> str:
-    """Return a lowercase sha256 hex digest."""
-    if not isinstance(value, str) or not HASH_DIGEST_PATTERN.match(value):
-        raise Refusal(f"{where}: expected a lowercase sha256 hex, got {value!r}")
-    return value
-
-
-def read_absolute_path(value: object, where: str) -> Path:
-    """Return an absolute path."""
-    path = Path(read_string(value, where))
-    if not path.is_absolute():
-        raise Refusal(f"{where}: expected an absolute path, got {value!r}")
-    return path
-
-
-def read_choice(value: object, where: str, choices: tuple[Choice, ...]) -> Choice:
-    """Return a value drawn from a closed enum."""
-    if value not in choices:
-        raise Refusal(f"{where}: {value!r} is not one of {', '.join(choices)}")
-    return value
-
-
-def read_timestamp(value: object, where: str) -> datetime:
-    """Return an ISO 8601 timestamp carrying an offset."""
-    if isinstance(value, str):
-        try:
-            value = datetime.fromisoformat(value)
-        except ValueError:
-            pass
-    if not isinstance(value, datetime) or value.tzinfo is None:
-        raise Refusal(f"{where}: expected an ISO 8601 timestamp with offset, got {value!r}")
-    return value
-
-
-def read_regex(value: object, where: str) -> re.Pattern[str]:
-    """Return a Python regex compiled with no flags."""
-    try:
-        return re.compile(read_string(value, where))
-    except re.error as error:
-        raise Refusal(f"{where}: {error}") from error
-
-
-def read_integer(value: object, where: str, minimum: int) -> int:
-    """Return an integer at or above `minimum`."""
-    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
-        raise Refusal(f"{where}: expected an integer >= {minimum}, got {value!r}")
-    return value
-
-
-def read_number(value: object, where: str) -> float:
-    """Return an integer or float, never a boolean."""
-    if not isinstance(value, int | float) or isinstance(value, bool):
-        raise Refusal(f"{where}: expected a number, got {value!r}")
-    return value
-
-
-def read_positive_number(value: object, where: str) -> float:
-    """Return a finite number above 0."""
-    number = read_number(value, where)
-    if not 0 < number < math.inf:
-        raise Refusal(f"{where}: expected a finite number > 0, got {value!r}")
-    return number
-
-
-def read_bounded_number(value: object, where: str, lowest: float, highest: float) -> float:
-    """Return a number in the closed interval from `lowest` to `highest`."""
-    number = read_number(value, where)
-    if not lowest <= number <= highest:
-        raise Refusal(f"{where}: expected a number in [{lowest}, {highest}], got {value!r}")
-    return number
+    return _read_integer(value, where, minimum=1)
 
 
 Parsed = TypeVar("Parsed")
@@ -1654,17 +1712,17 @@ class SeriesRecords:
     @functools.cached_property
     def _series(self) -> Series:
         """Load `series.yaml`."""
-        return _parsed(SERIES_RECORD, parse_series, load_record(self.files, SERIES_RECORD))
+        return _parsed(SERIES_RECORD, _parse_series, load_record(self.files, SERIES_RECORD))
 
     @functools.cached_property
     def _demands(self) -> Demands:
         """Load `2-demands.yaml`."""
-        return _parsed(DEMANDS_RECORD, parse_demands, _read_document(self.files, DEMANDS_RECORD))
+        return _parsed(DEMANDS_RECORD, _parse_demands, _read_document(self.files, DEMANDS_RECORD))
 
     @functools.cached_property
     def _tasks(self) -> Tasks:
         """Load `3-tasks.yaml`, each task tempting a demand of the series or `overreach`."""
-        tasks = _parsed(TASKS_RECORD, parse_tasks, _read_document(self.files, TASKS_RECORD))
+        tasks = _parsed(TASKS_RECORD, _parse_tasks, _read_document(self.files, TASKS_RECORD))
         _resolve(TASKS_RECORD, DEMAND_REFERENCE, [task.tempts for task in tasks.tasks], {*self._demand_ids(), OVERREACH_TARGET})
         return tasks
 
@@ -1676,7 +1734,7 @@ class SeriesRecords:
     def _conditions(self) -> Conditions:
         """Load `4-conditions.yaml`, its controls checked against the series sources."""
         series = self.series()
-        return _parsed(CONDITIONS_RECORD, lambda document: parse_conditions(document, series), _read_document(self.files, CONDITIONS_RECORD))
+        return _parsed(CONDITIONS_RECORD, lambda document: _parse_conditions(document, series), _read_document(self.files, CONDITIONS_RECORD))
 
     def reader(self) -> Reader:
         """Load `5-reader.yaml`, once per loader, its kind the series reader kind."""
@@ -1685,7 +1743,7 @@ class SeriesRecords:
     @functools.cached_property
     def _reader(self) -> Reader:
         """Load `5-reader.yaml`, its kind the series reader kind."""
-        reader = _parsed(READER_RECORD, parse_reader, _read_document(self.files, READER_RECORD))
+        reader = _parsed(READER_RECORD, _parse_reader, _read_document(self.files, READER_RECORD))
         self._refuse_other_reader_kind(READER_RECORD, AGENT_READER if isinstance(reader, AgentReader) else COMMAND_READER)
         return reader
 
@@ -1703,12 +1761,12 @@ class SeriesRecords:
     def plan(self, attempt: int) -> Plan:
         """Load a calibration attempt's `plan.yaml`."""
         path = f"{attempt_folder(attempt)}/{PLAN_FILE}"
-        return _parsed(path, parse_plan, _read_document(self.files, path))
+        return _parsed(path, _parse_plan, _read_document(self.files, path))
 
     def hypothesis(self, revision: str) -> Hypothesis:
         """Load a revision's `1-hypothesis.yaml`, its failing demand a gate demand or `completion`."""
         path = f"{revision}/{HYPOTHESIS_FILE}"
-        hypothesis = _parsed(path, parse_hypothesis, _read_document(self.files, path))
+        hypothesis = _parsed(path, _parse_hypothesis, _read_document(self.files, path))
         _resolve(path, GATE_DEMAND_REFERENCE, [hypothesis.failing_demand], {*self.gate_demands(), COMPLETION_COMPARES})
         _resolve(path, BLIND_ID_REFERENCE, hypothesis.replies_read, self.origins(parent_revision(revision))["ids"])
         return hypothesis
@@ -1716,7 +1774,7 @@ class SeriesRecords:
     def coverage(self, revision: str) -> Coverage:
         """Load a revision's `3-coverage.yaml`, every demand it maps one of the series."""
         path = f"{revision}/{COVERAGE_FILE}"
-        coverage = _parsed(path, parse_coverage, _read_document(self.files, path))
+        coverage = _parsed(path, _parse_coverage, _read_document(self.files, path))
         sentence_demands = [demand for demands in coverage.sentences.values() for demand in demands]
         _resolve(path, DEMAND_REFERENCE, [*coverage.demands, *sentence_demands], self._demand_ids())
         return coverage
@@ -1842,7 +1900,7 @@ class SeriesRecords:
     @functools.cached_property
     def _written_gate(self) -> Gate:
         """Load `7-gate.yaml` as the user has written it so far."""
-        return _parsed(GATE_RECORD, parse_gate, _read_document(self.files, GATE_RECORD))
+        return _parsed(GATE_RECORD, _parse_gate, _read_document(self.files, GATE_RECORD))
 
     def _command_record(self, path: str, kind: RecordKind) -> Record:
         """Load the CLI record at `path`, its inputs re-hashed and its schema checked."""
@@ -2021,7 +2079,7 @@ def attempt_folder(attempt: int) -> str:
 
 def _read_document(files: SeriesFolder, path: str) -> Any:
     """Read and parse the YAML record at `path`, refusing it absent or not YAML."""
-    return _parse_yaml(_read_record(files, path), path)
+    return _parse_yaml(_read_yaml_bytes(files, path, _RECORD_ROLE), path, _RECORD_ROLE)
 
 
 def _parsed(path: str, parse: Callable[[Any], Parsed], document: Any) -> Parsed:

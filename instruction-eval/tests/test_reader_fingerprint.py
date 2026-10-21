@@ -9,9 +9,10 @@ from hypothesis import strategies as st
 
 from instruction_eval.reader import reader_fingerprint
 from instruction_eval.records import Refusal, SeriesFolder, write_record
+from series_fixtures import SERIES_BINDING
 
 FINGERPRINT_COMMAND = ["llm-reply", "--version"]
-COMMAND_SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "command", "created": "2026-10-14T10:00:00+00:00"}
+COMMAND_SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "command", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
 COMMAND_READER = {
     "kind": "command",
     "model": "gpt-5-mini",
@@ -22,7 +23,7 @@ COMMAND_READER = {
 FINGERPRINT_OUTPUT = "model: gpt-5-mini\nbuild: 1.2.3\ntemperature: 0.7\nseed: fixed\n"
 
 
-def command_series(tmp_path) -> SeriesFolder:
+def fingerprint_series(tmp_path) -> SeriesFolder:
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", COMMAND_SERIES, [])
     (tmp_path / "5-reader.yaml").write_text(yaml.safe_dump(COMMAND_READER))
@@ -35,7 +36,7 @@ def canonical_hash(output: dict) -> str:
 
 
 def test_fingerprint_is_the_parsed_output_with_the_sha256_of_its_canonical_yaml(tmp_path):
-    files = command_series(tmp_path)
+    files = fingerprint_series(tmp_path)
     asked = []
 
     def run_fingerprint(command):
@@ -64,7 +65,7 @@ def test_an_agent_reader_refuses_and_runs_nothing(tmp_path):
 
 @pytest.mark.parametrize("missing", ["model", "build", "temperature", "seed"])
 def test_output_lacking_model_build_or_a_sampling_key_refuses_naming_the_key(tmp_path, missing):
-    files = command_series(tmp_path)
+    files = fingerprint_series(tmp_path)
     without = "".join(line + "\n" for line in FINGERPRINT_OUTPUT.splitlines() if not line.startswith(f"{missing}:"))
 
     with pytest.raises(Refusal, match=rf"^fingerprint output lacks {missing}$"):
@@ -73,7 +74,7 @@ def test_output_lacking_model_build_or_a_sampling_key_refuses_naming_the_key(tmp
 
 @pytest.mark.parametrize("output", ["", "- model\n- build\n", "plain text", "a: [unclosed"])
 def test_output_that_is_no_yaml_mapping_refuses(tmp_path, output):
-    files = command_series(tmp_path)
+    files = fingerprint_series(tmp_path)
 
     with pytest.raises(Refusal, match=r"^fingerprint output is not a YAML mapping$"):
         reader_fingerprint(files, lambda command: output)
@@ -101,7 +102,7 @@ def output_text(items) -> str:
 
 def hash_in_fresh_series(output: str) -> str:
     with tempfile.TemporaryDirectory() as folder:
-        return fingerprint_hash_of(command_series(Path(folder)), output)
+        return fingerprint_hash_of(fingerprint_series(Path(folder)), output)
 
 
 @given(items=st.permutations(list(PARSED_OUTPUT.items())))

@@ -5,13 +5,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
-from series_fixtures import ONE_DEMAND, NeutralLogin, write_revision
+from series_fixtures import DISK_LOGIN_FILES, ONE_DEMAND, SERIES_BINDING, NeutralLogin, write_revision, write_yaml
 
 from instruction_eval.reader import Transcript, reader_prepare, revision_collect
-from instruction_eval.records import SeriesFolder, write_file, write_record
+from instruction_eval.records import SeriesFolder, write_record
 
 MODEL = "claude-sonnet-5-5"
-SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+SERIES = {"instruction": "/home/writer/terse.md", "sources": [], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
 OPEN_MESSAGE = "Explain tides.\nBe brief.  \n"
 SEALED_MESSAGE = "Explain rain."
 TASKS = {
@@ -31,10 +31,6 @@ USAGE = {"input_tokens": 5, "cache_creation_input_tokens": 2, "cache_read_input_
 START = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
 
 
-def write_yaml(files: SeriesFolder, path: str, document: object) -> None:
-    write_file(files, path, yaml.safe_dump(document).encode())
-
-
 def prepared_series(tmp_path, tasks: dict = TASKS, reader: dict = READER, gate: dict = GATE) -> SeriesFolder:
     files = SeriesFolder(tmp_path / "series")
     write_record(files, "series.yaml", {**SERIES, "reader_kind": reader["kind"]}, [])
@@ -46,7 +42,7 @@ def prepared_series(tmp_path, tasks: dict = TASKS, reader: dict = READER, gate: 
     write_revision(files, 1)
     home = tmp_path / "home"
     environ = NeutralLogin(home).environ() if reader["kind"] == "agent" else {}
-    reader_prepare(files, "r1", {PLACEBO_PATH: b"Gardens bloom early\n"}.__getitem__, environ, home, files.root)
+    reader_prepare(files, "r1", {PLACEBO_PATH: b"Gardens bloom early\n"}.__getitem__, environ, home, files.root, DISK_LOGIN_FILES)
     return files
 
 
@@ -98,7 +94,7 @@ def load(files: SeriesFolder, path: str) -> dict:
     return yaml.safe_load(files.read_bytes(path))
 
 
-def expected_reads() -> set[str]:
+def prepare_reads() -> set[str]:
     return {
         "series.yaml",
         "3-tasks.yaml#tasks",

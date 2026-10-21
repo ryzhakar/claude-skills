@@ -23,7 +23,7 @@ Run `instruction-eval judge calibrate` once the plan exists; with no brief it re
 
 Copy that template to `6-judge/brief.md`; never write a brief from memory.
 
-Keep `{SOURCE}`, `{DEMANDS}`, `{PACKET}`, and `{OUT}` once each and the literal `manifesto:manifesto-oath`; never name a condition, the reader, the reader's model ID, the series folder, or the words `empty`, `aim`, `placebo`, `instruction`, `omit`, `control`, `condition`, `revision`, `reader`, or `digest`.
+Keep `{SOURCE}`, `{DEMANDS}`, `{PACKET}`, `{OUT}`, and `{SKILL}`, the series' `binding.skill`, once each; never name a condition, the reader, the reader's model ID, the series folder, or the words `empty`, `aim`, `placebo`, `instruction`, `omit`, `control`, `condition`, `revision`, `reader`, or `digest`.
 </write-the-brief-and-plan>
 
 <run-stage-one>

@@ -5,6 +5,7 @@ import pytest
 from hypothesis import given, strategies as st
 
 from instruction_eval.cli import _build_parser
+from instruction_eval.records import DEFAULT_BINDING
 
 SERIES_NEW = ["series", "new", "demo", "--instruction", "i.md", "--reader-kind", "agent"]
 EVERY_COMMAND = [
@@ -39,6 +40,13 @@ def test_series_new_collects_two_source_flags_in_order():
     assert parsed.name == "demo"
     assert parsed.instruction == "i.md"
     assert parsed.reader_kind == "agent"
+
+
+def test_series_new_binds_through_the_default_binding_unless_flagged():
+    defaulted = parse(*SERIES_NEW)
+    flagged = parse(*SERIES_NEW, "--binding-plugin", "oath@elsewhere", "--binding-skill", "oath:bind")
+    assert (defaulted.binding_plugin, defaulted.binding_skill) == (DEFAULT_BINDING.plugin, DEFAULT_BINDING.skill)
+    assert (flagged.binding_plugin, flagged.binding_skill) == ("oath@elsewhere", "oath:bind")
 
 
 def test_series_new_without_source_has_an_empty_source_list():
@@ -117,3 +125,7 @@ def test_no_flag_takes_no_value():
         for option in action.option_strings
     ]
     assert valueless == []
+
+
+def test_default_binding_names_the_published_manifesto_plugin():
+    assert (DEFAULT_BINDING.plugin, DEFAULT_BINDING.skill) == ("manifesto@llm-manifestos", "manifesto:manifesto-oath")

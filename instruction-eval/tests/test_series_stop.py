@@ -4,18 +4,18 @@ import yaml
 
 from instruction_eval.records import Refusal, SeriesFolder, write_record
 from instruction_eval.series import series_stop
-from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, sha256, write_revision, write_yaml
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, SERIES_BINDING, outcome, sha256, write_revision, write_yaml
 
 SERIES = {
     "instruction": "/home/writer/terse.md",
     "sources": [],
     "reader_kind": "agent",
+    "binding": SERIES_BINDING,
     "created": "2026-10-14T10:00:00+00:00",
 }
 GATE = {"keep_rule": "best-estimate-shortest"}
 SIGMA = {"breaches": {}, "done": {}, "drift": {}, "demands": {}}
 NOISE = {"repeats": 2, "level": 0.95, "z": 1.96, "sigma": SIGMA, "checks": {}, "demands": {}, "done_change": None}
-COST = {"replies": 4, "input_tokens": None, "output_tokens": None, "seconds": 1.5}
 FROZEN_PARTS = ("series.yaml", "2-demands.yaml", "r1/2-instruction.md", "r1/3-coverage.yaml")
 REASON = "no hypothesis clears twice its noise"
 
@@ -24,18 +24,9 @@ def file_hash(files: SeriesFolder, path: str) -> str:
     return sha256(files.read_bytes(path))
 
 
-def outcome(passed: bool, completion_passed: bool, instruction_breaches: float, words: int) -> dict:
-    return {
-        "outcome": "pass" if passed else "fail",
-        "checks": [],
-        "instruction_breaches": instruction_breaches,
-        "completion_passed": completion_passed,
-        "words": words,
-        "cost": COST,
-    }
 
 
-def frozen_series(tmp_path, revisions: int, outcomes: dict[int, dict]) -> SeriesFolder:
+def stoppable_series(tmp_path, revisions: int, outcomes: dict[int, dict]) -> SeriesFolder:
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", SERIES, [])
     write_yaml(files, "2-demands.yaml", ONE_DEMAND)
@@ -60,7 +51,7 @@ def read_stop(files: SeriesFolder) -> dict:
 
 
 def test_a_failed_latest_gated_revision_stops_the_series_keeping_the_best_estimate_of_every_gated_revision(tmp_path):
-    files = frozen_series(tmp_path, 2, {1: outcome(False, True, 0.5, 40), 2: outcome(False, True, 0.25, 30)})
+    files = stoppable_series(tmp_path, 2, {1: outcome(False, True, 0.5, 40), 2: outcome(False, True, 0.25, 30)})
 
     series_stop(files, REASON)
 
@@ -72,7 +63,7 @@ def test_a_failed_latest_gated_revision_stops_the_series_keeping_the_best_estima
 
 
 def test_an_ungated_later_revision_is_no_candidate_and_leaves_the_latest_gated_revision_the_latest(tmp_path):
-    files = frozen_series(tmp_path, 3, {1: outcome(False, True, 0.25, 30), 2: outcome(False, True, 0.5, 40)})
+    files = stoppable_series(tmp_path, 3, {1: outcome(False, True, 0.25, 30), 2: outcome(False, True, 0.5, 40)})
 
     series_stop(files, REASON)
 
@@ -82,7 +73,7 @@ def test_an_ungated_later_revision_is_no_candidate_and_leaves_the_latest_gated_r
 
 
 def test_a_series_with_no_revision_passing_completion_stops_keeping_nothing(tmp_path):
-    files = frozen_series(tmp_path, 1, {1: outcome(False, False, 0.0, 10)})
+    files = stoppable_series(tmp_path, 1, {1: outcome(False, False, 0.0, 10)})
 
     series_stop(files, REASON)
 
@@ -90,21 +81,21 @@ def test_a_series_with_no_revision_passing_completion_stops_keeping_nothing(tmp_
 
 
 def test_a_series_with_no_gated_revision_refuses(tmp_path):
-    files = frozen_series(tmp_path, 1, {})
+    files = stoppable_series(tmp_path, 1, {})
 
     with pytest.raises(Refusal, match=r"^no gated revision to stop on$"):
         series_stop(files, REASON)
 
 
 def test_a_passed_latest_gated_revision_refuses(tmp_path):
-    files = frozen_series(tmp_path, 2, {1: outcome(False, True, 0.5, 40), 2: outcome(True, True, 0.0, 30)})
+    files = stoppable_series(tmp_path, 2, {1: outcome(False, True, 0.5, 40), 2: outcome(True, True, 0.0, 30)})
 
     with pytest.raises(Refusal, match=r"^latest gated revision r2 did not fail$"):
         series_stop(files, REASON)
 
 
 def test_a_stopped_series_refuses_a_second_stop_leaving_the_first(tmp_path):
-    files = frozen_series(tmp_path, 1, {1: outcome(False, True, 0.5, 40)})
+    files = stoppable_series(tmp_path, 1, {1: outcome(False, True, 0.5, 40)})
     series_stop(files, REASON)
     first = read_stop(files)
 

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import yaml
-from series_fixtures import NeutralLogin, write_yaml
+from series_fixtures import DISK_LOGIN_FILES, SERIES_BINDING, NeutralLogin, write_yaml
 
 import instruction_eval
 from instruction_eval.judge import judge_prepare
@@ -16,7 +16,7 @@ JUDGE_MODEL = "claude-opus-4-1"
 RATER_MODEL = "claude-sonnet-5-5"
 READER_MODEL = "claude-haiku-4-5"
 SOURCE_NAME = "policy.md"
-SERIES = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{SOURCE_NAME}"], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+SERIES = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{SOURCE_NAME}"], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
 DEMANDS = {
     "demands": [
         {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
@@ -55,10 +55,10 @@ def packet_text(packet: str) -> str:
     return f"## {REPLY_IDS[packet]}\n\n### User\n\nExplain tides.\n\n### Reply\n\n{packet} reply.\n\n## {ANCHOR_IDS[packet]}\n\n### User\n\nExplain snow.\n\n### Reply\n\nCold rain.\n"
 
 
-def series_folder(tmp_path: Path, brief: str = TEMPLATE.read_text()) -> SeriesFolder:
-    """Write a calibrated agent-reader series in the folder `series`, its accepted attempt's brief `brief`, whose r1 blinded the packets `t1` and `t1--omissions`, each holding one reply and the anchor."""
+def series_folder(tmp_path: Path, brief: str = TEMPLATE.read_text(), binding: dict = SERIES_BINDING) -> SeriesFolder:
+    """Write a calibrated agent-reader series binding through `binding` in the folder `series`, its accepted attempt's brief `brief`, whose r1 blinded the packets `t1` and `t1--omissions`, each holding one reply and the anchor."""
     files = SeriesFolder(tmp_path / "series")
-    write_record(files, "series.yaml", SERIES, [])
+    write_record(files, "series.yaml", {**SERIES, "binding": binding}, [])
     write_file(files, f"1-source/{SOURCE_NAME}", b"Be terse.\n")
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "3-tasks.yaml", TASKS)
@@ -78,10 +78,10 @@ def series_folder(tmp_path: Path, brief: str = TEMPLATE.read_text()) -> SeriesFo
     return files
 
 
-def prepare(tmp_path: Path, files: SeriesFolder, transcripts: list[Transcript] = ()) -> str:
-    """Run `judge prepare r1` under the neutral login and return what it prints."""
-    login = NeutralLogin(tmp_path / "home")
-    return judge_prepare(files, "r1", login.environ(), login.home, files.root, list(transcripts), Path.read_bytes)
+def prepare(tmp_path: Path, files: SeriesFolder, transcripts: list[Transcript] = (), binding_plugin: str = SERIES_BINDING["plugin"]) -> str:
+    """Run `judge prepare r1` under the neutral login enabling the binding plugin and return what it prints."""
+    login = NeutralLogin(tmp_path / "home", binding_plugin)
+    return judge_prepare(files, "r1", login.environ(), login.home, files.root, list(transcripts), Path.read_bytes, DISK_LOGIN_FILES)
 
 
 def definition(files: SeriesFolder, name: str) -> tuple[dict, str]:
@@ -98,12 +98,12 @@ def agents(files: SeriesFolder) -> list[str]:
     return sorted(path.name for path in (files.root / ".claude/agents").iterdir())
 
 
-def judge_transcript(files: SeriesFolder, packet: str, judging: int) -> Transcript:
-    """Write the ended transcript of a judging that loaded the oath skill and wrote its verdict path, and return its location."""
+def judge_transcript(files: SeriesFolder, packet: str, judging: int, binding_skill: str = SERIES_BINDING["skill"]) -> Transcript:
+    """Write the ended transcript of a judging that loaded the binding skill and wrote its verdict path, and return its location."""
     agent_type = f"ie-judge-r1-{packet}-k{judging}"
     verdict = files.root / f"r1/7-verdicts/{packet}/k{judging}.yaml"
     blocks = [
-        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": "manifesto:manifesto-oath"}},
+        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": binding_skill}},
         {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": str(verdict)}},
         {"type": "text", "text": "Done."},
     ]

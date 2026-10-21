@@ -1,10 +1,13 @@
+import tempfile
 from pathlib import Path
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, write_file, write_record
 from instruction_eval.revision import revision_new
-from series_fixtures import Reply, sha256, write_origins, write_yaml
+from series_fixtures import SERIES_BINDING, Reply, outcome, sha256, write_origins, write_yaml
 
 PARENT_INSTRUCTION = b"Be terse. Avoid hedges.\n"
 LIVE_INSTRUCTION = b"Be brief. Avoid hedges.\n"
@@ -51,24 +54,19 @@ HYPOTHESIS = {
 HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
 
 
-def outcome(result: str) -> dict:
-    """Return a gated revision's outcome record."""
-    return {"outcome": result, "checks": [], "instruction_breaches": 1.0, "completion_passed": True, "words": 4, "cost": COST}
-
-
-def gated_series(tmp_path: Path, result: str = "fail", hypothesis: dict | None = None) -> SeriesFolder:
+def gated_series(tmp_path: Path, result: str = "fail", hypothesis: dict | None = None, parent_instruction: bytes = PARENT_INSTRUCTION) -> SeriesFolder:
     """Write a frozen series whose r1 is judged, detected, and gated with the result, and the r2 hypothesis."""
     live = tmp_path / "live" / "terse.md"
     live.parent.mkdir()
     live.write_bytes(LIVE_INSTRUCTION)
     files = SeriesFolder(tmp_path / "series")
-    write_record(files, "series.yaml", {"instruction": str(live), "sources": [], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}, [])
+    write_record(files, "series.yaml", {"instruction": str(live), "sources": [], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}, [])
     write_yaml(files, "2-demands.yaml", DEMANDS)
     write_yaml(files, "3-tasks.yaml", TASKS)
     write_yaml(files, "4-conditions.yaml", CONDITIONS)
     write_record(files, "6-judge/anchors.yaml", ANCHORS, [])
-    write_file(files, "r1/2-instruction.md", PARENT_INSTRUCTION)
-    write_record(files, "r1/2-revision.yaml", {"number": 1, "parent": None, "hash": sha256(PARENT_INSTRUCTION), "parent_record": None, "change": None}, [])
+    write_file(files, "r1/2-instruction.md", parent_instruction)
+    write_record(files, "r1/2-revision.yaml", {"number": 1, "parent": None, "hash": sha256(parent_instruction), "parent_record": None, "change": None}, [])
     write_yaml(files, "r1/3-coverage.yaml", COVERAGE)
     write_file(files, "r1/4-conditions/placebo.md", PLACEBO)
     for reply in REPLIES:
@@ -83,7 +81,7 @@ def gated_series(tmp_path: Path, result: str = "fail", hypothesis: dict | None =
     write_record(files, "r1/7-detectors.yaml", {"verdicts": detectors}, [])
     write_yaml(files, "7-gate.yaml", GATE)
     write_record(files, "8-frozen.yaml", {"hashes": {}, "noise": NOISE, "tool_version": "0.1.0", "frozen_at": "2026-10-14T10:00:00+00:00"}, [])
-    write_record(files, "r1/9-outcome.yaml", outcome(result), [])
+    write_record(files, "r1/9-outcome.yaml", outcome(result == "pass", words=4, cost=COST), [])
     write_yaml(files, "r2/1-hypothesis.yaml", hypothesis or HYPOTHESIS)
     return files
 
@@ -98,7 +96,7 @@ def live_path(files: SeriesFolder) -> Path:
     return files.root.parent / "live" / "terse.md"
 
 
-def expected_reads() -> set[str]:
+def new_revision_reads() -> set[str]:
     """Return the Commands-table reads of `revision new` expanded for r2 over the fixture's packets."""
     return {
         "2-demands.yaml#demands",
@@ -136,7 +134,7 @@ def test_a_new_revision_snapshots_the_live_instruction_and_records_its_change_ch
         "parent_record": sha256(files.read_bytes("r1/2-revision.yaml")),
         "change": {"action": "rewrite", "sentence": 1, "old": "Be terse.", "new": "Be brief."},
     }
-    assert set(record["inputs"]) == expected_reads()
+    assert set(record["inputs"]) == new_revision_reads()
 
 
 def test_editing_the_live_instruction_after_the_snapshot_leaves_the_revision_loadable(tmp_path):
@@ -159,7 +157,7 @@ def test_a_moved_sentence_records_its_text_as_both_the_old_and_the_new(tmp_path)
     assert change == {"action": "move", "sentence": 2, "to": 1, "old": "Avoid hedges.", "new": "Avoid hedges."}
 
 
-def assert_refused_writing_nothing(files: SeriesFolder, message: str) -> None:
+def assert_new_refused_writing_nothing(files: SeriesFolder, message: str) -> None:
     """Assert `revision new` refuses with the message and writes no r2 snapshot or record."""
     with pytest.raises(Refusal, match=message):
         revision_new(files, read_live)
@@ -171,38 +169,38 @@ def test_a_missing_hypothesis_is_refused(tmp_path):
     files = gated_series(tmp_path)
     (files.root / "r2/1-hypothesis.yaml").unlink()
 
-    assert_refused_writing_nothing(files, r"^missing record: r2/1-hypothesis\.yaml$")
+    assert_new_refused_writing_nothing(files, r"^missing record: r2/1-hypothesis\.yaml$")
 
 
 def test_a_latest_revision_that_passed_is_refused(tmp_path):
-    assert_refused_writing_nothing(gated_series(tmp_path, result="pass"), r"^latest revision r1 did not fail$")
+    assert_new_refused_writing_nothing(gated_series(tmp_path, result="pass"), r"^latest revision r1 did not fail$")
 
 
 def test_an_ungated_latest_revision_is_refused(tmp_path):
     files = gated_series(tmp_path)
     (files.root / "r1/9-outcome.yaml").unlink()
 
-    assert_refused_writing_nothing(files, r"^latest revision r1 is not gated$")
+    assert_new_refused_writing_nothing(files, r"^latest revision r1 is not gated$")
 
 
 def test_a_stopped_series_is_refused(tmp_path):
     files = gated_series(tmp_path)
     write_record(files, "9-stop.yaml", {"stop": "unresolvable", "kept": None, "reason": "no hypothesis"}, [])
 
-    assert_refused_writing_nothing(files, r"^series stopped")
+    assert_new_refused_writing_nothing(files, r"^series stopped")
 
 
 def test_an_instruction_not_making_the_named_change_is_refused(tmp_path):
     files = gated_series(tmp_path, hypothesis={**HYPOTHESIS, "change": {"action": "rewrite", "sentence": 2}})
 
-    assert_refused_writing_nothing(files, r"^the instruction does not make the named change: rewrite 2$")
+    assert_new_refused_writing_nothing(files, r"^the instruction does not make the named change: rewrite 2$")
 
 
 def test_an_instruction_with_unclosed_frontmatter_is_refused(tmp_path):
     files = gated_series(tmp_path)
     live_path(files).write_bytes(b"---\nBe brief. Avoid hedges.\n")
 
-    assert_refused_writing_nothing(files, r"^unclosed frontmatter: ")
+    assert_new_refused_writing_nothing(files, r"^unclosed frontmatter: ")
 
 
 @pytest.mark.parametrize(
@@ -218,7 +216,7 @@ def test_an_instruction_echoing_a_task_a_turn_the_aim_or_the_placebo_is_refused(
     files = gated_series(tmp_path)
     live_path(files).write_bytes(sentence + b" Avoid hedges.\n")
 
-    assert_refused_writing_nothing(files, rf"^revision r2 echoes {source}$")
+    assert_new_refused_writing_nothing(files, rf"^revision r2 echoes {source}$")
 
 
 @pytest.mark.parametrize(
@@ -236,7 +234,7 @@ def test_an_instruction_echoing_a_task_a_turn_the_aim_or_the_placebo_is_refused(
     ],
 )
 def test_an_unfit_hypothesis_is_refused(tmp_path, hypothesis, message):
-    assert_refused_writing_nothing(gated_series(tmp_path, hypothesis=hypothesis), message)
+    assert_new_refused_writing_nothing(gated_series(tmp_path, hypothesis=hypothesis), message)
 
 
 @pytest.mark.parametrize(("failing_demand", "replies_read"), [("d-hedge", ["b00000002"]), ("completion", ["b00000001"])])
@@ -246,3 +244,110 @@ def test_a_detector_demand_reads_the_detector_counts_and_completion_the_done_val
     revision_new(files, read_live)
 
     assert files.holds("r2/2-revision.yaml")
+
+
+SENTENCE_WORDS = ("Alpha.", "Bravo.", "Charlie.", "Delta.", "Golf.", "Hotel.")
+CHANGE_EXAMPLES = 25
+PARENT = ["Alpha.", "Bravo.", "Charlie."]
+UNMADE_CHANGE = "the instruction does not make the named change"
+
+
+def instruction_of(sentences: list[str]) -> bytes:
+    """Return the instruction bytes holding the sentences in order."""
+    return f"{' '.join(sentences)}\n".encode()
+
+
+def change_of(action: str, sentence: int, to: int | None = None) -> dict:
+    """Return the hypothesis change naming the action, the sentence, and a move's destination."""
+    return {"action": action, "sentence": sentence} if to is None else {"action": action, "sentence": sentence, "to": to}
+
+
+def makes_the_named_change(root: Path, parent: list[str], child: list[str], change: dict) -> bool:
+    """Tell whether `revision new` accepts the child instruction as the parent with the hypothesis' change made."""
+    files = gated_series(root, hypothesis={**HYPOTHESIS, "change": change}, parent_instruction=instruction_of(parent))
+    live_path(files).write_bytes(instruction_of(child))
+    try:
+        revision_new(files, read_live)
+    except Refusal as refusal:
+        assert str(refusal).startswith(UNMADE_CHANGE)
+        return False
+    return True
+
+
+@pytest.mark.parametrize(
+    ("child", "change", "made"),
+    [
+        (["Alpha.", "Delta.", "Charlie."], change_of("rewrite", 2), True),
+        (["Delta.", "Bravo.", "Charlie."], change_of("rewrite", 1), True),
+        (["Alpha.", "Bravo.", "Delta."], change_of("rewrite", 3), True),
+        (["Delta.", "Golf.", "Charlie."], change_of("rewrite", 2), False),
+        (PARENT, change_of("rewrite", 2), False),
+        (["Alpha.", "Delta."], change_of("rewrite", 2), False),
+        (["Alpha.", "Delta.", "Bravo.", "Charlie."], change_of("add", 2), True),
+        (["Alpha.", "Delta.", "Bravo.", "Charlie."], change_of("add", 3), False),
+        (["Alpha.", "Bravo.", "Charlie.", "Delta."], change_of("add", 5), False),
+        (["Alpha.", "Charlie."], change_of("delete", 2), True),
+        (["Alpha.", "Charlie."], change_of("delete", 1), False),
+        (["Alpha.", "Bravo."], change_of("delete", 4), False),
+        (["Bravo.", "Charlie.", "Alpha."], change_of("move", 1, 3), True),
+        (PARENT, change_of("move", 2, 2), False),
+        (["Bravo.", "Charlie.", "Alpha."], change_of("move", 1, 2), False),
+    ],
+)
+def test_an_instruction_is_accepted_exactly_when_it_is_the_parent_with_the_named_change_made(tmp_path, child, change, made):
+    assert makes_the_named_change(tmp_path, PARENT, child, change) == made
+
+
+@pytest.mark.parametrize("change", [change_of("move", 1, 2), change_of("move", 2, 1)])
+def test_an_adjacent_swap_is_the_named_move_whichever_sentence_it_names(tmp_path, change):
+    assert makes_the_named_change(tmp_path, ["Alpha.", "Bravo."], ["Bravo.", "Alpha."], change)
+
+
+sentence_lists = st.lists(st.sampled_from(SENTENCE_WORDS), min_size=1, max_size=5)
+
+
+def with_removed(items: list[str], number: int) -> list[str]:
+    """Return the items without the numbered one, numbered from 1."""
+    return items[: number - 1] + items[number:]
+
+
+def with_inserted(items: list[str], number: int, sentence: str) -> list[str]:
+    """Return the items with the sentence inserted at the number, numbered from 1."""
+    return items[: number - 1] + [sentence] + items[number - 1 :]
+
+
+def made(parent: list[str], child: list[str], change: dict) -> bool:
+    """Tell whether `revision new` accepts the change in a fresh series folder."""
+    with tempfile.TemporaryDirectory() as root:
+        return makes_the_named_change(Path(root), parent, child, change)
+
+
+@settings(max_examples=CHANGE_EXAMPLES)
+@given(st.data())
+def test_rewriting_a_sentence_to_another_is_accepted_and_to_itself_refused(data):
+    parent = data.draw(sentence_lists)
+    number = data.draw(st.integers(min_value=1, max_value=len(parent)))
+    replacement = data.draw(st.sampled_from(SENTENCE_WORDS).filter(lambda sentence: sentence != parent[number - 1]))
+    assert made(parent, [*parent[: number - 1], replacement, *parent[number:]], change_of("rewrite", number))
+    assert not made(parent, list(parent), change_of("rewrite", number))
+
+
+@settings(max_examples=CHANGE_EXAMPLES)
+@given(st.data())
+def test_a_delete_is_accepted_and_undone_by_an_add_at_the_same_number(data):
+    parent = data.draw(sentence_lists)
+    number = data.draw(st.integers(min_value=1, max_value=len(parent)))
+    child = with_removed(parent, number)
+    assert made(parent, child, change_of("delete", number))
+    assert made(child, parent, change_of("add", number))
+
+
+@settings(max_examples=CHANGE_EXAMPLES)
+@given(st.data())
+def test_a_move_is_accepted_and_undone_by_the_reverse_move(data):
+    parent = data.draw(st.lists(st.sampled_from(SENTENCE_WORDS), min_size=2, max_size=5))
+    source = data.draw(st.integers(min_value=1, max_value=len(parent)))
+    destination = data.draw(st.integers(min_value=1, max_value=len(parent)).filter(lambda number: number != source))
+    child = with_inserted(with_removed(parent, source), destination, parent[source - 1])
+    assert made(parent, child, change_of("move", source, destination))
+    assert made(child, parent, change_of("move", destination, source))

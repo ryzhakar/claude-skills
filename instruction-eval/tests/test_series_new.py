@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import pytest
 import yaml
 
-from instruction_eval.records import Refusal
+from instruction_eval.records import DEFAULT_BINDING, Binding, Refusal
 from instruction_eval.series import series_new
 from series_fixtures import sha256, tree
 
@@ -12,10 +12,10 @@ NOW = datetime(2026, 10, 14, 10, 0, tzinfo=timezone.utc)
 INSTRUCTION = b"Be terse. Skip greetings.\n"
 
 
-def new_series(tmp_path, name="terse", instruction="live.md", sources=(), reader_kind="agent"):
+def new_series(tmp_path, name="terse", instruction="live.md", sources=(), reader_kind="agent", binding=DEFAULT_BINDING):
     (tmp_path / "home").mkdir(exist_ok=True)
     (tmp_path / "work").mkdir(exist_ok=True)
-    return series_new(name, instruction, list(sources), reader_kind, tmp_path / "work", tmp_path / "home", NOW)
+    return series_new(name, instruction, list(sources), reader_kind, binding, tmp_path / "work", tmp_path / "home", NOW)
 
 
 def test_a_bare_name_makes_the_series_folder_under_the_home_series_directory_holding_exactly_the_first_snapshots(tmp_path):
@@ -43,6 +43,7 @@ def test_a_bare_name_makes_the_series_folder_under_the_home_series_directory_hol
         "instruction": str(tmp_path / "work/live.md"),
         "sources": [str(tmp_path / "work/facts.md")],
         "reader_kind": "agent",
+        "binding": {"plugin": DEFAULT_BINDING.plugin, "skill": DEFAULT_BINDING.skill},
         "created": NOW.isoformat(),
         "inputs": {},
     }
@@ -54,6 +55,15 @@ def test_a_bare_name_makes_the_series_folder_under_the_home_series_directory_hol
         "change": None,
         "inputs": {},
     }
+
+
+def test_series_yaml_holds_the_binding_plugin_and_skill_given(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work/live.md").write_bytes(INSTRUCTION)
+
+    files = new_series(tmp_path, binding=Binding(plugin="oath@elsewhere", skill="oath:bind"))
+
+    assert yaml.safe_load((files.root / "series.yaml").read_bytes())["binding"] == {"plugin": "oath@elsewhere", "skill": "oath:bind"}
 
 
 def test_a_value_holding_a_slash_is_the_folder_as_given_and_a_relative_one_resolves_against_the_working_directory(tmp_path):

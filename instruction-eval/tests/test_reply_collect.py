@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 from datetime import timedelta
 
@@ -12,7 +13,7 @@ from reader_fixtures import (
     USAGE,
     collect,
     conversation_transcripts,
-    expected_reads,
+    prepare_reads,
     load,
     prepared_series,
     reader_transcript,
@@ -36,7 +37,7 @@ def test_the_earliest_transcripts_of_each_condition_and_task_become_its_repeats_
     first = next(transcript for transcript in transcripts if transcript.agent_id == "instruction-t-open-1")
     record = load(files, "r1/5-replies/instruction/t-open/repeat-1.yaml")
     inputs = record.pop("inputs")
-    assert set(inputs) == expected_reads()
+    assert set(inputs) == prepare_reads()
     assert record == {
         "condition": "instruction",
         "task": "t-open",
@@ -53,6 +54,33 @@ def test_the_earliest_transcripts_of_each_condition_and_task_become_its_repeats_
         "cost": {**USAGE, "spent_input_tokens": 8},
     }
     assert load(files, "r1/5-replies/placebo/t-sealed/repeat-2.yaml")["text"] == "answer placebo t-sealed 2"
+
+
+HANDBACK_REMINDER = (
+    "<system-reminder>\nYour final report is delivered through SubagentHandback: when your work is complete, "
+    "call SubagentHandback({message: <your full report>}).\n</system-reminder>"
+)
+
+
+def hand_back_through_subagent_handback(transcript: Transcript) -> None:
+    opening, answer = (json.loads(line) for line in transcript.path.read_bytes().splitlines())
+    reminder = {"type": "user", "message": {"role": "user", "content": HANDBACK_REMINDER}, "isMeta": True, "timestamp": opening["timestamp"]}
+    [text_block] = answer["message"]["content"]
+    handback = {"type": "tool_use", "id": "toolu-1", "name": "SubagentHandback", "input": {"message": text_block["text"]}, "caller": {"type": "direct"}}
+    answer["message"]["content"] = [handback]
+    delivered = {"type": "user", "message": {"role": "user", "content": [{"tool_use_id": "toolu-1", "type": "tool_result", "content": []}]}, "timestamp": answer["timestamp"]}
+    transcript.path.write_text("".join(json.dumps(entry) + "\n" for entry in (opening, reminder, answer, delivered)))
+
+
+def test_replies_handed_back_through_subagent_handback_are_collected(tmp_path):
+    files = prepared_series(tmp_path)
+    transcripts = task_transcripts(tmp_path)
+    for transcript in transcripts:
+        hand_back_through_subagent_handback(transcript)
+
+    assert collect(files, transcripts) == ""
+
+    assert load(files, "r1/5-replies/aim/t-open/repeat-1.yaml")["text"] == "answer aim t-open 1"
 
 
 def test_transcripts_beyond_the_repeats_are_listed_and_ignored(tmp_path):

@@ -10,14 +10,14 @@ import instruction_eval
 from instruction_eval.judge import calibrate_stage_one, calibrate_stage_two
 from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
-from series_fixtures import NeutralLogin, sha256, tree, write_yaml
+from series_fixtures import DISK_LOGIN_FILES, SERIES_BINDING, NeutralLogin, sha256, tree, write_yaml
 
 TEMPLATE = Path(instruction_eval.__file__).parent / "templates" / "judge-brief.md"
 JUDGE_MODEL = "claude-opus-4-1"
 RATER_MODEL = "claude-sonnet-5-5"
 READER_MODEL = "claude-haiku-4-5"
 SOURCE_NAME = "policy.md"
-SERIES = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{SOURCE_NAME}"], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+SERIES = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{SOURCE_NAME}"], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
 DEMANDS = {
     "demands": [
         {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
@@ -38,7 +38,7 @@ ATTEMPT = "6-judge/calibration/attempt-1"
 AGENT_RATINGS = {"candidate-1": JUDGE_MODEL, "candidate-2": JUDGE_MODEL, "reference-rater-1": RATER_MODEL, "reference-rater-2": RATER_MODEL}
 
 
-def write_reply(files: SeriesFolder, condition: str, task: str, repeat: int) -> None:
+def write_rated_reply(files: SeriesFolder, condition: str, task: str, repeat: int) -> None:
     """Write an r1 reply record of the condition to the task."""
     record = {
         "condition": condition,
@@ -61,7 +61,7 @@ def write_reply(files: SeriesFolder, condition: str, task: str, repeat: int) -> 
 def stage_one(tmp_path: Path, files: SeriesFolder) -> None:
     """Run stage one under the neutral login."""
     login = NeutralLogin(tmp_path / "home")
-    calibrate_stage_one(files, TEMPLATE, login.environ(), login.home, files.root, random.Random(7))
+    calibrate_stage_one(files, TEMPLATE, login.environ(), login.home, files.root, random.Random(7), DISK_LOGIN_FILES)
 
 
 def calibrating_series(tmp_path: Path, plan: dict = AGENT_PLAN) -> SeriesFolder:
@@ -75,7 +75,7 @@ def calibrating_series(tmp_path: Path, plan: dict = AGENT_PLAN) -> SeriesFolder:
     write_yaml(files, f"{ATTEMPT}/plan.yaml", plan)
     for condition in CONDITIONS:
         for task in TASK_IDS:
-            write_reply(files, condition, task, 1)
+            write_rated_reply(files, condition, task, 1)
     stage_one(tmp_path, files)
     return files
 
@@ -99,11 +99,11 @@ def write_rating(files: SeriesFolder, name: str, count: Count, attempt: int = 1)
 
 
 def rating_transcript(files: SeriesFolder, name: str, model: str, attempt: int = 1) -> Transcript:
-    """Write the ended transcript of a rating agent that loaded the oath skill and wrote its rating file, and return its location."""
+    """Write the ended transcript of a rating agent that loaded the binding skill and wrote its rating file, and return its location."""
     agent_type = f"ie-calib-{attempt}-{name.removeprefix('reference-')}"
     rating = files.root / f"6-judge/calibration/attempt-{attempt}/{name}.yaml"
     blocks = [
-        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": "manifesto:manifesto-oath"}},
+        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": SERIES_BINDING["skill"]}},
         {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": str(rating)}},
         {"type": "text", "text": "Done."},
     ]

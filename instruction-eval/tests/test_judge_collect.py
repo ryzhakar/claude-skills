@@ -24,7 +24,7 @@ from instruction_eval.records import (
 )
 
 
-def collect(files: SeriesFolder, transcripts: list[Transcript]) -> str:
+def collect_judgings(files: SeriesFolder, transcripts: list[Transcript]) -> str:
     """Run `judge collect r1` over the judge transcripts and return what it prints."""
     return judge_collect(files, "r1", transcripts, Path.read_bytes)
 
@@ -41,7 +41,7 @@ def test_every_packet_accepted_writes_the_collection_of_each_accepted_judging_an
     for packet in PACKETS:
         write_verdict(files, packet, 1)
 
-    printed = collect(files, list(transcripts.values()))
+    printed = collect_judgings(files, list(transcripts.values()))
 
     assert printed == ""
     assert SeriesRecords(files).collected("r1")["packets"] == {
@@ -62,7 +62,7 @@ def test_a_pending_judging_refuses_naming_its_packet_and_writes_nothing(tmp_path
     before = tree(files.root)
 
     with pytest.raises(Refusal, match=r"^judging pending: t1--omissions$"):
-        collect(files, [transcripts["t1"]])
+        collect_judgings(files, [transcripts["t1"]])
 
     assert tree(files.root) == before
 
@@ -72,7 +72,7 @@ def test_a_returned_judging_without_a_verdict_prints_its_packet_to_re_judge_and_
     write_verdict(files, "t1", 1)
     before = tree(files.root)
 
-    printed = collect(files, list(transcripts.values()))
+    printed = collect_judgings(files, list(transcripts.values()))
 
     assert printed == "re-judge: t1--omissions\n"
     assert tree(files.root) == before
@@ -83,7 +83,7 @@ def test_the_collection_names_as_inputs_exactly_what_it_reads_the_reader_model_i
     for packet in PACKETS:
         write_verdict(files, packet, 1)
 
-    collect(files, list(transcripts.values()))
+    collect_judgings(files, list(transcripts.values()))
 
     assert set(SeriesRecords(files).collected("r1")["inputs"]) == {
         "series.yaml",
@@ -114,7 +114,7 @@ def test_a_series_without_sources_names_as_inputs_the_first_coverage_demands_its
     for packet in PACKETS:
         write_verdict(files, packet, 1)
 
-    collect(files, transcripts)
+    collect_judgings(files, transcripts)
 
     inputs = set(SeriesRecords(files).collected("r1")["inputs"])
     assert "r1/3-coverage.yaml#demands" in inputs
@@ -130,7 +130,7 @@ def test_a_judge_definition_edited_since_judge_prepare_refuses_naming_it_and_wri
     before = tree(files.root)
 
     with pytest.raises(Refusal, match=r"^\.claude/agents/ie-judge-r1-t1--omissions-k1\.md differs from its recomputation$"):
-        collect(files, list(transcripts.values()))
+        collect_judgings(files, list(transcripts.values()))
 
     assert tree(files.root) == before
 
@@ -145,6 +145,6 @@ def test_a_packet_holding_three_failed_judgings_refuses_to_recalibrate_in_a_new_
     before = tree(files.root)
 
     with pytest.raises(Refusal, match=r"^recalibrate in a new series$"):
-        collect(files, transcripts)
+        collect_judgings(files, transcripts)
 
     assert tree(files.root) == before

@@ -9,6 +9,9 @@ from typing import TypedDict
 import numpy
 
 from instruction_eval.records import (
+    BUDGET_KEY,
+    GATE_KEYS,
+    KEEP_RULE_KEY,
     BUDGET_REASON,
     CAPPED_STOP,
     CHANGED,
@@ -189,7 +192,7 @@ def _refuse_unresolvable_gaps(checks: Sequence[GateCheck], noise: Noise) -> None
     unresolvable = [check for check in checks if noise["checks"][check.compares] > check.gap / GAP_RESOLUTION_SHARE]
     if unresolvable:
         named = ", ".join(_unresolvable_gap_description(check, noise) for check in unresolvable)
-        raise Refusal(f"unresolvable gap: {named}; least repeats {series_least_repeats(checks, noise)}")
+        raise Refusal(f"unresolvable gap: {named}; least repeats {_series_least_repeats(checks, noise)}")
 
 
 def _unresolvable_gap_description(check: GateCheck, noise: Noise) -> str:
@@ -197,7 +200,7 @@ def _unresolvable_gap_description(check: GateCheck, noise: Noise) -> str:
     return f"{check.compares} (noise {noise['checks'][check.compares]:g} > gap / 2 {check.gap / GAP_RESOLUTION_SHARE:g})"
 
 
-def series_least_repeats(checks: Sequence[GateCheck], noise: Noise) -> int | None:
+def _series_least_repeats(checks: Sequence[GateCheck], noise: Noise) -> int | None:
     """Return the fewest repeats at which every check's noise is at most half its gap, null when a check has no noise."""
     per_check = [least_repeats(check, noise) for check in checks]
     return None if None in per_check else max(per_check, default=FEWEST_REPEATS)
@@ -306,7 +309,7 @@ def sum_unless_null(values: Sequence[int | None]) -> int | None:
     return None if None in values else sum(values)
 
 
-def sum_revision_cost(replies: list[ReplyCost]) -> RevisionCost:
+def _sum_revision_cost(replies: list[ReplyCost]) -> RevisionCost:
     """Sum replies into the cost record of a revision's asks, token sums null when any reply's are."""
     return {
         "replies": len(replies),
@@ -404,8 +407,7 @@ def _unchanged_from_parent(revision: str, outcomes: Mapping[str, Record]) -> boo
 
 
 GATE_COMMAND = "revision gate"
-GATE_KEYS = ("repeats", "level", "done_by", "checks", "keep_rule", "budget")
-STOP_GATE_KEYS = ("keep_rule", "budget")
+STOP_GATE_KEYS = (KEEP_RULE_KEY, BUDGET_KEY)
 HYPOTHESIS_KEYS = ("failing_demand", "replies_read", "change", "predicted_movement")
 
 
@@ -481,7 +483,7 @@ def _outcome(
         "instruction_breaches": fmean(breach_total(row, gate_demands) for row in task_rows if row["condition"] == INSTRUCTION_CONDITION),
         "completion_passed": next(check["pass"] for check in gated if check["compares"] == COMPLETION_COMPARES),
         "words": len(words(files.read_bytes(f"{revision}/{INSTRUCTION_FILE}").decode())),
-        "cost": sum_revision_cost(measured.own_replies),
+        "cost": _sum_revision_cost(measured.own_replies),
     }
 
 

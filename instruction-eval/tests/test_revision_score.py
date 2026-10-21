@@ -43,7 +43,7 @@ COLLECTED_PACKET = {
 }
 
 
-def write_series(files: SeriesFolder, gate: dict) -> None:
+def write_scored_series(files: SeriesFolder, gate: dict) -> None:
     """Write the series records every revision of the fixture shares."""
     write_agent_series(files, DEMANDS, TASKS, ANCHORS)
     write_yaml(files, "7-gate.yaml", gate)
@@ -52,7 +52,7 @@ def write_series(files: SeriesFolder, gate: dict) -> None:
         write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
 
 
-def write_revision(files: SeriesFolder, revision: str, replies: Sequence[Reply]) -> None:
+def write_judged_revision(files: SeriesFolder, revision: str, replies: Sequence[Reply]) -> None:
     """Write the revision's reply files, origins, accepted verdicts, collection, and detector counts, each packet carrying one anchor."""
     for reply in replies:
         if reply.borrowed_from is None:
@@ -74,8 +74,8 @@ def write_revision(files: SeriesFolder, revision: str, replies: Sequence[Reply])
 def scored_series(tmp_path, replies: Sequence[Reply], done_by: str = "judge") -> SeriesFolder:
     """Write a series whose r1 holds the replies, with the gate's level and done mode."""
     files = SeriesFolder(tmp_path)
-    write_series(files, {"repeats": 2, "level": 0.95, "done_by": done_by})
-    write_revision(files, "r1", replies)
+    write_scored_series(files, {"repeats": 2, "level": 0.95, "done_by": done_by})
+    write_judged_revision(files, "r1", replies)
     return files
 
 
@@ -84,7 +84,7 @@ def read_scores(files: SeriesFolder, revision: str = "r1") -> dict:
     return SeriesRecords(files).scores(revision)
 
 
-def reads_of(revision: str, replies: Sequence[Reply]) -> set[str]:
+def score_reads(revision: str, replies: Sequence[Reply]) -> set[str]:
     """Return the Commands-table reads of `revision score` expanded for the revision's replies."""
     packets = {reply.packet for reply in replies}
     return {
@@ -130,7 +130,7 @@ def test_the_scores_hold_open_rows_only_and_name_no_sealed_blind_id(tmp_path):
         }
     ]
     assert b"b00000002" not in files.read_bytes("r1/8-scores.yaml")
-    assert set(scores["inputs"]) == reads_of("r1", replies)
+    assert set(scores["inputs"]) == score_reads("r1", replies)
 
 
 def test_each_condition_scores_its_single_task_replies_summing_gate_demands_and_reporting_a_dropped_demand_apart(tmp_path):
@@ -309,19 +309,19 @@ def test_done_follows_the_done_mode_with_key_and_judge_side_by_side_and_disagree
 
 def test_a_later_revision_scores_its_own_instruction_against_control_rows_borrowed_from_r1(tmp_path):
     files = SeriesFolder(tmp_path)
-    write_series(files, {"repeats": 2, "level": 0.95, "done_by": "judge"})
+    write_scored_series(files, {"repeats": 2, "level": 0.95, "done_by": "judge"})
     first = [Reply("b00000001", "instruction", "t1", judged=3), Reply("b00000002", "empty", "t1", judged=2)]
-    write_revision(files, "r1", first)
+    write_judged_revision(files, "r1", first)
     write_file(files, "r2/4-conditions/instruction.md", b"instruction")
     later = [Reply("b00000011", "instruction", "t1", judged=0), Reply("b00000012", "empty", "t1", judged=2, borrowed_from="r1")]
-    write_revision(files, "r2", later)
+    write_judged_revision(files, "r2", later)
 
     revision_score(files, "r2", bootstrap_rng)
 
     scores = read_scores(files, "r2")
     assert [(row["condition"], row["borrowed_from"]) for row in scores["rows"]] == [("instruction", None), ("empty", "r1")]
     assert scores["comparisons"]["instruction-vs-empty"]["mean_difference"] == -2.0
-    assert set(scores["inputs"]) == reads_of("r2", later)
+    assert set(scores["inputs"]) == score_reads("r2", later)
     assert "r1/5-replies/empty/t1/repeat-1.yaml" in scores["inputs"]
 
 
@@ -330,8 +330,8 @@ def test_a_gate_without_the_level_or_done_mode_refuses_writing_nothing(tmp_path,
     files = SeriesFolder(tmp_path)
     gate = {"repeats": 2, "level": 0.95, "done_by": "judge"}
     del gate[key]
-    write_series(files, gate)
-    write_revision(files, "r1", [Reply("b00000001", "instruction", "t1")])
+    write_scored_series(files, gate)
+    write_judged_revision(files, "r1", [Reply("b00000001", "instruction", "t1")])
 
     with pytest.raises(Refusal, match=rf"^missing key: 7-gate\.yaml#{key}$"):
         revision_score(files, "r1", bootstrap_rng)

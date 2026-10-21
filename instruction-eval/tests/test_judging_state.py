@@ -8,7 +8,8 @@ import yaml
 from instruction_eval.judge import AcceptedJudging, AnchorAgreement, NeedsJudging, PendingJudging, judging_states
 from instruction_eval.reader import Transcript
 from instruction_eval.records import Refusal, SeriesFolder, write_file, write_record
-from series_fixtures import write_agent_series, write_yaml
+from judging_fixtures import write_definition
+from series_fixtures import OTHER_BINDING, SERIES_BINDING, write_agent_series, write_yaml
 
 JUDGE_MODEL = "claude-opus-4-1"
 OTHER_MODEL = "claude-sonnet-5-5"
@@ -51,10 +52,10 @@ PLAN = {
 HASH = "a" * 64
 
 
-def series_folder(tmp_path: Path) -> SeriesFolder:
-    """Write a series whose r1 blinded the packets `t1` and `t1--omissions`, each holding one reply and the anchor."""
+def judging_series(tmp_path: Path, binding: dict = SERIES_BINDING) -> SeriesFolder:
+    """Write a series binding through `binding` whose r1 blinded the packets `t1` and `t1--omissions`, each holding one reply and the anchor."""
     files = SeriesFolder(tmp_path / "series")
-    write_agent_series(files, DEMANDS, TASKS, ANCHORS)
+    write_agent_series(files, DEMANDS, TASKS, ANCHORS, binding)
     write_yaml(files, "6-judge/calibration/attempt-1/plan.yaml", PLAN)
     write_record(files, "6-judge/calibration.yaml", CALIBRATION, [])
     write_file(files, "r1/5-replies/instruction/t1/repeat-1.yaml", b"reply")
@@ -69,10 +70,6 @@ def series_folder(tmp_path: Path) -> SeriesFolder:
     return files
 
 
-def write_definition(files: SeriesFolder, packet: str, judging: int) -> None:
-    write_file(files, f".claude/agents/ie-judge-r1-{packet}-k{judging}.md", b"definition")
-
-
 def states(files: SeriesFolder, transcripts: list[Transcript] = ()) -> dict:
     return judging_states(files, "r1", list(transcripts), Path.read_bytes)
 
@@ -81,14 +78,14 @@ def verdict_path(files: SeriesFolder, packet: str, judging: int) -> Path:
     return files.root / f"r1/7-verdicts/{packet}/k{judging}.yaml"
 
 
-def write_verdict(files: SeriesFolder, packet: str, judging: int, anchor_breaches: int = 1, anchor_done: bool | None = True) -> None:
+def write_judging_verdict(files: SeriesFolder, packet: str, judging: int, anchor_breaches: int = 1, anchor_done: bool | None = True) -> None:
     """Write judging `judging`'s verdict of the packet: its reply counted at 2 breaches, its anchor counted as given."""
     reply = {"id": REPLY_IDS[packet], "breaches": {"d-judge": 2}, "done": True, "kind": "answer", "notes": ""}
     anchor = {"id": ANCHOR_IDS[packet], "breaches": {"d-judge": anchor_breaches}, "done": anchor_done, "kind": "answer", "notes": ""}
     write_yaml(files, f"r1/7-verdicts/{packet}/k{judging}.yaml", {"verdicts": [reply, anchor]})
 
 
-def judge_transcript(
+def judging_transcript(
     files: SeriesFolder,
     packet: str,
     judging: int,
@@ -96,11 +93,12 @@ def judge_transcript(
     final: bool = True,
     started: str = "2026-10-14T19:00:43.000Z",
     tools: tuple[dict, ...] = (),
+    binding_skill: str = SERIES_BINDING["skill"],
 ) -> Transcript:
-    """Write the transcript of a judging that loaded the oath skill and wrote its verdict path, and return its location."""
+    """Write the transcript of a judging that loaded the binding skill and wrote its verdict path, and return its location."""
     agent_type = f"ie-judge-r1-{packet}-k{judging}"
     uses = tools or (
-        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": "manifesto:manifesto-oath"}},
+        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": binding_skill}},
         {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": str(verdict_path(files, packet, judging))}},
     )
     blocks = [*uses, *([{"type": "text", "text": "Done."}] if final else [])]
@@ -116,37 +114,37 @@ def judge_transcript(
 
 
 def test_a_packet_with_no_judging_needs_judging_one(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
 
     assert states(files) == {"t1": NeedsJudging(1), "t1--omissions": NeedsJudging(1)}
 
 
 def test_a_judging_without_verdict_or_transcript_is_pending_and_blocks_a_new_one_for_its_packet_alone(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
 
     assert states(files) == {"t1": PendingJudging(1), "t1--omissions": NeedsJudging(1)}
 
 
 def test_a_returned_judging_without_a_verdict_file_failed_and_the_next_judging_follows_it(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
 
-    assert states(files, [judge_transcript(files, "t1", 1)]) == {"t1": NeedsJudging(2), "t1--omissions": NeedsJudging(1)}
+    assert states(files, [judging_transcript(files, "t1", 1)]) == {"t1": NeedsJudging(2), "t1--omissions": NeedsJudging(1)}
 
 
 def test_a_judging_whose_transcript_has_not_ended_in_a_final_message_stays_pending(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
 
-    assert states(files, [judge_transcript(files, "t1", 1, final=False)])["t1"] == PendingJudging(1)
+    assert states(files, [judging_transcript(files, "t1", 1, final=False)])["t1"] == PendingJudging(1)
 
 
 def test_a_returned_judging_whose_verdict_matches_the_anchors_is_accepted_with_its_transcript_and_anchor_agreement(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1)
-    transcript = judge_transcript(files, "t1", 1)
+    write_judging_verdict(files, "t1", 1)
+    transcript = judging_transcript(files, "t1", 1)
 
     assert states(files, [transcript])["t1"] == AcceptedJudging(
         judging=1,
@@ -155,6 +153,27 @@ def test_a_returned_judging_whose_verdict_matches_the_anchors_is_accepted_with_i
         transcript_hash=hashlib.sha256(transcript.path.read_bytes()).hexdigest(),
         anchors=AnchorAgreement(breach_difference={"d-judge": 0.0}, done_agreement=1.0),
     )
+
+
+@pytest.mark.parametrize(("loaded_skill", "accepted"), [(OTHER_BINDING["skill"], True), (SERIES_BINDING["skill"], False)], ids=["series-skill", "default-skill"])
+def test_a_returned_judging_is_accepted_only_when_its_judge_loaded_the_series_binding_skill(tmp_path, loaded_skill, accepted):
+    files = judging_series(tmp_path, OTHER_BINDING)
+    write_definition(files, "t1", 1)
+    write_judging_verdict(files, "t1", 1)
+
+    state = states(files, [judging_transcript(files, "t1", 1, binding_skill=loaded_skill)])["t1"]
+
+    assert isinstance(state, AcceptedJudging) is accepted
+
+
+def test_a_returned_judging_whose_judge_wrote_its_verdict_before_loading_the_binding_skill_failed(tmp_path):
+    files = judging_series(tmp_path)
+    write_definition(files, "t1", 1)
+    write_judging_verdict(files, "t1", 1)
+    write = {"type": "tool_use", "id": "toolu_1", "name": "Write", "input": {"file_path": str(verdict_path(files, "t1", 1))}}
+    load = {"type": "tool_use", "id": "toolu_2", "name": "Skill", "input": {"skill": SERIES_BINDING["skill"]}}
+
+    assert states(files, [judging_transcript(files, "t1", 1, tools=(write, load))])["t1"] == NeedsJudging(2)
 
 
 def reply_entry(blind_id: str, breaches: dict) -> dict:
@@ -174,13 +193,13 @@ def reply_entry(blind_id: str, breaches: dict) -> dict:
     ids=["not-yaml", "missing-blind-id", "foreign-blind-id", "not-a-judge-demand", "uncounted-demand", "out-of-range"],
 )
 def test_a_returned_judging_whose_verdict_file_is_invalid_failed(tmp_path, document):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
     target = verdict_path(files, "t1", 1)
     target.parent.mkdir(parents=True)
     target.write_text(document if isinstance(document, str) else yaml.safe_dump(document))
 
-    assert states(files, [judge_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
+    assert states(files, [judging_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
 
 
 READ_TOOL = ({"type": "tool_use", "id": "toolu_3", "name": "Read", "input": {"file_path": "/series/r1/5-replies"}},)
@@ -192,10 +211,10 @@ READ_TOOL = ({"type": "tool_use", "id": "toolu_3", "name": "Read", "input": {"fi
     ids=["wrong-model", "rejected-tool-use", "no-transcript"],
 )
 def test_a_returned_judging_fails_when_its_judge_ran_another_model_was_rejected_or_left_no_transcript(tmp_path, transcript_options):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1)
-    transcripts = [] if transcript_options is None else [judge_transcript(files, "t1", 1, **transcript_options)]
+    write_judging_verdict(files, "t1", 1)
+    transcripts = [] if transcript_options is None else [judging_transcript(files, "t1", 1, **transcript_options)]
 
     assert states(files, transcripts)["t1"] == NeedsJudging(2)
 
@@ -206,27 +225,27 @@ def test_a_returned_judging_fails_when_its_judge_ran_another_model_was_rejected_
     ids=["breaches-over", "breaches-under", "done-contradicted", "done-undecided"],
 )
 def test_a_returned_judging_fails_when_it_misses_an_anchor_count_or_done_value_by_more_than_the_acceptance(tmp_path, verdict_options):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1, **verdict_options)
+    write_judging_verdict(files, "t1", 1, **verdict_options)
 
-    assert states(files, [judge_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
+    assert states(files, [judging_transcript(files, "t1", 1)])["t1"] == NeedsJudging(2)
 
 
 def returned_without_verdict(files: SeriesFolder, packet: str, judging: int) -> Transcript:
     write_definition(files, packet, judging)
-    return judge_transcript(files, packet, judging)
+    return judging_transcript(files, packet, judging)
 
 
 def test_a_packet_holding_two_failed_judgings_needs_a_third(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     transcripts = [returned_without_verdict(files, "t1", judging) for judging in (1, 2)]
 
     assert states(files, transcripts)["t1"] == NeedsJudging(3)
 
 
 def test_a_packet_holding_three_failed_judgings_refuses_to_recalibrate_in_a_new_series(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     transcripts = [returned_without_verdict(files, "t1", judging) for judging in (1, 2, 3)]
 
     with pytest.raises(Refusal, match="recalibrate in a new series"):
@@ -234,7 +253,7 @@ def test_a_packet_holding_three_failed_judgings_refuses_to_recalibrate_in_a_new_
 
 
 def test_a_pending_judging_after_two_failures_blocks_a_new_one(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     transcripts = [returned_without_verdict(files, "t1", judging) for judging in (1, 2)]
     write_definition(files, "t1", 3)
 
@@ -242,12 +261,12 @@ def test_a_pending_judging_after_two_failures_blocks_a_new_one(tmp_path):
 
 
 def test_the_lowest_judging_that_passes_is_accepted_though_a_later_one_passes_too(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     transcripts = [returned_without_verdict(files, "t1", 1)]
     for judging in (2, 3):
         write_definition(files, "t1", judging)
-        write_verdict(files, "t1", judging)
-        transcripts.append(judge_transcript(files, "t1", judging))
+        write_judging_verdict(files, "t1", judging)
+        transcripts.append(judging_transcript(files, "t1", judging))
 
     accepted = states(files, transcripts)["t1"]
 
@@ -260,67 +279,67 @@ NEWER = "2026-10-14T20:00:43.000Z"
 
 
 def test_a_relaunched_judging_whose_latest_transcript_has_not_ended_is_pending_whatever_an_earlier_transcript_did(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    transcripts = [judge_transcript(files, "t1", 1, started=NEWER, final=False), judge_transcript(files, "t1", 1, started=OLDER)]
+    transcripts = [judging_transcript(files, "t1", 1, started=NEWER, final=False), judging_transcript(files, "t1", 1, started=OLDER)]
 
     assert states(files, transcripts)["t1"] == PendingJudging(1)
 
 
 def test_the_judge_of_a_judging_is_its_latest_transcript_whatever_the_order_the_transcripts_are_listed_in(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1)
-    wrong_model = judge_transcript(files, "t1", 1, started=OLDER, model=OTHER_MODEL)
-    right_model = judge_transcript(files, "t1", 1, started=NEWER)
+    write_judging_verdict(files, "t1", 1)
+    wrong_model = judging_transcript(files, "t1", 1, started=OLDER, model=OTHER_MODEL)
+    right_model = judging_transcript(files, "t1", 1, started=NEWER)
 
     assert states(files, [right_model, wrong_model])["t1"].transcript == right_model.path
     assert states(files, [wrong_model, right_model])["t1"].transcript == right_model.path
 
 
 def test_a_definition_of_the_omissions_packet_is_not_counted_for_the_task_packet_whose_name_it_begins_with(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1--omissions", 1)
 
     assert states(files) == {"t1": NeedsJudging(1), "t1--omissions": PendingJudging(1)}
 
 
 def test_a_judging_whose_verdict_file_exists_has_returned_and_fails_when_its_transcript_never_ended(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1)
+    write_judging_verdict(files, "t1", 1)
 
-    assert states(files, [judge_transcript(files, "t1", 1, final=False)])["t1"] == NeedsJudging(2)
+    assert states(files, [judging_transcript(files, "t1", 1, final=False)])["t1"] == NeedsJudging(2)
 
 
 def test_an_empty_transcript_is_a_judging_not_yet_returned(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     write_definition(files, "t1", 1)
-    transcript = judge_transcript(files, "t1", 1)
+    transcript = judging_transcript(files, "t1", 1)
     transcript.path.write_text("")
 
     assert states(files, [transcript])["t1"] == PendingJudging(1)
 
 
 def test_a_packet_whose_anchors_all_lack_a_known_done_value_refuses_naming_the_packet(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     (files.root / "6-judge/anchors.yaml").unlink()
     write_record(files, "6-judge/anchors.yaml", {"anchors": [{**ANCHORS["anchors"][0], "done": None}]}, [])
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1)
+    write_judging_verdict(files, "t1", 1)
 
     with pytest.raises(Refusal, match="no anchor with a known done value in t1"):
-        states(files, [judge_transcript(files, "t1", 1)])
+        states(files, [judging_transcript(files, "t1", 1)])
 
 
 def test_a_packet_without_anchors_refuses_naming_the_packet(tmp_path):
-    files = series_folder(tmp_path)
+    files = judging_series(tmp_path)
     (files.root / "r1/6-origins.yaml").unlink()
     ids = {REPLY_IDS["t1"]: {"split": "open", "repeat": 1, "task": "t1", "borrowed_from": None, "packet": "t1", "condition": "instruction"}}
     write_record(files, "r1/6-origins.yaml", {"ids": ids, "packets": {"t1": HASH}}, [])
     write_definition(files, "t1", 1)
-    write_verdict(files, "t1", 1)
+    write_judging_verdict(files, "t1", 1)
     (files.root / "r1/7-verdicts/t1/k1.yaml").write_text(yaml.safe_dump({"verdicts": [{"id": REPLY_IDS["t1"], "breaches": {"d-judge": 2}, "done": True, "kind": "answer", "notes": ""}]}))
 
     with pytest.raises(Refusal, match="no anchor in t1"):
-        states(files, [judge_transcript(files, "t1", 1)])
+        states(files, [judging_transcript(files, "t1", 1)])

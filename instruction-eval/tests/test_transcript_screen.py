@@ -1,10 +1,13 @@
+import json
 import re
 from pathlib import Path
 
 import pytest
+from hypothesis import given, strategies as st
 
 from instruction_eval.reader import judge_transcript_rejection, refuse_exposed_reader_transcript
-from instruction_eval.records import Refusal
+from instruction_eval.records import DEFAULT_BINDING, Refusal
+from series_fixtures import OTHER_BINDING
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "transcript-screen"
 PINNED_MODEL = "claude-sonnet-5-5"
@@ -37,6 +40,10 @@ def test_reader_transcript_showing_subagent_start_text_is_refused(fixture_name):
 def test_reader_transcript_showing_any_tool_use_is_refused():
     with pytest.raises(Refusal, match="shows tool use Read$"):
         screen_reader("reader-tool-use")
+
+
+def test_reader_transcript_handing_its_reply_back_through_subagent_handback_passes():
+    screen_reader("reader-subagent-handback", ("Explain tides.",))
 
 
 def test_reader_transcript_served_by_another_model_is_refused():
@@ -87,16 +94,50 @@ def test_judge_screen_of_a_malformed_entry_is_refused_by_transcript_and_line(fix
         judge_rejection(fixture_name)
 
 
-def judge_rejection(fixture_name):
+def judge_rejection(fixture_name, binding_skill=OTHER_BINDING["skill"]):
     transcript = FIXTURES / f"{fixture_name}.jsonl"
-    return judge_transcript_rejection(transcript, transcript.read_bytes(), VERDICT_PATH)
+    return judge_transcript_rejection(transcript, transcript.read_bytes(), VERDICT_PATH, binding_skill)
+
+
+def skill_load(skill: str) -> dict:
+    return {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": skill}}
+
+
+VERDICT_WRITE = {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": str(VERDICT_PATH)}}
+
+
+def tool_use_rejection(tool_uses: list[dict], binding_skill: str) -> str | None:
+    """Screen a judge transcript of one assistant entry per tool use, in order, against the binding skill."""
+    lines = [{"type": "user", "message": {"role": "user", "content": "Judge the packet."}}]
+    lines += [{"type": "assistant", "message": {"role": "assistant", "content": [tool_use]}} for tool_use in tool_uses]
+    content = "".join(json.dumps(line) + "\n" for line in lines).encode()
+    return judge_transcript_rejection(Path("judge.jsonl"), content, VERDICT_PATH, binding_skill)
+
+
+def test_judge_transcript_loading_a_skill_besides_the_series_binding_skill_is_rejected():
+    assert judge_rejection("judge-clean", DEFAULT_BINDING.skill) == "shows tool use Skill"
+
+
+@pytest.mark.parametrize(
+    "tool_uses",
+    [[VERDICT_WRITE], [VERDICT_WRITE, skill_load(OTHER_BINDING["skill"])], []],
+    ids=["never-loads", "loads-after-writing", "no-act"],
+)
+def test_judge_transcript_whose_first_act_is_not_loading_the_binding_skill_is_rejected(tool_uses):
+    assert tool_use_rejection(tool_uses, OTHER_BINDING["skill"]) == "does not load oath:bind first"
+
+
+@given(st.lists(st.sampled_from([skill_load(OTHER_BINDING["skill"]), VERDICT_WRITE])))
+def test_judge_transcript_of_allowed_tool_uses_is_rejected_exactly_when_its_first_is_not_the_binding_skill_load(tool_uses):
+    loads_first = bool(tool_uses) and tool_uses[0] != VERDICT_WRITE
+    assert tool_use_rejection(tool_uses, OTHER_BINDING["skill"]) == (None if loads_first else "does not load oath:bind first")
 
 
 def test_judge_transcript_showing_a_read_is_rejected():
     assert judge_rejection("judge-read") == "shows tool use Read"
 
 
-def test_judge_transcript_loading_only_the_oath_and_writing_its_verdict_is_kept():
+def test_judge_transcript_loading_only_the_series_binding_skill_and_writing_its_verdict_is_kept():
     assert judge_rejection("judge-clean") is None
 
 
@@ -109,5 +150,5 @@ def test_judge_transcript_loading_only_the_oath_and_writing_its_verdict_is_kept(
         ("judge-subagent-start", "shows SubagentStart text"),
     ],
 )
-def test_judge_transcript_exposed_beyond_its_oath_and_verdict_is_rejected(fixture_name, rejection):
+def test_judge_transcript_exposed_beyond_its_binding_skill_and_verdict_is_rejected(fixture_name, rejection):
     assert judge_rejection(fixture_name) == rejection

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 from gate_fixtures import first_replies, frozen_series
-from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, AGENT_SERIES, bootstrap_rng, sha256, write_revision, write_yaml
+from series_fixtures import AGENT_SERIES, ONE_DEMAND, ONE_DEMAND_COVERAGE, bootstrap_rng, outcome, sha256, write_revision, write_yaml
 
 from instruction_eval.gate import revision_gate
 from instruction_eval.records import SeriesFolder, write_record
@@ -53,21 +53,9 @@ CHECKS = [{"compares": compares, "gap": 1.0} for compares in ("instruction-vs-em
 GATE = {"repeats": 2, "level": 0.95, "done_by": "judge", "checks": CHECKS, "keep_rule": "best-estimate-shortest", "budget": "none"}
 
 
-def outcome(passed: bool, instruction_breaches: float, words: int, cost: dict, changed_from_parent: str | None = None) -> dict:
-    record = {
-        "outcome": "pass" if passed else "fail",
-        "checks": [],
-        "instruction_breaches": instruction_breaches,
-        "completion_passed": True,
-        "words": words,
-        "cost": cost,
-    }
-    if changed_from_parent is None:
-        return record
-    return {**record, "changed_from_parent": changed_from_parent, "parent_comparison": {"target": "d-judge", "mean_difference": -0.4, "interval": [-0.8, 0.0]}}
 
 
-def gated_series(tmp_path, gate: dict, outcomes: dict[int, dict]) -> SeriesFolder:
+def status_series(tmp_path, gate: dict, outcomes: dict[int, dict]) -> SeriesFolder:
     files = SeriesFolder(tmp_path)
     write_record(files, "series.yaml", AGENT_SERIES, [])
     write_yaml(files, "2-demands.yaml", ONE_DEMAND)
@@ -88,10 +76,10 @@ SECOND_COST = {"replies": 2, "input_tokens": 50, "output_tokens": 10, "seconds":
 
 def test_a_frozen_series_reports_each_gated_revisions_ranks_and_the_cost_so_far_against_the_budget(tmp_path):
     budget = {"unit": "tokens", "ceiling": 500}
-    files = gated_series(
+    files = status_series(
         tmp_path,
         {**GATE, "budget": budget},
-        {1: outcome(False, 1.5, 40, FIRST_COST), 2: outcome(True, 0.5, 30, SECOND_COST, "changed")},
+        {1: outcome(False, instruction_breaches=1.5, words=40, cost=FIRST_COST), 2: outcome(True, instruction_breaches=0.5, words=30, cost=SECOND_COST, changed_from_parent="changed")},
     )
 
     status = status_of(files)
@@ -106,7 +94,7 @@ def test_a_frozen_series_reports_each_gated_revisions_ranks_and_the_cost_so_far_
 
 def test_a_revision_whose_replies_carry_no_token_counts_leaves_the_summed_tokens_null(tmp_path):
     uncounted = {"replies": 2, "input_tokens": None, "output_tokens": None, "seconds": 0.5}
-    files = gated_series(tmp_path, GATE, {1: outcome(False, 1.5, 40, FIRST_COST), 2: outcome(True, 0.5, 30, uncounted, "changed")})
+    files = status_series(tmp_path, GATE, {1: outcome(False, instruction_breaches=1.5, words=40, cost=FIRST_COST), 2: outcome(True, instruction_breaches=0.5, words=30, cost=uncounted, changed_from_parent="changed")})
 
     spent = status_of(files)["cost"]["spent"]
 
@@ -136,7 +124,7 @@ def write_attempt(files: SeriesFolder, number: int, scale: float | None | str) -
 
 
 def test_a_stopped_series_reports_each_calibration_attempt_with_its_scale_and_the_accepted_one_and_the_stop(tmp_path):
-    files = gated_series(tmp_path, GATE, {1: outcome(False, 1.5, 40, FIRST_COST)})
+    files = status_series(tmp_path, GATE, {1: outcome(False, instruction_breaches=1.5, words=40, cost=FIRST_COST)})
     write_attempt(files, 1, 1.2)
     write_attempt(files, 2, None)
     write_attempt(files, 3, UNRATED)
@@ -194,10 +182,7 @@ def test_a_measured_first_revision_reports_its_noise_and_the_least_repeats_each_
     }
 
 
-def test_a_manifesto_clone_inside_the_series_folder_is_reported(tmp_path):
+def test_the_standing_holds_parts_frozen_revisions_cost_calibration_awaiting_packets_noise_least_repeats_and_stop_alone(tmp_path):
     files = bare_series(tmp_path)
-    assert status_of(files)["manifesto_clone"] is False
 
-    (tmp_path / ".claude/manifesto-repo").mkdir(parents=True)
-
-    assert status_of(files)["manifesto_clone"] is True
+    assert list(status_of(files)) == ["parts", "frozen", "revisions", "cost", "calibration", "packets_awaiting_judging", "noise", "least_repeats", "stop"]

@@ -10,7 +10,7 @@ Z = NormalDist().inv_cdf((1 + LEVEL) / 2)
 CONTROLS = ["empty", "aim", "placebo"]
 
 
-def reply(
+def noise_reply(
     condition: str,
     task: str,
     repeat: int,
@@ -31,14 +31,14 @@ def reply(
 
 def test_vs_check_noise_at_two_repeats_pools_instruction_and_control_variances():
     rows = [
-        reply("instruction", "t1", 1, {"d1": 1}),
-        reply("instruction", "t1", 2, {"d1": 3}),
-        reply("instruction", "t2", 1, {"d1": 0}),
-        reply("instruction", "t2", 2, {"d1": 0}),
-        reply("empty", "t1", 1, {"d1": 2}),
-        reply("empty", "t1", 2, {"d1": 6}),
-        reply("empty", "t2", 1, {"d1": 4}),
-        reply("empty", "t2", 2, {"d1": 4}),
+        noise_reply("instruction", "t1", 1, {"d1": 1}),
+        noise_reply("instruction", "t1", 2, {"d1": 3}),
+        noise_reply("instruction", "t2", 1, {"d1": 0}),
+        noise_reply("instruction", "t2", 2, {"d1": 0}),
+        noise_reply("empty", "t1", 1, {"d1": 2}),
+        noise_reply("empty", "t1", 2, {"d1": 6}),
+        noise_reply("empty", "t2", 1, {"d1": 4}),
+        noise_reply("empty", "t2", 2, {"d1": 4}),
     ]
 
     noise = measure_noise(rows, ["d1"], CONTROLS, repeats=2, level=LEVEL)
@@ -50,14 +50,14 @@ def test_vs_check_noise_at_two_repeats_pools_instruction_and_control_variances()
 
 def test_near_source_noise_compares_instruction_with_source():
     rows = [
-        reply("instruction", "t1", 1, {"d1": 1}),
-        reply("instruction", "t1", 2, {"d1": 3}),
-        reply("instruction", "t2", 1, {"d1": 0}),
-        reply("instruction", "t2", 2, {"d1": 0}),
-        reply("source", "t1", 1, {"d1": 0}),
-        reply("source", "t1", 2, {"d1": 2}),
-        reply("source", "t2", 1, {"d1": 1}),
-        reply("source", "t2", 2, {"d1": 1}),
+        noise_reply("instruction", "t1", 1, {"d1": 1}),
+        noise_reply("instruction", "t1", 2, {"d1": 3}),
+        noise_reply("instruction", "t2", 1, {"d1": 0}),
+        noise_reply("instruction", "t2", 2, {"d1": 0}),
+        noise_reply("source", "t1", 1, {"d1": 0}),
+        noise_reply("source", "t1", 2, {"d1": 2}),
+        noise_reply("source", "t2", 1, {"d1": 1}),
+        noise_reply("source", "t2", 2, {"d1": 1}),
     ]
 
     noise = measure_noise(rows, ["d1"], [*CONTROLS, "source"], repeats=2, level=LEVEL)
@@ -74,7 +74,7 @@ def test_near_source_noise_is_absent_without_a_source():
 def turn_replies(condition: str, totals_by_conversation: dict[str, list[list[int]]]) -> list[ScoredReply]:
     """Build turn replies from d1 breach totals nested by conversation, then repeat, then turn."""
     return [
-        reply(condition, conversation, repeat, {"d1": total}, turn=turn)
+        noise_reply(condition, conversation, repeat, {"d1": total}, turn=turn)
         for conversation, repeats in totals_by_conversation.items()
         for repeat, totals in enumerate(repeats, start=1)
         for turn, total in enumerate(totals, start=1)
@@ -120,10 +120,10 @@ def test_drift_noise_leaves_out_a_conversation_repeat_with_one_sealed_turn():
 
 def test_conversation_turns_leave_task_noise_unchanged():
     task_rows = [
-        reply("instruction", "t1", 1, {"d1": 1}),
-        reply("instruction", "t1", 2, {"d1": 3}),
-        reply("empty", "t1", 1, {"d1": 2}),
-        reply("empty", "t1", 2, {"d1": 6}),
+        noise_reply("instruction", "t1", 1, {"d1": 1}),
+        noise_reply("instruction", "t1", 2, {"d1": 3}),
+        noise_reply("empty", "t1", 1, {"d1": 2}),
+        noise_reply("empty", "t1", 2, {"d1": 6}),
     ]
     conversation_rows = [
         *turn_replies("instruction", {"c1": [[0, 9], [5, 0]]}),
@@ -144,7 +144,7 @@ def test_drift_noise_is_absent_without_conversations():
 def done_replies(condition: str, done_by_task: dict[str, list[bool | None]]) -> list[ScoredReply]:
     """Build breach-free task replies from done values nested by task, then repeat."""
     return [
-        reply(condition, task, repeat, {"d1": 0}, done=done)
+        noise_reply(condition, task, repeat, {"d1": 0}, done=done)
         for task, dones in done_by_task.items()
         for repeat, done in enumerate(dones, start=1)
     ]
@@ -206,10 +206,10 @@ def test_noise_holds_variances_and_half_widths_only():
 
 def test_demand_change_noise_doubles_the_instruction_variance_of_each_gate_demand():
     rows = [
-        reply("instruction", "t1", 1, {"d1": 1, "d2": 0, "dropped": 9}),
-        reply("instruction", "t1", 2, {"d1": 3, "d2": 2, "dropped": 0}),
-        reply("instruction", "t2", 1, {"d1": 0, "d2": 5, "dropped": 4}),
-        reply("instruction", "t2", 2, {"d1": 0, "d2": 8, "dropped": 1}),
+        noise_reply("instruction", "t1", 1, {"d1": 1, "d2": 0, "dropped": 9}),
+        noise_reply("instruction", "t1", 2, {"d1": 3, "d2": 2, "dropped": 0}),
+        noise_reply("instruction", "t2", 1, {"d1": 0, "d2": 5, "dropped": 4}),
+        noise_reply("instruction", "t2", 2, {"d1": 0, "d2": 8, "dropped": 1}),
     ]
 
     noise = measure_noise(rows, ["d1", "d2"], CONTROLS, repeats=2, level=LEVEL)

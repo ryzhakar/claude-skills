@@ -59,6 +59,23 @@ def test_stop_record_refuses_missing_inputs():
     assert_refused(RecordKind.STOP, without(load_fixture(RecordKind.STOP), ("inputs",)), "inputs")
 
 
+@pytest.mark.parametrize(
+    ("kind", "path", "value", "message"),
+    [
+        (RecordKind.STOP, ("stop",), "halted", "stop.stop: expected one of ['passed', 'no-effect', 'capped', 'unresolvable'], got 'halted'"),
+        (RecordKind.STOP, ("inputs", "7-gate.yaml#checks"), "ABC", "stop.inputs.7-gate.yaml#checks: expected lowercase sha256 hex, got 'ABC'"),
+        (RecordKind.REVISION, ("number",), 0, "revision.number: expected integer >= 1, got 0"),
+        (RecordKind.FROZEN, ("tool_version",), "", "frozen.tool_version: expected non-empty string, got ''"),
+        (RecordKind.FROZEN, ("frozen_at",), "2026-10-14T10:00:00", "frozen.frozen_at: expected ISO 8601 timestamp with offset, got '2026-10-14T10:00:00'"),
+        (RecordKind.FROZEN, ("noise", "level"), 1, "frozen.noise.level: expected number in (0, 1), got 1"),
+    ],
+)
+def test_a_command_record_refusal_names_the_key_and_the_expected_shape_in_its_exact_wording(kind, path, value, message):
+    with pytest.raises(Refusal) as refusal:
+        parse_record(kind, changed(load_fixture(kind), path, value))
+    assert str(refusal.value) == message
+
+
 @pytest.mark.parametrize("stop,reason,accepted", [
     ("unresolvable", "user text", True),
     ("unresolvable", None, False),

@@ -8,6 +8,8 @@ import pytest
 import yaml
 from hypothesis import given, strategies as st
 
+from instruction_eval.records import DEFAULT_BINDING
+
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PLUGIN_ROOT.parent
 SKILLS_DIR = PLUGIN_ROOT / "skills"
@@ -62,7 +64,9 @@ WAVE_CAP_SKILLS = ["judge-replies", "freeze-series", "calibrate-judge", "measure
 WAVE_CAP_TEXTS = ("at most twenty agents", "first twenty")
 TRANSCRIPT_RULE_TEXT = "last assistant message"
 START_SERIES_TEXTS = [
-    "claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills",
+    "claudes new --bare readers instruction-eval@my-claude-skills <binding-plugin>",
+    "--binding-plugin <binding-plugin> --binding-skill <binding-skill>",
+    "`enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `<binding-plugin>`",
     "in any working directory",
     "claudes run readers",
 ]
@@ -220,6 +224,11 @@ def test_launching_skill_states_the_wave_cap_and_the_transcript_rule(name):
 @pytest.mark.parametrize("required", START_SERIES_TEXTS)
 def test_start_series_states_the_neutral_login_and_launch(required):
     assert required in skill_text("start-series")
+
+
+@pytest.mark.parametrize("default", [DEFAULT_BINDING.plugin, DEFAULT_BINDING.skill])
+def test_only_start_series_names_a_binding_default(default):
+    assert [name for name in SKILL_NAMES if default in skill_text(name)] == ["start-series"]
 
 
 @pytest.mark.parametrize("name", SKILL_NAMES)

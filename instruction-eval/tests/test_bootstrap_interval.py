@@ -4,7 +4,7 @@ from statistics import NormalDist
 import numpy
 import pytest
 
-from instruction_eval.scores import BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, PairedUnit, compare_paired, z_for_level
+from instruction_eval.scores import BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, PairedUnit, compare_paired, measure_noise
 
 LEVEL = 0.9
 PROPERTY_SEED = 7
@@ -19,6 +19,14 @@ UNITS = [
     PairedUnit(instruction=0.25, other=1.0),
     PairedUnit(instruction=1.0, other=0.0),
 ]
+
+
+CONTROLS = ["empty", "aim", "placebo"]
+
+
+def noise_z(level: float) -> float:
+    """Return the z r1's noise carries at the level, measured over no replies."""
+    return measure_noise([], [], CONTROLS, repeats=2, level=level)["z"]
 
 
 def property_rng() -> numpy.random.Generator:
@@ -77,12 +85,12 @@ def test_no_units_gives_null_interval():
 
 
 def test_z_at_level_095_is_the_conventional_two_sided_critical_value():
-    assert math.isclose(z_for_level(0.95), CONVENTIONAL_Z_AT_95, abs_tol=CONVENTIONAL_Z_TOLERANCE)
+    assert math.isclose(noise_z(0.95), CONVENTIONAL_Z_AT_95, abs_tol=CONVENTIONAL_Z_TOLERANCE)
 
 
 def test_z_rises_with_level_and_mirrors_the_lower_tail_quantile():
     ascending_levels = sorted(property_rng().uniform(0, 1, PROPERTY_CASES))
-    z_values = [z_for_level(level) for level in ascending_levels]
+    z_values = [noise_z(level) for level in ascending_levels]
 
     assert all(lower < higher for lower, higher in zip(z_values, z_values[1:]))
     for level, z in zip(ascending_levels, z_values):
@@ -114,4 +122,4 @@ def test_comparison_refuses_level_outside_open_unit_interval(level):
 @pytest.mark.parametrize("level", [0.0, 1.0, -0.5, 1.5])
 def test_z_refuses_level_outside_open_unit_interval(level):
     with pytest.raises(ValueError, match=f"level must lie strictly between 0 and 1, got {level}"):
-        z_for_level(level)
+        noise_z(level)

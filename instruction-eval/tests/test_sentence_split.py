@@ -70,3 +70,24 @@ def test_sentences_are_numbered_from_one_in_order_without_overlap_each_a_non_bla
     assert all(0 <= sentence.start < sentence.end <= len(text) for sentence in sentences)
     assert all(earlier.end <= later.start and earlier.unit <= later.unit for earlier, later in zip(sentences, sentences[1:]))
     assert all(text[sentence.start:sentence.end].strip() for sentence in sentences)
+
+
+def sentence_texts(text: bytes) -> list[bytes]:
+    """Return the bytes of each sentence the text splits into."""
+    return [text[sentence.start : sentence.end] for sentence in split_sentences(text)]
+
+
+def test_an_exact_fence_line_opens_a_frontmatter_block_counted_as_one_sentence():
+    assert sentence_texts(b"---\ntitle: x\n---\nBe terse.\n") == [b"---\ntitle: x\n---", b"Be terse."]
+
+
+@pytest.mark.parametrize(
+    ("text", "sentences"),
+    [
+        (b"--- \ntitle: x\n---\nBe terse.\n", [b"--- ", b"title: x", b"---", b"Be terse."]),
+        (b"---\t\ntitle: x\n---\nBe terse.\n", [b"---\t", b"title: x", b"---", b"Be terse."]),
+        (b"---\r\ntitle: x\r\n---\r\nBe terse.\r\n", [b"---\r", b"title: x", b"---\r", b"Be terse."]),
+    ],
+)
+def test_a_fence_line_with_trailing_whitespace_or_a_carriage_return_opens_no_frontmatter_block(text, sentences):
+    assert sentence_texts(text) == sentences

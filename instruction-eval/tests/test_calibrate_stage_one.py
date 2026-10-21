@@ -7,7 +7,8 @@ import yaml
 import instruction_eval
 from instruction_eval.judge import calibrate_stage_one
 from instruction_eval.records import Refusal, SeriesFolder, SeriesRecords, reply_path, write_file, write_record
-from series_fixtures import NeutralLogin, sha256, tree, write_yaml
+from judging_fixtures import definition
+from series_fixtures import DISK_LOGIN_FILES, OTHER_BINDING, SERIES_BINDING, NeutralLogin, sha256, tree, write_yaml
 
 TEMPLATE = Path(instruction_eval.__file__).parent / "templates" / "judge-brief.md"
 JUDGE_MODEL = "claude-opus-4-1"
@@ -15,7 +16,7 @@ RATER_MODEL = "claude-sonnet-5-5"
 READER_MODEL = "claude-haiku-4-5"
 SOURCE_NAME = "policy.md"
 SOURCE_TEXT = "Be terse.\n"
-SERIES = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{SOURCE_NAME}"], "reader_kind": "agent", "created": "2026-10-14T10:00:00+00:00"}
+SERIES = {"instruction": "/home/writer/terse.md", "sources": [f"/home/writer/{SOURCE_NAME}"], "reader_kind": "agent", "binding": SERIES_BINDING, "created": "2026-10-14T10:00:00+00:00"}
 DEMANDS = {
     "demands": [
         {"id": "d-judge", "text": "Be terse.", "boundary": "Code is exempt.", "counted_by": "judge"},
@@ -44,7 +45,7 @@ CALIBRATION = {
 }
 
 
-def write_reply(files: SeriesFolder, condition: str, task: str, repeat: int, turn: int | None = None) -> None:
+def write_sampled_reply(files: SeriesFolder, condition: str, task: str, repeat: int, turn: int | None = None) -> None:
     """Write an r1 reply record of the condition to the task, or to a turn of the conversation."""
     record = {
         "condition": condition,
@@ -64,10 +65,11 @@ def write_reply(files: SeriesFolder, condition: str, task: str, repeat: int, tur
     write_record(files, reply_path("r1", condition, task, repeat, turn), record if turn is None else {**record, "turn": turn}, [])
 
 
-def stage_one_series(tmp_path: Path, sourced: bool = True) -> SeriesFolder:
-    """Write a series with demands, a brief, a plan for attempt 1, and r1 replies of every condition to open, sealed, and conversation tasks, and omissions; with sources unless `sourced` is false."""
+def stage_one_series(tmp_path: Path, sourced: bool = True, binding: dict = SERIES_BINDING) -> SeriesFolder:
+    """Write a series binding through `binding` with demands, a brief, a plan for attempt 1, and r1 replies of every condition to open, sealed, and conversation tasks, and omissions; with sources unless `sourced` is false."""
     files = SeriesFolder(tmp_path / "series")
-    write_record(files, "series.yaml", SERIES if sourced else {**SERIES, "sources": []}, [])
+    series = {**SERIES, "binding": binding}
+    write_record(files, "series.yaml", series if sourced else {**series, "sources": []}, [])
     if sourced:
         write_file(files, f"1-source/{SOURCE_NAME}", SOURCE_TEXT.encode())
     write_yaml(files, "2-demands.yaml", DEMANDS)
@@ -78,18 +80,18 @@ def stage_one_series(tmp_path: Path, sourced: bool = True) -> SeriesFolder:
         write_file(files, f"r1/4-conditions/{condition}.md", condition.encode())
         for task in (*OPEN_TASKS, *SEALED_TASKS):
             for repeat in (1, 2):
-                write_reply(files, condition, task, repeat)
-        write_reply(files, condition, "c1", 1, turn=1)
+                write_sampled_reply(files, condition, task, repeat)
+        write_sampled_reply(files, condition, "c1", 1, turn=1)
     write_file(files, "r1/4-conditions/omit-1.md", b"")
     for repeat in (1, 2):
-        write_reply(files, "omit-1", "t1", repeat)
+        write_sampled_reply(files, "omit-1", "t1", repeat)
     return files
 
 
 def calibrate(tmp_path: Path, files: SeriesFolder, seed: int = 7) -> str:
     """Run stage one under the neutral login and return the printed launch list."""
     login = NeutralLogin(tmp_path / "home")
-    return calibrate_stage_one(files, TEMPLATE, login.environ(), login.home, files.root, random.Random(seed))
+    return calibrate_stage_one(files, TEMPLATE, login.environ(), login.home, files.root, random.Random(seed), DISK_LOGIN_FILES)
 
 
 def test_stage_one_refuses_once_calibration_exists_and_writes_nothing(tmp_path):
@@ -206,12 +208,6 @@ def test_a_later_attempt_refuses_as_exhausted_when_earlier_attempts_left_too_few
     assert tree(files.root) == before
 
 
-def definition(files: SeriesFolder, name: str) -> tuple[dict, str]:
-    """Return the frontmatter and body of the generated definition."""
-    header, _, body = files.read_bytes(f".claude/agents/{name}.md").decode().removeprefix("---\n").partition("---\n")
-    return yaml.safe_load(header), body
-
-
 def test_stage_one_writes_candidate_and_rater_definitions_from_the_snapshot_and_prints_their_launch_list(tmp_path):
     files = stage_one_series(tmp_path)
 
@@ -246,7 +242,17 @@ def test_stage_one_outside_the_neutral_login_refuses_and_writes_nothing(tmp_path
     before = tree(files.root)
 
     with pytest.raises(Refusal):
-        calibrate_stage_one(files, TEMPLATE, {}, tmp_path / "home", files.root, random.Random(7))
+        calibrate_stage_one(files, TEMPLATE, {}, tmp_path / "home", files.root, random.Random(7), DISK_LOGIN_FILES)
+
+    assert tree(files.root) == before
+
+
+def test_stage_one_under_a_login_lacking_the_series_binding_plugin_refuses_naming_it_and_writes_nothing(tmp_path):
+    files = stage_one_series(tmp_path, binding=OTHER_BINDING)
+    before = tree(files.root)
+
+    with pytest.raises(Refusal, match=r"lacks binding\.plugin oath@elsewhere$"):
+        calibrate(tmp_path, files)
 
     assert tree(files.root) == before
 
@@ -274,7 +280,7 @@ def test_a_faulty_brief_refuses_naming_the_fault_and_writes_nothing(tmp_path, br
 PLAN_KEYS = ("judge_model", "raters", "rater_model", "sample_size", "anchors_per_packet", "acceptance")
 
 
-def reads_of(files: SeriesFolder, attempt: int, earlier: int, sourced: bool = True) -> set[str]:
+def stage_one_reads(files: SeriesFolder, attempt: int, earlier: int, sourced: bool = True) -> set[str]:
     """Return the Commands-table reads of stage one expanded for the attempt: the series records, its plan keys, brief, sample, sampled replies, and earlier origins."""
     folder = f"6-judge/calibration/attempt-{attempt}"
     sampled_replies = {reply_path("r1", condition, task, repeat, None) for condition, task, repeat in sampled(files, attempt)}
@@ -297,8 +303,8 @@ def test_stage_one_records_the_inputs_it_reads_and_the_next_attempt_adds_every_e
     calibrate(tmp_path, files)
 
     records = SeriesRecords(files)
-    assert set(records.attempt_origins(1)["inputs"]) == reads_of(files, 1, earlier=0)
-    assert set(records.attempt_origins(2)["inputs"]) == reads_of(files, 2, earlier=1)
+    assert set(records.attempt_origins(1)["inputs"]) == stage_one_reads(files, 1, earlier=0)
+    assert set(records.attempt_origins(2)["inputs"]) == stage_one_reads(files, 2, earlier=1)
 
 
 def test_without_sources_the_judge_binds_to_the_gate_demands_of_the_coverage_and_the_inputs_name_the_coverage(tmp_path):
@@ -311,7 +317,7 @@ def test_without_sources_the_judge_binds_to_the_gate_demands_of_the_coverage_and
     assert "- id: d-judge\n  text: Be terse." in body
     assert "- id: d-plain\n  text: Use plain words." in body
     assert "d-hedge" not in body
-    assert set(SeriesRecords(files).attempt_origins(1)["inputs"]) == reads_of(files, 1, earlier=0, sourced=False)
+    assert set(SeriesRecords(files).attempt_origins(1)["inputs"]) == stage_one_reads(files, 1, earlier=0, sourced=False)
 
 
 def test_a_task_reply_file_with_a_non_numeric_repeat_refuses_naming_the_file_and_writes_nothing(tmp_path):

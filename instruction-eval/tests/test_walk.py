@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from series_fixtures import INSTRUCTION_EVAL_PLUGIN, OTHER_BINDING, write_yaml_at
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = PLUGIN_ROOT / "bin" / "instruction-eval"
@@ -21,11 +22,10 @@ STOPPED_SERIES_NAME = "walk-stopped"
 LAST_REVISION = 5
 STOP_REASON = "no hypothesis clears the noise"
 NEUTRAL_LOGIN = Path(".claudes-bare") / "readers"
-REQUIRED_PLUGINS = {"instruction-eval@my-claude-skills": True, "manifesto@my-claude-skills": True}
+REQUIRED_PLUGINS = {INSTRUCTION_EVAL_PLUGIN: True, OTHER_BINDING["plugin"]: True}
 JUDGE_SESSION = "walk-session"
 JUDGE_DEMAND = "terse"
 FAILING_DEMAND = "no-apology"
-OATH_SKILL = "manifesto:manifesto-oath"
 TRANSCRIPT_TIMESTAMP = "2026-10-14T19:00:43.000Z"
 BLIND_ID_HEADING = re.compile(r"^## (b[0-9a-f]{8})$", re.MULTILINE)
 VERDICT_PATH_LINE = re.compile(r"Write one YAML file to (\S+) with the Write tool")
@@ -33,7 +33,10 @@ CALIBRATION_ATTEMPT = "6-judge/calibration/attempt-1"
 REFERENCE_USER_RATING = f"{CALIBRATION_ATTEMPT}/reference-user.yaml"
 DELETED_SENTENCE = 2
 PREDICTED_SIZE = 0.5
-SERIES_NEW = ("series", "new", SERIES_NAME, "--instruction", "writer/instruction.md", "--source", "writer/policy.md", "--reader-kind", "command")
+SERIES_NEW = (
+    "series", "new", SERIES_NAME, "--instruction", "writer/instruction.md", "--source", "writer/policy.md", "--reader-kind", "command",
+    "--binding-plugin", OTHER_BINDING["plugin"], "--binding-skill", OTHER_BINDING["skill"],
+)
 
 
 def tree_bytes(root: Path) -> dict[str, bytes]:
@@ -105,12 +108,6 @@ def copy_fixture(name: str, target: Path) -> None:
     shutil.copyfile(FIXTURES / name, target)
 
 
-def write_yaml(path: Path, document: object) -> None:
-    """Write the document as YAML at the path, making its folder."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(document, sort_keys=False))
-
-
 def project_key(series: Path) -> str:
     """Return the config dir's project folder name of the series: its absolute path with each slash and dot a dash."""
     return re.sub(r"[/.]", "-", str(series))
@@ -130,9 +127,9 @@ def run_scripted_agent(session: NeutralSession, series: Path, agent_type: str, j
     """Act as the launched judge or rater: read its definition, write the verdict it names, and leave its transcript in the neutral login; return the transcript."""
     body = (series / ".claude" / "agents" / f"{agent_type}.md").read_text()
     verdict_path = Path(VERDICT_PATH_LINE.search(body).group(1))
-    write_yaml(verdict_path, scripted_verdict(BLIND_ID_HEADING.findall(body)))
+    write_yaml_at(verdict_path, scripted_verdict(BLIND_ID_HEADING.findall(body)))
     blocks = [
-        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": OATH_SKILL}},
+        {"type": "tool_use", "id": "toolu_1", "name": "Skill", "input": {"skill": OTHER_BINDING["skill"]}},
         {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": str(verdict_path)}},
         {"type": "text", "text": "Done."},
     ]
@@ -157,7 +154,7 @@ def run_scripted_agents(session: NeutralSession, series: Path, launch_list: str)
 def write_user_rating(series: Path) -> None:
     """Act as the user rater: rate every entry of the attempt's sample as the scripted judge does."""
     sample = (series / f"{CALIBRATION_ATTEMPT}/sample.md").read_text()
-    write_yaml(series / REFERENCE_USER_RATING, scripted_verdict(BLIND_ID_HEADING.findall(sample)))
+    write_yaml_at(series / REFERENCE_USER_RATING, scripted_verdict(BLIND_ID_HEADING.findall(sample)))
 
 
 def hypothesis(series: Path, parent: str) -> dict:
@@ -225,8 +222,8 @@ def walk_first_revision(session: NeutralSession, workspace: Path, writer: Path) 
     session.run(series, "demands", "check")
     copy_fixture("coverage-r1.yaml", series / "r1/3-coverage.yaml")
     session.run(series, "coverage", "check", "r1")
-    write_yaml(series / "4-conditions.yaml", {"controls": ["empty", "aim", "placebo", "source"], "aim": "Answers stay plain and brief.", "placebo_source": str(placebo), "omissions": "none"})
-    write_yaml(
+    write_yaml_at(series / "4-conditions.yaml", {"controls": ["empty", "aim", "placebo", "source"], "aim": "Answers stay plain and brief.", "placebo_source": str(placebo), "omissions": "none"})
+    write_yaml_at(
         series / "5-reader.yaml",
         {
             "kind": "command",
@@ -266,7 +263,7 @@ def walk_first_revision(session: NeutralSession, workspace: Path, writer: Path) 
 def walk_later_revision(session: NeutralSession, series: Path, writer: Path, number: int) -> None:
     """Walk revision `number` from its hypothesis to its gate, the writer deleting the second sentence of the parent."""
     revision, parent = f"r{number}", f"r{number - 1}"
-    write_yaml(series / revision / "1-hypothesis.yaml", hypothesis(series, parent))
+    write_yaml_at(series / revision / "1-hypothesis.yaml", hypothesis(series, parent))
     copy_fixture(f"instruction-{revision}.md", writer / "instruction.md")
     session.run(series, "revision", "new")
     copy_fixture(f"coverage-{revision}.yaml", series / revision / "3-coverage.yaml")
@@ -453,7 +450,7 @@ def sampled_replies(origins: Mapping) -> list[str]:
     return [f"r1/5-replies/{origin['condition']}/{origin['task']}/repeat-{origin['repeat']}.yaml" for origin in origins["ids"].values()]
 
 
-def ask_reads(record: str, present: set[str]) -> list[str]:
+def walked_ask_reads(record: str, present: set[str]) -> list[str]:
     """Return the Reads cell of `revision ask` for a command reader, expanded for the reply record."""
     number = revision_number(record)
     revision = f"r{number}"
@@ -477,7 +474,7 @@ def calibration_reads(record: str, series: Path) -> list[str]:
     return [*stage_one, f"{CALIBRATION_ATTEMPT}/origins.yaml", f"{CALIBRATION_ATTEMPT}/candidate-*.yaml", f"{CALIBRATION_ATTEMPT}/reference-*.yaml", ".claude/agents/ie-calib-1-*.md", "3-tasks.yaml"]
 
 
-def score_reads(revision: str) -> list[str]:
+def walked_score_reads(revision: str) -> list[str]:
     """Return the Reads cell of `revision score` expanded for the revision."""
     later = [] if revision == "r1" else BORROWED_REPLIES
     return [
@@ -486,11 +483,11 @@ def score_reads(revision: str) -> list[str]:
     ]
 
 
-def gate_reads(number: int) -> list[str]:
+def walked_gate_reads(number: int) -> list[str]:
     """Return the Reads cell of `revision gate` expanded for the revision, `7-gate.yaml` read whole."""
     revision, parent = f"r{number}", f"r{number - 1}"
     later = [f"{revision}/1-hypothesis.yaml", *(f"{parent}/{part}" for part in ("5-replies/**", "6-origins.yaml", "7-verdicts/**", "7-collected.yaml", "7-detectors.yaml"))]
-    score = [read for read in score_reads(revision) if not read.startswith("7-gate.yaml")]
+    score = [read for read in walked_score_reads(revision) if not read.startswith("7-gate.yaml")]
     return [*score, "7-gate.yaml", "8-frozen.yaml", f"{revision}/2-instruction.md", *earlier_outcomes(number), *(later if number > 1 else [])]
 
 
@@ -516,7 +513,7 @@ def reads_cell(run: CommandRun, record: str, present: set[str]) -> list[str]:
     if record.startswith(CALIBRATION_ATTEMPT) or record in ("6-judge/calibration.yaml", "6-judge/anchors.yaml"):
         return calibration_reads(record, run.series)
     if "/5-replies/" in record:
-        return ask_reads(record, present)
+        return walked_ask_reads(record, present)
     if record == "8-frozen.yaml":
         return ["series.yaml", "1-source/*", "2-demands.yaml", "3-tasks.yaml", "4-conditions.yaml", "4-placebo-source.md", "5-reader.yaml", "6-judge/calibration.yaml", "6-judge/anchors.yaml", "6-judge/calibration/**", "7-gate.yaml", "r1/**"]
     if record == "9-stop.yaml":
@@ -534,9 +531,9 @@ def reads_cell(run: CommandRun, record: str, present: set[str]) -> list[str]:
     if record.endswith("/7-detectors.yaml"):
         return ["2-demands.yaml", "3-tasks.yaml", f"{revision}/5-replies/**", f"{revision}/6-origins.yaml", *([] if revision == "r1" else BORROWED_REPLIES)]
     if record.endswith("/8-scores.yaml"):
-        return score_reads(revision)
+        return walked_score_reads(revision)
     if record.endswith("/9-outcome.yaml"):
-        return gate_reads(revision_number(record))
+        return walked_gate_reads(revision_number(record))
     raise AssertionError(f"no Reads cell for {record}")
 
 

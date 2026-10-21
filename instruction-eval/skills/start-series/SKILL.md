@@ -7,7 +7,7 @@ description: >
 ---
 
 <gather-the-inputs>
-Ask the user for the instruction path, each source path, a series name without `/`, and the reader: a Claude model (`agent`) or another model served by a command (`command`); never guess one.
+Ask the user for the instruction path, each source path, a series name without `/`, the reader: a Claude model (`agent`) or another model served by a command (`command`), and `<binding-plugin>` and `<binding-skill>`, by default `manifesto@llm-manifestos` and `manifesto:manifesto-oath` when the user names none; never guess one.
 
 Turn every path into an absolute path; never pass a relative one.
 </gather-the-inputs>
@@ -19,23 +19,25 @@ When it lists no `readers`, hand the user `/plugin marketplace add ryzhakar/clau
 
 On a failure report, stop and report its text; never retry it yourself.
 
-Then make the login with `claudes new --bare readers instruction-eval@my-claude-skills manifesto@my-claude-skills`; never name another plugin.
+Then make the login with `claudes new --bare readers instruction-eval@my-claude-skills <binding-plugin>`; never name another plugin.
 
 When it lists `readers`, read `$(claudes path readers)/settings.json` and skip to the series folder when it holds both allow rules and both plugins below; never make the login twice.
 
 Edit `$(claudes path readers)/settings.json`, creating it as `{}` when absent: add `Write(~/instruction-series/**/7-verdicts/**)` and `Write(~/instruction-series/**/6-judge/calibration/**)` to `permissions.allow`, creating `permissions` and `allow` when absent; never drop an existing allow entry.
 
-Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `manifesto@my-claude-skills`, both true; never list another plugin in `enabledPlugins`.
+Set `enabledPlugins` to exactly `instruction-eval@my-claude-skills` and `<binding-plugin>`, both true; never list another plugin in `enabledPlugins`.
 
 Keep the bare login free of a `CLAUDE.md`, a skill, and an agent; never add one.
 
 Read `settings.json` back, fixing and rereading it on a gap; never continue with a gap.
 
 Only when `claudes new` ran in this turn, hand the user `claudes run readers` to start once in their own terminal and ask them to run `/login` there with the same account and report success; never continue before that report.
+
+After `/login`, account sync adds the folder `skills/synced`; `reader prepare` and `judge prepare` accept that one unlinked folder. The login may also carry synced account plugins beyond the two named.
 </set-up-the-neutral-login-once>
 
 <make-the-series-folder>
-Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command` by bare name from the Bash tool in any working directory; never start a session in the folder before it.
+Run `instruction-eval series new <name> --instruction <path> [--source <path>]… --reader-kind agent|command --binding-plugin <binding-plugin> --binding-skill <binding-skill>` by bare name from the Bash tool in any working directory; never start a session in the folder before it.
 
 When Bash finds no `instruction-eval`, hand the user `/reload-plugins` and rerun once; never call the CLI by its cache path.
 

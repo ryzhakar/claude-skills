@@ -7,7 +7,7 @@ from gate_fixtures import (
     HYPOTHESIS,
     HYPOTHESIS_KEYS,
     REPLY_COST,
-    assert_refused_writing_nothing,
+    assert_gate_refused_writing_nothing,
     first_replies,
     frozen_series,
     gate_reads,
@@ -118,11 +118,20 @@ def test_a_completion_check_without_a_unit_holding_done_on_both_sides_stores_no_
     assert (outcome["outcome"], outcome["completion_passed"]) == ("fail", False)
 
 
+def test_a_revision_whose_replies_lack_token_counts_stores_null_token_sums_beside_its_replies_and_seconds(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate_fixtures, "REPLY_COST", dict.fromkeys(REPLY_COST))
+    files = frozen_series(tmp_path, first_replies(0, 0))
+
+    revision_gate(files, "r1", bootstrap_rng)
+
+    assert SeriesRecords(files).outcome("r1")["cost"] == {"replies": 17, "input_tokens": None, "output_tokens": None, "seconds": 25.5}
+
+
 def test_a_tokens_budget_over_asks_without_token_counts_is_refused_writing_nothing(tmp_path, monkeypatch):
     monkeypatch.setattr(gate_fixtures, "REPLY_COST", dict.fromkeys(REPLY_COST))
     files = frozen_series(tmp_path, first_replies(0, 0), {**GATE, "budget": {"unit": "tokens", "ceiling": 1000}})
 
-    assert_refused_writing_nothing(files, r"^tokens budget refused: r1 asked replies without token counts$")
+    assert_gate_refused_writing_nothing(files, r"^tokens budget refused: r1 asked replies without token counts$")
     assert not files.holds("9-stop.yaml")
 
 
@@ -130,21 +139,21 @@ def test_a_revision_without_its_collection_is_refused(tmp_path):
     files = frozen_series(tmp_path, first_replies(0, 3))
     (files.root / "r1/7-collected.yaml").unlink()
 
-    assert_refused_writing_nothing(files, r"^missing record: r1/7-collected\.yaml$")
+    assert_gate_refused_writing_nothing(files, r"^missing record: r1/7-collected\.yaml$")
 
 
 def test_a_reply_origin_without_its_reply_file_is_refused(tmp_path):
     files = frozen_series(tmp_path, first_replies(0, 3))
     (files.root / "r1/5-replies/aim/t3/repeat-2.yaml").unlink()
 
-    assert_refused_writing_nothing(files, r"^unresolved reply: r1/5-replies/aim/t3/repeat-2\.yaml \(r1/6-origins\.yaml\)$")
+    assert_gate_refused_writing_nothing(files, r"^unresolved reply: r1/5-replies/aim/t3/repeat-2\.yaml \(r1/6-origins\.yaml\)$")
 
 
 def test_an_unfrozen_series_is_refused(tmp_path):
     files = frozen_series(tmp_path, first_replies(0, 3))
     (files.root / "8-frozen.yaml").unlink()
 
-    assert_refused_writing_nothing(files, r"^missing record: 8-frozen\.yaml$")
+    assert_gate_refused_writing_nothing(files, r"^missing record: 8-frozen\.yaml$")
 
 
 def test_a_gated_revision_refuses_a_second_gate(tmp_path):

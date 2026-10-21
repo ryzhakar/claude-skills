@@ -14,7 +14,7 @@ from reader_fixtures import (
     stamp,
     write_yaml,
 )
-from series_fixtures import ONE_DEMAND_COVERAGE, tree, write_revision
+from series_fixtures import DISK_LOGIN_FILES, ONE_DEMAND_COVERAGE, read_nothing, tree, write_revision
 
 from instruction_eval.coverage import coverage_check
 from instruction_eval.reader import (
@@ -45,19 +45,19 @@ def stub_fingerprint(command: Sequence[str]) -> str:
     return FINGERPRINT_OUTPUT
 
 
-def command_series(tmp_path) -> SeriesFolder:
+def command_reader_series(tmp_path) -> SeriesFolder:
     files = prepared_series(tmp_path, reader=COMMAND_READER)
     write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     return files
 
 
-def agent_series(tmp_path) -> SeriesFolder:
+def agent_reader_series(tmp_path) -> SeriesFolder:
     files = prepared_series(tmp_path)
     write_yaml(files, "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     return files
 
 
-def expected_reads() -> set[str]:
+def ask_reads() -> set[str]:
     return {
         "series.yaml",
         "2-demands.yaml#demands",
@@ -75,7 +75,7 @@ def expected_reads() -> set[str]:
 
 
 def test_a_command_reader_answers_every_missing_reply_serially_each_reply_recording_its_reader_run_and_fingerprint(tmp_path):
-    files = command_series(tmp_path)
+    files = command_reader_series(tmp_path)
     reader = StubReader()
 
     printed = revision_ask(files, "r1", [], reader, stub_fingerprint)
@@ -88,7 +88,7 @@ def test_a_command_reader_answers_every_missing_reply_serially_each_reply_record
     assert timeout_seconds == 600
     record = load(files, "r1/5-replies/aim/t-open/repeat-1.yaml")
     inputs = record.pop("inputs")
-    assert set(inputs) == expected_reads()
+    assert set(inputs) == ask_reads()
     assert record == {
         "condition": "aim",
         "task": "t-open",
@@ -145,7 +145,7 @@ FAILURES = {
 
 @pytest.mark.parametrize("failure, cause", FAILURES.values(), ids=FAILURES.keys())
 def test_a_failed_reader_run_stops_the_ask_writing_nothing_for_that_reply_and_a_rerun_resumes_at_it(tmp_path, failure, cause):
-    files = command_series(tmp_path)
+    files = command_reader_series(tmp_path)
 
     with pytest.raises(Refusal, match=rf"^reader failed: r1/5-replies/aim/t-open/repeat-2\.yaml \({cause}\)$"):
         revision_ask(files, "r1", [], FailingReader(failure), stub_fingerprint)
@@ -159,7 +159,7 @@ def test_a_failed_reader_run_stops_the_ask_writing_nothing_for_that_reply_and_a_
 
 
 def test_a_reader_build_differing_from_the_r1_replies_so_far_refuses_while_reordered_keys_do_not(tmp_path):
-    files = command_series(tmp_path)
+    files = command_reader_series(tmp_path)
     with pytest.raises(Refusal):
         revision_ask(files, "r1", [], FailingReader(FAILURES["nonzero exit"][0]), stub_fingerprint)
 
@@ -176,7 +176,7 @@ def forbidden_run(command: Sequence[str], stdin: str = "", timeout_seconds: int 
 
 
 def test_an_agent_reader_prints_the_launch_list_of_the_named_conditions_and_runs_nothing(tmp_path):
-    files = agent_series(tmp_path)
+    files = agent_reader_series(tmp_path)
     before = tree(files.root)
 
     printed = revision_ask(files, "r1", ["instruction"], forbidden_run, forbidden_run)
@@ -189,7 +189,7 @@ def test_an_agent_reader_prints_the_launch_list_of_the_named_conditions_and_runs
 
 
 def test_a_named_condition_the_revision_does_not_ask_refuses_before_any_reader_runs(tmp_path):
-    files = command_series(tmp_path)
+    files = command_reader_series(tmp_path)
 
     with pytest.raises(Refusal, match=r"^unknown condition: omit-3 \(revision r1 has aim, empty, instruction, placebo\)$"):
         revision_ask(files, "r1", ["instruction", "omit-3"], forbidden_run, forbidden_run)
@@ -197,8 +197,16 @@ def test_a_named_condition_the_revision_does_not_ask_refuses_before_any_reader_r
     assert not (files.root / "r1/5-replies").exists()
 
 
+def test_an_unknown_condition_refuses_before_a_failing_coverage_is_checked(tmp_path):
+    files = command_reader_series(tmp_path)
+    (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump({"demands": {"d-judge": [1]}, "sentences": {}}))
+
+    with pytest.raises(Refusal, match=r"^unknown condition: omit-3 "):
+        revision_ask(files, "r1", ["instruction", "omit-3"], forbidden_run, forbidden_run)
+
+
 def test_a_coverage_failing_its_check_refuses_the_ask_before_any_reader_runs(tmp_path):
-    files = command_series(tmp_path)
+    files = command_reader_series(tmp_path)
     (files.root / "r1/3-coverage.yaml").write_text(yaml.safe_dump({"demands": {"d-judge": [1]}, "sentences": {}}))
 
     with pytest.raises(Refusal):
@@ -212,14 +220,14 @@ def test_a_coverage_failing_its_check_refuses_the_ask_before_any_reader_runs(tmp
     [("command", "r1/4-conditions/aim.md"), ("agent", "r1/4-conditions/aim.md"), ("agent", ".claude/agents/ie-reader-r1-aim.md")],
 )
 def test_an_edited_condition_text_or_reader_definition_refuses_the_ask_before_any_reader_runs(tmp_path, series_kind, edited):
-    files = command_series(tmp_path) if series_kind == "command" else agent_series(tmp_path)
+    files = command_reader_series(tmp_path) if series_kind == "command" else agent_reader_series(tmp_path)
     (files.root / edited).write_bytes(b"edited")
 
     with pytest.raises(Refusal, match=rf"^{edited.replace('.', '[.]')} differs from its recomputation$"):
         revision_ask(files, "r1", [], forbidden_run, forbidden_run)
 
 
-@pytest.mark.parametrize("build_series", [command_series, agent_series], ids=["command", "agent"])
+@pytest.mark.parametrize("build_series", [command_reader_series, agent_reader_series], ids=["command", "agent"])
 def test_a_collected_revision_is_never_asked_again_whatever_the_gate_repeats_now_say(tmp_path, build_series):
     files = build_series(tmp_path)
     write_file(files, "r1/7-collected.yaml", b"packets: {}\n")
@@ -245,10 +253,6 @@ FIRST_OUTCOME = {
 }
 
 
-def forbidden_read(path):
-    raise AssertionError(f"read external file {path}")
-
-
 def later_revision_series(tmp_path, budget) -> SeriesFolder:
     """Build a frozen command series whose r1 is asked and gated as failed and whose r2 is prepared."""
     files = prepared_series(tmp_path, reader=COMMAND_READER, gate={**FULL_GATE, "budget": budget})
@@ -259,13 +263,13 @@ def later_revision_series(tmp_path, budget) -> SeriesFolder:
     write_record(files, "8-frozen.yaml", frozen, [])
     write_revision(files, 2)
     write_yaml(files, "r2/3-coverage.yaml", ONE_DEMAND_COVERAGE)
-    reader_prepare(files, "r2", forbidden_read, {}, files.root, files.root)
+    reader_prepare(files, "r2", read_nothing, {}, files.root, files.root, DISK_LOGIN_FILES)
     return files
 
 
 def later_reads() -> set[str]:
     return {
-        *(read for read in expected_reads() if not read.startswith("r1/2-instruction") and not read.startswith("r1/4-conditions")),
+        *(read for read in ask_reads() if not read.startswith("r1/2-instruction") and not read.startswith("r1/4-conditions")),
         "r2/2-instruction.md",
         "r2/3-coverage.yaml#demands",
         "r2/3-coverage.yaml#sentences",

@@ -1,4 +1,7 @@
 instruction: /tmp/instruction.md
 sources: []
 reader_kind: command
+binding:
+  plugin: oath@elsewhere
+  skill: oath:bind
 created: 2026-10-14T10:00:00+00:00

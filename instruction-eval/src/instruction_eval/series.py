@@ -67,6 +67,7 @@ from instruction_eval.records import (
     UNRESOLVABLE_STOP,
     VERDICTS_FOLDER,
     WORKING_BRIEF,
+    Binding,
     Budget,
     CompleteGate,
     GateCheck,
@@ -81,7 +82,6 @@ from instruction_eval.records import (
     outcome_path,
     revision_ids,
     revision_record_path,
-    series_paths,
     sha256,
     source_snapshot_path,
     utf8_text,
@@ -114,11 +114,12 @@ def series_new(
     instruction: str,
     sources: Sequence[str],
     reader_kind: ReaderKind,
+    binding: Binding,
     working_dir: Path,
     home: Path,
     now: datetime,
 ) -> SeriesFolder:
-    """Make the series folder `name` names, holding the snapshots of the live instruction and the sources, and return it."""
+    """Make the series folder `name` names, holding the snapshots of the live instruction and the sources and the judges' binding, and return it."""
     instruction_path = _resolve_against(working_dir, instruction)
     source_paths = [_resolve_against(working_dir, source) for source in sources]
     files = SeriesFolder(_series_folder_path(name, working_dir, home))
@@ -128,7 +129,7 @@ def series_new(
     _refuse_duplicate_basenames(source_paths)
     texts = {path: _read_external_file(path) for path in (instruction_path, *source_paths)}
     refuse_unclosed_frontmatter(texts)
-    write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, now), [])
+    write_record(files, SERIES_RECORD, _series_record(instruction_path, source_paths, reader_kind, binding, now), [])
     _make_agents_folder(files)
     _snapshot_sources(files, source_paths, texts)
     write_file(files, FIRST_INSTRUCTION, texts[instruction_path])
@@ -177,12 +178,13 @@ def _refuse_non_empty_folder(files: SeriesFolder) -> None:
         raise Refusal(f"series folder not empty: {root}")
 
 
-def _series_record(instruction: Path, sources: Sequence[Path], reader_kind: ReaderKind, now: datetime) -> dict[str, object]:
-    """Return the `series.yaml` record of the live instruction and sources."""
+def _series_record(instruction: Path, sources: Sequence[Path], reader_kind: ReaderKind, binding: Binding, now: datetime) -> dict[str, object]:
+    """Return the `series.yaml` record of the live instruction, the sources, and the judges' binding."""
     return {
         "instruction": str(instruction),
         "sources": [str(source) for source in sources],
         "reader_kind": reader_kind,
+        "binding": {"plugin": binding.plugin, "skill": binding.skill},
         "created": now.isoformat(),
     }
 
@@ -281,7 +283,7 @@ FIRST_REVISION_STEPS = {
 RECORD_PATTERN = "*.yaml"
 
 
-def refuse_unready_freeze(
+def _refuse_unready_freeze(
     files: SeriesFolder, records: SeriesRecords, fingerprint_hash: str | None, read_external: Callable[[Path], bytes]
 ) -> tuple[ExpectedReply, ...]:
     """Return r1's expected replies, refusing freezing a series lacking a part or a gate key, failing a check, with r1 unmeasured, stale, or read by another reader build than `fingerprint_hash` (a command reader's fresh hash, None for an agent reader), or with a check it cannot measure."""
@@ -389,7 +391,7 @@ def series_freeze(
     """Write `8-frozen.yaml`: the hash of every series file, r1's noise, a command reader's fresh fingerprint hash, the tool version, and the time, refusing a series not ready to freeze."""
     guard_series(files, FREEZE_COMMAND)
     records = SeriesRecords(files)
-    expected = refuse_unready_freeze(files, records, fingerprint_hash, read_external)
+    expected = _refuse_unready_freeze(files, records, fingerprint_hash, read_external)
     gate = records.complete_gate()
     sealed_rows = measured_revision(records, FIRST_REVISION, gate.done_by).sealed_rows
     gate_demands = records.gate_demands()
@@ -441,7 +443,7 @@ def _series_shape(files: SeriesFolder, records: SeriesRecords, repeats: int) -> 
 
 def _frozen_parts(files: SeriesFolder) -> list[str]:
     """Return the series path of every file the freeze hashes, each matching a part of the series, in path order."""
-    paths = series_paths(files, EVERY_FILE_PATTERN)
+    paths = files.paths(EVERY_FILE_PATTERN)
     return [path for path in paths if _matches_any(path, FROZEN_PART_PATTERNS)]
 
 
@@ -483,7 +485,6 @@ AWAITING_KEY = "packets_awaiting_judging"
 NOISE_KEY = "noise"
 LEAST_REPEATS_KEY = "least_repeats"
 STOP_KEY = "stop"
-CLONE_KEY = "manifesto_clone"
 SPENT_KEY = "spent"
 BUDGET_KEY = "budget"
 REPLIES_KEY = "replies"
@@ -495,13 +496,12 @@ ATTEMPT_KEY = "attempt"
 ACCEPTED_KEY = "accepted"
 SCALE_KEY = "scale"
 STOP_STANDING_KEYS = ("stop", "kept", "reason")
-MANIFESTO_CLONE_FOLDER = ".claude/manifesto-repo"
 STATUS_DEFAULT_LEVEL = 0.95
 UNGATED_STANDING = {"outcome": None, "changed_from_parent": None, "instruction_breaches": None, "completion_passed": None, "words": None}
 
 
 def series_status(files: SeriesFolder) -> str:
-    """Return the series' standing as YAML, writing nothing: parts present, frozen or not, revision outcomes, cost against budget, calibration, packets awaiting judging, r1's noise, least repeats, the stop, and the manifesto clone."""
+    """Return the series' standing as YAML, writing nothing: parts present, frozen or not, revision outcomes, cost against budget, calibration, packets awaiting judging, r1's noise, least repeats, and the stop."""
     guard_series(files, STATUS_COMMAND)
     records = SeriesRecords(files)
     noise = _first_revision_noise(files, records)
@@ -515,7 +515,6 @@ def series_status(files: SeriesFolder) -> str:
         NOISE_KEY: noise,
         LEAST_REPEATS_KEY: _least_repeats_per_check(files, records, noise),
         STOP_KEY: _stop_standing(files, records),
-        CLONE_KEY: (files.root / MANIFESTO_CLONE_FOLDER).is_dir(),
     }
     return yaml.safe_dump(standing, sort_keys=False)
 

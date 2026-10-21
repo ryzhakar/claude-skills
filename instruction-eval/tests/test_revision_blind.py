@@ -59,7 +59,7 @@ READS_OF_ALL_REVISIONS = {
 }
 
 
-def write_revision_text(files: SeriesFolder, number: int) -> None:
+def write_blinded_revision(files: SeriesFolder, number: int) -> None:
     """Write the revision's instruction snapshot and its revision record."""
     revision = f"r{number}"
     text = FIRST_REVISION_TEXT
@@ -75,7 +75,7 @@ def write_revision_text(files: SeriesFolder, number: int) -> None:
     write_record(files, f"{revision}/2-revision.yaml", record, [] if first else [f"r{number - 1}/2-revision.yaml"])
 
 
-def write_reply(files: SeriesFolder, path: str, condition: str, task: str, repeat: int) -> None:
+def write_blind_reply(files: SeriesFolder, path: str, condition: str, task: str, repeat: int) -> None:
     """Write the reply record at the path."""
     record = {
         "condition": condition,
@@ -95,13 +95,13 @@ def write_reply(files: SeriesFolder, path: str, condition: str, task: str, repea
     write_record(files, path, record, [])
 
 
-def write_replies(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> None:
+def write_condition_replies(files: SeriesFolder, revision: str, conditions: Sequence[str]) -> None:
     """Write the revision's reply of each condition to each task and repeat, its condition text first."""
     for condition in conditions:
         write_file(files, f"{revision}/4-conditions/{condition}.md", condition.encode())
         for task in TASK_IDS:
             for repeat in (1, 2):
-                write_reply(files, reply_path(revision, condition, task, repeat, None), condition, task, repeat)
+                write_blind_reply(files, reply_path(revision, condition, task, repeat, None), condition, task, repeat)
 
 
 def blindable_series(tmp_path, revisions: int = 1) -> SeriesFolder:
@@ -113,10 +113,10 @@ def blindable_series(tmp_path, revisions: int = 1) -> SeriesFolder:
     write_yaml(files, "6-judge/calibration/attempt-1/plan.yaml", PLAN)
     write_record(files, "6-judge/calibration.yaml", CALIBRATION, [])
     for number in range(1, revisions + 1):
-        write_revision_text(files, number)
-    write_replies(files, "r1", ("instruction", *CONTROLS))
+        write_blinded_revision(files, number)
+    write_condition_replies(files, "r1", ("instruction", *CONTROLS))
     for number in range(2, revisions + 1):
-        write_replies(files, f"r{number}", ("instruction",))
+        write_condition_replies(files, f"r{number}", ("instruction",))
     return files
 
 
@@ -124,7 +124,7 @@ def blind(files: SeriesFolder, revision: str = "r1", seed: int = 7) -> None:
     revision_blind(files, revision, random.Random(seed))
 
 
-def reads_of(revision: str, reply_paths: Sequence[str]) -> set[str]:
+def blind_reads(revision: str, reply_paths: Sequence[str]) -> set[str]:
     """Return the Commands-table reads of `revision blind` expanded for the revision."""
     return {*READS_OF_ALL_REVISIONS, f"{revision}/2-instruction.md", *reply_paths}
 
@@ -139,7 +139,7 @@ def test_a_first_revision_is_blinded_into_one_packet_per_task_hashed_in_its_orig
     for task in TASK_IDS:
         assert origins["packets"][task] == sha256(files.read_bytes(f"r1/6-packets/{task}.md"))
     reply_paths = [reply_path("r1", condition, task, repeat, None) for condition in ("instruction", *CONTROLS) for task in TASK_IDS for repeat in (1, 2)]
-    assert set(origins["inputs"]) == reads_of("r1", reply_paths)
+    assert set(origins["inputs"]) == blind_reads("r1", reply_paths)
 
 
 def test_a_series_without_calibration_refuses_to_blind_and_writes_nothing(tmp_path):
@@ -170,7 +170,7 @@ def test_a_later_revision_borrows_every_control_reply_from_r1_and_keeps_its_own_
         for task in TASK_IDS
         for repeat in (1, 2)
     ]
-    assert set(origins["inputs"]) == reads_of("r2", reply_paths)
+    assert set(origins["inputs"]) == blind_reads("r2", reply_paths)
 
 
 def test_a_gap_against_the_expected_replies_refuses_naming_the_count_and_the_first_path_and_writes_nothing(tmp_path):
@@ -225,7 +225,7 @@ def test_with_omissions_asked_each_open_task_gets_one_omissions_packet_of_its_om
     (files.root / "4-conditions.yaml").write_text(yaml.safe_dump({**CONDITIONS, "omissions": "every-sentence"}))
     write_file(files, "r1/4-conditions/omit-1.md", b"")
     for repeat in (1, 2):
-        write_reply(files, reply_path("r1", "omit-1", "t1", repeat, None), "omit-1", "t1", repeat)
+        write_blind_reply(files, reply_path("r1", "omit-1", "t1", repeat, None), "omit-1", "t1", repeat)
 
     blind(files)
 

@@ -5,9 +5,11 @@ from pathlib import Path
 import pytest
 
 from instruction_eval.judge import render_brief
-from instruction_eval.records import Demands, JudgeDemand, LongSentencesDemand, PatternDemand, Refusal
+from instruction_eval.records import DEFAULT_BINDING, Demands, JudgeDemand, LongSentencesDemand, PatternDemand, Refusal
+from series_fixtures import OTHER_BINDING
 
-BRIEF = "Bind through manifesto:manifesto-oath to:\n{SOURCE}\nCount:\n{DEMANDS}\nEntries:\n{PACKET}\nWrite to {OUT}\n"
+BRIEF = "Bind through {SKILL} to:\n{SOURCE}\nCount:\n{DEMANDS}\nEntries:\n{PACKET}\nWrite to {OUT}\n"
+BINDING_SKILL = OTHER_BINDING["skill"]
 TERSE = JudgeDemand(id="d-terse", text="Keep it short.", boundary="Under 100 words.")
 PLAIN = JudgeDemand(id="d-plain", text="Use plain words.", boundary="No jargon.")
 NO_EMOJI = PatternDemand(id="d-no-emoji", text="No emoji.", boundary="Any emoji.", pattern=re.compile("[\U0001F600-\U0001F64F]"))
@@ -18,9 +20,12 @@ PACKET = "## b0000000a\n\nHello.\n"
 VERDICT_PATH = Path("/series/r1/7-verdicts/t-one/k1.yaml")
 
 
-def render(brief: str = BRIEF, sources: dict[str, str] = SOURCES, gate_demand_ids: frozenset[str] = frozenset({"d-terse", "d-no-emoji"})) -> str:
+def render(
+    brief: str = BRIEF, sources: dict[str, str] = SOURCES, gate_demand_ids: frozenset[str] = frozenset({"d-terse", "d-no-emoji"}), binding_skill: str = BINDING_SKILL
+) -> str:
     return render_brief(
         brief,
+        binding_skill=binding_skill,
         sources=sources,
         demands=DEMANDS,
         gate_demand_ids=gate_demand_ids,
@@ -35,9 +40,9 @@ def demand_entry(demand: JudgeDemand | PatternDemand) -> str:
     return f"- id: {demand.id}\n  text: {demand.text}\n  boundary: {demand.boundary}"
 
 
-def test_a_brief_renders_each_source_file_under_its_name_stripped_of_frontmatter_and_lists_judge_demands_only():
+def test_a_brief_renders_the_binding_skill_and_each_source_file_under_its_name_stripped_of_frontmatter_and_lists_judge_demands_only():
     assert render() == (
-        "Bind through manifesto:manifesto-oath to:\n"
+        "Bind through oath:bind to:\n"
         "Source file: style.md\n\nBe brief.\n\n\nSource file: voice.md\n\nSpeak plainly.\n"
         f"\nCount:\n{demand_entry(TERSE)}\n{demand_entry(PLAIN)}\n"
         f"Entries:\n{PACKET}\n"
@@ -47,7 +52,7 @@ def test_a_brief_renders_each_source_file_under_its_name_stripped_of_frontmatter
 
 def test_a_brief_without_sources_binds_the_judge_to_the_gate_demands_of_every_counter():
     rendered = render(sources={}, gate_demand_ids=frozenset({"d-terse", "d-no-emoji"}))
-    assert rendered.startswith(f"Bind through manifesto:manifesto-oath to:\n{demand_entry(TERSE)}\n{demand_entry(NO_EMOJI)}\nCount:\n")
+    assert rendered.startswith(f"Bind through oath:bind to:\n{demand_entry(TERSE)}\n{demand_entry(NO_EMOJI)}\nCount:\n")
 
 
 def test_placeholder_text_inside_a_filling_stays_as_written():
@@ -55,7 +60,7 @@ def test_placeholder_text_inside_a_filling_stays_as_written():
     assert "Source file: loop.md\n\nWrite {OUT} and {PACKET} literally.\n" in rendered
 
 
-@pytest.mark.parametrize("placeholder", ["{SOURCE}", "{DEMANDS}", "{PACKET}", "{OUT}"])
+@pytest.mark.parametrize("placeholder", ["{SKILL}", "{SOURCE}", "{DEMANDS}", "{PACKET}", "{OUT}"])
 def test_a_brief_lacking_a_placeholder_is_refused_naming_it(placeholder):
     with pytest.raises(Refusal, match=rf"^brief fault: {re.escape(placeholder)} appears 0 times, not once$"):
         render(brief=BRIEF.replace(placeholder, "here"))
@@ -64,11 +69,6 @@ def test_a_brief_lacking_a_placeholder_is_refused_naming_it(placeholder):
 def test_a_brief_repeating_a_placeholder_is_refused_naming_it():
     with pytest.raises(Refusal, match=r"^brief fault: \{PACKET\} appears 2 times, not once$"):
         render(brief=BRIEF + "Again: {PACKET}\n")
-
-
-def test_a_brief_without_the_oath_skill_is_refused():
-    with pytest.raises(Refusal, match="^brief fault: no manifesto:manifesto-oath$"):
-        render(brief=BRIEF.replace("manifesto:manifesto-oath", "the oath"))
 
 
 @pytest.mark.parametrize(
@@ -90,6 +90,12 @@ SHIPPED_BRIEF = (files("instruction_eval") / "templates" / "judge-brief.md").rea
 def test_the_shipped_brief_passes_the_brief_rules_with_and_without_sources():
     render(brief=SHIPPED_BRIEF)
     render(brief=SHIPPED_BRIEF, sources={})
+
+
+@pytest.mark.parametrize("binding_skill", [DEFAULT_BINDING.skill, BINDING_SKILL])
+def test_the_shipped_brief_names_the_binding_skill_before_the_entries(binding_skill):
+    rendered = render(brief=SHIPPED_BRIEF, binding_skill=binding_skill)
+    assert -1 < rendered.find(binding_skill) < rendered.find(PACKET)
 
 
 @pytest.mark.parametrize(

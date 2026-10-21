@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import Enum
 from itertools import accumulate
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, TypeVar
 
 import yaml
@@ -20,13 +21,31 @@ from instruction_eval.gate import (
     stop_budget,
 )
 from instruction_eval.records import (
+    BUDGET_KEY,
+    REPEATS_KEY,
+    COVERAGE_KEYS,
+    coverage_input,
+    CONDITION_KEY,
+    COST_KEY,
+    FINGERPRINT_HASH_KEY,
+    READER_KIND_KEY,
+    REPEAT_KEY,
+    REPLY_MESSAGE_KEY,
+    REPLY_MODEL_KEY,
+    REPLY_TEXT_KEY,
+    SECONDS_KEY,
+    SPLIT_KEY,
+    STARTED_KEY,
+    TASK_KEY,
+    TRANSCRIPT_HASH_KEY,
+    TRANSCRIPT_KEY,
+    TURN_KEY,
     AGENT_READER,
     COLLECTED_FILE,
     COMMAND_READER,
     CONDITION_KEYS,
     CONDITION_PLACEHOLDER,
     CONDITIONS_RECORD,
-    COVERAGE_FILE,
     DEMANDS_INPUT,
     FIRST_REVISION,
     FROZEN_RECORD,
@@ -80,10 +99,7 @@ ASK_COMMAND = "revision ask"
 READER_AGENT_PREFIX = "ie-reader-"
 LAUNCHES_KEY = "launches"
 AGENT_TYPE_KEY = "agent_type"
-CONDITION_KEY = "condition"
-TASK_KEY = "task"
 CONVERSATION_KEY = "conversation"
-REPEAT_KEY = "repeat"
 LAUNCH_MESSAGE_KEY = "message"
 SEND_MESSAGES_KEY = "send_messages"
 FINGERPRINT_COMMAND = "reader fingerprint"
@@ -157,12 +173,16 @@ class Transcript:
 
 
 def locate_transcripts(
-    config_dir: Path, series_folder: Path, working_dir: Path
+    config_dir: Path,
+    series_folder: Path,
+    working_dir: Path,
+    list_files: Callable[[Path, str], Iterable[Path]],
+    read_file: Callable[[Path], bytes],
 ) -> list[Transcript]:
-    """Return the subagent transcripts of the series folder's sessions, ordered by path; an absolute series folder ignores the working dir."""
+    """Return the subagent transcripts of the series folder's sessions, listed and read through the effects handed in and ordered by path; an absolute series folder ignores the working dir."""
     project_dir = config_dir / PROJECTS_DIR_NAME / _project_key(working_dir / series_folder)
-    paths = sorted(project_dir.glob(f"*/{SUBAGENTS_DIR_NAME}/{TRANSCRIPT_PATTERN}"))
-    return [_read_transcript(path) for path in paths]
+    paths = sorted(list_files(project_dir, f"*/{SUBAGENTS_DIR_NAME}/{TRANSCRIPT_PATTERN}"))
+    return [_read_transcript(path, read_file) for path in paths]
 
 
 def _project_key(absolute_series_folder: Path) -> str:
@@ -173,12 +193,14 @@ def _project_key(absolute_series_folder: Path) -> str:
     )
 
 
-def _read_transcript(path: Path) -> Transcript:
+def _read_transcript(path: Path, read_file: Callable[[Path], bytes]) -> Transcript:
     """Return the transcript at the path with the agent type its meta file holds."""
     meta_path = path.with_suffix(META_SUFFIX)
-    if not meta_path.is_file():
-        raise ValueError(f"{path}: meta file {meta_path.name} is missing")
-    meta = _read_meta(path, meta_path)
+    try:
+        meta_content = read_file(meta_path)
+    except FileNotFoundError:
+        raise ValueError(f"{path}: meta file {meta_path.name} is missing") from None
+    meta = _parsed_meta(path, meta_content)
     agent_type = meta.get(AGENT_TYPE_FIELD)
     if not isinstance(agent_type, str):
         raise ValueError(f"{path}: meta file lacks a string {AGENT_TYPE_FIELD}")
@@ -190,10 +212,10 @@ def _read_transcript(path: Path) -> Transcript:
     )
 
 
-def _read_meta(path: Path, meta_path: Path) -> dict:
+def _parsed_meta(path: Path, meta_content: bytes) -> dict:
     """Return the JSON object the meta file holds, refusing any other content by transcript name."""
     try:
-        meta = json.loads(meta_path.read_text())
+        meta = json.loads(meta_content)
     except json.JSONDecodeError:
         raise ValueError(f"{path}: meta file is not valid JSON") from None
     if not isinstance(meta, dict):
@@ -215,8 +237,13 @@ _MODEL_KEY = "model"
 _USAGE_KEY = "usage"
 _META_KEY = "isMeta"
 _TEXT_KEY = "text"
+_TOOL_USE_BLOCK_SUFFIX = "tool_use"
+_NAME_KEY = "name"
+_INPUT_KEY = "input"
+_HANDBACK_TOOL = "SubagentHandback"
 
 _FieldValue = TypeVar("_FieldValue")
+_Finding = TypeVar("_Finding")
 
 
 @dataclass(frozen=True)
@@ -236,7 +263,7 @@ class TokenUsage:
 
 @dataclass(frozen=True)
 class TranscriptReply:
-    """One user turn of a subagent transcript paired with the last assistant text answering it."""
+    """One user turn of a subagent transcript paired with the last assistant reply text or SubagentHandback message answering it."""
 
     turn: int
     message: str
@@ -259,7 +286,7 @@ class _TurnOpening:
 
 @dataclass(frozen=True)
 class _AssistantChunk:
-    """One assistant line, with the byte offset just past it."""
+    """One assistant line, with the reply texts its text blocks and SubagentHandback calls carry and the byte offset just past it."""
 
     message_id: str
     model: str
@@ -343,20 +370,37 @@ def _turn_opening_from_json(entry: dict[str, Any]) -> _TurnOpening | None:
 
 
 def _assistant_chunk_from_json(entry: dict[str, Any], end: int) -> _AssistantChunk:
-    """Read an assistant entry's message id, model, text blocks, usage, and timestamp."""
+    """Read an assistant entry's message id, model, reply texts, usage, and timestamp."""
     blocks = _field(entry, (_MESSAGE_KEY, _CONTENT_KEY), list)
+    reply_texts = (_reply_text(block) for block in blocks)
     return _AssistantChunk(
         message_id=_field(entry, (_MESSAGE_KEY, _ID_KEY), str),
         model=_field(entry, (_MESSAGE_KEY, _MODEL_KEY), str),
-        texts=tuple(
-            _field(block, (_TEXT_KEY,), str)
-            for block in blocks
-            if _field(block, (_TYPE_KEY,), str) == _TEXT_BLOCK_TYPE
-        ),
+        texts=tuple(text for text in reply_texts if text is not None),
         usage=_usage_field(entry),
         timestamp=_timestamp_field(entry),
         end=end,
     )
+
+
+def _reply_text(block: object) -> str | None:
+    """Return the reply a content block carries, a text block's text or a SubagentHandback call's message, or None for any other block."""
+    block_type = _field(block, (_TYPE_KEY,), str)
+    if block_type == _TEXT_BLOCK_TYPE:
+        return _field(block, (_TEXT_KEY,), str)
+    if _is_handback_call(block):
+        return _field(block, (_INPUT_KEY, _MESSAGE_KEY), str)
+    return None
+
+
+def _is_handback_call(block: object) -> bool:
+    """Tell whether a content block calls SubagentHandback, the channel a subagent hands its reply back through."""
+    return _is_tool_use_block(block) and _field(block, (_NAME_KEY,), str) == _HANDBACK_TOOL
+
+
+def _is_tool_use_block(block: object) -> bool:
+    """Tell whether a content block is a tool use of any kind."""
+    return _field(block, (_TYPE_KEY,), str).endswith(_TOOL_USE_BLOCK_SUFFIX)
 
 
 def _usage_field(entry: dict[str, Any]) -> TokenUsage | None:
@@ -416,7 +460,7 @@ def _reply_to_turn(
     transcript: Path,
     content: bytes,
 ) -> TranscriptReply | None:
-    """Build the reply to one turn from its last assistant text, or None when no assistant text answers it."""
+    """Build the reply to one turn from its last assistant chunk carrying reply texts, or None when no chunk carries any."""
     answering_chunks = [chunk for chunk in chunks if chunk.texts]
     if not answering_chunks:
         return None
@@ -448,7 +492,11 @@ CONFIG_DIR_VARIABLE = "CLAUDE_CONFIG_DIR"
 BARE_LOGINS_DIRNAME = ".claudes-bare"
 SETTINGS_FILENAME = "settings.json"
 MEMORY_FILENAME = "CLAUDE.md"
-EXTENSION_FOLDERNAMES = ("agents", "skills")
+ACCOUNT_SYNCED_SKILLS_FOLDERNAME = "synced"
+ACCOUNT_SYNCED_ENTRIES_BY_EXTENSION_FOLDERNAME: Mapping[str, frozenset[str]] = MappingProxyType({
+    "agents": frozenset(),
+    "skills": frozenset({ACCOUNT_SYNCED_SKILLS_FOLDERNAME}),
+})
 USER_MEMORY_RELATIVE_PATH = Path(".claude") / MEMORY_FILENAME
 MEMORY_RELATIVE_PATHS = (
     Path(MEMORY_FILENAME),
@@ -457,84 +505,101 @@ MEMORY_RELATIVE_PATHS = (
     Path(".manifestos.yaml"),
 )
 ENABLED_PLUGINS_KEY = "enabledPlugins"
-REQUIRED_PLUGINS = {
-    "instruction-eval@my-claude-skills": True,
-    "manifesto@my-claude-skills": True,
-}
+INSTRUCTION_EVAL_PLUGIN = "instruction-eval@my-claude-skills"
+
+
+@dataclass(frozen=True)
+class LoginFiles:
+    """The file system as the neutral login check probes it: resolving a path, telling what stands there, listing a folder, and reading a file."""
+
+    resolve: Callable[[Path], Path]
+    exists: Callable[[Path], bool]
+    is_link: Callable[[Path], bool]
+    is_folder: Callable[[Path], bool]
+    is_file: Callable[[Path], bool]
+    entries: Callable[[Path], Iterable[Path]]
+    read_bytes: Callable[[Path], bytes]
 
 
 def check_neutral_login(
-    environ: Mapping[str, str], home: Path, working_dir: Path
+    environ: Mapping[str, str], home: Path, working_dir: Path, login_files: LoginFiles, binding_plugin: str
 ) -> None:
-    """Refuse unless the session runs under the neutral login at a clean working directory."""
-    config_dir = _neutral_config_dir(environ, home)
-    _refuse_claude_md(config_dir)
-    for folder_name in EXTENSION_FOLDERNAMES:
-        _refuse_extension_folder(config_dir / folder_name)
-    _refuse_other_plugins(config_dir)
-    _refuse_memory_files_in_ancestry(working_dir, home)
+    """Refuse unless the session runs under the neutral login enabling instruction-eval and the binding plugin at a clean working directory, probing the file system only through `login_files`."""
+    config_dir = _neutral_config_dir(environ, home, login_files)
+    _refuse_claude_md(config_dir, login_files)
+    for folder_name, account_synced_entries in ACCOUNT_SYNCED_ENTRIES_BY_EXTENSION_FOLDERNAME.items():
+        _refuse_extension_folder(config_dir / folder_name, account_synced_entries, login_files)
+    _refuse_other_plugins(config_dir, login_files, binding_plugin)
+    _refuse_memory_files_in_ancestry(working_dir, home, login_files)
 
 
 def _neutral_config_dir(
-    environ: Mapping[str, str], home: Path
+    environ: Mapping[str, str], home: Path, login_files: LoginFiles
 ) -> Path:
     """Return the config directory, refusing when it is unset or outside the bare logins folder."""
     configured = environ.get(CONFIG_DIR_VARIABLE)
     if not configured:
         raise Refusal(f"{CONFIG_DIR_VARIABLE} is unset")
-    config_dir = Path(configured).resolve()
-    bare_logins = (home / BARE_LOGINS_DIRNAME).resolve()
+    config_dir = login_files.resolve(Path(configured))
+    bare_logins = login_files.resolve(home / BARE_LOGINS_DIRNAME)
     if bare_logins not in config_dir.parents:
         raise Refusal(f"{config_dir} is outside {bare_logins}")
     return config_dir
 
 
-def _refuse_claude_md(config_dir: Path) -> None:
+def _refuse_claude_md(config_dir: Path, login_files: LoginFiles) -> None:
     """Refuse when the config directory holds a CLAUDE.md."""
     memory_file = config_dir / MEMORY_FILENAME
-    if memory_file.exists() or memory_file.is_symlink():
+    if login_files.exists(memory_file) or login_files.is_link(memory_file):
         raise Refusal(f"{memory_file} exists")
 
 
-def _refuse_extension_folder(folder: Path) -> None:
-    """Refuse when the folder is linked or holds anything."""
-    if folder.is_symlink():
+def _refuse_extension_folder(folder: Path, account_synced_entries: frozenset[str], login_files: LoginFiles) -> None:
+    """Refuse when the folder is linked or holds anything but the unlinked folders the account syncs in at login."""
+    if login_files.is_link(folder):
         raise Refusal(f"{folder} is a link")
-    if folder.exists() and not _is_empty_folder(folder):
-        raise Refusal(f"{folder} is not an empty folder")
+    if not login_files.exists(folder):
+        return
+    if not login_files.is_folder(folder):
+        raise Refusal(f"{folder} is not a folder")
+    for entry in login_files.entries(folder):
+        if not _is_account_synced_folder(entry, account_synced_entries, login_files):
+            raise Refusal(f"{folder} holds {entry.name}, which the account did not sync in")
 
 
-def _is_empty_folder(folder: Path) -> bool:
-    """Report whether the path is a folder with no entries."""
-    return folder.is_dir() and not any(folder.iterdir())
+def _is_account_synced_folder(entry: Path, account_synced_entries: frozenset[str], login_files: LoginFiles) -> bool:
+    """Tell whether the entry is an unlinked folder named as one the account syncs in at login."""
+    return entry.name in account_synced_entries and login_files.is_folder(entry) and not login_files.is_link(entry)
 
 
-def _refuse_other_plugins(config_dir: Path) -> None:
-    """Refuse unless enabledPlugins is exactly the two required plugins, both true."""
+def _refuse_other_plugins(config_dir: Path, login_files: LoginFiles, binding_plugin: str) -> None:
+    """Refuse unless enabledPlugins is exactly instruction-eval and the binding plugin, both true; name the binding plugin when it is absent."""
     settings_file = config_dir / SETTINGS_FILENAME
-    if not settings_file.is_file():
+    if not login_files.is_file(settings_file):
         raise Refusal(f"{settings_file} is missing")
     try:
-        settings = json.loads(settings_file.read_text())
+        settings = json.loads(login_files.read_bytes(settings_file))
     except json.JSONDecodeError as error:
         raise Refusal(f"{settings_file} is not JSON") from error
     enabled = settings.get(ENABLED_PLUGINS_KEY) if isinstance(settings, dict) else None
-    if not isinstance(enabled, dict) or set(enabled) != set(REQUIRED_PLUGINS):
+    if isinstance(enabled, dict) and binding_plugin not in enabled:
+        raise Refusal(f"{ENABLED_PLUGINS_KEY} lacks binding.plugin {binding_plugin}")
+    if not isinstance(enabled, dict) or set(enabled) != {INSTRUCTION_EVAL_PLUGIN, binding_plugin}:
         raise Refusal(f"{ENABLED_PLUGINS_KEY} is not the two required plugins")
     if not all(value is True for value in enabled.values()):
         raise Refusal(f"{ENABLED_PLUGINS_KEY} holds a plugin not true")
 
 
 def _refuse_memory_files_in_ancestry(
-    working_dir: Path, home: Path
+    working_dir: Path, home: Path, login_files: LoginFiles
 ) -> None:
     """Refuse when the working directory or an ancestor holds a memory file, sparing the home user memory."""
-    user_memory = (home / USER_MEMORY_RELATIVE_PATH).resolve()
-    resolved = working_dir.resolve()
+    user_memory = login_files.resolve(home / USER_MEMORY_RELATIVE_PATH)
+    resolved = login_files.resolve(working_dir)
     for folder in (resolved, *resolved.parents):
         for relative_path in MEMORY_RELATIVE_PATHS:
             memory_file = folder / relative_path
-            if memory_file != user_memory and memory_file.exists():
+            if memory_file != user_memory and login_files.exists(memory_file):
                 raise Refusal(f"{memory_file} exists")
 
 
@@ -548,25 +613,21 @@ _HOOK_EVENT_KEY = "hookEvent"
 _SUBAGENT_START_EVENT = "SubagentStart"
 _HOOK_TEXT_KEYS = ("stdout", "content")
 _SUBAGENT_START_EXPOSURE = "shows SubagentStart text"
-_TOOL_USE_BLOCK_SUFFIX = "tool_use"
-_NAME_KEY = "name"
-_INPUT_KEY = "input"
 _SKILL_TOOL = "Skill"
 _SKILL_INPUT_KEY = "skill"
-OATH_SKILL = "manifesto:manifesto-oath"
 _WRITE_TOOL = "Write"
 _FILE_PATH_INPUT_KEY = "file_path"
 
 
 def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Sequence[str], pinned_model: str) -> None:
-    """Refuse a reader transcript showing a memory file, SubagentStart text, any tool use, a turn message other than the task's, or a model other than the pinned one."""
+    """Refuse a reader transcript showing a memory file, SubagentStart text, any tool use besides handing its reply back, a turn message other than the task's, or a model other than the pinned one."""
     exposures = (
         *_screen_entries(
             transcript,
             content,
             (
                 _outside_context_exposures,
-                lambda entry: _tool_use_exposures(entry, _no_tool_use_allowed),
+                lambda entry: _tool_use_exposures(entry, _is_handback_call),
                 lambda entry: _model_exposures(entry, pinned_model),
             ),
         ),
@@ -576,24 +637,34 @@ def refuse_exposed_reader_transcript(transcript: Path, content: bytes, turns: Se
         raise Refusal(f"{transcript}: {exposures[0]}")
 
 
-def judge_transcript_rejection(transcript: Path, content: bytes, verdict_path: Path) -> str | None:
-    """Return why a judge transcript rejects its verdict, a memory file, SubagentStart text, or a tool use besides loading the oath skill and writing the verdict path, or None when nothing does."""
-    exposures = _screen_entries(
+def judge_transcript_rejection(transcript: Path, content: bytes, verdict_path: Path, binding_skill: str) -> str | None:
+    """Return why a judge transcript rejects its verdict, a memory file, SubagentStart text, a tool use besides loading the binding skill and writing the verdict path, or a first tool use other than loading the binding skill, or None when nothing does."""
+    findings = _screen_entries(
         transcript,
         content,
         (
             _outside_context_exposures,
             lambda entry: _tool_use_exposures(
-                entry, lambda tool_use: _is_oath_skill_load(tool_use) or _is_verdict_write(tool_use, verdict_path)
+                entry, lambda tool_use: _is_binding_skill_load(tool_use, binding_skill) or _is_verdict_write(tool_use, verdict_path)
             ),
+            _assistant_tool_uses,
         ),
     )
+    tool_uses = [finding for finding in findings if isinstance(finding, dict)]
+    exposures = [*(finding for finding in findings if isinstance(finding, str)), *_first_act_exposures(tool_uses, binding_skill)]
     return exposures[0] if exposures else None
 
 
-def _is_oath_skill_load(tool_use: dict[str, Any]) -> bool:
-    """Tell whether a tool use loads the manifesto oath skill."""
-    return _field(tool_use, (_NAME_KEY,), str) == _SKILL_TOOL and _field(tool_use, (_INPUT_KEY,), dict).get(_SKILL_INPUT_KEY) == OATH_SKILL
+def _first_act_exposures(tool_uses: Sequence[dict[str, Any]], binding_skill: str) -> tuple[str, ...]:
+    """Name a judge whose first tool use does not load the binding skill."""
+    if tool_uses and _is_binding_skill_load(tool_uses[0], binding_skill):
+        return ()
+    return (f"does not load {binding_skill} first",)
+
+
+def _is_binding_skill_load(tool_use: dict[str, Any], binding_skill: str) -> bool:
+    """Tell whether a tool use loads the binding skill."""
+    return _field(tool_use, (_NAME_KEY,), str) == _SKILL_TOOL and _field(tool_use, (_INPUT_KEY,), dict).get(_SKILL_INPUT_KEY) == binding_skill
 
 
 def _is_verdict_write(tool_use: dict[str, Any], verdict_path: Path) -> bool:
@@ -602,8 +673,8 @@ def _is_verdict_write(tool_use: dict[str, Any], verdict_path: Path) -> bool:
 
 
 def _screen_entries(
-    transcript: Path, content: bytes, screens: Iterable[Callable[[dict[str, Any]], tuple[str, ...]]]
-) -> tuple[str, ...]:
+    transcript: Path, content: bytes, screens: Iterable[Callable[[dict[str, Any]], tuple[_Finding, ...]]]
+) -> tuple[_Finding, ...]:
     """Name what each screen finds in each non-blank transcript line, in line order, refusing with transcript, line, and fault a line it cannot read."""
     return tuple(
         exposure
@@ -614,8 +685,8 @@ def _screen_entries(
 
 
 def _screen_entry(
-    transcript: Path, number: int, entry: dict[str, Any], screens: Iterable[Callable[[dict[str, Any]], tuple[str, ...]]]
-) -> tuple[str, ...]:
+    transcript: Path, number: int, entry: dict[str, Any], screens: Iterable[Callable[[dict[str, Any]], tuple[_Finding, ...]]]
+) -> tuple[_Finding, ...]:
     """Name what each screen finds in one entry, refusing with transcript, line, and fault an entry missing a field a screen reads."""
     try:
         return tuple(exposure for screen in screens for exposure in screen(entry))
@@ -656,18 +727,14 @@ def _memory_file_paths(attachment: dict[str, Any]) -> tuple[str, ...]:
 
 def _tool_use_exposures(entry: dict[str, Any], allowed: Callable[[dict[str, Any]], bool]) -> tuple[str, ...]:
     """Name each tool use of an assistant entry that the allowance refuses."""
+    return tuple(f"shows tool use {_field(block, (_NAME_KEY,), str)}" for block in _assistant_tool_uses(entry) if not allowed(block))
+
+
+def _assistant_tool_uses(entry: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+    """Return the tool uses of an assistant entry in order, none for any other entry."""
     if _field(entry, (_TYPE_KEY,), str) != _ASSISTANT_ENTRY_TYPE:
         return ()
-    return tuple(
-        f"shows tool use {_field(block, (_NAME_KEY,), str)}"
-        for block in _field(entry, (_MESSAGE_KEY, _CONTENT_KEY), list)
-        if _field(block, (_TYPE_KEY,), str).endswith(_TOOL_USE_BLOCK_SUFFIX) and not allowed(block)
-    )
-
-
-def _no_tool_use_allowed(tool_use: dict[str, Any]) -> bool:
-    """Allow no tool use."""
-    return False
+    return tuple(block for block in _field(entry, (_MESSAGE_KEY, _CONTENT_KEY), list) if _is_tool_use_block(block))
 
 
 def _turn_message_exposures(transcript: Path, content: bytes, turns: Sequence[str]) -> tuple[str, ...]:
@@ -738,13 +805,14 @@ def reader_prepare(
     environ: Mapping[str, str],
     home: Path,
     working_dir: Path,
+    login_files: LoginFiles,
 ) -> None:
     """Write the condition files of the revision, the placebo snapshot first for r1."""
     guard_series(files, PREPARE_COMMAND)
     records = SeriesRecords(files)
     reader = records.reader()
     if isinstance(reader, AgentReader):
-        check_neutral_login(environ, home, working_dir)
+        check_neutral_login(environ, home, working_dir, login_files, records.series().binding.plugin)
     placebo_source = _external_placebo_source(revision, records, read_external)
     texts = _condition_texts(files, revision, records, placebo_source)
     if placebo_source is not None:
@@ -874,19 +942,6 @@ def _launch(
 COLLECT_COMMAND = "revision collect"
 SURPLUS_NOTICE = "ignored surplus transcript: "
 READER_RECORD_KIND_KEY = "kind"
-REPEATS_KEY = "repeats"
-BUDGET_KEY = "budget"
-SPLIT_KEY = "split"
-TURN_KEY = "turn"
-REPLY_MESSAGE_KEY = "message"
-REPLY_MODEL_KEY = "model"
-READER_KIND_KEY = "reader_kind"
-STARTED_KEY = "started"
-SECONDS_KEY = "seconds"
-TRANSCRIPT_KEY = "transcript"
-TRANSCRIPT_HASH_KEY = "transcript_hash"
-FINGERPRINT_HASH_KEY = "fingerprint_hash"
-COST_KEY = "cost"
 
 
 def revision_collect(
@@ -1058,7 +1113,7 @@ def _agent_reply_record(match: _ReaderTranscript, repeat: int, reply: Transcript
     turn = reply.turn if isinstance(match.entry, Conversation) else None
     return {
         **_reply_identity(match.entry, match.condition, repeat, turn),
-        _TEXT_KEY: reply.text,
+        REPLY_TEXT_KEY: reply.text,
         REPLY_MODEL_KEY: reply.model,
         READER_KIND_KEY: AGENT_READER,
         STARTED_KEY: reply.started.isoformat(),
@@ -1081,9 +1136,9 @@ MESSAGES_KEY = "messages"
 ROLE_KEY = "role"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
-COVERAGE_KEYS = ("demands", "sentences")
 FIRST_REVISION_REPLIES_FOLDER = f"{FIRST_REVISION}/{REPLIES_FOLDER}"
 REPLY_PATTERN = "*.yaml"
+ANY_DEPTH = "**"
 ANY_CONDITION = "*"
 
 
@@ -1159,14 +1214,14 @@ def _answer_replies(
 
 def _ask_reads(files: SeriesFolder, revision: str, records: SeriesRecords, reader: Reader, texts: Mapping[str, bytes]) -> list[str]:
     """Return what `revision ask` reads: the reader commands' reads, the demands, the coverage of the revision and of r1, and from r2 on the budget, r1's condition files, and every earlier outcome."""
-    coverage = (f"{coverage_revision}/{COVERAGE_FILE}{KEY_SEPARATOR}{key}" for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
+    coverage = (coverage_input(coverage_revision, key) for coverage_revision in (revision, FIRST_REVISION) for key in COVERAGE_KEYS)
     reads = [*_reader_reads(revision, records, reader, texts), DEMANDS_INPUT, *coverage]
     return reads if revision == FIRST_REVISION else [*reads, *_later_revision_reads(files, revision)]
 
 
 def _later_revision_reads(files: SeriesFolder, revision: str) -> list[str]:
     """Return what an ask of a later revision reads besides an ask of r1: the budget, r1's condition files, and each earlier gated revision's outcome."""
-    first_conditions = sorted(path.relative_to(files.root).as_posix() for path in files.root.glob(condition_path(FIRST_REVISION, ANY_CONDITION)))
+    first_conditions = files.paths(condition_path(FIRST_REVISION, ANY_CONDITION))
     earlier = (earlier for earlier in revision_ids(files) if revision_number(earlier) < revision_number(revision))
     return [f"{GATE_RECORD}{KEY_SEPARATOR}{BUDGET_KEY}", *first_conditions, *(outcome_path(other) for other in earlier if files.holds(outcome_path(other)))]
 
@@ -1178,8 +1233,7 @@ def _state_reads(files: SeriesFolder) -> list[str]:
 
 def _first_revision_reply_paths(files: SeriesFolder) -> list[str]:
     """Return the series path of every r1 reply file written so far, in path order."""
-    replies = (files.root / FIRST_REVISION_REPLIES_FOLDER).rglob(REPLY_PATTERN)
-    return sorted(reply.relative_to(files.root).as_posix() for reply in replies)
+    return files.paths(f"{FIRST_REVISION_REPLIES_FOLDER}/{ANY_DEPTH}/{REPLY_PATTERN}")
 
 
 def refuse_other_reader_build(records: SeriesRecords, reply_paths: Sequence[str], fingerprint_hash: str | None) -> None:
@@ -1217,7 +1271,7 @@ def _reader_stdin(records: SeriesRecords, reply: ExpectedReply) -> str:
         messages.append({ROLE_KEY: USER_ROLE, _TEXT_KEY: turns[turn - 1]})
         if turn < last_turn:
             earlier = reply_path(reply.revision, reply.condition, reply.task, reply.repeat, turn)
-            messages.append({ROLE_KEY: ASSISTANT_ROLE, _TEXT_KEY: records.reply(earlier)[_TEXT_KEY]})
+            messages.append({ROLE_KEY: ASSISTANT_ROLE, _TEXT_KEY: records.reply(earlier)[REPLY_TEXT_KEY]})
     return yaml.safe_dump({MESSAGES_KEY: messages}, allow_unicode=True)
 
 
@@ -1239,7 +1293,7 @@ def _command_reply_record(tasks: Tasks, reply: ExpectedReply, run: ReaderRun, fi
     entry = task_entries(tasks)[reply.task]
     return {
         **_reply_identity(entry, reply.condition, reply.repeat, reply.turn),
-        _TEXT_KEY: run.stdout,
+        REPLY_TEXT_KEY: run.stdout,
         REPLY_MODEL_KEY: fingerprint.output[FINGERPRINT_MODEL_KEY],
         READER_KIND_KEY: COMMAND_READER,
         STARTED_KEY: run.started.isoformat(),

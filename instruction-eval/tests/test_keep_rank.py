@@ -1,14 +1,7 @@
 from instruction_eval.gate import kept_revision
+from series_fixtures import outcome
 
 
-def outcome(passed: bool, completion_passed: bool, instruction_breaches: float, words: int) -> dict:
-    """Build the keep ranks of one gated revision's outcome."""
-    return {
-        "outcome": "pass" if passed else "fail",
-        "instruction_breaches": instruction_breaches,
-        "completion_passed": completion_passed,
-        "words": words,
-    }
 
 
 def test_a_breach_tie_keeps_the_fewer_words_then_the_lower_number():

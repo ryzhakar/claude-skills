@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE
+from series_fixtures import ONE_DEMAND, ONE_DEMAND_COVERAGE, write_yaml_at
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = PLUGIN_ROOT / "bin" / "instruction-eval"
@@ -36,16 +36,16 @@ def run(home, uv_cache):
 
 
 @pytest.fixture
-def series(tmp_path, run) -> Path:
+def cli_series(tmp_path, run) -> Path:
     (tmp_path / "instruction.md").write_text(INSTRUCTION)
     created = run(tmp_path, "series", "new", "demo", "--instruction", "instruction.md", "--reader-kind", "command")
     assert created.returncode == 0, created.stderr
     return Path(created.stdout.strip())
 
 
-def test_series_new_prints_the_folder_and_series_status_prints_its_standing(series, run, home):
-    assert series == home / "instruction-series" / "demo"
-    status = run(series, "series", "status")
+def test_series_new_prints_the_folder_and_series_status_prints_its_standing(cli_series, run, home):
+    assert cli_series == home / "instruction-series" / "demo"
+    status = run(cli_series, "series", "status")
     assert status.returncode == 0, status.stderr
     assert yaml.safe_load(status.stdout)["frozen"] is False
 
@@ -70,8 +70,8 @@ BARE_SERIES_REFUSALS = [
 
 
 @pytest.mark.parametrize(("command", "refusal"), BARE_SERIES_REFUSALS, ids=[" ".join(command) for command, _ in BARE_SERIES_REFUSALS])
-def test_a_command_the_series_cannot_yet_serve_prints_one_refusal_line_and_exits_one(series, run, command, refusal):
-    result = run(series, *command)
+def test_a_command_the_series_cannot_yet_serve_prints_one_refusal_line_and_exits_one(cli_series, run, command, refusal):
+    result = run(cli_series, *command)
     assert result.returncode == 1
     assert result.stdout == ""
     assert "Traceback" not in result.stderr
@@ -103,12 +103,8 @@ def write_script(path: Path, body: str) -> Path:
     return path
 
 
-def write_yaml(path: Path, document: object) -> None:
-    path.write_text(yaml.safe_dump(document))
-
-
 @pytest.fixture
-def command_series(tmp_path, run) -> Path:
+def command_cli_series(tmp_path, run) -> Path:
     (tmp_path / "instruction.md").write_text("Be terse.\n")
     created = run(tmp_path, "series", "new", "demo", "--instruction", "instruction.md", "--reader-kind", "command")
     folder = Path(created.stdout.strip())
@@ -118,84 +114,84 @@ def command_series(tmp_path, run) -> Path:
     fingerprint = write_script(fakes / "fingerprint", f"printf '{FINGERPRINT_OUTPUT}'")
     placebo = tmp_path / "gardening.md"
     placebo.write_text("Gardens bloom early.\n")
-    write_yaml(folder / "2-demands.yaml", ONE_DEMAND)
-    write_yaml(folder / "3-tasks.yaml", TASKS)
-    write_yaml(folder / "4-conditions.yaml", {"controls": ["empty", "aim", "placebo"], "aim": "Be terse.", "placebo_source": str(placebo), "omissions": "none"})
-    write_yaml(
+    write_yaml_at(folder / "2-demands.yaml", ONE_DEMAND)
+    write_yaml_at(folder / "3-tasks.yaml", TASKS)
+    write_yaml_at(folder / "4-conditions.yaml", {"controls": ["empty", "aim", "placebo"], "aim": "Be terse.", "placebo_source": str(placebo), "omissions": "none"})
+    write_yaml_at(
         folder / "5-reader.yaml",
         {"kind": "command", "model": "gpt-5-mini", "command": [str(reader), "{condition}"], "fingerprint": [str(fingerprint)], "sampling": {"temperature": 0.7}},
     )
-    write_yaml(folder / "7-gate.yaml", {"repeats": 2})
-    write_yaml(folder / "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
+    write_yaml_at(folder / "7-gate.yaml", {"repeats": 2})
+    write_yaml_at(folder / "r1/3-coverage.yaml", ONE_DEMAND_COVERAGE)
     return folder
 
 
-def test_demands_check_passes_in_silence_and_refuses_a_repeated_demand_in_one_line(command_series, run):
-    passed = run(command_series, "demands", "check")
+def test_demands_check_passes_in_silence_and_refuses_a_repeated_demand_in_one_line(command_cli_series, run):
+    passed = run(command_cli_series, "demands", "check")
     assert (passed.returncode, passed.stdout, passed.stderr) == (0, "", "")
-    write_yaml(command_series / "2-demands.yaml", {"demands": [*ONE_DEMAND["demands"], *ONE_DEMAND["demands"]]})
-    refused = run(command_series, "demands", "check")
+    write_yaml_at(command_cli_series / "2-demands.yaml", {"demands": [*ONE_DEMAND["demands"], *ONE_DEMAND["demands"]]})
+    refused = run(command_cli_series, "demands", "check")
     assert refused.returncode == 1
     assert refused.stderr == "duplicate demand id: d-judge (2-demands.yaml)\n"
 
 
-def test_reader_fingerprint_prints_the_parsed_output_with_its_hash(command_series, run):
-    result = run(command_series, "reader", "fingerprint")
+def test_reader_fingerprint_prints_the_parsed_output_with_its_hash(command_cli_series, run):
+    result = run(command_cli_series, "reader", "fingerprint")
     assert result.returncode == 0, result.stderr
     printed = yaml.safe_load(result.stdout)
     assert printed["fingerprint"] == {"model": "gpt-5-mini", "build": "b1", "temperature": 0.7}
     assert len(printed["fingerprint_hash"]) == 64
 
 
-def test_revision_ask_refuses_a_condition_outside_the_revisions_set(command_series, run):
-    result = run(command_series, "revision", "ask", "r1", "--conditions", "omit-3")
+def test_revision_ask_refuses_a_condition_outside_the_revisions_set(command_cli_series, run):
+    result = run(command_cli_series, "revision", "ask", "r1", "--conditions", "omit-3")
     assert result.returncode == 1
     assert result.stderr == f"unknown condition: omit-3 (revision r1 has {', '.join(CONDITIONS_BY_NAME)})\n"
-    assert not (command_series / "r1/5-replies").exists()
+    assert not (command_cli_series / "r1/5-replies").exists()
 
 
-def test_revision_ask_through_a_command_reader_answers_only_the_named_conditions(command_series, run):
-    prepared = run(command_series, "reader", "prepare", "r1")
+def test_revision_ask_through_a_command_reader_answers_only_the_named_conditions(command_cli_series, run):
+    prepared = run(command_cli_series, "reader", "prepare", "r1")
     assert prepared.returncode == 0, prepared.stderr
-    asked = run(command_series, "revision", "ask", "r1", "--conditions", "instruction")
+    asked = run(command_cli_series, "revision", "ask", "r1", "--conditions", "instruction")
     assert asked.returncode == 0, asked.stderr
     assert asked.stdout == ""
-    replies = sorted(path.relative_to(command_series).as_posix() for path in (command_series / "r1/5-replies").rglob("*.yaml"))
+    replies = sorted(path.relative_to(command_cli_series).as_posix() for path in (command_cli_series / "r1/5-replies").rglob("*.yaml"))
     assert replies == [
         f"r1/5-replies/instruction/{task}/repeat-{repeat}.yaml" for task in ("t-open", "t-sealed") for repeat in (1, 2)
     ]
-    collected = run(command_series, "revision", "collect", "r1")
+    collected = run(command_cli_series, "revision", "collect", "r1")
     assert collected.returncode == 1
     assert collected.stderr == "missing replies: 12, first r1/5-replies/aim/t-open/repeat-1.yaml\n"
 
 
-def test_coverage_check_and_tasks_check_pass_in_silence_on_a_valid_series(command_series, run):
+def test_coverage_check_and_tasks_check_pass_in_silence_on_a_valid_series(command_cli_series, run):
     overreach = [
         {"id": f"t-overreach-{half}", "tempts": "overreach", "split": half, "message": f"Describe {half} gardens.", "answer_key": "Yes."}
         for half in ("open", "sealed")
     ]
-    write_yaml(command_series / "3-tasks.yaml", {**TASKS, "tasks": [*TASKS["tasks"], *overreach]})
+    write_yaml_at(command_cli_series / "3-tasks.yaml", {**TASKS, "tasks": [*TASKS["tasks"], *overreach]})
     for command in (["coverage", "check", "r1"], ["tasks", "check"]):
-        result = run(command_series, *command)
+        result = run(command_cli_series, *command)
         assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), command
 
 
-def test_judge_calibrate_runs_stage_one_until_the_latest_attempt_holds_origins_then_stage_two(command_series, run):
-    attempt = command_series / "6-judge/calibration/attempt-1"
+def test_judge_calibrate_runs_stage_one_until_the_latest_attempt_holds_origins_then_stage_two(command_cli_series, run):
+    attempt = command_cli_series / "6-judge/calibration/attempt-1"
     attempt.mkdir(parents=True)
     (attempt / "plan.yaml").write_text("{}\n")
-    stage_one = run(command_series, "judge", "calibrate")
+    stage_one = run(command_cli_series, "judge", "calibrate")
     assert stage_one.returncode == 1
     assert stage_one.stderr.startswith("missing brief: 6-judge/brief.md, start from ")
     assert stage_one.stderr.strip().endswith("templates/judge-brief.md")
     (attempt / "origins.yaml").write_text("{}\n")
-    stage_two = run(command_series, "judge", "calibrate")
+    stage_two = run(command_cli_series, "judge", "calibrate")
     assert stage_two.returncode == 1
     assert stage_two.stderr.startswith("malformed record: 6-judge/calibration/attempt-1/plan.yaml")
 
 
-def test_series_freeze_refuses_a_series_whose_command_reader_cannot_fingerprint(command_series, run):
-    write_script(Path(yaml.safe_load((command_series / "5-reader.yaml").read_text())["fingerprint"][0]), "exit 3")
-    result = run(command_series, "series", "freeze")
+def test_series_freeze_refuses_a_series_whose_command_reader_cannot_fingerprint(command_cli_series, run):
+    write_script(Path(yaml.safe_load((command_cli_series / "5-reader.yaml").read_text())["fingerprint"][0]), "exit 3")
+    result = run(command_cli_series, "series", "freeze")
     assert result.returncode == 1
     assert result.stderr == "fingerprint exited 3\n"
