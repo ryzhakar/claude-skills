@@ -1,6 +1,6 @@
 # my-claude-skills
 
-35 skills · 14 agents across 12 plugins
+33 skills · 13 agents across 11 plugins
 
 ## Plugins
 
@@ -10,8 +10,7 @@
 | [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
-| [instruction-eval](instruction-eval/) | Measure whether an LLM instruction changes model behavior. | `0.1.0` | 11S |
-| [manifesto](manifesto/) | Create concentrated manifesto declarations and bind Claude behavior to... | `3.2.0` | 2S 1A |
+| [instruction-eval](instruction-eval/) | Measure whether an LLM instruction changes model behavior. | `0.2.0` | 11S |
 | [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
@@ -73,7 +72,7 @@ Software engineering discipline skills, agent-agnostic: outermost-test-first sig
   Scripts: [`find-polluter.sh`](dev-discipline/skills/systematic-debugging/scripts/find-polluter.sh)
 - **[tdd](dev-discipline/skills/tdd/SKILL.md)** — Build code by writing one failing test through the surface its callers use before any code, designing the functions beneath that surface...
 - **[triage-issue](dev-discipline/skills/triage-issue/SKILL.md)** — Diagnose a reported bug to its root cause and write an issue document carrying a test-first fix plan, without fixing the code. "triage...
-## [instruction-eval](instruction-eval/) `0.1.0`
+## [instruction-eval](instruction-eval/) `0.2.0`
 
 Measure whether an LLM instruction changes model behavior.
 
@@ -90,18 +89,6 @@ Measure whether an LLM instruction changes model behavior.
 - **[revise](instruction-eval/skills/revise/SKILL.md)** — Make the hypothesis' one change to the live instruction through the writer and record it as the next revision, refusing any second...
 - **[start-series](instruction-eval/skills/start-series/SKILL.md)** — Create a series folder for one instruction and its sources, and set up the neutral login whose session drives the series. Use when the...
 - **[write-tasks](instruction-eval/skills/write-tasks/SKILL.md)** — Write the tasks tempting each demand and `overreach`, their answer keys, conversations, and open and sealed split, with the conditions,...
-## [manifesto](manifesto/) `3.2.0`
-
-Create concentrated manifesto declarations and bind Claude behavior to user-provided manifestos through identity-assumption protocols.
-
-### Skills
-
-- **[manifesto-oath](manifesto/skills/manifesto-oath/SKILL.md)** — Binds Claude's operating identity to constitutions, manifestos, and principle sets through identity construction — not theatrical oaths....
-- **[manifesto-writing](manifesto/skills/manifesto-writing/SKILL.md)** — Trigger when users request manifestos or manifesto tone. Name the enemy, strip hedging, compress to sharp distinctions, end with stark choice.
-### Agents
-
-- **[maximalist-reviewer](manifesto/agents/maximalist-reviewer.md)** (`inherit`) — Review a set of files against one manifesto at the manifesto's strongest literal reading, with no allowance for...
-
 ## [orchestration](orchestration/) `5.0.1`
 
 Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.

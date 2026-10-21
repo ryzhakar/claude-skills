@@ -52,7 +52,7 @@
       "name": "instruction-eval",
       "source": "./instruction-eval/",
       "description": "Measure whether an LLM instruction changes model behavior.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "ryzhakar"
       },
