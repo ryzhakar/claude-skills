@@ -14,4 +14,4 @@ subagents:
       purpose: communication compression
     - name: strunk-spr-v3
       purpose: writing compression standard
-      source: https://raw.githubusercontent.com/ryzhakar/LLM_MANIFESTOS/refs/heads/main/instructions/strunk_spr_v3_complete.xml
+      source: https://raw.githubusercontent.com/ryzhakar/llm-manifestos/refs/heads/main/instructions/strunk_spr_v3_complete.xml
