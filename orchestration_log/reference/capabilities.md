@@ -13,7 +13,7 @@ YYYY-MM-DD, see `architecture_log.md`" — never a restatement of the reasoning.
 
 ## Plugins
 
-Twelve plugins, each a top-level directory (counted 2026-10-14, after peers and memento left, with instruction-eval added). `.claude-plugin/plugin.json` inside a plugin carries its
+Eleven plugins, each a top-level directory (counted 2026-10-21, after peers, memento, and manifesto left, with instruction-eval added). `.claude-plugin/plugin.json` inside a plugin carries its
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
@@ -67,27 +67,13 @@ re-prescription after a failed review, escalation at the third failed cycle). Ag
 holds `Agent`, runs `lite-cycle` at depth 1, reviews each unit itself), `executor` (`model: haiku`, `isolation: worktree`,
 disposable, executes the prescription's exact text, matches gates as Python `re` patterns, reports `DONE` or `BLOCKED`).
 
-**instruction-eval** — measures whether an LLM instruction changes model behavior, 0.1.0 (added 2026-10-14, see
-`architecture_log.md`), depends on `manifesto`, no agents, no hooks. Eleven skills, one per step of a measurement
+**instruction-eval** — measures whether an LLM instruction changes model behavior, 0.2.0 (added 2026-10-14, see
+`architecture_log.md`), binding is a plan setting defaulting to `manifesto@llm-manifestos`, no agents, no hooks. Eleven skills, one per step of a measurement
 series: `start-series`, `list-demands`, `check-coverage`, `write-tasks`, `freeze-series`, `revise`,
 `judge-replies`, `calibrate-judge`, `measure-revision`, `keep-revision`, `diagnose`. CLI `instruction-eval`
 (`bin/instruction-eval`, a `uv run --locked` wrapper): on PATH while the plugin is enabled; needs `uv`. Spec and
 journal under `orchestration_log/history/2026-10-12/`; open findings in
 `orchestration_log/recon/2026-10-14/reports/final-review.md`.
-
-**manifesto** — constitution binding.
-Skills: `manifesto-oath` (identity construction from loaded constitution elements; tiered name
-resolution), `manifesto-writing`.
-Hooks: SessionStart, PostCompact, SubagentStart, and UserPromptSubmit (tagline drift reminder).
-Hook scripts compose `templates/parts/binding-core.txt` with a per-event preamble. SessionStart and
-PostCompact call `ensure-repo.sh`'s `ensure_repo()`, cloning the manifesto repo to
-`<project>/.claude/manifesto-repo/LLM_MANIFESTOS` on first use and pulling on later sessions;
-SubagentStart and UserPromptSubmit read that clone but never fetch it themselves. `parse_taglines.py`
-reads manifesto frontmatter. Neither `envsubst` nor PyYAML is a dependency: `ensure-repo.sh`'s
-`render_template()` and `parse_config.py`/`mini_yaml.py` replace them with python3-stdlib-only
-equivalents (measured 2026-09-18, after both were found absent in a fresh sandbox and crashing every
-manifesto hook silently).
-Config schema for `.manifestos.yaml`: `manifesto/SCHEMA.md`.
 
 **qa-automation** — the Playwright test lifecycle.
 Skill: `qa-orchestration` (Plan→Generate→Execute→Heal→Report).
@@ -120,7 +106,7 @@ plus a changes report).
   per-plugin READMEs from skill, agent, and hook metadata.
 - `.claude/agents/instruction-writer.md` — project-local agent that edits skill definitions, agent
   definitions, and hook templates.
-- `.manifestos.yaml` — this repo's own constitution stack, read by the manifesto hooks.
+- `.manifestos.yaml` — this repo's own constitution stack, read by the `manifesto` plugin of `llm-manifestos`, outside this marketplace.
 
 ## orchestration_log layout
 
@@ -167,9 +153,6 @@ Two standalone manuals sit beside the living files and belong to no ontology slo
 - A subagent worktree branches from the repository's default branch unless `worktree.baseRef` is
   `"head"`; dev-discipline's implementer merges the integration branch named in its brief before any
   change. Measured 2026-10-05.
-- `manifesto-oath` names the default manifesto repository path literally in its Tier 1 text. A
-  project that sets `manifesto_dir` receives the override in hook output but not in the skill body.
-  Observed 2026-06-24, unchanged 2026-08-08.
 - 45 of the 298 citations in `agents-reference.md` are URL-only, carrying no section anchor: the
   automated rewriter could not match those quotes against source. Measured 2026-04-20.
 - `.claude/agents/instruction-writer.md` is project-local. It is not packaged in any plugin and does

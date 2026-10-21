@@ -463,3 +463,10 @@ AFTER:         the `check-back` Stop hook skips tasks whose status is finished o
 WHY:           the hook blocked turns over tasks that had already finished; the owner ruled the empty final message the core of silence; the owner's version-control orders lived in no skill
 INVALIDATES:   the `agent-conduct` description of 1.8.0 (two skills); any reading of an idle task as pending
 SOURCE:        `orchestration_log/history/2026-10-12/packet-silence-digest.md`, `packet-vcs-digest.md`, and the events journal `events.md` there; this change
+
+## 2026-10-21 — instruction-eval 0.2.0; manifesto leaves the marketplace
+BEFORE:        `instruction-eval` 0.1.0 declared a dependency on `manifesto`; the marketplace held twelve plugins including `manifesto` 3.2.0
+AFTER:         `instruction-eval` 0.2.0 takes its binding as a plan setting, defaulting to `manifesto@llm-manifestos`, with no `dependencies` entry. `manifesto` is deleted from this repository and from `marketplace.json`; eleven plugins
+WHY:           the owner moved the manifesto plugin to the `llm-manifestos` marketplace and ruled "Release 0.2.0 and retire together"
+INVALIDATES:   the count of twelve plugins; the `manifesto` dependency of `instruction-eval` 0.1.0; the `manifesto` entry of `capabilities.md`
+SOURCE:        `orchestration_log/history/2026-10-12/`; this change

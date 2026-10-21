@@ -861,3 +861,19 @@ Each follows from R115 (a record's `inputs` hashes only the keys the command rea
 - For r > 1, `revision blind`, `detect`, `score` and `gate` read r1's control replies only (R69, R130), not all of `r1/5-replies/**`.
 - Records: `8-scores.yaml` `mean_difference` and `done_rate`, and `9-outcome.yaml` `checks[].mean_difference`, `parent_comparison.mean_difference` and `parent_comparison.interval`, may be null when no unit is paired (R72, R87).
 - Defect, not amendment: `judge calibrate` stage two hashed `reference-user.yaml` as a whole file; R115 requires per-key hashing (`#verdicts`).
+- 2026-10-19T23:48+0300, R34/R98: `skills/` may hold one unlinked `synced` folder; `agents/` stays empty.
+- 2026-10-19T23:48+0300, R41: a reader's transcript may carry a `SubagentHandback` tool call, whose `input.message` is the reply, and no other tool use.
+- 2026-10-19T23:48+0300, PR9: no code change; the allow rules live in the `start-series` skill.
+- 2026-10-19T23:48+0300, PR13: measured defects fixed in commits 2730140, 2722b92, 16b7351, 217826a, 3ef5792 (range ending d4c9a71). The `~/.claude-instruction-eval-readers` path was not adopted. The judge screen still refuses `SubagentHandback`.
+
+## Amendment (2026-10-21T12:48+0300, orchestrator; owner: "i wish there was no hard dependency and everything could compose cleanly." via manifesto-discovery, confirmed by it; the binding act stays, the binding plugin becomes a setting)
+- C1 plugin.json carries no `dependencies` entry. Replaces the 2026-10-12 ruling "silent hard dependency" for the dependency only.
+- C2 The series plan record gains a closed `binding` map: `plugin` (a plugin id such as `manifesto@my-claude-skills`) and `skill` (a skill name such as `manifesto:manifesto-oath`). `series new` writes it from the flags `--binding-plugin` and `--binding-skill`; the defaults live once, in one constant, and equal today's values. [inference on the flag names]
+- C3 The neutral-login check (R34) requires `enabledPlugins` to hold exactly `instruction-eval@my-claude-skills` and the plan's binding plugin; a login lacking the binding plugin refuses with a message naming `binding.plugin`.
+- C4 The judge transcript screen (R48, R55) requires the judge's first act to load the plan's binding skill (replacing the constant `manifesto:manifesto-oath`) and refuses any other skill load.
+- C5 The judge brief template and the calibrate-judge skill text carry the binding skill as the plan's value, not the literal; the brief stays byte-exact (PR11) after rendering.
+- C6 The start-series skill builds the bare login from the plan's binding plugin and writes `enabledPlugins` from it; the defaults are documented once.
+- C7 The eval drops `.claude/manifesto-repo` handling (R7 report, `CLONE_KEY`, `MANIFESTO_CLONE_FOLDER`); `.claude/` is already skipped by R115 and R125.
+- C8 Tests follow: every test naming the old literal reads the plan's setting or the one default constant; a test pins that a plan with another plugin id and skill name passes the neutral-login check, the screen and the brief render.
+- C9 No version bump in the build; a minor bump to 0.2.0 waits for the owner's word at release.
+- C10 (2026-10-21T13:17+0300, orchestrator, settling the implementer's decisions 1 and 2): the `binding` map lives in `series.yaml` (a CLI record; the calibration plan.yaml is user-written per attempt and absent when `series new` and reader prepare run), so C2's "plan record" reads "series record"; every command that reads it already lists series.yaml in its Reads cell and R115 hashes the whole file. The judge brief template carries `{SKILL}` once, filled from the series' binding skill, in place of the literal; a brief with `{SKILL}` absent or repeated is refused as a brief fault.
