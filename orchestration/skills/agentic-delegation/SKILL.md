@@ -132,7 +132,7 @@ Every agent prompt has nine sections. Skip none. A well-structured prompt on a c
 
 6. Report format: the exact output template. Cite the file path and line range where the template lives. Specify what goes in each section, the "Left behind" section included.
 
-7. Scope boundaries: what to do AND what not to do. For mechanical transforms, forbid judgment, evaluation, and recommendations. State that the agent deletes nothing.
+7. Scope boundaries: what to do AND what not to do. For mechanical transforms, forbid judgment, evaluation, and recommendations. State that the agent deletes nothing, and state the rules of `destroy_only_what_is_yours`.
 
 8. Tool expectations: which tools and each tool's purpose. Syntax examples for non-obvious tools.
 
@@ -250,6 +250,16 @@ Clear left-behind paths yourself with one plain `rm <absolute paths>` as a whole
 
 End an agent's probe or gate script at its last check, its outputs listed under "Left behind"; never write a cleanup step into it.
 </keep_deletion_with_the_orchestrator>
+
+<destroy_only_what_is_yours>
+Tell every agent in its prompt the three rules below, as you tell it that it deletes nothing; never send a prompt without them.
+
+Kill a process by a PID you resolved and confirmed as yours; never kill by `pkill -f` or any other pattern.
+
+Undo your own edits to a file by editing them back; never revert the file with `git checkout <file>` or `git restore <file>`, which discard every uncommitted edit in it.
+
+Wait on a process with `pgrep` matched on its executable; never with `pgrep -f`, which matches the waiting loop's own shell.
+</destroy_only_what_is_yours>
 
 <plan_execution_topology>
 Before launching, decide the execution shape.
