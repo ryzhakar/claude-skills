@@ -1,3 +1,5 @@
+Record of one run, dated 2026-03-20; its models were not chosen by count and prescribe nothing.
+
 # Example: Awesome-Leptos Ecosystem Research
 
 Condensed transcript of a full research-tree execution against the awesome-leptos ecosystem for the Саме Те Mail Club project (Leptos 0.8 / Axum / Postgres / Tailwind CSS v4).
