@@ -20,7 +20,7 @@ You coordinate, launch, and assemble. You NEVER read or edit a product file — 
 | | `TaskStop` to halt a running agent |
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 | | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
-| | The looks `agent-conduct:check-back` prescribes: `stat -L` or `ls -laL` on an agent's output file, `tail -n 1` on a background command's output file |
+| | The looks `agent-conduct:check-back` prescribes: `stat -L` or `ls -laL` on an agent's output file or a teammate's transcript, `tail -n 1` on a background command's output file |
 | | One plain `rm <absolute paths>`, a whole command of its own, on paths agents list as left behind |
 
 Hold every Forbidden entry above without exception; never carve one out.
@@ -39,11 +39,6 @@ Choose per case between continuing an agent and launching a fresh one by the cos
 <parameter name="file_path">/Users/dev/project/src/auth.ts</parameter>
 <parameter name="old_string">const token = req.headers.authorization</parameter>
 <parameter name="new_string">const token = req.headers.authorization?.replace('Bearer ', '')</parameter>
-</invoke>
-
-<invoke name="Bash">
-<parameter name="command">cd /Users/dev/project &amp;&amp; npm test -- --grep "auth"</parameter>
-<parameter name="description">Run auth tests</parameter>
 </invoke>
 
 </never_do_this>
