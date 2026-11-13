@@ -248,7 +248,7 @@ Parallel variants: map-reduce (parallel agents produce structured records, one a
 
 Sequential pipeline: Agent B needs Agent A's output. Both run in background. The orchestrator chains them via notifications. Launch Agent A, notification arrives, read summary, launch Agent B pointing to A's report. Use sequential only for true data dependencies. Variant: chained refinement (draft, critique, revise).
 
-Before parallel launch, list which files each agent will modify. If any file appears in two agents' write sets, make those agents sequential. The later version wins silently; the earlier agent's work vanishes with no error.
+Before parallel launch, list which files each agent will modify. Run agents whose write sets share a file side by side when each writes in its own worktree — its own checkout of the repository — and one integrator, the agent that merges branches, brings their branches in turn; never order worktree-isolated agents by a shared file. Make agents that share a file and write one checkout sequential; never run them side by side.
 
 Operations exceeding 60 seconds (test suites, builds, deployments) use background `Bash`, not agent launch. A command a foreground agent starts stops when that agent gives its final response. Background `Bash` started by the orchestrator keeps running past the turn and sends a notification when it ends.
 </plan_execution_topology>
