@@ -98,7 +98,11 @@ Launch `implementer` in the background with its prompt file's text as the launch
 
 Launch `implementer` with the model and effort of the variant the plan or the status file names for that launch; never launch it on a variant written for another launch.
 
-Launch, in one turn, every unit whose dependencies are integrated; never hold one for a later turn.
+Take the next act by its distance to a merge — integrate a passed unit, route an arrived verdict or report, continue a fix, launch the reviews of a reported unit, and start a new unit last; never start a new unit while an open unit — one from its first implementer launch to its merge — waits on the orchestrator.
+
+Start a new unit when the usage limit left in the current window carries its first attempt and its reviews to their reports; never start one the window will cut.
+
+Route each open unit's next step within its agents' TTL — the span an idle cache survives, the cache's life; never leave a unit waiting past it without writing in the status file why and what the cold start costs.
 
 Run independent units as parallel lanes; never as one sequential lane through the scope.
 
@@ -118,7 +122,7 @@ Treat a report whose `Branch:` line names no branch `git branch --list` shows as
 <route-on-status>
 Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its requirements, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
 
-Continue the same implementer through `SendMessage` with the changes alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound and it is warm, its last step within its TTL, the span its idle cache survives; never resend the requirements it already holds.
+Continue the same implementer through `SendMessage` with the changes alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound and it is warm, its last step within its TTL; never resend the requirements it already holds.
 
 Launch a fresh implementer from files — its prompt file and the path of the file holding the findings — once its TTL has lapsed and `orchestration-economics` counts the fresh launch cheaper than the continuation's cold start, the whole context taken in again; never continue a lapsed implementer without counting that cold start.
 
