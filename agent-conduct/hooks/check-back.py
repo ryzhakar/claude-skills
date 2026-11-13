@@ -71,40 +71,52 @@ def transcript_stat(path):
         return None
 
 
-def is_teammate_meta(meta_path, description):
-    """Tell whether the meta file describes the teammate with this description."""
+def teammate_description(meta_path):
+    """Return the description in a teammate meta file, None for any other or unreadable file."""
     try:
         meta = json.loads(meta_path.read_text())
     except (OSError, ValueError):
-        return False
-    return isinstance(meta, dict) and meta.get("taskKind") == TEAMMATE_TASK_KIND and meta.get("description") == description
-
-
-def teammate_transcript_stat(data, task):
-    """Return the stat of the newest transcript among the session's teammates with the task's description."""
-    session_id, description = data.get("session_id"), task.get("description")
-    project_dir = Path(data.get("transcript_path") or "").parent
-    if not (session_id and description and project_dir.name):
         return None
-    directory = project_dir / session_id / "subagents"
-    matches = [
-        transcript_stat(meta_path.with_name(meta_path.name[: -len(META_SUFFIX)] + TRANSCRIPT_SUFFIX))
-        for meta_path in directory.glob("*" + META_SUFFIX)
-        if is_teammate_meta(meta_path, description)
-    ]
-    return max((m for m in matches if m is not None), key=lambda m: m.st_mtime, default=None)
+    if not isinstance(meta, dict) or meta.get("taskKind") != TEAMMATE_TASK_KIND:
+        return None
+    return meta.get("description")
 
 
-def agent_transcript_stat(tasks_root, data, task):
-    """Return the stat of the agent task's transcript, None when none is found."""
-    if task.get("type") == "teammate":
-        return teammate_transcript_stat(data, task)
-    return transcript_stat(output_path(tasks_root, data, task))
+def newest_by_description(entries):
+    """Return the entry with the latest mtime for each description."""
+    newest = {}
+    for description, transcript in entries:
+        known = newest.get(description)
+        if known is None or transcript.st_mtime > known.st_mtime:
+            newest[description] = transcript
+    return newest
+
+
+def teammate_transcripts(data):
+    """Return the session's teammate transcript stats by description, the newest where descriptions repeat."""
+    session_id = data.get("session_id")
+    project_dir = Path(data.get("transcript_path") or "").parent
+    if not (session_id and project_dir.name):
+        return {}
+    entries = []
+    for meta_path in (project_dir / session_id / "subagents").glob("*" + META_SUFFIX):
+        description = teammate_description(meta_path)
+        transcript = transcript_stat(meta_path.with_name(meta_path.name[: -len(META_SUFFIX)] + TRANSCRIPT_SUFFIX))
+        if description is not None and transcript is not None:
+            entries.append((description, transcript))
+    return newest_by_description(entries)
 
 
 def agent_transcripts(tasks_root, data, tasks):
     """Return each agent task's transcript stat by task id."""
-    return {t.get("id"): agent_transcript_stat(tasks_root, data, t) for t in tasks if t.get("type") in AGENT_TYPES}
+    agents = [t for t in tasks if t.get("type") in AGENT_TYPES]
+    by_description = teammate_transcripts(data) if any(t.get("type") == "teammate" for t in agents) else {}
+    return {
+        t.get("id"): by_description.get(t.get("description"))
+        if t.get("type") == "teammate"
+        else transcript_stat(output_path(tasks_root, data, t))
+        for t in agents
+    }
 
 
 def is_producing_output(transcript, previous_size, now):
@@ -112,7 +124,7 @@ def is_producing_output(transcript, previous_size, now):
     if transcript is None:
         return False
     grew = previous_size is not None and transcript.st_size > previous_size
-    return grew or now - transcript.st_mtime <= PRODUCING_WINDOW_SECONDS
+    return grew or 0 <= now - transcript.st_mtime <= PRODUCING_WINDOW_SECONDS
 
 
 def is_awaited(task, transcripts, previous_sizes, now):

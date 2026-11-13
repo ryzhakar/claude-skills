@@ -14,6 +14,9 @@ PROJECT_SLUG = Path(FIXTURE["transcript_path"]).parent.name
 OBSERVED_LINE_CAP = 200
 PRODUCING_WINDOW_SECONDS = 120
 STALE_AGE_SECONDS = 3600
+FUTURE_AGE_SECONDS = -STALE_AGE_SECONDS
+TEAMMATE_COUNT_AT_REAL_SCALE = 500
+SCALE_TIME_BUDGET_SECONDS = 2.0
 
 
 def tasks_dir(tmp_path):
@@ -36,12 +39,13 @@ def project_transcript_path(tmp_path):
     return str(tmp_path / "projects" / PROJECT_SLUG / f"{SESSION_ID}.jsonl")
 
 
-def write_teammate_transcript(tmp_path, task_id, size, age_seconds=STALE_AGE_SECONDS):
+def write_teammate_transcript(tmp_path, task_id, size, age_seconds=STALE_AGE_SECONDS, description=None, file_stem=None):
     directory = tmp_path / "projects" / PROJECT_SLUG / SESSION_ID / "subagents"
     directory.mkdir(parents=True, exist_ok=True)
-    meta = {"taskKind": "in_process_teammate", "description": f"work {task_id}", "name": task_id}
-    (directory / f"agent-a{task_id}-0123456789abcdef.meta.json").write_text(json.dumps(meta))
-    transcript = directory / f"agent-a{task_id}-0123456789abcdef.jsonl"
+    stem = file_stem or f"agent-a{task_id}-0123456789abcdef"
+    meta = {"taskKind": "in_process_teammate", "description": description or f"work {task_id}", "name": task_id}
+    (directory / f"{stem}.meta.json").write_text(json.dumps(meta))
+    transcript = directory / f"{stem}.jsonl"
     transcript.write_bytes(b"x" * size)
     moment = time.time() - age_seconds
     os.utime(transcript, (moment, moment))
@@ -156,6 +160,41 @@ def test_only_the_busy_teammate_is_named(tmp_path):
     write_teammate_transcript(tmp_path, "t2", size=500)
     reason = run_stop(tmp_path, [task("t1", "teammate", "running"), task("t2", "teammate", "running")])
     assert "task t1" in reason and "task t2" not in reason
+
+
+def test_five_hundred_idle_teammates_are_checked_within_the_time_budget(tmp_path):
+    ids = [f"t{n}" for n in range(TEAMMATE_COUNT_AT_REAL_SCALE)]
+    for task_id in ids:
+        write_teammate_transcript(tmp_path, task_id, size=500)
+    started = time.monotonic()
+    reason = run_stop(tmp_path, [task(i, "teammate", "running") for i in ids])
+    assert reason == ""
+    assert time.monotonic() - started < SCALE_TIME_BUDGET_SECONDS
+
+
+def test_teammate_with_a_future_dated_transcript_is_not_pending(tmp_path):
+    write_teammate_transcript(tmp_path, "t1", size=500, age_seconds=FUTURE_AGE_SECONDS)
+    assert run_stop(tmp_path, [task("t1", "teammate", "running")]) == ""
+
+
+def test_subagent_with_a_future_dated_transcript_is_not_pending(tmp_path):
+    write_transcript(tmp_path, "a1", size=500, age_seconds=FUTURE_AGE_SECONDS)
+    assert run_stop(tmp_path, [task("a1", "subagent", "running")]) == ""
+
+
+def test_teammates_sharing_a_description_follow_the_newest_transcript(tmp_path):
+    write_teammate_transcript(tmp_path, "t1", size=500, description="shared work", file_stem="agent-aold")
+    write_teammate_transcript(tmp_path, "t2", size=500, age_seconds=0, description="shared work", file_stem="agent-anew")
+    reason = run_stop(tmp_path, [{"id": "t9", "type": "teammate", "status": "running", "description": "shared work"}])
+    assert "task t9" in reason
+
+
+def test_fixture_teammate_is_joined_to_its_meta_by_the_real_description(tmp_path):
+    entry = next(t for t in FIXTURE["background_tasks"] if t["type"] == "teammate")
+    write_teammate_transcript(
+        tmp_path, entry["id"], size=500, age_seconds=0, description=entry["description"], file_stem="agent-aretire-just-231d0af3b6cf8a06"
+    )
+    assert f"task {entry['id']}" in run_stop(tmp_path, [entry])
 
 
 def test_agent_without_a_transcript_is_not_pending(tmp_path):
