@@ -50,7 +50,7 @@ Choose per case between continuing an agent and launching a fresh one by the cos
 <do_exactly_this>
 
 <invoke name="Agent">
-<parameter name="description">Fix Bearer token parsing in auth module and verify tests pass</parameter>
+<parameter name="description">Fix auth-bearer-token-parsing</parameter>
 <parameter name="prompt">[9-section prompt with output path]</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
@@ -90,6 +90,16 @@ No task is too small. "Fetch this URL and report the version number" is a valid 
 | By concern | Change spanning frontend, backend, tests: 3 agents |
 </receive_the_task>
 
+<name_each_unit_by_its_slug>
+Name every unit or scope of work by one descriptive slug, lowercase words joined by hyphens that say what the work is, and by that slug alone; never set a number, letter, code, round, wave, batch, or cluster label beside it or in its place.
+
+Carry the slug in every plan, prompt, report, review, commit subject, agent description, and message; never name the unit another way in any of them.
+
+Write an agent description as `<act> <slug>`, such as `Audit auth-error-handling`; never in another form.
+
+Write prompt files to `prompts/<agent>-<slug>.md` and report files to `reports/<agent>-<slug>.md`; never name either another way.
+</name_each_unit_by_its_slug>
+
 <design_the_delegation>
 
 <choose_each_variant>
@@ -115,7 +125,7 @@ Every agent prompt has nine sections. Skip none. A well-structured prompt on a c
 
 4. Task (numbered steps): precisely what to do, in order. Each step produces or consumes something concrete. Each step is verifiable. Replace "assess quality" with specific checks.
 
-5. Output path (exact file): where to write the report. Absolute path, descriptive filename.
+5. Output path (exact file): where to write the report. Absolute path ending in `reports/<agent>-<slug>.md`.
 
 6. Report format: the exact output template. Cite the file path and line range where the template lives. Specify what goes in each section, the "Left behind" section included.
 
@@ -140,7 +150,7 @@ Every prompt MUST include an output path (section 5) AND instruct the agent to p
 <never_do_this reason="notification lost, successor stranded">
 
 <invoke name="Agent">
-<parameter name="description">Analyze dependency compatibility</parameter>
+<parameter name="description">Analyze dependency-compatibility</parameter>
 <parameter name="prompt">[9-section prompt]
 Summarize your findings clearly.</parameter>
 <parameter name="run_in_background">true</parameter>
@@ -151,11 +161,11 @@ Summarize your findings clearly.</parameter>
 <do_exactly_this>
 
 <invoke name="Agent">
-<parameter name="description">Analyze dependency compatibility</parameter>
+<parameter name="description">Analyze dependency-compatibility</parameter>
 <parameter name="prompt">[9-section prompt]
-Write full findings to /Users/dev/project/orchestration_log/recon/2026-06-24/react19-compat.md
+Write full findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/analyst-dependency-compatibility.md
 End with a 3-sentence summary suitable for a notification.
-Output path: /Users/dev/project/orchestration_log/recon/2026-06-24/react19-compat.md</parameter>
+Output path: /Users/dev/project/orchestration_log/recon/2026-06-24/reports/analyst-dependency-compatibility.md</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
@@ -166,18 +176,18 @@ When launching N agents with shared instructions, write the shared body to a fil
 <never_do_this reason="480 lines wasted on copies">
 
 <invoke name="Agent">
-<parameter name="description">Audit auth.ts for error handling</parameter>
+<parameter name="description">Audit auth-error-handling</parameter>
 <parameter name="prompt">[... 60 lines of shared audit instructions ...]
 Your target: /Users/dev/project/src/auth.ts
-Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-auth.md</parameter>
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/auditor-auth-error-handling.md</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
 <invoke name="Agent">
-<parameter name="description">Audit db.ts for error handling</parameter>
+<parameter name="description">Audit db-error-handling</parameter>
 <parameter name="prompt">[... same 60 lines, verbatim ...]
 Your target: /Users/dev/project/src/db.ts
-Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-db.md</parameter>
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/auditor-db-error-handling.md</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
@@ -188,23 +198,23 @@ Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-db
 <do_exactly_this>
 
 <invoke name="Bash">
-<parameter name="command">[write shared audit prompt to /tmp/audit-prompt.md]</parameter>
+<parameter name="command">[write shared audit prompt to /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-error-handling.md]</parameter>
 <parameter name="description">Write shared audit prompt to file</parameter>
 </invoke>
 
 <invoke name="Agent">
-<parameter name="description">Audit auth.ts for error handling</parameter>
-<parameter name="prompt">Read /tmp/audit-prompt.md for instructions.
+<parameter name="description">Audit auth-error-handling</parameter>
+<parameter name="prompt">Read /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-error-handling.md for instructions.
 Your target: /Users/dev/project/src/auth.ts
-Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-auth.md</parameter>
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/auditor-auth-error-handling.md</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
 <invoke name="Agent">
-<parameter name="description">Audit db.ts for error handling</parameter>
-<parameter name="prompt">Read /tmp/audit-prompt.md for instructions.
+<parameter name="description">Audit db-error-handling</parameter>
+<parameter name="prompt">Read /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-error-handling.md for instructions.
 Your target: /Users/dev/project/src/db.ts
-Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-db.md</parameter>
+Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/auditor-db-error-handling.md</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
@@ -246,7 +256,7 @@ Default: parallel background launch. All independent agents launch in a single m
 <never_do_this reason="orchestrator blocks, session dies on hang">
 
 <invoke name="Agent">
-<parameter name="description">Audit auth module for vulnerabilities</parameter>
+<parameter name="description">Audit auth-vulnerabilities</parameter>
 <parameter name="prompt">[9-section prompt]</parameter>
 <!-- no run_in_background -->
 </invoke>
@@ -256,7 +266,7 @@ Default: parallel background launch. All independent agents launch in a single m
 <do_exactly_this>
 
 <invoke name="Agent">
-<parameter name="description">Audit auth module for vulnerabilities</parameter>
+<parameter name="description">Audit auth-vulnerabilities</parameter>
 <parameter name="prompt">[9-section prompt]</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
@@ -265,7 +275,7 @@ Default: parallel background launch. All independent agents launch in a single m
 
 Parallel variants: map-reduce (parallel agents produce structured records, one agent reads all records and synthesizes), speculative (launch agents for multiple approaches simultaneously, pick the best result and discard the rest).
 
-Sequential pipeline: Agent B needs Agent A's output. Both run in background. The orchestrator chains them via notifications. Launch Agent A, notification arrives, read summary, launch Agent B pointing to A's report. Use sequential only for true data dependencies. Variant: chained refinement (draft, critique, revise).
+Sequential pipeline: one agent needs another's output. Both run in background. The orchestrator chains them via notifications. Launch `Map api-endpoints`, notification arrives, read summary, launch `Write api-client` pointing to the endpoint report. Use sequential only for true data dependencies. Variant: chained refinement (draft, critique, revise).
 
 Before parallel launch, list which files each agent will modify. Run agents whose write sets share a file side by side when each writes in its own worktree — its own checkout of the repository — and one integrator, the agent that merges branches, brings their branches in turn; never order worktree-isolated agents by a shared file. Make agents that share a file and write one checkout sequential; never run them side by side.
 
@@ -347,7 +357,7 @@ Orchestrator realizes `/src/payments/handler.ts` should be `/src/billing/payment
 ...
 
 <invoke name="Agent">
-<parameter name="description">Audit payment module for PCI compliance</parameter>
+<parameter name="description">Audit payment-pci-compliance</parameter>
 <parameter name="prompt">[9-section prompt with corrected path: /src/billing/payment-handler.ts]</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
