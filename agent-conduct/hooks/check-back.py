@@ -18,6 +18,9 @@ OBSERVED_STATES_FILE = "observed-task-states"
 OBSERVED_STATES_LINE_CAP = 200
 FINISHED_STATUSES = frozenset({"completed", "finished", "done", "stopped", "failed", "killed", "cancelled"})
 AGENT_TYPES = frozenset({"subagent", "teammate"})
+TEAMMATE_TASK_KIND = "in_process_teammate"
+META_SUFFIX = ".meta.json"
+TRANSCRIPT_SUFFIX = ".jsonl"
 PRODUCING_WINDOW_SECONDS = 120
 OUTPUT_SIZES_SUFFIX = ".output-sizes"
 DEFAULT_TASKS_ROOT_PARENT = "/tmp"
@@ -68,13 +71,40 @@ def transcript_stat(path):
         return None
 
 
+def is_teammate_meta(meta_path, description):
+    """Tell whether the meta file describes the teammate with this description."""
+    try:
+        meta = json.loads(meta_path.read_text())
+    except (OSError, ValueError):
+        return False
+    return isinstance(meta, dict) and meta.get("taskKind") == TEAMMATE_TASK_KIND and meta.get("description") == description
+
+
+def teammate_transcript_stat(data, task):
+    """Return the stat of the newest transcript among the session's teammates with the task's description."""
+    session_id, description = data.get("session_id"), task.get("description")
+    project_dir = Path(data.get("transcript_path") or "").parent
+    if not (session_id and description and project_dir.name):
+        return None
+    directory = project_dir / session_id / "subagents"
+    matches = [
+        transcript_stat(meta_path.with_name(meta_path.name[: -len(META_SUFFIX)] + TRANSCRIPT_SUFFIX))
+        for meta_path in directory.glob("*" + META_SUFFIX)
+        if is_teammate_meta(meta_path, description)
+    ]
+    return max((m for m in matches if m is not None), key=lambda m: m.st_mtime, default=None)
+
+
+def agent_transcript_stat(tasks_root, data, task):
+    """Return the stat of the agent task's transcript, None when none is found."""
+    if task.get("type") == "teammate":
+        return teammate_transcript_stat(data, task)
+    return transcript_stat(output_path(tasks_root, data, task))
+
+
 def agent_transcripts(tasks_root, data, tasks):
     """Return each agent task's transcript stat by task id."""
-    return {
-        t.get("id"): transcript_stat(output_path(tasks_root, data, t))
-        for t in tasks
-        if t.get("type") in AGENT_TYPES
-    }
+    return {t.get("id"): agent_transcript_stat(tasks_root, data, t) for t in tasks if t.get("type") in AGENT_TYPES}
 
 
 def is_producing_output(transcript, previous_size, now):

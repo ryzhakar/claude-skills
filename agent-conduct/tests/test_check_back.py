@@ -32,13 +32,28 @@ def write_transcript(tmp_path, task_id, size, age_seconds=STALE_AGE_SECONDS):
         link.symlink_to(transcript)
 
 
-def run_stop(tmp_path, tasks, crons=None, stop_hook_active=False, data_dir_set=True, transcript_path=FIXTURE["transcript_path"]):
+def project_transcript_path(tmp_path):
+    return str(tmp_path / "projects" / PROJECT_SLUG / f"{SESSION_ID}.jsonl")
+
+
+def write_teammate_transcript(tmp_path, task_id, size, age_seconds=STALE_AGE_SECONDS):
+    directory = tmp_path / "projects" / PROJECT_SLUG / SESSION_ID / "subagents"
+    directory.mkdir(parents=True, exist_ok=True)
+    meta = {"taskKind": "in_process_teammate", "description": f"work {task_id}", "name": task_id}
+    (directory / f"agent-a{task_id}-0123456789abcdef.meta.json").write_text(json.dumps(meta))
+    transcript = directory / f"agent-a{task_id}-0123456789abcdef.jsonl"
+    transcript.write_bytes(b"x" * size)
+    moment = time.time() - age_seconds
+    os.utime(transcript, (moment, moment))
+
+
+def run_stop(tmp_path, tasks, crons=None, stop_hook_active=False, data_dir_set=True, transcript_path=None):
     payload = {
         **FIXTURE,
         "background_tasks": tasks,
         "session_crons": crons or [],
         "stop_hook_active": stop_hook_active,
-        "transcript_path": transcript_path,
+        "transcript_path": project_transcript_path(tmp_path) if transcript_path is None else transcript_path,
     }
     env = {key: value for key, value in os.environ.items() if key != "CLAUDE_PLUGIN_DATA"}
     env["CHECK_BACK_TASKS_ROOT"] = str(tmp_path / "tmp")
@@ -108,6 +123,41 @@ def test_agent_whose_transcript_stayed_flat_between_stops_is_not_pending(tmp_pat
     assert run_stop(tmp_path, [task("a1", "subagent", "running")]) == ""
 
 
+def test_busy_teammate_is_pending(tmp_path):
+    write_teammate_transcript(tmp_path, "t1", size=500, age_seconds=PRODUCING_WINDOW_SECONDS // 2)
+    reason = run_stop(tmp_path, [task("t1", "teammate", "running")])
+    assert 'the teammate task "work t1" (task t1)' in reason
+    assert "task t1" in state_text(tmp_path)
+
+
+def test_idle_teammate_is_not_pending(tmp_path):
+    write_teammate_transcript(tmp_path, "t1", size=500)
+    assert run_stop(tmp_path, [task("t1", "teammate", "running")]) == ""
+    assert state_text(tmp_path) == ""
+
+
+def test_many_idle_teammates_do_not_block(tmp_path):
+    ids = [f"t{n}" for n in range(125)]
+    for task_id in ids:
+        write_teammate_transcript(tmp_path, task_id, size=500)
+    assert run_stop(tmp_path, [task(i, "teammate", "running") for i in ids]) == ""
+    assert state_text(tmp_path) == ""
+
+
+def test_teammate_whose_transcript_grew_since_the_previous_stop_is_pending(tmp_path):
+    write_teammate_transcript(tmp_path, "t1", size=500)
+    assert run_stop(tmp_path, [task("t1", "teammate", "running")]) == ""
+    write_teammate_transcript(tmp_path, "t1", size=900)
+    assert "task t1" in run_stop(tmp_path, [task("t1", "teammate", "running")])
+
+
+def test_only_the_busy_teammate_is_named(tmp_path):
+    write_teammate_transcript(tmp_path, "t1", size=500, age_seconds=0)
+    write_teammate_transcript(tmp_path, "t2", size=500)
+    reason = run_stop(tmp_path, [task("t1", "teammate", "running"), task("t2", "teammate", "running")])
+    assert "task t1" in reason and "task t2" not in reason
+
+
 def test_agent_without_a_transcript_is_not_pending(tmp_path):
     assert run_stop(tmp_path, [task("t1", "teammate", "running")]) == ""
     assert state_text(tmp_path) == ""
@@ -130,7 +180,7 @@ def test_skipped_tasks_leave_reason_and_state_of_pending_ones_alone(tmp_path):
         task("t1", "teammate", "running"),
         task("t2", "teammate", "completed"),
     ]
-    write_transcript(tmp_path, "t1", size=500)
+    write_teammate_transcript(tmp_path, "t1", size=500)
     reason = run_stop(tmp_path, tasks)
     assert "task s1" in reason
     assert "t1" not in reason and "t2" not in reason
