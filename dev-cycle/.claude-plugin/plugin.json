@@ -1,10 +1,23 @@
 {
   "name": "dev-cycle",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, and spec and code-quality reviewers.",
-  "author": {"name": "ryzhakar"},
+  "author": {
+    "name": "ryzhakar"
+  },
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": ["orchestration", "lifecycle", "specification", "planning", "code-review", "worktree"],
-  "dependencies": ["dev-discipline", "orchestration", "product-craft"]
+  "keywords": [
+    "orchestration",
+    "lifecycle",
+    "specification",
+    "planning",
+    "code-review",
+    "worktree"
+  ],
+  "dependencies": [
+    "dev-discipline",
+    "orchestration",
+    "product-craft"
+  ]
 }
