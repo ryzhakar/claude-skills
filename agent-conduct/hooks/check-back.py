@@ -25,7 +25,7 @@ PRODUCING_WINDOW_SECONDS = 120
 OUTPUT_SIZES_SUFFIX = ".output-sizes"
 DEFAULT_TASKS_ROOT_PARENT = "/tmp"
 WAKE_TASK_TYPE = "monitor"
-LABELS = {"shell": "the background command", "subagent": "the background agent", "monitor": "the Monitor watch"}
+LABELS = {"shell": "the background command", "subagent": "the background agent", WAKE_TASK_TYPE:"the Monitor watch"}
 
 
 def template(name):
