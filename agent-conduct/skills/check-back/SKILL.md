@@ -10,7 +10,7 @@ Follow this skill before ending any turn — one reply, from the input that star
 
 An agent produces output while its transcript — the file recording each of its messages — grew since the previous turn ended or was written within the last 120 seconds, and sits idle otherwise.
 
-Count as a pending run each teammate — a member of the session's agent team — or background agent that produces output, and each background command or external wait — a CI run, a deploy, a remote job — whose end or result the task in hand still waits on; never count an idle agent or a run left going with no end awaited, such as a dev server.
+Count as a pending run each teammate — a member of the session's agent team — or background agent that produces output, and each background command or external wait — a CI run, a deploy, a remote job — whose end or result the task in hand still waits on; never count an idle agent — one hung or writing one long message included, which then gets no wake — or a run left going with no end awaited, such as a dev server.
 
 Nothing of the agent executes between turns, and a turn starts on a trigger alone: a user message, a notification — the message Claude Code sends when a background agent or command finishes or fails, carrying its result or its error — or a wake — a trigger the agent schedules for itself.
 
