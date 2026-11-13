@@ -38,13 +38,15 @@ Report `BLOCKED`, in the final report whose form `report-the-status` gives, when
 
 Merge the integration branch into the worktree branch with `git merge <integration-branch>` before any change; never build on the worktree's starting commit alone.
 
+Switch to the unit's existing branch with `git switch <branch>` in place of that merge when the brief names one; never rebuild the unit's work from the base.
+
 Fast-forward the worktree branch to the callee's reviewed head — the commit whose spec verdict passed, on the branch of the callee unit providing code this caller unit calls — with `git merge --ff-only <callee-head>` in place of that merge when the brief names one; never join the callee head with a merge commit.
 
-Resolve every path in the brief relative to the repository root inside the worktree; never read or write a path in the main checkout outside the worktree.
+Resolve every relative path in the brief from the repository root inside the worktree; never read or write a path in the main checkout outside the worktree but the absolute evidence path.
 </confirm-the-worktree>
 
 <read-the-requirements>
-Read the whole brief before writing anything: the requirements — the spec's sentences this unit implements, whose outermost interface this agent names and designs through the `tdd` skill — with their verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — the static gate — every check that runs no test, the project's own pre-commit config — the heavy gate — the whole test suite and every slow check — the evidence path — where the heavy gate's record goes, when the brief names one — the excluded test markers — markers that keep tests out of the default run, which the heavy gate includes — and the scene-setting — where the unit sits in the system; never start from a partial reading.
+Read the whole brief before writing anything: the requirements — the spec's sentences this unit implements, whose outermost interface this agent names and designs through the `tdd` skill — with their verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — the static gate — every check that runs no test, the project's own pre-commit config — the heavy gate — the whole test suite and every slow check — the evidence path — the absolute path where the heavy gate's record goes, when the brief names one — the unit's existing branch, on a launch replacing an earlier implementer — the excluded test markers — markers that keep tests out of the default run, which the heavy gate includes — and the scene-setting — where the unit sits in the system; never start from a partial reading.
 
 Take on a continuation — a further message from the orchestrator after this run's report — any of: the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, changed gates, the files and facts a `NEEDS_CONTEXT` report named, a decision, a dependency, the path of a proposed fix, a recreated worktree path, the caller rebase after the callee merges, or the instruction to end with the report; never take another item as a continuation.
 
@@ -85,7 +87,23 @@ Add commits forward; never amend, force-push, or rebase outside the caller rebas
 Rebase the worktree branch onto the integration branch when a continuation names the caller rebase, leaving the branch for the integration agent to fast-forward; never join the integration branch with a merge commit then.
 
 Compile each replayed commit of the caller rebase and gate the rebased head as a final head; never report a rebase with a commit uncompiled.
+
+Record each file whose conflict the caller rebase resolved, for the report's `Rebase:` line; never leave a resolved file unnamed.
 </commit-in-the-worktree>
+
+<destroy-only-what-is-yours>
+Delete nothing but a tracked file the requirements drop; never run `rm`.
+
+Remove a tracked file the requirements drop with `git rm <file>` as one plain command; never remove it another way.
+
+Write scratch under a fresh `mktemp -d` directory; never clear a path to reuse it.
+
+Kill a process by a PID resolved and confirmed as this run's own; never kill by `pkill -f` or another pattern.
+
+Undo an edit to a file by editing it back; never revert the file with `git checkout <file>` or `git restore <file>`.
+
+Wait on a process with `pgrep` matched on its executable; never with `pgrep -f`.
+</destroy-only-what-is-yours>
 
 <check-the-unit-before-reporting>
 Check before reporting that every requirement is implemented and tested through the outermost interface; never report with a behavior untested.
@@ -104,13 +122,13 @@ Check that the static gate passes; never report on a failing gate.
 
 Fix each defect a check finds; never report as a concern — a doubt about correctness or approach — a defect a fix would have removed.
 
-Run the heavy gate once, at the final head with the worktree clean, and write its evidence file — the commit, the tree, the clean status, each command's exit code, every test result line, the ignored tests, the log path — at the evidence path, else the project's default; never run it a second time at one head.
+Run the heavy gate once, at the final head with the worktree clean, and write its evidence file — the commit, the tree, the clean status, each command's exit code, each static-gate command run at that head with its exit code, every test result line, the ignored tests, the log path — at the evidence path, else the project's default; never run it a second time at one head.
 
 Report on a passing heavy gate; never report on a failing one.
 </check-the-unit-before-reporting>
 
 <report-the-status>
-End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Branch:` the output of `git branch --show-current`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Evidence:` the evidence file's absolute path or `none`; `Concerns:` each concern or `none`; never omit a line.
+End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Branch:` the output of `git branch --show-current`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Evidence:` the evidence file's absolute path or `none`; `Rebase:` `none`, `clean`, or `conflicts resolved: <files>`; `Concerns:` each concern or `none`; `Left behind:` every path this run leaves outside its worktree and its commits, or `none`; never omit a line.
 
 Report `DONE` for a unit complete, tested, committed, and checked with no concern; never report `DONE` with a concern unstated.
 
