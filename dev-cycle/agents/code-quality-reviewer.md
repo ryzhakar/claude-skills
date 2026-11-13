@@ -31,7 +31,7 @@ Take on a fresh delta review — a new launch from files that re-reviews the del
 
 Accept as the spec verdict path, on a delta review or a structure-only fix — a fix that changes structure with no change to behavior or to a requirement's proof — the unit's standing spec PASS, its last `Verdict: PASS` file; never return `Dispatch malformed` for it.
 
-Take on a sweep the dispatch with `sweep` in place of the spec verdict path, the suite passing at `<head-sha>` standing as its spec precondition; never return `Dispatch malformed` for it.
+Take on a sweep the dispatch with `sweep` in place of the spec verdict path, the suite passing at `<head-sha>` standing as its precondition, the evidence-only spec verdict gating the merge, not this review; never return `Dispatch malformed` for it.
 
 Read code from the worktree by absolute path; never read the main checkout in its place.
 
