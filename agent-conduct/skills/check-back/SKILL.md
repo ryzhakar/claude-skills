@@ -21,6 +21,10 @@ Set a wake before ending a turn that leaves a pending run; never end that turn w
 Set the wake while a notification is still due; never count a coming notification as a wake.
 
 Aim the wake at the earliest moment any pending run should have ended; never set a second wake for the same stretch.
+
+The prompt cache holds the agent's context between turns for its TTL — the cache's life, 5 minutes or 1 hour — and a wake past the TTL is a cold start: the whole context enters the cache again.
+
+Aim the wake inside the TTL where a pending run should have ended by then; never set a wake past the TTL without counting its cold start.
 </set-one-wake-before-ending-the-turn>
 
 <choose-the-wake-mechanism>
