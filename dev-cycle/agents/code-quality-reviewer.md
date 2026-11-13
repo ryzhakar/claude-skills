@@ -71,6 +71,8 @@ Run the static gate — every check that runs no test, the project's own pre-com
 
 Run a single named test to settle one finding; never run a test for another purpose.
 
+Run that test on a throwaway clone in a fresh `mktemp -d` directory listed under `Left behind`; never run it in the implementer's worktree.
+
 Check the design: nothing built beyond what the requirements ask, no knowledge held in two places, errors raised with specific messages rather than caught generically, edge cases — empty, null, boundary — handled, no secret hardcoded, no unbounded loop, no repeated query where one would do; never pass a change on its tests alone.
 </check-against-the-rules>
 
