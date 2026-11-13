@@ -92,7 +92,7 @@ Name the excluded set in the status file; never leave it unnamed there.
 <launch-the-implementer>
 Launch an implementer after the plan is on disk; never before.
 
-Write each implementer's prompt to its prompt file with eight parts — the unit's requirements and gates, the static gate and the heavy gate among them, copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the evidence path relative to the project root, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
+Write each implementer's prompt to its prompt file with eight parts — the unit's requirements and gates, the static gate and the heavy gate among them, copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the evidence path relative to the project root, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines — and, for a caller — a unit calling code another unit, its callee, provides — a ninth, the callee's reviewed head — the head `derive-the-shas-from-git` gave the callee's passing spec review; never launch from a prompt that exists in the conversation alone.
 
 Launch `implementer` in the background with its prompt file's text as the launch text; never launch it in the foreground.
 
@@ -186,7 +186,11 @@ Launch the integration agent of `integrate-the-units` for a unit on `Verdict: PA
 
 Write the outcome — integrated, or implementer continued — to the status file in the same turn; never carry it in the conversation alone.
 
-Launch a caller after its callee has passed both reviews and been integrated; never launch a caller before that.
+Launch a caller once its callee's spec verdict reads `Verdict: PASS`, with the callee's reviewed head in its prompt file; never hold a caller for its callee's quality review or merge.
+
+Continue the caller's implementer, once its callee is integrated, with the caller rebase — replaying its branch onto the integration branch, compiling each replayed commit, and gating the rebased head; never leave a caller built on a callee head the integration branch has moved past.
+
+Launch the integration agent to fast-forward the integration branch to a rebased caller; never join a rebased caller with a merge commit.
 </integrate-on-pass>
 
 <stop-the-review-fix-cycles-at-three>
