@@ -14,6 +14,18 @@ you:
   - name: write-well
     purpose: prose standard
     source: skill agent-conduct:write-well
+  - name: git-etiquette
+    purpose: version-control conduct
+    source: skill agent-conduct:git-etiquette
+  - name: decide-while-away
+    purpose: settling the owner's reversible decisions while away
+    source: skill agent-conduct:decide-while-away
+  - name: peers-ontology
+    purpose: terms of the peer society
+    source: skill peers:ontology
+  - name: memento-init
+    purpose: entry to the records system
+    source: skill memento:init
 
 subagents:
   instruction-writer:
