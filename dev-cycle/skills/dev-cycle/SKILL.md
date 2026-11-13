@@ -8,9 +8,9 @@ description: >
 ---
 
 <read-the-parent-first>
-Read the `agentic-delegation` skill whole before any step below; never run this skill without it.
+Read the `agentic-delegation` and `orchestration-economics` skills whole before any step below; never run this skill without both.
 
-Follow the `agentic-delegation` skill except where a sentence below replaces one of its rules — the orchestrator's writes of the plan, the prompt files, and the status file; its reads of the spec file and of verdict lines; a tier assigned by risk; the fixed final messages of this plugin's agents in place of a summary; the reviewers' reading of the spec verdict; never carve another exception.
+Follow the `agentic-delegation` skill except where a sentence below replaces one of its rules — the orchestrator's writes of the plan, the prompt files, and the status file; its reads of the spec file and of verdict lines; the fixed final messages of this plugin's agents in place of a summary; the reviewers' reading of the spec verdict; never carve another exception.
 
 Treat every action verb in the request as an order to launch agents, planning excepted; never write, read, run, or debug code in the orchestrator's — this agent's — own context.
 </read-the-parent-first>
@@ -20,7 +20,7 @@ Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in th
 
 Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; the status file at `dev-status.md`; never let an agent choose a path.
 
-Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on sonnet, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
+Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on the variant — a model at one effort — chosen for that launch, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
 Take the implementer's worktree from the `Worktree:` line of its report and its branch from the `Branch:` line; never take either from anywhere else.
 
@@ -46,9 +46,11 @@ Read the spec file whole before planning; never plan from the request while this
 </capture-the-spec>
 
 <plan-the-units>
-Decompose the spec yourself into units — each one function or endpoint callers outside the unit will use, which the implementer names and designs, and the zero to three files behind it, not counting the declaring file or the tests, independently testable, two to ten minutes of implementer work — and write the plan to its path; never decompose from the request.
+Decompose the spec yourself into units — each independently testable — and write the plan to its path; never decompose from the request.
 
-Decide every dispatch — what launches, when, on which tier — by wall-time and token spend; never by the order of the scope.
+Choose each unit's size for its case and write beside it in the plan what the choice risks: a larger unit, a variant too weak for it and a context that overflows near its end; a smaller unit, one more review pair, merge, and wait; never size a unit by a fixed count of functions, files, or minutes.
+
+Decide every dispatch — what launches, when, on which variant — by the cost `orchestration-economics` counts; never by the order of the scope.
 
 Cut dependencies between units while decomposing — give shared code its own unit launched first, or let two units duplicate it and the integration agent dedupe; never leave a dependency a cut could remove.
 
@@ -62,7 +64,9 @@ Treat two units that may touch one file as the integration agent's merge; never 
 
 Order the units by data dependency alone — a unit after the units whose code it calls; never by the scope's order.
 
-Assign each unit a tier by its risk — sonnet by default, opus where the unit's failure voids other units or its reasoning runs deep; never assign a unit to haiku.
+Choose the variant for each launch from the work's complexity, judged against the project's own counted history of attempts, and write the variant with the count it rests on in the plan or the status file; never take a variant from a role, a default, or a table of tiers.
+
+Judge by published figures — vendor or benchmark readings — until the project's own count replaces each; never keep a published figure past that count.
 
 Create the integration branch from the current branch with `git switch -c integration/${slug}` in the project root, and leave it checked out there; never create it elsewhere.
 
@@ -80,7 +84,7 @@ Write each implementer's prompt to its prompt file with seven parts — the unit
 
 Launch `implementer` in the background with its prompt file's text as the launch text; never launch it in the foreground.
 
-Launch `implementer` on the tier the plan assigns the unit; never launch it on haiku.
+Launch `implementer` with the model and effort of the variant the plan or the status file names for that launch; never launch it on a variant written for another launch.
 
 Launch, in one turn, every unit whose dependencies are integrated; never hold one for a later turn.
 
@@ -106,9 +110,9 @@ Continue the same implementer through `SendMessage` with the delta alone — the
 
 Recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — before any review or continuation of its unit, and continue the implementer with the recreated path; never launch fresh for a missing worktree.
 
-Launch a fresh implementer when the diagnosis agent names the approach wrong, the model tier changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
+Launch a fresh implementer when the diagnosis agent names the approach wrong, the variant changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
-Route a diagnosed block: a wrong approach launches fresh with a corrected brief; a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a stronger model; a unit too large is rewritten by the orchestrator as sub-units in the plan and the status file, each launched fresh; a plan defect returns to `plan-the-units` and the user; an unknown cause runs `launch-the-debugging-round` and continues the implementer with the path of the fix the round proposes; never relaunch a blocked implementer with unchanged inputs.
+Route a diagnosed block: a wrong approach launches fresh with a corrected brief; a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a variant whose attempts come back right more often; a unit too large is rewritten by the orchestrator as sub-units in the plan and the status file, each launched fresh; a plan defect returns to `plan-the-units` and the user; an unknown cause runs `launch-the-debugging-round` and continues the implementer with the path of the fix the round proposes; never relaunch a blocked implementer with unchanged inputs.
 
 Return a unit to `launch-the-spec-review` after every implementer continuation that changes code, and re-integrate it after both reviews pass; never leave a continued unit's merge standing unreviewed.
 </route-on-status>
@@ -148,11 +152,11 @@ Launch a caller after its callee has passed both reviews and been integrated; ne
 <stop-the-review-fix-cycles-at-three>
 Count the review-fix cycles — a `FAIL` verdict or an open finding followed by an implementer continuation — per unit; never leave the count out of the status file.
 
-Stop when the third cycle's re-review fails; never enter a fourth with the same model, the same requirements, and the same decomposition.
+Stop when the third cycle's re-review fails; never enter a fourth with the same variant, the same requirements, and the same decomposition.
 
 Run `launch-the-debugging-round` before any structural change; never change structure on a guess.
 
-Launch a diagnosis agent with the round's finding to name one structural change — launch fresh on a stronger model, return the unit's requirements to `plan-the-units` for the user to clarify, or split the unit; never name the change in the orchestrator's context.
+Launch a diagnosis agent with the round's finding to name one structural change — launch fresh on a variant whose attempts come back right more often, return the unit's requirements to `plan-the-units` for the user to clarify, or split the unit; never name the change in the orchestrator's context.
 
 Make the named change before the next cycle; never enter the next cycle unchanged.
 </stop-the-review-fix-cycles-at-three>
