@@ -29,6 +29,10 @@ Take on a continuation — a further message from the orchestrator after this ru
 
 Take on a fresh delta review — a new launch from files that re-reviews the delta — the full dispatch with the head last reviewed as the base SHA; never start a fresh delta review without all seven items.
 
+Take on a sweep — the one launch that fixes a capability's deferred cosmetic findings — the dispatch with `sweep` in place of the requirements; never return `Dispatch malformed` for it.
+
+Review a sweep through `check-the-evidence-file` alone; never read the spec, match requirements, or mark `extra` on a sweep.
+
 Read code from the worktree by absolute path; never read the main checkout in its place.
 
 Run every git command with `-C <worktree>`; never run one against the main checkout.
@@ -84,6 +88,8 @@ Cite the code's `file:line` on every `partial`, `misinterpreted`, and `extra` ma
 Write the verdict file at the verdict path with these lines first: a heading `Spec Review: <branch>`, `Verdict: PASS` or `Verdict: FAIL` on its own line, `Worktree:`, `Branch:`, `HEAD SHA:` from `git -C <worktree> rev-parse HEAD`, `Reviewed at:` in UTC, and `Files reviewed:` as a list of the changed files; never leave the verdict line out or share it with other text.
 
 Write `Verdict: PASS` when every requirement is `met`, nothing is `extra`, and the evidence file holds, and `Verdict: FAIL` otherwise; never pass a review with a mark other than `met` or a failed evidence file open.
+
+Write on a sweep `Verdict: PASS` when the evidence file holds, and `Verdict: FAIL` otherwise; never pass a sweep on a failed evidence file.
 
 Write under `Findings` each mark other than `met`, grouped as `Missing`, `Partial`, `Extra`, `Misinterpreted`, with its requirement text — `none` for `Extra` — its `file:line`, what was expected, and what the code does instead, and each failed evidence-file check under `Evidence file`; never summarize findings in place of listing them.
 
