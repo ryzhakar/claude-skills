@@ -40,13 +40,15 @@ Merge the integration branch into the worktree branch with `git merge <integrati
 
 Switch to the unit's existing branch with `git switch <branch>` in place of that merge when the brief names one; never rebuild the unit's work from the base.
 
+Name the branch that switch leaves — the one the platform created for this run — on the report's `Left behind:` line; never delete it.
+
 Fast-forward the worktree branch to the callee's reviewed head — the commit whose spec verdict passed, on the branch of the callee unit providing code this caller unit calls — with `git merge --ff-only <callee-head>` in place of that merge when the brief names one; never join the callee head with a merge commit.
 
 Resolve every relative path in the brief from the repository root inside the worktree; never read or write a path in the main checkout outside the worktree but the absolute evidence path.
 </confirm-the-worktree>
 
 <read-the-requirements>
-Read the whole brief before writing anything: the requirements — the spec's sentences this unit implements, whose outermost interface this agent names and designs through the `tdd` skill — with their verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — the static gate — every check that runs no test, the project's own pre-commit config — the heavy gate — the whole test suite and every slow check — the evidence path — the absolute path where the heavy gate's record goes, when the brief names one — the unit's existing branch, on a launch replacing an earlier implementer — the excluded test markers — markers that keep tests out of the default run, which the heavy gate includes — and the scene-setting — where the unit sits in the system; never start from a partial reading.
+Read the whole brief before writing anything: the unit's slug — its one descriptive name in lowercase words joined by hyphens — the requirements — the spec's sentences this unit implements, whose outermost interface this agent names and designs through the `tdd` skill — with their verification gates — commands with the exact output each requires — the integration branch, the input paths — source files the unit reads, relative to the repository root — the scope boundary — what the unit does not touch — the static gate — every check that runs no test, the project's own pre-commit config — the heavy gate — the whole test suite and every slow check — the evidence path — the absolute path where the heavy gate's record goes, when the brief names one — the unit's existing branch, on a launch replacing an earlier implementer — the excluded test markers — markers that keep tests out of the default run, which the heavy gate includes — and the scene-setting — where the unit sits in the system; never start from a partial reading.
 
 Take on a continuation — a further message from the orchestrator after this run's report — any of: the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, changed gates, the files and facts a `NEEDS_CONTEXT` report named, a decision, a dependency, the path of a proposed fix, a recreated worktree path, the caller rebase after the callee merges, or the instruction to end with the report; never take another item as a continuation.
 
@@ -80,7 +82,7 @@ Read each gate's output for the exact text the brief requires; never report a ga
 <commit-in-the-worktree>
 Commit each irreducible change — the smallest change that stands on its own, a test and the code that passes it counting as one — on the worktree branch; never bundle two independent changes in one commit.
 
-Write each commit message on one line in the form `<type>(<scope>): <what changed>` — `<type>` one of `feat`, `fix`, `refactor`, `test`, `<scope>` the module changed, as in `feat(parse): add parse_amount`; never write a second line.
+Write each commit message on one line in the form `<type>(<scope>): <what changed>` — `<type>` one of `feat`, `fix`, `refactor`, `test`, `<scope>` the unit's slug from the brief, as in `feat(parse-amount): add parse_amount`; never write a second line.
 
 Add commits forward; never amend, force-push, or rebase outside the caller rebase.
 
@@ -128,7 +130,7 @@ Report on a passing heavy gate; never report on a failing one.
 </check-the-unit-before-reporting>
 
 <report-the-status>
-End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Branch:` the output of `git branch --show-current`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Evidence:` the evidence file's absolute path or `none`; `Rebase:` `none`, `clean`, or `conflicts resolved: <files>`; `Concerns:` each concern or `none`; `Left behind:` every path this run leaves outside its worktree and its commits, or `none`; never omit a line.
+End with a report of these lines: `Status:` one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`; `Worktree:` the absolute path from `pwd`; `Branch:` the output of `git branch --show-current`; `Implemented:` what was built, or attempted; `Tests:` what was tested and the result; `Files changed:` paths relative to the repository root; `Evidence:` the evidence file's absolute path or `none`; `Rebase:` `none`, `clean`, or `conflicts resolved: <files>`; `Concerns:` each concern or `none`; `Left behind:` every path this run leaves outside its worktree and its commits, and the branch a switch to an existing branch left, or `none`; never omit a line.
 
 Report `DONE` for a unit complete, tested, committed, and checked with no concern; never report `DONE` with a concern unstated.
 
