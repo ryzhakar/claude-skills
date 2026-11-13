@@ -1,1 +1,0 @@
-Read the Ready to merge line of the quality report the code-quality-reviewer just returned and record the merge decision for that unit in the status file now, as integrate or continue the implementer.
