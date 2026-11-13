@@ -13,9 +13,9 @@ description: |
   </example>
 
   <example>
-  Context: QA orchestrator running Phase 4 with a single failure
+  Context: QA orchestrator running HEAL with a single failure
   user: "Run QA on my app"
-  assistant: "Phase 3 found 2 locator failures. Dispatching healer-agent to repair them."
+  assistant: "EXECUTE found 2 locator failures. Dispatching healer-agent to repair them."
   <commentary>
   Orchestrator dispatches healer-agent for locator repair. Below N=5 threshold, single agent handles all.
   </commentary>
@@ -51,12 +51,12 @@ Append your own discoveries after healing: which selectors you replaced, which t
 
 ## Circuit Breaker (read-only)
 
-Read `.github/healing-state.json` (treat as empty if missing — safe only on round 1).
+Read `.github/healing-state.json` (treat as empty if missing — safe only on the first heal cycle).
 
 - Max 2 attempts per test (key: `"file:line:title"`) -- skip and mark deferred if exceeded
 - Tests on blocklist -- skip
 
-Do NOT write to this file. The orchestrator owns the write after aggregation; the orchestrator's Pre-Dispatch Circuit-Breaker Gate guarantees a current state file exists from round 2 onward. Healers reading a stale state cannot detect it — the orchestrator is the gate.
+Do NOT write to this file. The orchestrator owns the write after aggregation; the orchestrator's Pre-Dispatch Circuit-Breaker Gate guarantees a current state file exists on every re-entry after a prior heal cycle. Healers reading a stale state cannot detect it — the orchestrator is the gate.
 
 ## Failure Validation
 

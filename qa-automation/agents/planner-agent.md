@@ -14,9 +14,9 @@ description: |
   </example>
 
   <example>
-  Context: QA orchestrator is running Phase 1
+  Context: QA orchestrator is running PLAN
   user: "Run QA on my app"
-  assistant: "Starting Phase 1: dispatching planner-agent to explore the application."
+  assistant: "Starting PLAN: dispatching planner-agent to explore the application."
   <commentary>
   The orchestrator dispatches planner-agent as the first phase of the QA pipeline.
   </commentary>

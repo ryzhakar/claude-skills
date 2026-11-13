@@ -13,9 +13,9 @@ description: |
   </example>
 
   <example>
-  Context: QA orchestrator running Phase 3
+  Context: QA orchestrator running EXECUTE
   user: "Run QA on my app"
-  assistant: "Phase 2 complete. Dispatching executor-agent for Phase 3: test execution."
+  assistant: "GENERATE complete. Dispatching executor-agent for EXECUTE: test execution."
   <commentary>
   Orchestrator dispatches executor-agent after generator-agent completes.
   </commentary>
@@ -160,7 +160,7 @@ Reads:
 
 Writes:
 - `results.json` -- Playwright JSON report (always)
-- `.ai-failures.json` -- classified failures with `summary` + per-category arrays (always; Phase 4 routing depends on this exact schema)
+- `.ai-failures.json` -- classified failures with `summary` + per-category arrays (always; HEAL routing depends on this exact schema)
 - `playwright-report/` -- HTML report (always)
 - `test-results/**/trace.zip` -- traces for manual debugging (when failures occur with tracing enabled)
 

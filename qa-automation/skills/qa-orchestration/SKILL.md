@@ -24,10 +24,10 @@ If the orchestration plugin is installed, read agentic-delegation's SKILL.md bef
 Every user verb implies agent-delegated execution. The orchestrator decomposes, dispatches, and assembles. It never executes directly.
 
 - "run tests" / "run QA" -- dispatch the full Plan->Generate->Execute->Heal->Report loop.
-- "generate tests" / "create tests" -- dispatch generator-agent (Phase 2).
-- "heal tests" / "fix selectors" / "fix locators" -- dispatch healer-agent (Phase 4).
-- "plan tests" / "explore the app" -- dispatch planner-agent (Phase 1).
-- "execute tests" / "run the suite" -- dispatch executor-agent (Phase 3).
+- "generate tests" / "create tests" -- dispatch generator-agent (GENERATE).
+- "heal tests" / "fix selectors" / "fix locators" -- dispatch healer-agent (HEAL).
+- "plan tests" / "explore the app" -- dispatch planner-agent (PLAN).
+- "execute tests" / "run the suite" -- dispatch executor-agent (EXECUTE).
 - "fix timing" / "fix test architecture" -- dispatch generator-agent in fix mode.
 
 No exceptions. The orchestrator coordinates; agents act.
@@ -51,38 +51,38 @@ For multi-session QA work, the parent's session persistence protocol applies -- 
 
 ### Artifact Contract
 
-Canonical inventory. The table is authoritative; body prose may reference rows by ID and MUST NOT contradict them. `${stem}` = test filename stem; `${test-name}` = sanitized test title.
+Canonical inventory. The table is authoritative; body prose may reference rows by path and MUST NOT contradict them. `${stem}` = test filename stem; `${test-name}` = sanitized test title.
 
-| ID | Path | Producer | Consumer | Format | Required |
-|----|------|----------|----------|--------|----------|
-| A1 | `.playwright/test-plan.md` | planner | generator | markdown | yes |
-| A2 | `.playwright/pages.md` | planner | human (DOM quality review) | markdown | yes |
-| A3 | `.playwright/selector-strategy.md` | planner | generator | markdown | yes |
-| A4 | `.playwright/project-config.md` | planner | generator, human | markdown | yes |
-| A5 | `.playwright/VERIFICATION.md` | planner | human | markdown | yes |
-| A6 | `.playwright/snap-*.yaml` | planner | orchestrator (CLI Evidence Check) | yaml | yes |
-| A7 | `.playwright/orchestrator-status.json` | every agent (overwritten per phase) | orchestrator | json | yes |
-| A8 | `.claude/qa-phase.txt` | orchestrator | orchestrator | text | yes |
-| A9 | `tests/seed.spec.ts` | human (initial); generator (regeneration) | every agent | typescript | yes |
-| A10 | `tests/*.spec.ts` | generator | executor, healer | typescript | yes |
-| A11 | `tests/pages/*.page.ts` | generator | tests (imported by `tests/*.spec.ts`) | typescript | conditional (when a flow has 5+ steps or repeats — see generator-agent.md "Page Objects") |
-| A12 | `tests/fixtures.ts` | generator | tests, page objects | typescript | conditional (when page objects or worker fixtures exist) |
-| A13 | `tests/helpers/test-data.ts` | generator | tests | typescript | conditional (when parallel tests conflict — see generator-agent.md "Test Data") |
-| A14 | `.playwright/snap-gen-${stem}.yaml` | generator | orchestrator (Generator Live-Verification Check) | yaml | yes (one per new test) |
-| A15 | `results.json` | executor | human (HTML report companion) | json | yes |
-| A16 | `.ai-failures.json` | executor | orchestrator (Phase 4 routing), healer | json | yes |
-| A17 | `playwright-report/` | executor | human | html dir | yes |
-| A18 | `test-results/**/trace.zip` | executor | healer (debugging, optional) | zip | conditional (present when failures occur with tracing enabled) |
-| A19 | `.healing-results.json` | healer (batch / N<5) | orchestrator (confidence routing) | json | conditional (batch mode: N<5) |
-| A20 | `.playwright/healed/${test-name}.json` | healer (parallel / N>=5) | orchestrator (confidence routing) | json | conditional (parallel mode: N>=5) |
-| A21 | `.github/healing-state.json` | orchestrator (post-aggregation write) | healer (pre-dispatch read) | json | yes after round 1 (healer treats absence as empty on first round) |
-| A22 | `.playwright/lessons.md` | generator (fix mode), healer | generator, healer | markdown | conditional (absent on first run; agents skip-if-missing) |
-| A23 | `.playwright/session-report.md` | orchestrator | human | markdown | yes |
+| Path | Producer | Consumer | Format | Required |
+|------|----------|----------|--------|----------|
+| `.playwright/test-plan.md` | planner | generator | markdown | yes |
+| `.playwright/pages.md` | planner | human (DOM quality review) | markdown | yes |
+| `.playwright/selector-strategy.md` | planner | generator | markdown | yes |
+| `.playwright/project-config.md` | planner | generator, human | markdown | yes |
+| `.playwright/VERIFICATION.md` | planner | human | markdown | yes |
+| `.playwright/snap-*.yaml` | planner | orchestrator (CLI Evidence Check) | yaml | yes |
+| `.playwright/orchestrator-status.json` | every agent (overwritten per phase) | orchestrator | json | yes |
+| `.claude/qa-phase.txt` | orchestrator | orchestrator | text | yes |
+| `tests/seed.spec.ts` | human (initial); generator (regeneration) | every agent | typescript | yes |
+| `tests/*.spec.ts` | generator | executor, healer | typescript | yes |
+| `tests/pages/*.page.ts` | generator | tests (imported by `tests/*.spec.ts`) | typescript | conditional (when a flow has 5+ steps or repeats — see generator-agent.md "Page Objects") |
+| `tests/fixtures.ts` | generator | tests, page objects | typescript | conditional (when page objects or worker fixtures exist) |
+| `tests/helpers/test-data.ts` | generator | tests | typescript | conditional (when parallel tests conflict — see generator-agent.md "Test Data") |
+| `.playwright/snap-gen-${stem}.yaml` | generator | orchestrator (Generator Live-Verification Check) | yaml | yes (one per new test) |
+| `results.json` | executor | human (HTML report companion) | json | yes |
+| `.ai-failures.json` | executor | orchestrator (HEAL routing), healer | json | yes |
+| `playwright-report/` | executor | human | html dir | yes |
+| `test-results/**/trace.zip` | executor | healer (debugging, optional) | zip | conditional (present when failures occur with tracing enabled) |
+| `.healing-results.json` | healer (batch / N<5) | orchestrator (confidence routing) | json | conditional (batch mode: N<5) |
+| `.playwright/healed/${test-name}.json` | healer (parallel / N>=5) | orchestrator (confidence routing) | json | conditional (parallel mode: N>=5) |
+| `.github/healing-state.json` | orchestrator (post-aggregation write) | healer (pre-dispatch read) | json | yes after the first heal cycle (healer treats absence as empty before it) |
+| `.playwright/lessons.md` | generator (fix mode), healer | generator, healer | markdown | conditional (absent on first run; agents skip-if-missing) |
+| `.playwright/session-report.md` | orchestrator | human | markdown | yes |
 
 Notes on producer/consumer accuracy:
-- **A2 (pages.md):** planner-internal DOM quality output, NOT a generator input. Generator's Pre-Flight check and Reads list omit it; selector-strategy.md (A3) carries the actionable derivative.
-- **A15 (results.json):** healer consumes the normalized form (`.ai-failures.json`, A16), not `results.json` directly.
-- **A22 (lessons.md):** only generator-in-fix-mode and healer write it. Planner and executor do not.
+- **`pages.md`:** planner-internal DOM quality output, NOT a generator input. Generator's Pre-Flight check and Reads list omit it; `selector-strategy.md` carries the actionable derivative.
+- **`results.json`:** healer consumes the normalized form (`.ai-failures.json`), not `results.json` directly.
+- **`lessons.md`:** only generator-in-fix-mode and healer write it. Planner and executor do not.
 
 ### Status Protocol
 
@@ -131,8 +131,8 @@ The generator-agent operates in three modes:
 
 | Mode | Trigger | Input | Behavior |
 |------|---------|-------|----------|
-| **Create** | Phase 2 initial generation | Test plan + page inventory | Full plan-driven generation with verify loop |
-| **Fix** | Timing/structural failures from Phase 3 | Failing test paths + error descriptions | Structural repair (waits, fixtures, architecture) |
+| **Create** | Initial GENERATE run | Test plan + page inventory | Full plan-driven generation with verify loop |
+| **Fix** | Timing/structural failures from EXECUTE | Failing test paths + error descriptions | Structural repair (waits, fixtures, architecture) |
 | **Modify** | Targeted change to existing test | File path + modification prompt | The modification prompt IS the spec. Skip test-plan reading, skip verify loop. Direct surgical edit. |
 
 Modify mode exists because the generator's create/fix protocol adds overhead (plan reading, verify loop) that provides no value for targeted edits like "add 20 lines to this test block." The modification prompt contains all context needed.
@@ -171,14 +171,14 @@ Before any phase:
 
 2. **Check the base URL.** Extract from the user's argument, or check `.playwright/project-config.md`. If neither exists, ask the user.
 
-3. **Session resumption.** Read `.claude/qa-phase.txt` if it exists. Resume from the phase after the one recorded (PLAN -> resume at GENERATE, etc.). If missing, start from Phase 1.
+3. **Session resumption.** Read `.claude/qa-phase.txt` if it exists. Resume from the phase after the one recorded (PLAN -> resume at GENERATE, etc.). If missing, start from PLAN.
 
-## Phase 1: PLAN
+## PLAN
 
 Record the dispatch start time: `T0=$(date +%s)`. Dispatch **planner-agent** with the base URL.
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` -> run Planner Completeness Check AND CLI Evidence Check, then write `PLAN` to `.claude/qa-phase.txt`, proceed to Phase 2
+- `DONE` -> run Planner Completeness Check AND CLI Evidence Check, then write `PLAN` to `.claude/qa-phase.txt`, proceed to GENERATE
 - `NEEDS_CONTEXT` -> surface the `blocker` field to the user, re-dispatch once after input
 - `BLOCKED` -> surface blocker, stop
 
@@ -205,20 +205,20 @@ find .playwright -maxdepth 1 -name 'snap-*.yaml' -newermt "@$T0" | head -1
 - **Zero matches (first miss)** -> re-dispatch planner-agent with this added directive: `"MANDATORY: explore via @playwright/cli only. Each visited page MUST produce a .playwright/snap-<page>.yaml snapshot. Scripts that launch browsers are prohibited."` Reset `T0` before re-dispatch.
 - **Zero matches (second miss)** -> escalate: write `NEEDS_CONTEXT` to `.playwright/orchestrator-status.json` with blocker `"planner produced no CLI snapshots across two dispatches; manual investigation required"` and stop.
 
-NEVER mark Phase 1 complete on agent self-report alone. NEVER skip the CLI Evidence Check. NEVER accept a missing snapshot set with the rationale "the agent had a reason" — silent skip is the failure mode this check exists to catch.
+NEVER mark PLAN complete on agent self-report alone. NEVER skip the CLI Evidence Check. NEVER accept a missing snapshot set with the rationale "the agent had a reason" — silent skip is the failure mode this check exists to catch.
 
-## Phase 2: GENERATE
+## GENERATE
 
 Snapshot the pre-dispatch test set: `BEFORE=$(ls tests/*.spec.ts 2>/dev/null | sort)`. Record `T0=$(date +%s)`. Dispatch **generator-agent**. Include `.playwright/lessons.md` path in the dispatch if it exists (agents read it before starting -- it contains discoveries from prior cycles).
 
 After completion, read `.playwright/orchestrator-status.json` and branch:
-- `DONE` -> run Generator Live-Verification Check, then write `GENERATE` to `.claude/qa-phase.txt`, proceed to Phase 3
+- `DONE` -> run Generator Live-Verification Check, then write `GENERATE` to `.claude/qa-phase.txt`, proceed to EXECUTE
 - `NEEDS_CONTEXT` -> surface blocker, re-dispatch once
 - `BLOCKED` -> surface blocker, stop
 
 ### Generator Live-Verification Check
 
-The generator writes one snapshot per test to `.playwright/snap-gen-${stem}.yaml` (artifact A14). The `snap-gen-` prefix disambiguates from planner snapshots (A6). For each new test in `tests/${stem}.spec.ts`, a matching `snap-gen-${stem}*.yaml` MUST exist with mtime after `T0`:
+The generator writes one snapshot per test to `.playwright/snap-gen-${stem}.yaml`. The `snap-gen-` prefix disambiguates from planner snapshots (`snap-*.yaml`). For each new test in `tests/${stem}.spec.ts`, a matching `snap-gen-${stem}*.yaml` MUST exist with mtime after `T0`:
 
 ```bash
 AFTER=$(ls tests/*.spec.ts 2>/dev/null | sort)
@@ -235,7 +235,7 @@ done
 
 ### Generator Conditional-Artifact Check
 
-The generator's status file (A7) lists produced artifacts in its `artifacts` field. For every conditional path it claims (A11 `tests/pages/*.page.ts`, A12 `tests/fixtures.ts`, A13 `tests/helpers/test-data.ts`), confirm the file exists on disk:
+The generator's status file lists produced artifacts in its `artifacts` field. For every conditional path it claims (`tests/pages/*.page.ts`, `tests/fixtures.ts`, `tests/helpers/test-data.ts`), confirm the file exists on disk:
 
 ```bash
 for path in $(jq -r '.artifacts[]?' .playwright/orchestrator-status.json); do
@@ -247,9 +247,9 @@ done
 - **Any missing (first miss)** -> re-dispatch generator-agent with the missing list as a NEEDS_CONTEXT correction directive.
 - **Any missing (second miss)** -> escalate: write `NEEDS_CONTEXT` with blocker `"generator claimed artifacts not on disk across two dispatches: <list>"` and stop.
 
-Orchestrator MUST run both checks before advancing to Phase 3. Orchestrator MUST NOT mark Phase 2 complete on agent self-report alone. NEVER accept a missing snapshot or a missing claimed artifact — the snapshot is the audit trail; the claimed-artifact list is the contract.
+Orchestrator MUST run both checks before advancing to EXECUTE. Orchestrator MUST NOT mark GENERATE complete on agent self-report alone. NEVER accept a missing snapshot or a missing claimed artifact — the snapshot is the audit trail; the claimed-artifact list is the contract.
 
-## Phase 3: EXECUTE
+## EXECUTE
 
 Record `T0=$(date +%s)`. Dispatch **executor-agent**. Include `.playwright/lessons.md` path if it exists.
 
@@ -257,7 +257,7 @@ After completion, read `.playwright/orchestrator-status.json` and run the Execut
 
 ### Executor Output Check
 
-The executor's load-bearing artifact is `.ai-failures.json` (A16) — Phase 4 routing reads it. Verify:
+The executor's load-bearing artifact is `.ai-failures.json` — HEAL routing reads it. Verify:
 
 ```bash
 test -s .ai-failures.json && jq -e '.summary and (.locator | type == "array")' .ai-failures.json >/dev/null
@@ -268,7 +268,7 @@ find . -maxdepth 1 -name results.json -newermt "@$T0" | head -1
 - **`.ai-failures.json` missing or schema-invalid (first miss)** -> re-dispatch executor-agent with directive: `"MANDATORY: write .ai-failures.json with the full schema (summary + per-category arrays). Status DONE without this file is invalid."` Reset `T0` before re-dispatch.
 - **Still missing or invalid (second miss)** -> escalate: write `NEEDS_CONTEXT` to `.playwright/orchestrator-status.json` with blocker `"executor produced no valid .ai-failures.json across two dispatches"` and stop.
 
-Orchestrator MUST NOT advance to Phase 4 without a valid `.ai-failures.json`. NEVER infer failures from `orchestrator-status.json` alone — its `healable_count` field is a summary, not the routing source of truth.
+Orchestrator MUST NOT advance to HEAL without a valid `.ai-failures.json`. NEVER infer failures from `orchestrator-status.json` alone — its `healable_count` field is a summary, not the routing source of truth.
 
 ### Failure Taxonomy
 
@@ -291,7 +291,7 @@ Test fails ->
   Locator match? -> Verify: element found but assertion failed? Reclassify as DATA.
                     Console ERROR/FATAL? Reclassify as REAL BUG.
                     10+ concurrent failures? Reclassify as INFRASTRUCTURE.
-                    Confirmed locator -> proceed to Phase 4
+                    Confirmed locator -> proceed to HEAL
   Timing match? -> Re-dispatch generator-agent in fix mode (fix waits, not locators)
   Other? -> Manual investigation
 ```
@@ -303,35 +303,35 @@ Before routing failures, check that passing tests are substantive. A test that n
 ### Failure Routing
 
 - `DONE` with zero failures -> check exit conditions, proceed to Report or re-enter inner loop
-- `DONE` with locator failures -> proceed to Phase 4 (Heal)
+- `DONE` with locator failures -> proceed to HEAL
 - `DONE` with timing failures where locators are correct but test structure is wrong (serial execution of independent tests, missing waits, fixture teardown races) -> re-dispatch **generator-agent** in fix mode with failing test paths and error descriptions
 - `NEEDS_CONTEXT` -> surface blocker, re-dispatch once
 - `BLOCKED` -> surface blocker, stop
 
 Write `EXECUTE` to `.claude/qa-phase.txt`.
 
-## Phase 4: HEAL
+## HEAL
 
 Read `.ai-failures.json`. Count locator-category entries (N). Record `T0=$(date +%s)`.
 
 ### Pre-Dispatch Circuit-Breaker Gate
 
-Healers read `.github/healing-state.json` (A21) for blocklist + attempt counts. The orchestrator tracks the inner-loop round in its own context (round 1 = first entry into Phase 4 this session; round 2+ = re-entries after a prior heal cycle).
+Healers read `.github/healing-state.json` for blocklist + attempt counts. The orchestrator tracks in its own context whether a prior heal cycle ran this session.
 
-- **Round 1:** file may be absent — healers treat absence as empty. Proceed to Dispatch.
-- **Round 2+:** the prior round's Aggregate and Route step MUST have persisted this file. Verify before dispatch:
+- **First entry into HEAL:** file may be absent — healers treat absence as empty. Proceed to Dispatch.
+- **Re-entry after a prior heal cycle:** that cycle's Aggregate and Route step MUST have persisted this file. Verify before dispatch:
 
   ```bash
   test -s .github/healing-state.json && jq -e '.healing_attempts' .github/healing-state.json >/dev/null
   ```
 
-  If the file is absent or malformed in round 2+, abort the inner loop and surface to the user: the aggregation step failed to persist circuit-breaker state. Orchestrator MUST NOT dispatch healers in round 2+ without an authoritative state file.
+  If the file is absent or malformed on re-entry, abort the inner loop and surface to the user: the aggregation step failed to persist circuit-breaker state. Orchestrator MUST NOT dispatch healers on re-entry without an authoritative state file.
 
 ### Dispatch
 
 - **N == 0:** Skip healing. Check exit conditions.
-- **N < 5:** Single **healer-agent** (batch mode) with the full `.ai-failures.json` path and `.playwright/lessons.md`. Expected output: `.healing-results.json` (A19).
-- **N >= 5:** Parallel fan-out -- one **healer-agent** per failure (parallel mode). Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message. Expected output: `.playwright/healed/${test-name}.json` per agent (A20).
+- **N < 5:** Single **healer-agent** (batch mode) with the full `.ai-failures.json` path and `.playwright/lessons.md`. Expected output: `.healing-results.json`.
+- **N >= 5:** Parallel fan-out -- one **healer-agent** per failure (parallel mode). Write single-item input files to `.playwright/healed/{test-name}-input.json`, launch all N agents in a single message. Expected output: `.playwright/healed/${test-name}.json` per agent.
 
 ### Confidence Scoring
 
@@ -391,7 +391,7 @@ Run deterministic healing first. LLM fallback only when deterministic fails. Max
 
 ### Healer Output Check
 
-Confidence routing depends on the healer's per-failure records (confidence, tier, original/healed locator). The status file (A7) carries summary counts only — it is NOT the routing source of truth.
+Confidence routing depends on the healer's per-failure records (confidence, tier, original/healed locator). The status file carries summary counts only — it is NOT the routing source of truth.
 
 ```bash
 case "$MODE" in
@@ -412,7 +412,7 @@ After the Healer Output Check passes:
 
 1. **Read healer output:** `.healing-results.json` (batch) or `.playwright/healed/${test-name}.json` files (parallel).
 
-2. **Update circuit breaker** (`.github/healing-state.json`, A21): increment attempts per test, blocklist tests failing twice, increment PR counter. Confirm the write succeeded before exiting the round:
+2. **Update circuit breaker** (`.github/healing-state.json`): increment attempts per test, blocklist tests failing twice, increment PR counter. Confirm the write succeeded before exiting the round:
 
    ```bash
    test -s .github/healing-state.json && jq -e '.healing_attempts' .github/healing-state.json >/dev/null \
@@ -434,7 +434,7 @@ After aggregating healer results, append discoveries to `.playwright/lessons.md`
 
 Write `HEAL` to `.claude/qa-phase.txt`. Check exit conditions -- proceed to Report or re-enter inner loop at GENERATE.
 
-## Phase 5: Report
+## REPORT
 
 Validate findings before reporting. Generator must not log implementation gaps (harness errors, placeholder logic) as business findings. If findings exist, verify each has non-placeholder values (not 'TODO', 'needs implementation', empty strings). Strip or flag invalid findings.
 
