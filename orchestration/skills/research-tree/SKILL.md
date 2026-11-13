@@ -28,7 +28,7 @@ The orchestrator's context window is for decisions, detection, and dispatch — 
 
 ## Philosophy
 
-Research is deciding where to look, how deep to go, and when to change course. The tiers below are default gravity — not a script.
+Research is deciding where to look, how deep to go, and when to change course. The phases below are default gravity — not a script.
 
 ### Five Truths
 
@@ -50,45 +50,45 @@ Choose each agent's variant — a model at one effort — by the orchestration-e
 
 ### When to Re-Research
 
-A second round at higher fidelity is warranted when:
-- Verification overturned multiple survey judgments (the first round was unreliable)
+Re-research at higher fidelity when:
+- Verification overturned multiple survey judgments (the original research was unreliable)
 - The surviving candidate set is small enough for deeper attention
-- Specific technical questions require source-level reading the first model could not do
+- Specific technical questions require source-level reading the original agents could not do
 
-Second-round rules:
-- **Separate directory** — agents do not see first-round reports
+Re-research rules:
+- **Separate directory** named `{topic}-{focus}`, the focus slug saying what the re-research covers — agents do not see the original reports
 - **Need-driven organization** (not source-driven)
-- **Inherit ONLY facts** — project context, source URLs, raw metadata. Never ratings, opinions, or recommendations from the first round.
+- **Inherit ONLY facts** — project context, source URLs, raw metadata. Never ratings, opinions, or recommendations from the original research.
 
 ### Session Persistence
 
 `recon/` holds raw scouting data (gitignored, disposable).
 
-## The Tier System
+## The Phases
 
 ```
-Tier 0: GROUND TRUTH — what does the stakeholder actually have and need?
-   ↓  (runs parallel with Tier 2)
-Tier 1: INDEX — parse the primary source into a structured map
+ground-truth: what does the stakeholder actually have and need?
+   ↓  (runs parallel with survey)
+index: parse the primary source into a structured map
    ↓
-Tier 2: SURVEY — fan out by need-category, assess candidates
+survey: fan out by need-category, assess candidates
    ↓
-Tier 3: VERIFY — deep-dive promising candidates against primary sources
+verify: deep-dive promising candidates against primary sources
    ↓
-Tier 4: RESOLVE — detect and resolve contradictions across reports
+resolve: detect and resolve contradictions across reports
    ↓
-Tier 5: SYNTHESIZE — one capable agent reads ALL reports, writes final verdict
+synthesize: one capable agent reads ALL reports, writes final verdict
 ```
 
-Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments use all six.
+Not every research needs all phases. Quick scans skip `verify` and `resolve`. Deep assessments use all six.
 
-### Tier 0 — Ground Truth
+### `ground-truth`
 
 **Purpose:** Establish what the stakeholder has and needs. Without this, all recommendations float.
 
 **Always run.** Even if the project seems well-understood, audit agents discover things the orchestrator does not know: actual versions, hidden pain points, capability inventories, undocumented patterns.
 
-**Agent count:** 2-4 agents (capability auditor, dependency auditor, architecture auditor). All parallel at Tier 2 start.
+**Agent count:** 2-4 agents (capability auditor, dependency auditor, architecture auditor). All parallel at `survey` start.
 
 **Completion gate:**
 - All reports exist
@@ -98,17 +98,17 @@ Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments 
 
 **Common failure:** Shallow keyword search that misses patterns. Instruct agents to READ files, not just grep keywords.
 
-### Tier 1 — Index
+### `index`
 
 **Purpose:** Parse the primary research surface into a structured, cross-referenceable map. One agent, one output.
 
-**Always run.** This is the entry point. Must complete before Tier 2 starts.
+**Always run.** This is the entry point. Must complete before `survey` starts.
 
 **Completion gate:** `index.md` contains every category and every entry with name, URL/identifier, one-line description, plus statistics section with totals and category list.
 
 **Orchestrator decision:** Read ONLY the statistics/category list (~20 lines). Never read the full index into context. Fan-out needs the category list, not entry details.
 
-### Tier 2 — Survey
+### `survey`
 
 **Purpose:** Broad assessment across the landscape, organized by stakeholder need.
 
@@ -120,7 +120,7 @@ Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments 
 - One report per need-category with per-entry analysis (activity, compatibility, relevance rating, assessment)
 - Breadth expansion reports listing finds NOT in the original index
 
-### Tier 3 — Verify
+### `verify`
 
 **Purpose:** Deep verification of promising candidates against primary sources. Documentation claims become confirmed or refuted.
 
@@ -141,17 +141,17 @@ Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments 
 - Risks with evidence
 - Verdict with confidence level
 
-### Tier 4 — Resolve
+### `resolve`
 
 **Purpose:** Detect and resolve contradictions between reports.
 
 Scan for: same entity with different verdicts, same entity described as "dead" by one agent and "active" by another, compatibility or capability claims that disagree.
 
-**Agent count:** 1 per contradiction. Often 0. Sometimes 1-3. If no contradictions detected, proceed directly to Tier 5.
+**Agent count:** 1 per contradiction. Often 0. Sometimes 1-3. If no contradictions detected, proceed directly to `synthesize`.
 
 **Completion gate:** Each resolution report states the contradiction, what each report claimed, what primary source evidence shows, and which claim is correct.
 
-### Tier 5 — Synthesize
+### `synthesize`
 
 **Purpose:** One capable agent reads ALL reports and produces the final research deliverable.
 
@@ -161,44 +161,44 @@ Scan for: same entity with different verdicts, same entity described as "dead" b
 
 **Completion gate:**
 - Executive summary answering the original question
-- Tiered recommendations with evidence citations
+- Verdict-grouped recommendations with evidence citations
 - Dedicated section for the stakeholder's specific interest
-- Integration notes for top-tier items
+- Integration notes for ADOPT items
 - Coverage gaps
 - Research confidence assessment
 
 **Common failure:** Synthesis agent skims and writes generic recommendations. Require it to cite specific report files for each claim and include a confidence section acknowledging what was not verified.
 
-## Tier Transitions
+## Phase Transitions
 
-### How Many Tiers?
+### How Many Phases?
 
-| Research Need | Tiers Used | Rationale |
+| Research Need | Phases Used | Rationale |
 |--------------|-----------|-----------|
-| Quick landscape scan | 1 → 2 → 5 | No candidates worth deep-diving |
-| Standard evaluation | 0 + 1 → 2 → 3 → 5 | Index, survey, verify, synthesize |
-| Deep assessment | 0 + 1 → 2 → 3 → 4 → 5 | Full pipeline with contradiction resolution |
-| Multi-round deep assessment | Full first round → extract facts → full second round | When first round is unreliable |
+| Quick landscape scan | index → survey → synthesize | No candidates worth deep-diving |
+| Standard evaluation | ground-truth + index → survey → verify → synthesize | Index, survey, verify, synthesize |
+| Deep assessment | ground-truth + index → survey → verify → resolve → synthesize | Full pipeline with contradiction resolution |
+| Deep assessment with re-research | Full original research → extract facts → full re-research | When the original research is unreliable |
 
-### When to Add Agents Within a Tier
+### When to Add Agents Within a Phase
 
-- **New finds:** Breadth expansion surfaces significant unlisted candidates → launch Tier 3 verifiers
+- **New finds:** Breadth expansion surfaces significant unlisted candidates → launch `verify` agents
 - **Extraordinary claims:** Agent claims something remarkable → launch verification even if rated SKIP
-- **Missing context:** Survey agents need project details Tier 0 did not cover → launch additional auditor
+- **Missing context:** Survey agents need project details `ground-truth` did not cover → launch additional auditor
 
 ### When to Stop Early
 
-- **Question answered:** Tier 2 unanimously shows no viable candidates → skip to synthesis with "nothing to adopt"
-- **All candidates eliminated:** Tier 3 downgrades everything → skip Tier 4
+- **Question answered:** `survey` unanimously shows no viable candidates → skip to synthesis with "nothing to adopt"
+- **All candidates eliminated:** `verify` downgrades everything → skip `resolve`
 - **Context budget:** Research consuming too much time/cost → synthesize with what exists, note gaps
 
-### When to Launch a Second Round
+### When to Launch a Re-Research
 
-- Multiple Tier 3 verdicts overturned Tier 2 assessments (first-round models unreliable)
-- 2-4 candidates survived and each needs source-level scrutiny the first-round model cannot provide
+- Multiple `verify` verdicts overturned `survey` assessments (original agents unreliable)
+- 2-4 candidates survived and each needs source-level scrutiny the original agents could not provide
 - A specific technical question requires reading actual source code
 
-Second-round setup: separate directory, need-driven organization, inherit only facts from round one.
+Re-research setup: separate directory, need-driven organization, inherit only facts from the original research.
 
 ## Orchestration Protocol
 
@@ -208,18 +208,26 @@ Second-round setup: separate directory, need-driven organization, inherit only f
 2. Define three things: the **research surface** (URL, topic, corpus), the **research question** (what the stakeholder needs to decide), and the **project context** (what local files describe the stakeholder's situation).
 3. Use task tracking: one task per agent, mark in_progress/completed, set `blockedBy` for synthesis.
 
-### Per-Tier Execution
+### Name Every Scope by Slug
+
+Name each research branch, scout, report, verdict, and synthesis by one slug — lowercase hyphen-joined words saying what it covers; never by a number, letter, code, round, wave, tier, or cluster label, alone or beside the slug.
+
+Write each agent's description as `<act> <slug>`; never write it in another form.
+
+Carry the slug in every report file name; never name a report file without it.
+
+### Per-Phase Execution
 
 1. Design agent prompts from templates, adapted to domain.
-2. Launch ALL tier agents in parallel — one message, multiple Agent calls.
+2. Launch ALL phase agents in parallel — one message, multiple Agent calls.
 3. Mark completions as notifications arrive. Read full reports only when arbitration is needed.
 4. Gate check: all tasks complete? Any reports missing?
 5. Scan completion summaries for: candidates to verify, contradictions to resolve, surprising claims to spot-check.
-6. Launch next tier — agents read prior tier reports via file paths.
+6. Launch next phase — agents read prior phase reports via file paths.
 
-### Between-Tier Decisions
+### Between-Phase Decisions
 
-After Tier 2, decide what enters Tier 3:
+After `survey`, decide what enters `verify`:
 - Every candidate rated PROMISING in a survey → verification agent
 - Every new find from breadth expansion mentioned in 2+ survey reports OR directly addressing a stakeholder need → verification agent
 - Every claim contradicting 2+ other reports OR asserting capability without primary source evidence → spot-check agent
@@ -312,7 +320,7 @@ Source: {PRIMARY_URL}
 
 - Total categories: N
 - Total entries: N
-- Categories list: cat1, cat2, cat3, ...
+- Categories list: {need-slug}, {need-slug}, ...
 
 Be EXHAUSTIVE. Every single entry must appear. Do not skip or summarize.
 ```
@@ -409,8 +417,8 @@ landscape size stats, notable patterns.
 ```
 VERIFICATION TASK: Two research reports make contradictory claims.
 
-Report A ({REPORT_A_PATH}) claims: {CLAIM_A}
-Report B ({REPORT_B_PATH}) claims: {CLAIM_B}
+{REPORT_SLUG} ({REPORT_PATH}) claims: {CLAIM}
+{OTHER_REPORT_SLUG} ({OTHER_REPORT_PATH}) claims: {OTHER_CLAIM}
 
 These claims CONTRADICT each other. One may be wrong or hallucinated.
 
@@ -427,14 +435,14 @@ Format:
 # {TOPIC} — Contradiction Resolution
 
 ## The Contradiction
-- Report A claims: ...
-- Report B claims: ...
+- {report-slug} claims: ...
+- {other-report-slug} claims: ...
 
 ## Primary Source Checks
-### Check 1: {what was checked}
+### {checked-claim-slug}
 - URL: ...
 - Result: ...
-- Supports: Report A / Report B / Neither
+- Supports: {report-slug} / {other-report-slug} / Neither
 
 ## Verdict
 {Which claim is correct, with evidence}
@@ -469,20 +477,20 @@ Do not include claims that aren't in any report.
 
 ## Reports to Read (ALL of them, in this order)
 
-### Ground Truth (Tier 0)
-{TIER_0_FILE_PATHS}
+### ground-truth
+{GROUND_TRUTH_FILE_PATHS}
 
-### Index (Tier 1)
-{TIER_1_FILE_PATHS}
+### index
+{INDEX_FILE_PATHS}
 
-### Surveys (Tier 2)
-{TIER_2_FILE_PATHS}
+### survey
+{SURVEY_FILE_PATHS}
 
-### Verifications (Tier 3)
-{TIER_3_FILE_PATHS}
+### verify
+{VERIFY_FILE_PATHS}
 
-### Resolutions (Tier 4, if any)
-{TIER_4_FILE_PATHS}
+### resolve (if any)
+{RESOLVE_FILE_PATHS}
 
 ## The Question to Answer
 {STAKEHOLDER_RESEARCH_QUESTION}
@@ -499,7 +507,7 @@ for every factual claim.
 
 ## Report Format Templates
 
-Consistent formats allow the Tier 5 synthesizer to cross-reference findings reliably. Paste the relevant template into every agent prompt.
+Consistent formats allow the `synthesize` agent to cross-reference findings reliably. Paste the relevant template into every agent prompt.
 
 **Rating scales (use consistently across all reports):**
 - **ADOPT** — clear value, verified compatibility, worth integrating
@@ -531,7 +539,7 @@ Source: {URL}
 
 - **Total categories:** N
 - **Total entries:** N
-- **Categories list:** cat1, cat2, cat3
+- **Categories list:** {need-slug}, {need-slug}, {need-slug}
 ```
 
 Every entry must have name, URL, and description. No partial entries.
@@ -631,18 +639,18 @@ Required: at least one inventory table, at least one quantified finding, ranked 
 # {Topic} — Contradiction Resolution
 
 ## The Contradiction
-- **Report A** ({file path}): claims {claim A}
-- **Report B** ({file path}): claims {claim B}
+- **{report-slug}** ({file path}): claims {claim}
+- **{other-report-slug}** ({file path}): claims {other claim}
 
 ## Primary Source Checks
 
-### Check 1: {what was checked}
+### {checked-claim-slug}
 - **URL:** {url}
 - **Result:** {what the primary source shows}
-- **Supports:** Report A / Report B / Neither
+- **Supports:** {report-slug} / {other-report-slug} / Neither
 
 ## Verdict
-**{Report A is correct / Report B is correct / Both partially correct / Both wrong}**
+**{{report-slug} is correct / {other-report-slug} is correct / Both partially correct / Both wrong}**
 
 Evidence summary: {2-3 sentences}
 
@@ -663,10 +671,10 @@ Evidence summary: {2-3 sentences}
 ## Project Context (from audits)
 [Brief: framework version, component count, dep count, top 3 pain points]
 
-## Adoption Tiers
+## Adoption Verdicts
 
-### Tier 1: ADOPT NOW
-[Only items with VERIFIED compatibility from Tier 3 reports.]
+### ADOPT NOW
+[Only items with VERIFIED compatibility from `verify` reports.]
 
 #### {Library Name}
 - **What it solves:** [specific project problem, citing project audit]
@@ -674,22 +682,22 @@ Evidence summary: {2-3 sentences}
 - **Integration effort:** {Trivial / Moderate / Significant}
 - **Risk:** {1 sentence}
 
-### Tier 2: EVALUATE (needs POC)
+### EVALUATE (needs POC)
 #### {Library Name}
 - **What it might solve:** ...
 - **POC must test:** [specific technical question]
 - **Decision criteria:** [adopt if X, skip if Y]
 
-### Tier 3: WATCH (trigger conditions)
+### WATCH (trigger conditions)
 #### {Library Name}
 - **Becomes relevant when:** [specific project change]
 
-### Tier 4: SKIP
+### SKIP
 | Reason | Libraries |
 |--------|-----------|
-| Incompatible version | lib1, lib2, lib3 |
-| Archived/dead | lib4, lib5 |
-| Out of scope | lib6, lib7, ... |
+| Incompatible version | {library}, {library}, ... |
+| Archived/dead | {library}, ... |
+| Out of scope | {library}, ... |
 
 ## {Special Interest Section}
 [Dedicated answer to the user's specific sub-question. Ground in evidence.]
@@ -701,7 +709,7 @@ Evidence summary: {2-3 sentences}
 [What the project needs that the ecosystem does not provide]
 
 ## Research Confidence
-| Tier | Confidence | Basis |
+| Verdict | Confidence | Basis |
 |------|-----------|-------|
 | ADOPT | High | All verified against primary sources |
 | EVALUATE | Medium | README-level assessment, POC needed |
@@ -713,39 +721,39 @@ Evidence summary: {2-3 sentences}
 
 ## Directory Structure
 
-### Single-Round Research
+### Single-Pass Research
 
 ```
 {project}/research/{topic}/
-├── index.md                    # Tier 1: structured map of the surface
-├── categories/                 # Tier 2: per-need-category surveys
+├── index.md                    # index: structured map of the surface
+├── categories/                 # survey: per-need-category surveys
 │   ├── {need-a}.md
 │   └── {need-b}.md
-├── deep-dives/                 # Tier 0 + 3 + 4: audits, verifications, resolutions
+├── deep-dives/                 # ground-truth + verify + resolve: audits, verifications, resolutions
 │   ├── project-{aspect}-audit.md
 │   ├── {candidate}.md
 │   └── {topic}-resolution.md
 └── synthesis/
-    └── recommendations.md      # Tier 5: final deliverable
+    └── recommendations.md      # synthesize: final deliverable
 ```
 
-### Multi-Round Research
+### Re-Research
 
 ```
-{project}/research/{topic}-v2/
-├── context/                    # Facts extracted from v1 (NO opinions)
-│   ├── project-brief.md       # Distilled from Tier 0 audits
+{project}/research/{topic}-{focus}/
+├── context/                    # Facts extracted from the original research (NO opinions)
+│   ├── project-brief.md       # Distilled from ground-truth audits
 │   ├── source-index.md        # The structured index (factual)
 │   └── metadata-factsheet.md  # Raw metadata: versions, URLs, dates
-├── tier1-landscape/            # Need-driven surveys
-├── tier2-verification/         # Source-level deep-dives
+├── landscape/                  # Need-driven surveys
+├── verification/               # Source-level deep-dives
 └── synthesis/
     └── final-verdict.md
 ```
 
 ## Adapting to Different Domains
 
-The tier system is domain-agnostic. The instantiation is domain-specific:
+The phase system is domain-agnostic. The instantiation is domain-specific:
 
 | Domain | Primary Source | Registry/DB | Verification Method |
 |--------|---------------|-------------|---------------------|
@@ -756,19 +764,19 @@ The tier system is domain-agnostic. The instantiation is domain-specific:
 
 ## Anti-Patterns
 
-Ten failure modes observed in real multi-agent research sessions. The orchestrator checks for these before launching each tier and after scanning completion summaries.
+Ten failure modes observed in real multi-agent research sessions. The orchestrator checks for these before launching each phase and after scanning completion summaries.
 
 **AP-1: Context Relay.** Reading reports into orchestrator context and relaying to next agent. Fix: point agents to file paths.
 
-**AP-2: Premature Synthesis.** Launching synthesis before project audits (Tier 0) complete. Fix: block synthesis on ALL prior tiers including Tier 0.
+**AP-2: Premature Synthesis.** Launching synthesis before project audits (`ground-truth`) complete. Fix: block synthesis on ALL prior phases including `ground-truth`.
 
-**AP-3: README Trust.** Treating a library's README as evidence. Fix: Tier 3 agents fetch actual manifests, registry APIs, source code.
+**AP-3: README Trust.** Treating a library's README as evidence. Fix: `verify` agents fetch actual manifests, registry APIs, source code.
 
 **AP-4: Uncounted Variant.** Choosing an agent's variant from a table, a role, or a default. Fix: choose it by the orchestration-economics count.
 
 **AP-5: Sequential Addiction.** Launching agents one at a time when they could run in parallel. Fix: all independent agents launch in a single message.
 
-**AP-6: Hallucination Propagation.** Unchecked hallucinated claims reaching synthesis. Fix: spot-check extraordinary claims, Tier 4 contradiction resolution, synthesizer flags single-source unverified claims.
+**AP-6: Hallucination Propagation.** Unchecked hallucinated claims reaching synthesis. Fix: spot-check extraordinary claims, `resolve` contradiction resolution, synthesizer flags single-source unverified claims.
 
 **AP-7: Scope Drift.** Agents wandering beyond their assigned category. Fix: name the exact index section and entries to assess.
 
@@ -780,14 +788,14 @@ Ten failure modes observed in real multi-agent research sessions. The orchestrat
 
 ### Pre-Launch Checklist
 
-Before launching each tier:
+Before launching each phase:
 
 - [ ] No agent prompt relays content from another agent's report (AP-1)
-- [ ] All prior tiers complete, including project audits (AP-2)
+- [ ] All prior phases complete, including project audits (AP-2)
 - [ ] Verification agents instructed to check primary sources, not READMEs (AP-3)
 - [ ] Each agent's variant chosen by the orchestration-economics count (AP-4)
 - [ ] All independent agents launch in parallel within a single message (AP-5)
-- [ ] Extraordinary claims from prior tiers have verification agents assigned (AP-6)
+- [ ] Extraordinary claims from prior phases have verification agents assigned (AP-6)
 - [ ] Each agent's scope matches exactly one category/candidate (AP-7)
 - [ ] Report format template pasted into every agent prompt (AP-8)
 - [ ] Breadth-expansion high-signal finds have verification agents (AP-9)
@@ -797,5 +805,5 @@ Before launching synthesis:
 
 - [ ] All contradictions resolved between reports
 - [ ] Every ADOPT recommendation has a corresponding deep-dive report
-- [ ] Synthesis agent's file list includes EVERY report from EVERY tier
+- [ ] Synthesis agent's file list includes EVERY report from EVERY phase
 - [ ] Synthesis prompt includes the user's original question

@@ -16,13 +16,13 @@ research/awesome-leptos/
 └── synthesis/recommendations.md
 ```
 
-## Tier 1: Index (1 haiku agent)
+## index (1 haiku agent)
 
 Fetched `https://github.com/leptos-rs/awesome-leptos` README. Parsed into structured index: 10 categories, 98 entries.
 
-Orchestrator read ONLY the last 20 lines (statistics + category list) to plan Tier 2 fan-out.
+Orchestrator read ONLY the last 20 lines (statistics + category list) to plan `survey` fan-out.
 
-## Tier 2: Survey + Tier 0: Audit (9 haiku agents, parallel)
+## survey + ground-truth (9 haiku agents, parallel)
 
 **Category surveyors (6 agents):**
 - Styling and Design → 7 entries assessed
@@ -39,12 +39,12 @@ Orchestrator read ONLY the last 20 lines (statistics + category list) to plan Ti
 
 All 9 agents launched in one message. Completed in ~2.5 minutes wall time.
 
-**Tier 2 results (from completion summaries, not full reports):**
+**survey results (from completion summaries, not full reports):**
 - ADOPT candidates: tracing-subscriber-wasm, leptos_i18n (already adopted)
 - EVALUATE candidates: leptos-struct-table, leptix, leptosfmt
 - Notable: all Tailwind component libraries either imposed design opinions or were archived
 
-## Tier 3: Verify (10 haiku agents, parallel)
+## verify (10 haiku agents, parallel)
 
 **Candidate verifiers (4 agents):**
 - leptos_i18n → VERIFIED: already adopted, v0.6.1, Leptos 0.8 exact match
@@ -66,7 +66,7 @@ All 9 agents launched in one message. Completed in ~2.5 minutes wall time.
 
 All 10 agents launched in one message. Completed in ~2.5 minutes.
 
-## Tier 4: Resolve (2 haiku agents)
+## resolve (2 haiku agents)
 
 **Contradiction detected:** Components surveyor said "Rust Radix archived Feb 2, 2026." Tailwind search agent said "radix-leptos has 57+ primitives, production-ready."
 
@@ -78,7 +78,7 @@ All 10 agents launched in one message. Completed in ~2.5 minutes.
 - DataTable component disabled due to compile errors
 - VERDICT: DEFER — ActionForm integration risk too high for current project
 
-## Tier 5: Synthesize (1 sonnet agent)
+## synthesize (1 sonnet agent)
 
 Read all 21 reports. Produced final recommendations:
 
@@ -101,16 +101,16 @@ Read all 21 reports. Produced final recommendations:
 | Sonnet agents | 1 (synthesis only) |
 | Reports produced | 21 |
 | Entries assessed | 98 (awesome-list) + ~50 (crates.io expansion) |
-| Wall time (estimated) | ~15 minutes across all tiers |
-| Orchestrator context consumed | Minimal — task notifications and tier-transition decisions only |
+| Wall time (estimated) | ~15 minutes across all phases |
+| Orchestrator context consumed | Minimal — task notifications and phase-transition decisions only |
 | Contradictions detected | 1 (resolved) |
 | ADOPT recommendations | 1 (tracing-subscriber-wasm) |
 | Libraries eliminated | ~140+ |
 
 ## Lessons Learned
 
-1. **L1 synthesis was premature.** An initial synthesis without project audits produced generic recommendations. The grounded L2 synthesis (after all tiers) was materially different.
-2. **Haiku hallucinated once.** The crates.io search agent reported download counts that were plausible but couldn't be independently verified. The contradiction resolution tier caught the important one (Radix).
-3. **Breadth expansion found the most significant candidate** (radix-leptos) that wasn't on the awesome list. Without the expansion tier, the synthesis would have concluded "no headless option exists."
+1. **The ungrounded synthesis was premature.** An initial synthesis without project audits produced generic recommendations. The grounded synthesis (after all phases) was materially different.
+2. **Haiku hallucinated once.** The crates.io search agent reported download counts that were plausible but couldn't be independently verified. The `resolve` phase caught the important one (Radix).
+3. **Breadth expansion found the most significant candidate** (radix-leptos) that wasn't on the awesome list. Without breadth expansion, the synthesis would have concluded "no headless option exists."
 4. **Production deps inspection was the strongest signal.** Knowing that zero production sites use a component library grounded the "don't adopt one" recommendation more convincingly than any individual library assessment.
 5. **Project audits changed the recommendations.** The UI audit revealed that pain points were minor boilerplate (hydration gates, form fields), not missing components. This shifted the advice from "find a library" to "extract three internal helpers."
