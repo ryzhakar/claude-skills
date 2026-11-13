@@ -340,7 +340,9 @@ Launch `spec-reviewer` on the sweep, once the sweep's implementer reports `Statu
 
 Launch `code-quality-reviewer` on the sweep in the same turn, with `sweep` in place of the spec verdict path; never hold it for the spec verdict.
 
-Take the sweep's spec verdict on its evidence file as its spec precondition; never borrow a standing spec PASS for a sweep.
+Take the suite passing at the sweep's head as the quality review's precondition; never borrow a standing spec PASS for a sweep.
+
+Gate the sweep's merge on the spec verdict on its evidence file; never gate it on the quality review alone.
 
 Integrate the sweep as `integrate-the-units` prescribes; never integrate it unreviewed.
 
