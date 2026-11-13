@@ -1,7 +1,8 @@
 ---
 name: agentic-delegation
 description: |
-  Decompose work into agent-delegated units across model tiers. Agents are cheap,
+  Decompose work into agent-delegated units, each on the model and effort
+  orchestration-economics counts for it. Agents are cheap,
   context is expensive — decompose aggressively, delegate everything, assemble results.
 
   Triggers: "delegate", "parallelize", "parallel launch", "launch", "orchestrate",
@@ -65,7 +66,7 @@ Every user action verb is a delegation directive. The orchestrator decomposes, d
 | fix, debug | debugging |
 | check, test, review, audit | review |
 
-The user sees every tool call, agent launch, continuation, and notification in the UI. Output results, decisions, and questions. NEVER output process. No dispatch announcements (launches or continuations). No notification narration. No tier-change narration. No status updates.
+The user sees every tool call, agent launch, continuation, and notification in the UI. Output results, decisions, and questions. NEVER output process. No dispatch announcements (launches or continuations). No notification narration. No variant-change narration. No status updates.
 </you_are_the_orchestrator>
 
 <receive_the_task>
@@ -90,28 +91,20 @@ No task is too small. "Fetch this URL and report the version number" is a valid 
 
 <design_the_delegation>
 
-<assign_model_tiers>
-Three tiers. Match tier to work type. Classify the work first, then assign.
+<choose_each_variant>
+Invoke `orchestration:orchestration-economics` and read it whole before any act — a launch, continuation, or stop of an agent — that sets a model or an effort; never set either before reading it.
 
-| Work type | Tier | Rationale |
-|-----------|------|-----------|
-| Mechanical, deterministic transform | haiku | Follows instructions literally; no interpretation needed |
-| Reads meaning, makes judgment, produces reasoned output | sonnet | Understands what it reads; one task, one artifact per agent |
-| Authors guidance another agent reads as instructions | opus | Skill files, plan documents, instruction templates |
+Choose for each launch the variant — a model at one effort — that `orchestration-economics` counts cheapest per work unit, one task delivered right; never take a variant from a table of work types, a role, or a default.
 
-Upgrade on observed failure: haiku contradicts itself or makes extraordinary claims, launch again on sonnet. Sonnet output is insufficient (rare, usually means the task needs decomposition), decompose further or escalate to opus. Never downgrade across the work-type boundary.
+Judge the work's complexity against the project's own counted attempts, an attempt being one agent's work on one task; never judge it from a guess.
 
-Task size does not change task type. Ten small audits are ten sonnet launches, not ten haiku launches. Each audit reads meaning. Never assign haiku to judgment work because the unit is small. Never pre-assign opus to ordinary specialist work because the stakes feel high. Guidance authorship is the opus trigger, not stakes alone.
+Write down each chosen variant with the count it rests on; never write a variant alone.
 
-Haiku executes deterministic transforms. It never interprets meaning. Use haiku for: shell commands, text formatting, file operations (copy, move, glob, mtime), regex against fixed patterns, status writes against a predefined schema. NEVER use haiku for extraction, comparison, synthesis, judgment, or categorization. The test: if the agent must understand what it reads, the task is sonnet work. Prompt haiku with exact transforms, absolute paths, exact commands, exact schemas. Leave no interpretive surface.
-
-Sonnet excels at source-code reasoning, compatibility assessment, code that compiles first try, nuanced comparison, multi-step instructions with judgment, and synthesis of 5-15 inputs. Give sonnet room to reason but keep scope narrow; it drifts on wide briefs.
-
-Opus is rarely needed as agent. Use opus when output guides another agent's behavior, when synthesizing 20+ reports across domains, or for high-stakes decisions. Code production stays on sonnet. Tests, source modules, and fixtures stay on sonnet.
-</assign_model_tiers>
+Read a variant's published figures as the starting reading while the project holds no count of its own; never keep a published figure past the project's own count.
+</choose_each_variant>
 
 <construct_the_prompt>
-Every agent prompt has nine sections. Skip none. A well-structured prompt for haiku outperforms a vague prompt for sonnet.
+Every agent prompt has nine sections. Skip none. A well-structured prompt on a cheaper variant outperforms a vague prompt on a stronger one.
 
 1. Role (1 sentence): what the agent is and what it does. A job description, not a personality. Example: "You are auditing the dependency tree of a web application."
 
@@ -125,7 +118,7 @@ Every agent prompt has nine sections. Skip none. A well-structured prompt for ha
 
 6. Report format: the exact output template. Cite the file path and line range where the template lives. Specify what goes in each section.
 
-7. Scope boundaries: what to do AND what not to do. For haiku, forbid judgment, evaluation, and recommendations.
+7. Scope boundaries: what to do AND what not to do. For mechanical transforms, forbid judgment, evaluation, and recommendations.
 
 8. Tool expectations: which tools and each tool's purpose. Syntax examples for non-obvious tools.
 
@@ -262,14 +255,14 @@ Operations exceeding 60 seconds (test suites, builds, deployments) use backgroun
 
 <common_task_patterns>
 
-| Task type | Decomposition | Tiers | Assembly |
-|-----------|--------------|-------|----------|
-| Research / ecosystem survey | By entity or registry. See `research-tree` skill. | haiku: mechanical fetches. sonnet: category surveys, evaluation. | sonnet or opus synthesizes (map-reduce). |
-| Implementation | By entity or concern. See `dev-cycle` skill. | sonnet implements and reviews. haiku runs build/test/lint, reports exit codes. | sonnet interprets test output. |
-| Audit / review | By CONCERN, not by target. Compliance agent reads all targets for compliance; quality agent reads all targets for quality. | sonnet runs every audit. | sonnet or opus synthesizes into prioritized review. |
-| Investigation | Speculative parallel: 3 sonnet agents, each a different hypothesis. | sonnet investigates and implements. haiku runs reproduction commands. | Evidence determines which hypothesis wins. |
-| Documentation / writing | By phase: gather facts, assemble, verify claims, format. | sonnet gathers and assembles. haiku formats final output. | sonnet verifies claims against sources. |
-| Exploration | 5-15 agents with different search angles, all background, all parallel. | sonnet floor (each reads meaning). | Read notifications, launch 2-3 deeper on promising threads. |
+| Task type | Decomposition | Assembly |
+|-----------|--------------|----------|
+| Research / ecosystem survey | By entity or registry. See `research-tree` skill. | One agent synthesizes (map-reduce). |
+| Implementation | By entity or concern. See `dev-cycle` skill. | An agent interprets test output. |
+| Audit / review | By CONCERN, not by target. Compliance agent reads all targets for compliance; quality agent reads all targets for quality. | One agent synthesizes into prioritized review. |
+| Investigation | Speculative parallel: 3 agents, each a different hypothesis. | Evidence determines which hypothesis wins. |
+| Documentation / writing | By phase: gather facts, assemble, verify claims, format. | An agent verifies claims against sources. |
+| Exploration | 5-15 agents with different search angles, all background, all parallel. | Read notifications, launch 2-3 deeper on promising threads. |
 
 </common_task_patterns>
 
@@ -288,7 +281,7 @@ Two correction paths. Choose by whether prior work is salvageable.
 
 Scoped correction (wrong path, missing constraint, narrowed scope): the agent's approach is sound but it needs updated instructions. Send a clarification via `SendMessage(to: agent-id)` with only what changed. The agent retains all prior context and continues from where it was. If the agent already completed, `SendMessage` auto-resumes it in the background.
 
-Fundamental failure (wrong approach, wrong tier, wrong decomposition): call `TaskStop` immediately, then launch a fresh agent with a corrected prompt. Do not wait for an agent to finish work you know is unsalvageable.
+Fundamental failure (wrong approach, wrong variant, wrong decomposition): call `TaskStop` immediately, then launch a fresh agent with a corrected prompt. Do not wait for an agent to finish work you know is unsalvageable.
 
 <never_do_this reason="4 minutes wasted on known-bad work">
 
@@ -328,7 +321,7 @@ Agents can launch agents of their own, up to three layers below the main convers
 
 All recursion can be expressed as iteration. Keep the orchestrator the only launch loop.
 
-Pattern: orchestrator launches a sonnet agent with "Decompose this task. Return a delegation spec." Agent returns a list of task, tier, inputs, and output path entries. Orchestrator launches agents from the spec.
+Pattern: orchestrator launches an agent with "Decompose this task. Return a delegation spec." Agent returns a list of task, inputs, and output path entries. Orchestrator launches agents from the spec.
 </understand_iteration_constraint>
 
 </launch_and_monitor>
@@ -346,7 +339,7 @@ Scan notifications for these signals:
 | Suspiciously short report | Early exit, misunderstood scope | Send clarification via `SendMessage` with more specific scope |
 | Recommendations when told not to | Vague prompt | Discard recommendations, use findings only |
 
-Never debug a failed agent in orchestrator context. For scoped failures (tool confusion, missing context, unclear scope), send a clarification via `SendMessage` — the agent already holds the domain context and can correct course cheaply. For fundamental failures (hallucination, wrong approach, wrong tier), launch the task again with a better prompt, a better model, or decomposed sub-tasks.
+Never debug a failed agent in orchestrator context. For scoped failures (tool confusion, missing context, unclear scope), send a clarification via `SendMessage` — the agent already holds the domain context and can correct course cheaply. For fundamental failures (hallucination, wrong approach, wrong variant), launch the task again with a better prompt, another variant chosen by `orchestration-economics`, or decomposed sub-tasks.
 
 When two agents disagree, do not decide which is right by reading both reports. Launch a resolver agent tasked only with checking primary sources. It reports which claim the evidence supports.
 
@@ -354,7 +347,7 @@ For batches of 10+ agents, spot-check 1-2 reports by launching a verification ag
 
 Agent self-reports are unreliable. After critical agents complete, launch a verification agent: run the test suite, check output files exist with expected content, report `git diff --stat`. Trust artifacts, not claims.
 
-When synthesis requires reading full reports, delegate to a sonnet or opus agent. When synthesis combines 3-sentence notifications, the orchestrator assembles directly.
+When synthesis requires reading full reports, delegate to an agent. When synthesis combines 3-sentence notifications, the orchestrator assembles directly.
 </verify_and_assemble>
 
 <manage_the_session>
