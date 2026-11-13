@@ -24,7 +24,7 @@ Then act on the decision; never wait for the owner's word while the owner is awa
 
 <never_do_this reason="blocked on the owner">
 <invoke name="AskUserQuestion">
-<parameter name="questions">[{"question":"~70 units left cost more than wave 2. Pace how?","header":"Pacing","multiSelect":false,"options":[{"label":"Batch","description":"Groups."},{"label":"Pause","description":"Stop."}]}]</parameter>
+<parameter name="questions">[{"question":"~70 units left cost more than `parser-rewrite`. Pace how?","header":"Pacing","multiSelect":false,"options":[{"label":"Batch","description":"Groups."},{"label":"Pause","description":"Stop."}]}]</parameter>
 </invoke>
 </never_do_this>
 
