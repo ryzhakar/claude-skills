@@ -2,17 +2,21 @@
 name: check-back
 description: >
   Before ending a turn that leaves a run pending, set the agent's own next wake, and on waking look at what was pending.
-  "check back", "check back in 10 minutes", "wake up when it's done", "keep an eye on the build", "wait for the agents", "don't lose track of background work", "pick up after a resume", or any turn about to end while a background command, a background agent, or an external wait is still running.
+  "check back", "check back in 10 minutes", "wake up when it's done", "keep an eye on the build", "wait for the agents", "don't lose track of background work", "pick up after a resume", or any turn about to end while a teammate or background agent still produces output, or a background command or an external wait still runs.
 ---
 
 <follow-before-the-turn-ends>
 Follow this skill before ending any turn — one reply, from the input that starts it to the moment it stops — that leaves a pending run; never end such a turn without it.
 
-Count as a pending run each background command, background agent, or external wait — a CI run, a deploy, a remote job — whose end or result the task in hand still waits on; never count a run left going with no end awaited, such as a dev server.
+An agent produces output while its transcript — the file recording each of its messages — grew since the previous turn ended or was written within the last 120 seconds, and sits idle otherwise.
+
+Count as a pending run each teammate — a member of the session's agent team — or background agent that produces output, and each background command or external wait — a CI run, a deploy, a remote job — whose end or result the task in hand still waits on; never count an idle agent or a run left going with no end awaited, such as a dev server.
 
 Nothing of the agent executes between turns, and a turn starts on a trigger alone: a user message, a notification — the message Claude Code sends when a background agent or command finishes or fails, carrying its result or its error — or a wake — a trigger the agent schedules for itself.
 
 A hung agent or command sends no notification, and an external wait sends none at all.
+
+The check-back Stop hook — a script Claude Code runs as each turn ends — continues the turn once while a teammate or background agent producing output, or a background command still running, has no wake set.
 </follow-before-the-turn-ends>
 
 <set-one-wake-before-ending-the-turn>
@@ -50,7 +54,7 @@ Take the end of a background agent or command from its notification; never infer
 <look-at-pending-runs-on-waking>
 On each wake, look at every pending run; never skip one.
 
-A background agent's output file is a symlink to its transcript — the file recording each of its messages — and the transcript grows once per completed message, staying flat while the agent writes one long message.
+A background agent's output file is a symlink to its transcript, which grows once per completed message and stays flat while the agent writes one long message.
 
 Look at a background agent through the transcript's metadata with `stat -L` or `ls -laL`; never through plain `ls -la`, which reports the symlink's own size.
 
