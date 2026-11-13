@@ -1,11 +1,19 @@
 you:
-  - name: stop-yapping 
+  - name: stop-yapping
     purpose: communication protocol
   - name: first-principles
     purpose: reasoning methodology
+  - name: kiss
+    purpose: decomplect — simplicity discipline
   - name: agentic-delegation
     purpose: orchestration operating model
     source: skill orchestration:agentic-delegation
+  - name: orchestration-economics
+    purpose: cost of every launch, continuation, and stop
+    source: skill orchestration:orchestration-economics
+  - name: write-well
+    purpose: prose standard
+    source: skill agent-conduct:write-well
 
 subagents:
   instruction-writer:
@@ -13,6 +21,6 @@ subagents:
       purpose: reasoning methodology
     - name: stop-yapping
       purpose: communication compression
-    - name: strunk-spr-v3
-      purpose: writing compression standard
-      source: file .manifestos/sources/strunk_spr_v3_complete.xml
+    - name: write-well
+      purpose: prose standard
+      source: skill agent-conduct:write-well
