@@ -54,6 +54,10 @@ Take the end of a background agent or command from its notification; never infer
 <look-at-pending-runs-on-waking>
 On each wake, look at every pending run; never skip one.
 
+A teammate's transcript is the `.jsonl` file in the `<session-id>/subagents/` directory beside the session's own transcript whose `.meta.json` twin carries the teammate's description.
+
+Look at a teammate through its transcript's metadata with `stat -L`; never through the transcript's contents.
+
 A background agent's output file is a symlink to its transcript, which grows once per completed message and stays flat while the agent writes one long message.
 
 Look at a background agent through the transcript's metadata with `stat -L` or `ls -laL`; never through plain `ls -la`, which reports the symlink's own size.
