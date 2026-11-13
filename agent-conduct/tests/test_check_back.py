@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import os
 import subprocess
@@ -8,11 +9,14 @@ from pathlib import Path
 import pytest
 
 HOOK = Path(__file__).resolve().parents[1] / "hooks" / "check-back.py"
+HOOK_SPEC = importlib.util.spec_from_file_location("check_back", HOOK)
+HOOK_MODULE = importlib.util.module_from_spec(HOOK_SPEC)
+HOOK_SPEC.loader.exec_module(HOOK_MODULE)
+OBSERVED_LINE_CAP = HOOK_MODULE.OBSERVED_STATES_LINE_CAP
+PRODUCING_WINDOW_SECONDS = HOOK_MODULE.PRODUCING_WINDOW_SECONDS
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "stop-payload.json").read_text())
 SESSION_ID = FIXTURE["session_id"]
 PROJECT_SLUG = Path(FIXTURE["transcript_path"]).parent.name
-OBSERVED_LINE_CAP = 200
-PRODUCING_WINDOW_SECONDS = 120
 STALE_AGE_SECONDS = 3600
 FUTURE_AGE_SECONDS = -STALE_AGE_SECONDS
 TEAMMATE_COUNT_AT_REAL_SCALE = 500
