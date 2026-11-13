@@ -881,32 +881,14 @@ sys.stdout.write(re.sub(r"\$\{(\w+)\}", repl, text))
 
 SubagentStop output — `hookSpecificOutput.additionalContext` or `decision: "block"` with `reason` — reaches the stopping subagent and keeps it running; it never reaches the parent. To drive the parent after a subagent returns, inject through `PostToolUse` on the `Agent` tool (foreground completions, `tool_response.status` `completed`) or record state in SubagentStop and read it from a main-session `Stop` hook (background completions). Plugin subagents report the plugin-scoped `agent_type`, such as `dev-cycle:implementer`; anchor matchers as `^dev-cycle:implementer$`.
 
-No marketplace plugin ships a SubagentStop-and-PostToolUse chain: dev-cycle's review-chain hook retired 2026-11-13 (see `architecture_log.md`), and the orchestrator tracks owed reviews in its status file. The main-session `Stop` route survives in agent-conduct's check-back hook below.
+```
+implementer stops      → SubagentStop records a pending spec-review stage (on Status: DONE alone) and the agent id → kind
+orchestrator launches  → PostToolUse on Agent retires the stage the launched agent satisfies
+orchestrator continues → PostToolUse on SendMessage retires the stage the known recipient satisfies
+orchestrator's turn ends → Stop hook continues it with the pending stage's mandate
+```
 
-### Background-Work Stop Gate
-
-Reference implementation: `agent-conduct/hooks/check-back.py` (a `Stop` entry with argument `stop`, a `SessionStart` entry matcher `resume` with argument `resume`), tested by `just hooks-test`. The Stop payload carries `background_tasks`, `session_crons`, `session_id`, `transcript_path`, and `stop_hook_active`; when either list is absent the hook claims nothing.
-
-Which tasks count as awaited:
-
-| Task | Awaited while |
-|---|---|
-| Shell command, Monitor watch | its status is not finished (`completed`, `finished`, `done`, `stopped`, `failed`, `killed`, `cancelled`) |
-| Agent (`type` `subagent` or `teammate`) | its status is not finished and it produces output: its transcript grew since the previous Stop, or was written within the last 120 seconds |
-
-An agent that is not finished and not producing output is idle and never awaited, so an idle teammate does not keep a turn going.
-
-The transcript signal:
-
-- Each Stop stores every agent transcript's size by task id in `<CLAUDE_PLUGIN_DATA>/check-back/<session>.output-sizes`; the next Stop compares against it. A transcript with no stored size counts as producing only through the 120 s window.
-- A `subagent` task's transcript is the target of its output symlink, `<tasks root>/<project slug>/<session id>/tasks/<task id>.output`. The tasks root is `/tmp/claude-<uid>`, overridden by `CHECK_BACK_TASKS_ROOT`; the project slug is the name of `transcript_path`'s parent directory.
-- A `teammate` task has no output symlink to follow. The hook joins it to its transcript through the teammate meta files: every `<transcript_path's directory>/<session id>/subagents/*.meta.json` whose `taskKind` is `in_process_teammate` supplies a `description`; the task whose `description` equals it takes the sibling `.jsonl` as its transcript, the newest by modification time where descriptions repeat. A task with no matching meta file or no readable transcript is not producing.
-
-Continuation: with at least one awaited task other than a Monitor watch, no cron in `session_crons`, no awaited Monitor watch, and `stop_hook_active` false, the hook writes `hookSpecificOutput.additionalContext` naming the awaited tasks and telling the turn to run the `agent-conduct:check-back` skill. The `stop_hook_active` guard ends a turn already continued once. The hook also records the awaited tasks per session under `<CLAUDE_PLUGIN_DATA>/check-back/<session>`; on `resume` the SessionStart entry names them and deletes the record.
-
-### Hook Test Coverage
-
-`just hooks-test` reads every `*/hooks/hooks.json` in the marketplace, prints each hook as `plugin | event | script | tests`, runs every `tests/` and `hooks/tests/` suite under pytest, and ends with the hooks no test file names. A hook counts as tested when its script's file name appears in a test file. Measured 2026-11-13: four entries in agent-conduct, 60 tests pass, and `agent-conduct/hooks/session-start.sh` has no tests.
+Reference implementation: `dev-cycle/hooks/review-chain.py` (moved from dev-discipline 2026-10-06), tested by `just hooks-test`. Corrected 2026-10-05 against hooks.md, extended 2026-10-06 to continuations; see `architecture_log.md`.
 
 ### Re-Entry Guard
 
