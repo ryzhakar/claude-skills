@@ -284,6 +284,8 @@ Address an unnamed agent by the id its launch returns; never by a name it was no
 Every background launch and every `SendMessage` continuation leaves work running past the turn. Before ending any turn that leaves an agent or command running, invoke `agent-conduct:check-back` and follow it.
 
 Write every launch prompt to a file before launching, the way the shared-body pattern writes shared instructions, so the agent can be launched again from that file alone. NEVER launch from a prompt that exists only in the conversation.
+
+Keep every agent's state in files: its brief, its report, its verdict, and, at a pause, what its context holds that no file holds; never let an agent's state live only in its own context or in yours.
 </check_back_on_pending_work>
 
 <correct_mid_flight>
