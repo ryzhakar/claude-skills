@@ -58,6 +58,8 @@ Where no reading exists, or where the vendor bills by the token, weigh the parts
 
 Read from the usage records the harness keeps of your own agents — the harness being the program that runs them, the records its log of what each step spent — the TTL each kind of agent runs under and the effort an agent runs at when you set none; never assume either from documentation.
 
+Take each reading of the usage limit from what the harness exposes — the input it passes its statusline command, which carries the used percent of each window; never ask the owner for it.
+
 Take capability, appetite, and generation speed from a published run of each variant on tasks like yours until your own count of attempts replaces them; never carry a published figure past your own count.
 
 Draw from the project's plans, check verdicts, and usage records one row per task and one per attempt — the traits the task showed before its first launch, the variant the harness recorded, the number of attempts, the verdict of the first check, the wall time, and the tokens by part; never take a variant from what its launch asked for.
