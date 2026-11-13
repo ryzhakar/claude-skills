@@ -17,13 +17,25 @@ Eleven plugins, each a top-level directory (counted 2026-10-21, after peers, mem
 version; `.claude-plugin/marketplace.json` at the root lists them all. Every hook in the marketplace
 is `type: "command"` — a bash script that emits template text (measured 2026-08-08).
 
-**orchestration** — agent delegation and discontinuous-existence coping mechanisms (5.0.1, 2026-10-06: `agentic-delegation` points at `dev-cycle`). Memory,
+**orchestration** — agent delegation, the cost of every act, and discontinuous-existence coping mechanisms (6.0.0,
+2026-11-13: tier tables retired, `orchestration-economics` added; see `architecture_log.md`). Memory,
 record continuity, and the orientation hooks moved to `memento` 2026-09-18; `session-checkpoint` and
 `session-close` are retired, thin pointers to `memento:event-capture` and `memento:span-closure`.
 Skills: `agentic-delegation` (decompose, launch, verify, assemble; owns the orchestrator identity
-and the liveness/monitoring mechanics for a discontinuous entity), `research-tree` (breadth-first
-survey then depth-first verification across a knowledge surface), `session-checkpoint` (retired,
-pointer), `session-close` (retired, pointer). No hooks.
+and the liveness/monitoring mechanics for a discontinuous entity; every prompt it launches carries the
+delete-nothing line and the destructive-operations rules — kill a process only by a PID resolved as
+the agent's own, undo an own edit by editing it back, never `git checkout` or `git restore` a file, wait
+with `pgrep` on the executable, never `pgrep -f`; the orchestrator clears left-behind paths with one
+plain `rm <absolute paths>`, a whole command of its own; every unit is named by one descriptive
+lowercase hyphen-joined slug alone, prompts at `prompts/<agent>-<slug>.md`, reports at
+`reports/<agent>-<slug>.md`; a scoped correction to a running agent is `TaskStop` then `SendMessage`),
+`orchestration-economics` (counts each launch, continuation, and stop in usage limit and wall time from
+atoms, mechanics, and demonstrations, and chooses model, effort, and work shape by that count; carries no
+tier table, default model, or model-to-role mapping; the provenance of each figure is in
+`orchestration/MAINTAINERS.md` and `reference/economics-provenance/`), `research-tree` (breadth-first
+survey then depth-first verification across a knowledge surface; chooses model and effort by
+`orchestration-economics`), `session-checkpoint` (retired, pointer), `session-close` (retired,
+pointer). No hooks.
 
 **memento** — left 2026-10-14 for its own marketplace with the tool: github.com/ryzhakar/memento (`53fddcb`), install `memento@memento` 0.5.1, stewarded by member memento/steward; claude-skills `da5ab5d` (entry), `ab924e9` (plugin) (measured 2026-10-14: all six settings files name `memento@memento`).
 
@@ -37,25 +49,23 @@ user trigger phrases; `tdd` is also loaded by dev-cycle's implementer and code-q
 lite-cycle's suborchestrator through the `Skill` tool, `systematic-debugging` by `dev-cycle` and
 `triage-issue`, `improve-architecture` by `triage-issue`.
 
-**dev-cycle** — the development loop over dev-discipline, orchestration, and product-craft, 1.0.0
-(created 2026-10-06). Skill `dev-cycle`: `specify → plan → implement → review → integrate`, delta-only
-against `agentic-delegation`; the orchestrator plans the units itself (requirements, gates, dependency order,
-files, tier by risk) and writes plan, status file, and prompt files; every code-changing continuation
-returns the unit to the spec review and re-integration. Agents: `spec-capturer` (interviews the user
+**dev-cycle** — the development loop over dev-discipline, orchestration, and product-craft, 2.0.0
+(created 2026-10-06; 2.0.0 2026-11-13). Skill `dev-cycle`: `specify → plan → implement → review → integrate`, delta-only
+against `agentic-delegation` and `orchestration-economics`; the orchestrator plans the units itself
+(requirements, a static gate from the project's own pre-commit config and a heavy gate, files, capability
+boundaries, each unit named by its slug alone) and writes plan, status file, and prompt files; the orchestrator
+alone tracks owed reviews, in the status file's owed-reviews column; every code-changing continuation returns the
+unit to the spec review and re-integration; a code-quality finding carries a kind label, `[product]`,
+`[evidence]`, `[structural]`, or `[cosmetic]`, and `Ready to merge:` reads `Yes`, `With fixes` (only
+cosmetic open), or `No`; a caller's implementer rebases onto the integration branch after its callee
+merges, and the integration branch fast-forwards to it. Agents: `spec-capturer` (interviews the user
 through `AskUserQuestion` by `product-craft:spec-chef`, one spec file, returns `Spec: <path>`; provisioned
 as a background launch the user enters or as a sibling `claude --agent dev-cycle:spec-capturer` session),
 `implementer` (`isolation: worktree`, loads `dev-discipline:tdd` through the `Skill` tool — a cross-plugin
 `skills:` preload does not land, measured 2026-10-06 — merges the integration branch first, reports
 `NEEDS_CONTEXT` or `BLOCKED` instead of asking), `spec-reviewer` (Bash, Skill), `code-quality-reviewer`
-(checks `tdd`'s rules). Hooks: one script, `hooks/review-chain.py`, behind five entries — three
-`SubagentStop` matchers `^(dev-cycle:)?implementer$`, `^(dev-cycle:)?spec-reviewer$`,
-`^(dev-cycle:)?code-quality-reviewer$`, which record a pending stage; `PostToolUse` on
-`^(Agent|SendMessage)$`, which retires the stage a launched or continued agent satisfies and injects the
-mandate for a foreground completion; an implementer stop opens a stage only on `Status: DONE`; and
-`Stop`, which continues the orchestrator's turn with the pending stage's mandate from `hooks/templates/`
-up to three times, once for a merge decision. State under `${CLAUDE_PLUGIN_DATA}/review-chain/<session>.json`,
-pruned after 7 days; a reviewer stop whose message begins `Dispatch malformed:` opens no stage. Tests: `just hooks-test`
-(21, measured 2026-10-06). Artifacts under `orchestration_log/recon/${DATE}/`; the spec under `docs/specs/`. A run
+(checks `tdd`'s rules). No hooks: the review-chain hook retired 2026-11-13. Artifacts under
+`orchestration_log/recon/${DATE}/`; the spec under `docs/specs/`. A run
 the user marks lite dispatches dev-cycle-lite's `suborchestrator` from `dispatch-the-lite-cycle` in place of the stages below it.
 
 **dev-cycle-lite** — the cost-tiered cycle over dev-cycle and dev-discipline, 1.0.0 (created
@@ -91,7 +101,7 @@ plus a changes report).
 **python-tools** — skills: `python-ast-mass-edit` (AST-based edits across 3+ files),
 `uv-pyright-debug` (true pyright diagnostics in uv-managed projects).
 
-**agent-conduct** — domain-free conduct skills, 1.9.0 (2026-10-16): `check-back` (set the agent's own next wake before a turn ends with work pending), `work-silently` (tool calls only until told otherwise; every silent turn ends with an empty final message), `git-etiquette` (the owner's version-control orders); hooks for check-back and the silence mandate. The peer protocol and its join hook left for `peers` 2026-10-14.
+**agent-conduct** — domain-free conduct skills, 1.11.0 (2026-11-13): `check-back` (set the agent's own next wake before a turn ends with work pending), `work-silently` (tool calls only until told otherwise; every silent turn ends with an empty final message), `git-etiquette` (the owner's version-control orders). Hooks: `session-start.sh` (silence re-entry), `office-hours.py` (denies `AskUserQuestion` while the silence marker exists), and `check-back.py` in two modes. Its `stop` mode, a Stop hook, continues a turn once while a background command, or a teammate or background agent producing output, runs with no wake set; an agent produces output when its transcript grew since the previous stop or was written within 120 seconds (teammates first: the hook joins each teammate to its transcript through the session's `subagents/*.meta.json` by description). Its `resume` mode, a SessionStart hook, names the work an old session left running. The peer protocol and its join hook left for `peers` 2026-10-14.
 
 **peers** — left this marketplace 2026-10-14 (`cdea00d`) for `the-agents-of-anarchy/marketplace` (marketplace `agents-of-anarchy`, install `peers@agents-of-anarchy`), carried there at 0.4.1, protocol 9.1 (adopted unanimously), `2b3eac1`; 62 tests pass there — measured 2026-10-14.
 
@@ -101,7 +111,7 @@ plus a changes report).
 
 - `justfile` — `just tokens FILE` measures tokens with tiktoken `cl100k_base`; `just readme`
   regenerates every README from frontmatter; `just check-readmes` fails on a stale README;
-  `just hooks-test` runs the dev-discipline hook tests.
+  `just hooks-test` lists every hook in the marketplace with whether a test names it, runs every hook test suite, and names each hook with none: `agent-conduct/hooks/session-start.sh` has no tests (2026-11-13).
 - `generate.py` with `templates/marketplace.md` and `templates/plugin.md` renders the root and
   per-plugin READMEs from skill, agent, and hook metadata.
 - `.claude/agents/instruction-writer.md` — project-local agent that edits skill definitions, agent
@@ -132,8 +142,9 @@ Two standalone manuals sit beside the living files and belong to no ontology slo
 - `agents-reference.md`: 2,790 lines, 11 sections and 3 appendices, extracted from 78 Claude Code
   documentation pages across 9 topic clusters. 298 citations, of which 197 resolve to deep links —
   81% of the 242 that carry a quote. Measured 2026-04-20.
-- `hooks-reference.md`: 913 lines. Measured 2026-09-18 (envsubst examples replaced with the
-  python3 stand-in after the fresh-sandbox incident).
+- `hooks-reference.md`: 935 lines. Measured 2026-11-13 (the review-chain pattern replaced by the
+  check-back stop gate and the hook test coverage section; envsubst examples replaced with the
+  python3 stand-in 2026-09-18 after the fresh-sandbox incident).
 
 ## Known limitations
 
@@ -147,11 +158,11 @@ Two standalone manuals sit beside the living files and belong to no ontology slo
 - `SubagentStop` hook output — `additionalContext` or `decision: block` — reaches the stopping
   subagent and keeps it running; it never reaches the orchestrator. Parent-side injection goes
   through `PostToolUse` on the `Agent` tool, or a main-session `Stop` hook reading recorded state, which
-  is how dev-discipline's review chain works since 2026-10-05. The platform refuses, from a
+  is how agent-conduct's check-back hook reaches the orchestrator (the review chain that used this path retired 2026-11-13). The platform refuses, from a
   worktree-isolated subagent, every edit and command that resolves to the main checkout (Claude Code
   ≥2.1.203), so no agent re-roots paths any more. Measured against hooks.md and worktrees.md 2026-10-05.
 - A subagent worktree branches from the repository's default branch unless `worktree.baseRef` is
-  `"head"`; dev-discipline's implementer merges the integration branch named in its brief before any
+  `"head"`; dev-cycle's implementer merges the integration branch named in its brief before any
   change. Measured 2026-10-05.
 - 45 of the 298 citations in `agents-reference.md` are URL-only, carrying no section anchor: the
   automated rewriter could not match those quotes against source. Measured 2026-04-20.
