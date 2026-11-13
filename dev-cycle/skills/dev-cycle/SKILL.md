@@ -10,7 +10,7 @@ description: >
 <read-the-parent-first>
 Read the `agentic-delegation` and `orchestration-economics` skills whole before any step below; never run this skill without both.
 
-Follow the `agentic-delegation` skill except where a sentence below replaces one of its rules — the orchestrator's writes of the plan, the prompt files, and the status file; its reads of the spec file and of verdict lines; the fixed final messages of this plugin's agents in place of a summary; the reviewers' reading of the spec verdict; never carve another exception.
+Follow the `agentic-delegation` skill except where a sentence below replaces one of its rules — the orchestrator's writes of the plan, the prompt files, the status file, and the deferred list — its own file of cosmetic findings; its reads of the spec file, of verdict lines, of the kind labels in finding headings, and of `Risks for the lead` sections; the fixed final messages of this plugin's agents in place of a summary; the reviewers' reading of the spec verdict; never carve another exception.
 
 Treat every action verb in the request as an order to launch agents, planning excepted; never write, read, run, or debug code in the orchestrator's — this agent's — own context.
 </read-the-parent-first>
@@ -18,7 +18,7 @@ Treat every action verb in the request as an order to launch agents, planning ex
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the deferred list at `deferred.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on the variant — a model at one effort — chosen for that launch, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
@@ -28,7 +28,9 @@ Take each verdict from its file — the `Verdict:` line of a spec verdict, the `
 </fix-the-artifact-paths>
 
 <write-the-status-file>
-Write the status file after each state change with one row per unit and these columns: unit; state, one of `planned`, `implementing` (set again by every continuation), `in review`, `passed`, `integrated`, `returned` (sent back to the user through `plan-the-units`); implementer id; spec-reviewer id; code-quality-reviewer id; review-fix cycle count; note — then the integration branch — the branch every unit's work merges into — the excluded test markers — the markers that keep tests out of the default test run — each integration check — the heavy-gate run, the compatibility check, the cross-cutting review — as `pending`, `passed`, or `failed`, and the blockers; never hold the state in the conversation alone.
+Write the status file after each state change with one row per unit and these columns: unit; state, one of `planned`, `implementing` (set again by every continuation), `in review`, `passed`, `integrated`, `returned` (sent back to the user through `plan-the-units`); implementer id; spec-reviewer id; code-quality-reviewer id; owed reviews — the reviews the unit's latest head still needs, `spec`, `quality`, `both`, or `none`; review-fix cycle count; note — then the integration branch — the branch every unit's work merges into — the excluded test markers — the markers that keep tests out of the default test run — each integration check — the heavy-gate run, the compatibility check, the cross-cutting review — as `pending`, `passed`, or `failed`, and the blockers; never hold the state in the conversation alone.
+
+Write a unit's owed reviews in its row in the turn a report, verdict, or continuation changes them; never leave an owed review untracked.
 </write-the-status-file>
 
 <capture-the-spec>
@@ -69,6 +71,10 @@ List in the plan, for each unit, the files it reads and the files it may touch �
 Treat two units that may touch one file as the integration agent's merge; never serialize them for it.
 
 Order the units by data dependency alone — a unit after the units whose code it calls; never by the scope's order.
+
+Group the units in the plan into capabilities — each a group of units that together deliver one thing a user can use — and declare each capability boundary — the point in the plan where one capability's units are all merged; never leave a unit outside a capability.
+
+Name each capability in the plan in lowercase hyphenated words; never leave one unnamed.
 
 Choose the variant for each launch from the work's complexity, judged against the project's own counted history of attempts, and write the variant with the count it rests on in the plan or the status file; never take a variant from a role, a default, or a table of tiers.
 
@@ -112,7 +118,9 @@ Treat a report whose `Branch:` line names no branch `git branch --list` shows as
 <route-on-status>
 Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its requirements, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
 
-Continue the same implementer through `SendMessage` with the delta alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound; never resend the requirements it already holds.
+Continue the same implementer through `SendMessage` with the changes alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound and it is warm, its last step within its TTL, the span its idle cache survives; never resend the requirements it already holds.
+
+Launch a fresh implementer from files — its prompt file and the path of the file holding the findings — once its TTL has lapsed and `orchestration-economics` counts the fresh launch cheaper than the continuation's cold start, the whole context taken in again; never continue a lapsed implementer without counting that cold start.
 
 Recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — before any review or continuation of its unit, and continue the implementer with the recreated path; never launch fresh for a missing worktree.
 
@@ -120,11 +128,17 @@ Launch a fresh implementer when the diagnosis agent names the approach wrong, th
 
 Route a diagnosed block: a wrong approach launches fresh with a corrected brief; a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a variant whose attempts come back right more often; a unit too large is rewritten by the orchestrator as sub-units in the plan and the status file, each launched fresh; a plan defect returns to `plan-the-units` and the user; an unknown cause runs `launch-the-debugging-round` and continues the implementer with the path of the fix the round proposes; never relaunch a blocked implementer with unchanged inputs.
 
-Return a unit to `launch-the-spec-review` after every implementer continuation that changes code, and re-integrate it after both reviews pass; never leave a continued unit's merge standing unreviewed.
+Return a unit to `launch-the-spec-review` after a continuation that changes product behavior or a requirement's proof; never leave such a change without a spec re-review.
+
+Treat a continuation as a structure-only fix — a change of structure with no change to behavior or to a requirement's proof — when every finding it fixes carries `[structural]`; never judge it from the code.
+
+Send the delta — the range from the head last reviewed to the new head — of a structure-only fix to `code-quality-reviewer` alone, with the unit's standing spec PASS — its last `Verdict: PASS` file — as the spec verdict path; never rerun the spec review for it.
+
+Re-integrate a continued unit after its owed reviews pass; never leave a continued unit's merge standing unreviewed.
 </route-on-status>
 
 <launch-the-spec-review>
-Launch the spec review on the notification that ends an implementer's run with `Status: DONE`, or with `DONE_WITH_CONCERNS` classified as observations alone; never wait for a hook — a command the platform runs at a lifecycle event — to demand it.
+Launch the spec review on the notification that ends an implementer's run with `Status: DONE`, or with `DONE_WITH_CONCERNS` classified as observations alone; never hold it for a later turn.
 
 Launch `spec-reviewer` with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the worktree path, the branch, the base SHA, the evidence path from the report's `Evidence:` line, and the verdict path to write; never launch it without one of the seven.
 
@@ -132,23 +146,43 @@ Relaunch a reviewer with the items it names when its final message begins `Dispa
 
 Continue the implementer with the verdict file's path on `FAIL`; never inline the findings.
 
-Continue the same spec-reviewer after the fix with the new diff range `BASE..new HEAD`, the sentence `re-review the delta and confirm the passing criteria still hold`, and a verdict path with a fresh timestamp; never launch a fresh reviewer for a re-review while the first's agent id is held.
+Launch the spec re-review and the quality re-review over the delta in one turn after a fix, made on a quality report, that changes behavior or a requirement's proof; never hold one for the other's verdict.
+
+Send a re-review the delta alone; never send the whole range `BASE..new HEAD` again.
+
+Continue a reviewer for its re-review while it is warm; never launch a fresh reviewer in place of a warm one.
+
+Launch a fresh delta reviewer — a new launch from files that re-reviews the delta — once the reviewer's TTL has lapsed and `orchestration-economics` counts the fresh launch cheaper than the cold start; never continue a lapsed reviewer without that count.
+
+Continue `spec-reviewer` with the delta, the new evidence path, the sentence `re-review the delta and confirm the passing criteria still hold`, and a verdict path with a fresh timestamp; never send it another item.
+
+Launch a fresh delta `spec-reviewer` with all seven items, the head last reviewed as the base SHA; never with fewer.
+
+Fail the unit back to the implementer when the spec re-review fails, whatever the quality report reads; never integrate on a quality report alone.
 </launch-the-spec-review>
 
 <launch-the-quality-review>
 Launch `code-quality-reviewer` after a spec review ending `Verdict: PASS`, with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, the evidence path from the implementer's `Evidence:` line, and the report path to write; never launch it without one of the seven.
 
-Read the `Ready to merge:` line and the finding headings from the report file; never read the findings' bodies.
+Read the `Ready to merge:` line and the kind label of each finding heading from the report file; never read the findings' bodies.
 
-Continue the implementer with the report file's path, naming `Critical` and `Important` as the findings to fix, on `With fixes` or `No`; never inline the findings.
+Read the section `Risks for the lead` of every verdict and report, judge each listed reading, and write the judgement in the status file; never leave a listed reading unjudged.
 
-Continue the same `code-quality-reviewer` after the fix with the new range, the fresh spec verdict path, and a fresh report path; never launch a fresh reviewer for a re-review while the first's agent id is held.
+Continue the implementer on `Ready to merge: No` with the report file's path, naming the `[product]`, `[evidence]`, and `[structural]` findings and every `Critical` one as the findings to fix; never inline the findings.
 
-Count every finding a reviewer writes in scope, whenever the code it names was introduced, fixing `Critical` and `Important` and noting the rest in the status file; never dismiss a finding as pre-existing.
+Write each `[cosmetic]` finding to the deferred list; never send one into a fix cycle.
+
+Continue `code-quality-reviewer` with the delta, the spec verdict path, the new evidence path, and a fresh report path; never send it another item.
+
+Launch a fresh delta `code-quality-reviewer` with all seven items, the delta as the range; never with fewer.
+
+Give `code-quality-reviewer` on every re-review the unit's standing spec PASS as its spec verdict path; never hold it for the fresh spec verdict.
+
+Count every finding a reviewer writes in scope, whenever the code it names was introduced; never dismiss a finding as pre-existing.
 </launch-the-quality-review>
 
 <integrate-on-pass>
-Launch the integration agent of `integrate-the-units` for a unit on `Verdict: PASS` and `Ready to merge: Yes`; never on other values.
+Launch the integration agent of `integrate-the-units` for a unit on `Verdict: PASS` and `Ready to merge: Yes` or `With fixes`; never on `Ready to merge: No`.
 
 Write the outcome — integrated, or implementer continued — to the status file in the same turn; never carry it in the conversation alone.
 
@@ -195,12 +229,26 @@ Continue the implementer of each unit an agent ending `Result: FAIL` names with 
 Integrate a unit again after every continuation this tag or `classify-the-tests` starts; never count an earlier pass for a changed head.
 </integrate-the-units>
 
+<sweep-the-deferred-list>
+Keep the deferred list out of every brief, message, and file an agent reads; never tell an agent it exists.
+
+Sweep the deferred list at each capability boundary, once the capability's last unit is integrated, through one implementer launch on `sweep-${capability}` and a quality review of its result; never wait for the task's end to sweep it.
+
+Copy the listed findings into the sweep's prompt file as its requirements; never name the list there.
+
+Launch `code-quality-reviewer` on the sweep as on a structure-only fix, with the standing spec PASS of the capability's last integrated unit; never launch a spec review for a sweep.
+
+Integrate the sweep as `integrate-the-units` prescribes; never integrate it unreviewed.
+
+Remove the swept findings from the deferred list once the sweep is integrated; never keep a swept finding there.
+</sweep-the-deferred-list>
+
 <review-the-integrated-branch>
 Launch `spec-reviewer` over the whole integrated diff — the project root checkout as the worktree path, the integration branch, the branch point as the base SHA — with every requirement of the spec, after the heavy gate passes at the integrated head; never call the task done without this review.
 
 Launch `code-quality-reviewer` on its `Verdict: PASS` over the same range; never skip it.
 
-Launch an implementer on `all`, which merges the integration branch first, with the verdict path, the report path, and every finding the status file noted as deferred from the unit cycles; never leave a noted finding standing.
+Launch an implementer on `all`, which merges the integration branch first, with this review's verdict path and report path; never leave a finding of this review standing.
 
 Re-run both reviews on its result and integrate it as `integrate-the-units` prescribes; never integrate it unreviewed.
 </review-the-integrated-branch>
