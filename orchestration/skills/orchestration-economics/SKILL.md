@@ -4,6 +4,8 @@ description: Count the cost of every launch, continuation, and stop of an agent 
 ---
 
 <count-the-cost-of-every-act>
+Read this skill whole before the session's first launch, continuation, or stop of an agent, and again after each compaction; never launch, continue, or stop an agent before reading it.
+
 Before every launch, continuation, and stop of an agent — each one an act, an agent being a vendor's language model run in a loop with tools — count what the act will cost; never make an act whose cost you have not counted.
 
 Count that cost in two resources — the usage limit, what your plan lets you spend in each window of hours or days, and wall time, the time that passes on the clock; never in one of the two alone.
@@ -191,7 +193,7 @@ Of the window 12 percent is left; 4 more attempts start, and the reset will sort
 </never_do_this>
 
 <do_exactly_this>
-One stop at the limit caught 13 agents mid-attempt; at their next steps they took in 3.5M tokens of context again, and I took in 0.4M. With 12 percent of the window left, the limit binds. The attempts that 12 percent carries to a report start now, and the others wait for the reset.
+At 14:35, before one stop at the limit, 13 agents held 3.5M tokens of context mid-attempt and I held 0.4M; the stop lapsed every cache, so each next step takes that context in again. With 12 percent of the window left, the limit binds. The attempts that 12 percent carries to a report start now, and the others wait for the reset.
 </do_exactly_this>
 
 Expect the limit to weigh the three parts in other proportions than the price list gives them; never read a dollar total as the movement of the limit.
