@@ -18,11 +18,13 @@ Treat every action verb in the request as an order to launch agents, planning ex
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the deferred list at `deferred.md`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task's slug — one descriptive name in lowercase words joined by hyphens; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the slug of the unit, sweep, or other scope the launch covers, or `all` for a whole-task launch, and `-${timestamp}`, UTC `HHMMSS`, inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${unit}-${timestamp}.md` and each quality report at `reviews/quality-${unit}-${timestamp}.md`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the deferred list at `deferred.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on the variant — a model at one effort — chosen for that launch, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
-Take the implementer's worktree from the `Worktree:` line of its report and its branch from the `Branch:` line; never take either from anywhere else.
+Write each launch's `description` as `<act> <slug>` — `Implement parse-amount`, `Review spec parse-amount`, `Review quality parse-amount`, `Integrate parse-amount`, `Sweep checkout-flow`; never put a number, a wave, or a batch label in it.
+
+Take the implementer's worktree — the checkout the platform creates for an `implementer` run — from the `Worktree:` line of its report and its branch from the `Branch:` line; never take either from anywhere else.
 
 Take each verdict from its file — the `Verdict:` line of a spec verdict, the `Ready to merge:` line of a quality report, read from the path set at launch once the notification — the message the platform sends when a background agent ends — arrives; never take a verdict from a final message.
 </fix-the-artifact-paths>
@@ -56,7 +58,9 @@ Decide every dispatch — what launches, when, on which variant — by the cost 
 
 Cut dependencies between units while decomposing — give shared code its own unit launched first, or let two units duplicate it and the integration agent dedupe; never leave a dependency a cut could remove.
 
-Name each unit in the plan in lowercase hyphenated words; never leave one unnamed.
+Name each unit in the plan by its slug alone; never set a number, a letter, a code, or a round label beside it.
+
+Name every plan entry, prompt, report, verdict, and status row by its unit's slug; never by a number, a wave, or a batch.
 
 Assign each unit, in the plan, its requirements — the spec's sentences it implements — and its gates — the commands, each with the exact output it requires, that prove the unit done; never fix an interface name or a signature in the plan.
 
@@ -74,7 +78,7 @@ Order the units by data dependency alone — a unit after the units whose code i
 
 Group the units in the plan into capabilities — each a group of units that together deliver one thing a user can use — and declare each capability boundary — the point in the plan where one capability's units are all merged; never leave a unit outside a capability.
 
-Name each capability in the plan in lowercase hyphenated words; never leave one unnamed.
+Name each capability in the plan by its slug alone; never set a number, a letter, a code, or a round label beside it.
 
 Choose the variant for each launch from the work's complexity, judged against the project's own counted history of attempts, and write the variant with the count it rests on in the plan or the status file; never take a variant from a role, a default, or a table of tiers.
 
@@ -132,7 +136,7 @@ Recreate a worktree whose reported path is gone — `git worktree add <path> <br
 
 Launch a fresh implementer when the diagnosis agent names the approach wrong, the variant changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
-Route a diagnosed block: a wrong approach launches fresh with a corrected brief; a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a variant whose attempts come back right more often; a unit too large is rewritten by the orchestrator as sub-units in the plan and the status file, each launched fresh; a plan defect returns to `plan-the-units` and the user; an unknown cause runs `launch-the-debugging-round` and continues the implementer with the path of the fix the round proposes; never relaunch a blocked implementer with unchanged inputs.
+Route a diagnosed block: a wrong approach launches fresh with a corrected brief; a missing dependency continues the implementer with the dependency; insufficient reasoning launches fresh on a variant whose attempts come back right more often; a unit too large is rewritten by the orchestrator as sub-units in the plan and the status file, each named by its own slug and launched fresh; a plan defect returns to `plan-the-units` and the user; an unknown cause runs `launch-the-debugging-round` and continues the implementer with the path of the fix the round proposes; never relaunch a blocked implementer with unchanged inputs.
 
 Return a unit to `launch-the-spec-review` after a continuation that changes product behavior or a requirement's proof; never leave such a change without a spec re-review.
 
@@ -214,7 +218,7 @@ Make the named change before the next cycle; never enter the next cycle unchange
 <launch-the-debugging-round>
 Launch agents under the `systematic-debugging` skill when a failure has no clear cause — tests fail for an unclear reason, behavior contradicts the requirements while the code looks right, a fix breaks something elsewhere, or a third review-fix cycle failed — before any structural change; never let an implementer guess at a fix.
 
-Launch one agent to list up to three hypotheses; never list them in the orchestrator's context.
+Launch one agent to list up to three hypotheses, each named by a slug; never list them in the orchestrator's context.
 
 Launch one agent per hypothesis in parallel, each ending with its evidence and, where it finds the cause, a proposed minimal fix; never let one agent carry two hypotheses.
 
@@ -242,7 +246,7 @@ Integrate a unit again after every continuation this tag or `classify-the-tests`
 <sweep-the-deferred-list>
 Keep the deferred list out of every brief, message, and file an agent reads; never tell an agent it exists.
 
-Sweep the deferred list at each capability boundary, once the capability's last unit is integrated, through one implementer launch on `sweep-${capability}` and a quality review of its result; never wait for the task's end to sweep it.
+Sweep the deferred list at each capability boundary, once the capability's last unit is integrated, through one implementer launch on the capability's slug and a quality review of its result; never wait for the task's end to sweep it.
 
 Copy the listed findings into the sweep's prompt file as its requirements; never name the list there.
 
