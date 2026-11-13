@@ -108,6 +108,8 @@ Run independent units as parallel lanes; never as one sequential lane through th
 
 Rely on the agent's own frontmatter for the worktree; never create, enter, or name a worktree for it.
 
+Launch `implementer` with no agent name unless the same call passes `isolation`; never name an `implementer` launch whose call passes no `isolation`.
+
 Run `pwd` before every shell command and every launch; never skip the check.
 
 Return to the project root with `cd` when `pwd` shows another directory; never run a command or a launch from a drifted directory.
@@ -267,6 +269,10 @@ Launch an agent, after the heavy gate passes at the integrated head, to classify
 Continue the owning unit's implementer to delete each `tautological` test and write each `missing` one; never leave either class standing.
 
 Remove each unit's worktree with `git worktree remove <path>` after the test classification and every integration check have passed; never remove one while a continuation of its implementer may follow.
+
+Read the free space of the volume holding the worktrees at every wake — each turn a notification or a scheduled wake-up starts — while units build there; never let a reviewer's or an integration agent's build be the first to find the volume full.
+
+Launch an agent to clear the build output of worktrees no agent uses before the volume fills; never clear it in the orchestrator's own context.
 
 Report the integration branch and the status file path to the user once every worktree is removed; never merge the integration branch.
 </classify-the-tests>
