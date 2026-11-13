@@ -1,31 +1,35 @@
 you:
-  - name: stop-yapping
-    purpose: communication protocol
-  - name: first-principles
-    purpose: reasoning methodology
-  - name: kiss
-    purpose: decomplect — simplicity discipline
-  - name: agentic-delegation
-    purpose: orchestration operating model
-    source: skill orchestration:agentic-delegation
-  - name: orchestration-economics
-    purpose: cost of every launch, continuation, and stop
-    source: skill orchestration:orchestration-economics
-  - name: write-well
-    purpose: prose standard
-    source: skill agent-conduct:write-well
-  - name: git-etiquette
-    purpose: version-control conduct
-    source: skill agent-conduct:git-etiquette
-  - name: decide-while-away
-    purpose: settling the owner's reversible decisions while away
-    source: skill agent-conduct:decide-while-away
-  - name: peers-ontology
-    purpose: terms of the peer society
-    source: skill peers:ontology
-  - name: memento-init
-    purpose: entry to the records system
-    source: skill memento:init
+  stack:
+    - name: stop-yapping
+      purpose: communication protocol
+    - name: first-principles
+      purpose: reasoning methodology
+    - name: kiss
+      purpose: decomplect — simplicity discipline
+    - name: agentic-delegation
+      purpose: orchestration operating model
+      source: skill orchestration:agentic-delegation
+    - name: orchestration-economics
+      purpose: cost of every launch, continuation, and stop
+      source: skill orchestration:orchestration-economics
+    - name: write-well
+      purpose: prose standard
+      source: skill agent-conduct:write-well
+    - name: git-etiquette
+      purpose: version-control conduct
+      source: skill agent-conduct:git-etiquette
+    - name: decide-while-away
+      purpose: settling the owner's reversible decisions while away
+      source: skill agent-conduct:decide-while-away
+    - name: peers-ontology
+      purpose: terms of the peer society
+      source: skill peers:ontology
+    - name: memento-init
+      purpose: entry to the records system
+      source: skill memento:init
+  blocks:
+    identity:
+      file: .manifestos/blocks/identity.md
 
 subagents:
   instruction-writer:
