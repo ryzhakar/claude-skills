@@ -10,7 +10,7 @@ for current shape. `ground-truth.md` holds the problem frame, which does not cha
 holds what a reader must DO, each rule stating its own why. Git holds every change, including the ones
 that shaped nothing.
 
-**Admission, both halves required.** An entry needs a BEFORE — a shape the system actually HELD, not a
+**Admission, both halves required.** An entry needs a FROM — a shape the system actually HELD, not a
 plan that was abandoned — and it must have changed what is COMPUTED or what is RUNNABLE. `runnable`
 means the boundary between impossible and possible moved for a skill, a hook, or a dispatch: a silent
 failure mode closed, a dependency removed, a file a live protocol reads or writes relocated. `computed`
@@ -29,7 +29,7 @@ content — architecture changes beside style rulings, process calls, and govern
 stated with their own rationale in `ETHOS.md`, `CLAUDE.md`, and `conventions.md` — and was replaced by
 this file. 24 changes survived the admission test.
 
-**Resolving a `SOURCE` line.** Lines cite `decisions.md`'s dated section headers, which no longer exist
+**Resolving an `EVIDENCE` line.** Lines cite `decisions.md`'s dated section headers, which no longer exist
 in the working tree. The file is retrievable in full at commit `a6ba4a7f929ef08849484999aaa3d7516670bb35`,
 the last commit in which it existed:
 `git show a6ba4a7f929ef08849484999aaa3d7516670bb35:orchestration_log/reference/decisions.md`.
@@ -42,7 +42,7 @@ FROM → TO:     skills citing external files by `@`-reference, trusted to be re
                skill inlines its own content; references eliminated marketplace-wide
 WHY:           models do not follow `@`-references in practice, so referenced content never executes
 INVALIDATES:   any skill design relying on cross-file `@`-reference resolution at runtime
-SOURCE:        decisions.md 2026-04-13
+EVIDENCE:      decisions.md 2026-04-13
 
 ## 2026-04-13 — Skills are scoped to file artifacts; no platform API calls
 KIND:          runnable
@@ -51,7 +51,7 @@ FROM → TO:     a skill free to call an external platform API → a skill produ
 WHY:           platform coupling ties a skill's behavior to one ecosystem's API surface and removes the
                user's choice of where output goes
 INVALIDATES:   nothing shipped; forecloses platform-calling skill designs going forward
-SOURCE:        decisions.md 2026-04-13
+EVIDENCE:      decisions.md 2026-04-13
 
 ## 2026-04-16 — `dev-orchestration` merges into `dev-discipline`, beside its agents
 KIND:          runnable
@@ -60,7 +60,7 @@ FROM → TO:     the skill and the agents it launches split across two plugins, 
 WHY:           a skill and the agents it launches belong together; cross-plugin dispatch created
                maintenance friction
 INVALIDATES:   any dispatch path assuming the skill's prior plugin location
-SOURCE:        decisions.md 2026-04-16 (breaking change, commit `e417a6f`)
+EVIDENCE:      decisions.md 2026-04-16 (breaking change, commit `e417a6f`)
 
 ## 2026-04-16 — Prompt hooks rejected permanently; `command` is the only hook type
 KIND:          runnable
@@ -69,7 +69,7 @@ FROM → TO:     hooks authored as either `prompt` or `command` type → `comman
 WHY:           prompt hooks fail silently on `Stop` and `PreToolUse`, the two blocking events that
                matter, and carry no ecosystem adoption
 INVALIDATES:   any hook design relying on the `prompt` type on `Stop` or `PreToolUse`
-SOURCE:        decisions.md 2026-04-16
+EVIDENCE:      decisions.md 2026-04-16
 
 ## 2026-04-16 — Hooks gate on configuration existence and stay silent when unconfigured
 KIND:          runnable
@@ -78,7 +78,7 @@ FROM → TO:     a hook fires unconditionally regardless of project setup → a 
 WHY:           an ARRIVE hook injecting mandatory reads means nothing to a project carrying no
                `orchestration_log/reference/`
 INVALIDATES:   nothing measured; removes false-positive hook firing on an unconfigured project
-SOURCE:        decisions.md 2026-04-16
+EVIDENCE:      decisions.md 2026-04-16
 
 ## 2026-04-17 — Corpora above roughly 500KB synthesize via map-reduce scouts, not single-context read
 KIND:          computed
@@ -86,7 +86,7 @@ FROM → TO:     one context ingesting a whole corpus for synthesis → per-sect
                one opus assembler once a corpus crosses roughly 500KB
 WHY:           single-context synthesis over 600K+ tokens measurably degrades
 INVALIDATES:   any synthesis attempted in one context above the threshold
-SOURCE:        decisions.md 2026-04-17
+EVIDENCE:      decisions.md 2026-04-17
 
 ## 2026-04-29 — Hook mandates inject exactly one unconditional command
 KIND:          runnable
@@ -95,7 +95,7 @@ FROM → TO:     a hook mandate could branch conditionally, letting the orchestr
                agent
 WHY:           a conditional mandate becomes an escape hatch the orchestrator can decline
 INVALIDATES:   any hook mandate authored with conditional branches
-SOURCE:        decisions.md 2026-04-29
+EVIDENCE:      decisions.md 2026-04-29
 
 ## 2026-04-30 — The orchestrator delegates every file operation
 KIND:          runnable
@@ -104,8 +104,8 @@ FROM → TO:     the orchestrator free to edit files directly → every file ope
 WHY:           the orchestrator's context is the scarce resource; direct edits collapse the separation
                the role exists to hold
 INVALIDATES:   nothing shipped
+EVIDENCE:      decisions.md 2026-04-30
 SUPERSEDED-BY: 2026-08-08 — narrowed by the session-memory exception
-SOURCE:        decisions.md 2026-04-30
 
 ## 2026-05-06 — Delegation loses both escape hatches; prompts never inline file content
 KIND:          runnable
@@ -115,7 +115,7 @@ FROM → TO:     two carve-outs existed in the delegation rule, and a prompt cou
 WHY:           owner ruling: "nothing is small enough to be done by the orchestrator"; "skill files have
                physical paths on disk"
 INVALIDATES:   any prompt authored with inlined file content or a standing orchestrator carve-out
-SOURCE:        decisions.md 2026-05-06
+EVIDENCE:      decisions.md 2026-05-06
 
 ## 2026-05-06 — Every agent launch runs in the background
 KIND:          runnable
@@ -123,7 +123,7 @@ FROM → TO:     an agent launch could block the orchestrator in the foreground 
                backgrounded
 WHY:           a blocked orchestrator cannot answer the notification it is waiting for
 INVALIDATES:   any dispatch pattern relying on a foreground, blocking launch
-SOURCE:        decisions.md 2026-05-06
+EVIDENCE:      decisions.md 2026-05-06
 
 ## 2026-06-17 — Hooks inject `SKILL.md` at runtime instead of duplicating protocol text
 KIND:          runnable
@@ -132,7 +132,7 @@ FROM → TO:     protocol text duplicated inline inside hook templates → hooks
 WHY:           duplicated protocol drifts from its source; runtime injection propagates a skill edit
                with no second edit
 INVALIDATES:   any hook template carrying its own copy of protocol text
-SOURCE:        decisions.md 2026-06-17
+EVIDENCE:      decisions.md 2026-06-17
 
 ## 2026-06-19 — No inline-principles binding path: a name is not a source
 KIND:          runnable
@@ -140,7 +140,7 @@ FROM → TO:     a binding could proceed from a principle set's name alone → b
                actual source content; naming without loading is refused
 WHY:           binding to content reconstructed from a name is confabulation
 INVALIDATES:   any binding performed from a name with no source load
-SOURCE:        decisions.md 2026-06-19
+EVIDENCE:      decisions.md 2026-06-19
 
 ## 2026-06-24 — Skill files adopt XML structure and Claude Code's native vocabulary
 KIND:          computed
@@ -149,7 +149,7 @@ FROM → TO:     skills structured as markdown-header prose → XML-tagged secti
 WHY:           XML tags are hard scope delimiters where markdown headers are soft hints, and native
                terms are recognized faster than invented ones
 INVALIDATES:   nothing shipped; supersedes markdown-header skill authoring going forward
-SOURCE:        decisions.md 2026-06-24
+EVIDENCE:      decisions.md 2026-06-24
 
 ## 2026-06-24 — Safety-net crons fire at roughly 1.2N minutes for an N-minute operation
 KIND:          runnable
@@ -158,7 +158,7 @@ FROM → TO:     no standing rule for safety-net cron timing → crons set to fi
 WHY:           firing just after the expected window catches a real failure; firing mid-flight only
                reports "still running"
 INVALIDATES:   nothing shipped
-SOURCE:        decisions.md 2026-06-24
+EVIDENCE:      decisions.md 2026-06-24
 
 ## 2026-06-24 — `SendMessage` continuation becomes the happy path for follow-up work
 KIND:          runnable
@@ -167,7 +167,7 @@ FROM → TO:     follow-up work re-launched a fresh agent, discarding the files 
 WHY:           a fresh launch pays 3-5k reinitialization tokens and discards held context, per a
                downstream field report
 INVALIDATES:   any follow-up dispatch pattern defaulting to a fresh launch
-SOURCE:        decisions.md 2026-06-24
+EVIDENCE:      decisions.md 2026-06-24
 
 ## 2026-08-08 — Five-file memory ontology adopted; Status Snapshot retired as a category
 KIND:          computed
@@ -177,9 +177,9 @@ FROM → TO:     memory held under a partial ontology including a Status Snapsho
 WHY:           downstream field observation confirmed the ontology in production use while the process
                half existed only on paper
 INVALIDATES:   any memory read/write path assuming a Status Snapshot category
+EVIDENCE:      decisions.md 2026-08-08
 SUPERSEDED-BY: 2026-09-15 in part — the concerns this ontology carried begin dissolving into `memento`;
                2026-09-18 in part — `decisions.md` itself is retired, replaced by this file
-SOURCE:        decisions.md 2026-08-08
 
 ## 2026-08-08 — Session memory becomes the sole exception to full delegation
 KIND:          runnable
@@ -187,7 +187,7 @@ FROM → TO:     the 2026-04-30 delegation rule held with no exception → the o
                living files, `failures.md`, and `session.md` directly; every other file stays delegated
 WHY:           narrows the delegation rule to a named path list rather than leaving it absolute
 INVALIDATES:   any reading of the 2026-04-30 entry as still absolute
-SOURCE:        decisions.md 2026-08-08
+EVIDENCE:      decisions.md 2026-08-08
 
 ## 2026-08-08 — `SubagentStart` hooks inject element names, purposes, and protocol, never content
 KIND:          runnable
@@ -195,7 +195,7 @@ FROM → TO:     unstated injection scope for `SubagentStart` → the hook injec
                protocol only; content itself is never injected at this hook
 WHY:           codified as a platform fact rather than repaired as a defect
 INVALIDATES:   any `SubagentStart` hook design injecting full content
-SOURCE:        decisions.md 2026-08-08
+EVIDENCE:      decisions.md 2026-08-08
 
 ## 2026-08-08 — `session-state.md` collapsed; `session.md` written at will
 KIND:          runnable
@@ -204,7 +204,7 @@ FROM → TO:     a separate scratch continuity file (`session-state.md`) alongsi
                seventh direct-write exception beside the five living files and `failures.md`
 WHY:           one session, one continuity surface
 INVALIDATES:   any read or write path targeting `session-state.md`
-SOURCE:        decisions.md 2026-08-08
+EVIDENCE:      decisions.md 2026-08-08
 
 ## 2026-09-15 — `TaskOutput` deprecated for local-agent progress checks
 KIND:          runnable
@@ -213,7 +213,7 @@ FROM → TO:     `TaskOutput` used to check a local agent's progress → depreca
 WHY:           `TaskOutput` returns the full subagent transcript and floods orchestrator context
                permanently
 INVALIDATES:   any progress-check path calling `TaskOutput` on a local agent
-SOURCE:        decisions.md 2026-09-15
+EVIDENCE:      decisions.md 2026-09-15
 
 ## 2026-09-15 — Five memory and session concerns leave the orchestration plugin for a ground-up rebuild
 KIND:          runnable
@@ -224,7 +224,7 @@ FROM → TO:     discontinuous existence, artifact management, orientation, reco
 WHY:           only artifact management, record keeping, and half of session management were textually
                fused, in one sentence, with no machine-readable schema for any Artifact Contract table
 INVALIDATES:   any assumption that orchestration owns these five concerns going forward
-SOURCE:        decisions.md 2026-09-15
+EVIDENCE:      decisions.md 2026-09-15
 
 ## 2026-09-18 — `envsubst` and PyYAML dependencies removed; every plugin runs on stdlib only
 KIND:          runnable
@@ -238,7 +238,7 @@ WHY:           a fresh sandbox crashed every manifesto hook and the orchestratio
                `ModuleNotFoundError` into an opaque hook error
 INVALIDATES:   the general hooks reference's prior `envsubst` prescription as the template-output
                pattern
-SOURCE:        decisions.md 2026-09-18
+EVIDENCE:      decisions.md 2026-09-18
 
 ## 2026-09-18 — The manifesto clone moves from `/tmp` to the project, and `ensure_repo` finally runs
 KIND:          runnable
@@ -250,7 +250,7 @@ FROM → TO:     `ensure_repo()` existed since the manifesto plugin's first vers
 WHY:           no hook had ever invoked `ensure_repo()`, so every fresh sandbox depended on a manual
                clone step no automation performed
 INVALIDATES:   every doc reference to the old `/tmp/claude-manifesto-repo` path
-SOURCE:        decisions.md 2026-09-18
+EVIDENCE:      decisions.md 2026-09-18
 
 ## 2026-09-18 — `decisions.md` retired; this file becomes the core-change record
 KIND:          runnable
@@ -264,7 +264,7 @@ WHY:           mirrors the restructuring already proven in `embedding_finetuning
                signal this file's narrower admission test needed
 INVALIDATES:   the ARRIVE hook's `decisions.md` tail-read step; `agentic-delegation`, `session-close`,
                and `session-checkpoint`'s `decisions.md` wiring (updated in the same change)
-SOURCE:        `git show a6ba4a7f929ef08849484999aaa3d7516670bb35:orchestration_log/reference/decisions.md`
+EVIDENCE:      `git show a6ba4a7f929ef08849484999aaa3d7516670bb35:orchestration_log/reference/decisions.md`
 
 ## 2026-09-18 — Session/artifact continuity leaves orchestration and dev-discipline; discontinuous-existence coping stays
 KIND:          runnable
@@ -286,7 +286,7 @@ INVALIDATES:   any reference to `agentic-delegation`'s five-living-file contract
                delegation exception, or the ARRIVE/WORK/LEAVE frame; `session-close`'s LEAVE
                protocol steps L0-L6 and its `extract_metrics.py` script (removed, orphaned by the
                same change); `dev-orchestration`'s "audit test markers during ARRIVE" wording
-SOURCE:        this migration
+EVIDENCE:      this migration
 
 ## 2026-09-18 — The orientation-reminder hooks move from orchestration to memento
 KIND:          runnable
@@ -297,7 +297,7 @@ WHY:           a plugin's hooks belong with the plugin whose domain they serve; 
                already lost that domain to memento
 INVALIDATES:   `orchestration/hooks/` as a path (directory removed); orchestration's own SessionStart
                and PostCompact hook registration
-SOURCE:        this migration
+EVIDENCE:      this migration
 
 ## 2026-09-18 — The PostCompact hook is dropped; SessionStart absorbs its matcher
 KIND:          runnable
@@ -314,8 +314,7 @@ WHY:           PostCompact's `hookSpecificOutput.additionalContext` fails schema
 INVALIDATES:   the "SessionStart and PostCompact hooks inject context" design pattern this repo's
                own `hooks-reference.md` recommended; any hook config pairing SessionStart with a
                PostCompact hook for context injection
-SOURCE:        this migration; github.com/anthropics/claude-code/issues/46191,
-               github.com/anthropics/claude-code/issues/28305
+EVIDENCE:      this migration; github.com/anthropics/claude-code/issues/46191, github.com/anthropics/claude-code/issues/28305
 
 ## 2026-09-27 — Discontinuous existence leaves orchestration for agent-conduct:check-back
 KIND:          runnable
@@ -333,7 +332,7 @@ WHY:           owner ruling — continuing to exist is about the agent, not abou
                under orchestration handled slow helpers by judgement
 INVALIDATES:   the three removed `agentic-delegation` tags; `TaskOutput` progress checks (deprecated);
                "agents cannot launch other agents" (subagents nest three deep)
-SOURCE:        https://code.claude.com/docs/en/hooks.md#stop-input
+EVIDENCE:      https://code.claude.com/docs/en/hooks.md#stop-input
 
 ## 2026-09-27 — Plugins declare dependencies on each other
 KIND:          runnable
@@ -343,7 +342,7 @@ FROM → TO:     no plugin declared a dependency; a skill naming another plugin'
                or disabled dependency disables the dependent
 WHY:           owner ruling, once the platform supported it
 INVALIDATES:   installing orchestration, dev-discipline, or qa-automation alone
-SOURCE:        https://code.claude.com/docs/en/plugins/dependencies.md
+EVIDENCE:      https://code.claude.com/docs/en/plugins/dependencies.md
 
 ## 2026-09-27 — orchestration is untied from memento
 KIND:          runnable
@@ -356,7 +355,7 @@ WHY:           owner ruling — the dependency was never intended; it came from 
                2026-09-18 continuity migration
 INVALIDATES:   `orchestration:session-close`, `orchestration:session-checkpoint`; the orchestration →
                memento edge in the 2026-09-27 dependency entry
-SOURCE:        this change
+EVIDENCE:      this change
 
 ## 2026-10-05 — dev-discipline's review-chain mandates move from SubagentStop injection to recorded state and a Stop hook
 KIND:          runnable
@@ -375,21 +374,7 @@ INVALIDATES:   `hooks/implementer-stop.sh`, `hooks/spec-reviewer-stop.sh`,
                `hooks/code-quality-reviewer-stop.sh`; the "Agent Lifecycle Chain" pattern in
                `hooks-reference.md` that recommends `additionalContext` from SubagentStop to drive the
                parent; the bare `implementer` matcher form for plugin agents
-SOURCE:        https://code.claude.com/docs/en/hooks.md#subagentstop; this change
-
-## 2026-10-06 — The review chain gates on `Status: DONE` and recognizes `SendMessage` continuations
-KIND:          runnable
-FROM → TO:     every implementer stop opened a spec-review stage, and only an `Agent` launch retired a
-               stage → an implementer stop opens the stage on `Status: DONE` alone; the script keeps an
-               agent-id → kind map from stops and launches, and `PostToolUse` on `SendMessage` to a
-               known id retires the stage that agent satisfies; the mandates say "send to the reviewer —
-               a launch for a first review, a continuation for a re-review"
-WHY:           `dev-orchestration` routes `NEEDS_CONTEXT` and `BLOCKED` away from review and continues
-               the same reviewer for re-reviews through `SendMessage`, so the old chain nagged for a
-               launch the skill forbids and demanded review of a blocked unit (seam check 2026-10-06)
-INVALIDATES:   the `^Agent$` matcher form; the "launch now" wording of the three mandate templates;
-               the list-shaped state file
-SOURCE:        `orchestration_log/recon/2026-10-06/checks/seam-hooks.md`; this change
+EVIDENCE:      https://code.claude.com/docs/en/hooks.md#subagentstop; this change
 
 ## 2026-10-05 — The implementer preloads `tdd` and merges the integration branch; path re-rooting leaves the agents
 KIND:          runnable
@@ -404,76 +389,75 @@ WHY:           Claude Code ≥2.1.203 refuses edits and commands resolving to th
                the default branch, so a unit built on unmerged work needs the merge
 INVALIDATES:   the "Absolute paths in a dispatch prompt defeat `isolation: worktree` silently" row of
                `capabilities.md`; any brief that passes main-checkout absolute paths expecting re-rooting
-SOURCE:        https://code.claude.com/docs/en/worktrees.md#how-claude-code-enforces-isolation;
-               https://code.claude.com/docs/en/sub-agents.md#preload-skills-into-subagents
+EVIDENCE:      https://code.claude.com/docs/en/worktrees.md#how-claude-code-enforces-isolation; https://code.claude.com/docs/en/sub-agents.md#preload-skills-into-subagents
+
+## 2026-10-06 — The review chain gates on `Status: DONE` and recognizes `SendMessage` continuations
+KIND:          runnable
+FROM → TO:     every implementer stop opened a spec-review stage, and only an `Agent` launch retired a
+               stage → an implementer stop opens the stage on `Status: DONE` alone; the script keeps an
+               agent-id → kind map from stops and launches, and `PostToolUse` on `SendMessage` to a
+               known id retires the stage that agent satisfies; the mandates say "send to the reviewer —
+               a launch for a first review, a continuation for a re-review"
+WHY:           `dev-orchestration` routes `NEEDS_CONTEXT` and `BLOCKED` away from review and continues
+               the same reviewer for re-reviews through `SendMessage`, so the old chain nagged for a
+               launch the skill forbids and demanded review of a blocked unit (seam check 2026-10-06)
+INVALIDATES:   the `^Agent$` matcher form; the "launch now" wording of the three mandate templates;
+               the list-shaped state file
+EVIDENCE:      `orchestration_log/recon/2026-10-06/checks/seam-hooks.md`; this change
 
 ## 2026-10-06 — dev-discipline splits into dev-discipline 3.0.0, dev-cycle 1.0.0, and dev-cycle-lite 1.0.0
-BEFORE:        one plugin, dev-discipline 2.2.0, holding seven skills, three agents, and the review-chain
-               hooks; `dev-orchestration` launched a `defensive-planning` agent to plan units; no spec stage
-AFTER:         dev-discipline keeps the five agent-agnostic skills and nothing else; dev-cycle holds the
-               loop skill (`specify → plan → implement → review → integrate`, the orchestrator planning
-               units itself), `spec-capturer`, the three moved agents, and the hooks under the
-               `dev-cycle:` prefix; dev-cycle-lite holds `prescriptive-planning` (the moved
-               `defensive-planning`, now fixing every signature), `lite-cycle`, `prescriber` (opus),
-               `suborchestrator` (sonnet), `executor` (haiku); every move is a git rename
+KIND:          runnable
+FROM → TO:     one plugin, dev-discipline 2.2.0, holding seven skills, three agents, and the review-chain hooks; `dev-orchestration` launched a `defensive-planning` agent to plan units; no spec stage → dev-discipline keeps the five agent-agnostic skills and nothing else; dev-cycle holds the loop skill (`specify → plan → implement → review → integrate`, the orchestrator planning units itself), `spec-capturer`, the three moved agents, and the hooks under the `dev-cycle:` prefix; dev-cycle-lite holds `prescriptive-planning` (the moved `defensive-planning`, now fixing every signature), `lite-cycle`, `prescriber` (opus), `suborchestrator` (sonnet), `executor` (haiku); every move is a git rename
 WHY:           the owner's PR #2 review: planning the orchestration is the orchestrator's work, the
                agentic implementer and the prescription-following executor are different dynamics, and
                the loop needs an owner-interviewing spec stage
 INVALIDATES:   `dev-discipline:dev-orchestration`, `dev-discipline:defensive-planning`, the
                `dev-discipline:*` agent names and hook matchers; the `orchestration` dependency of
                dev-discipline; the `skills: [dev-discipline:tdd]` preload of the moved agents
-SOURCE:        `orchestration_log/history/2026-10-06/reviews/dev-cycle-restructure-plan.md`; PR #3; this change
+EVIDENCE:      `orchestration_log/history/2026-10-06/reviews/dev-cycle-restructure-plan.md`; PR #3; this change
 
 ## 2026-10-06 — dev-cycle agents load `dev-discipline:tdd` through the `Skill` tool, not `skills:`
-BEFORE:        `implementer` and `code-quality-reviewer` declared `skills: [dev-discipline:tdd]`, with the
-               `Skill` invoke as a fallback when the text was absent
-AFTER:         no `skills:` block; both agents invoke the skill with the `Skill` tool as their first step
+KIND:          runnable
+FROM → TO:     `implementer` and `code-quality-reviewer` declared `skills: [dev-discipline:tdd]`, with the `Skill` invoke as a fallback when the text was absent → no `skills:` block; both agents invoke the skill with the `Skill` tool as their first step
 WHY:           headless probes (`claude -p --plugin-dir`, sonnet, 2026-10-06): a same-plugin preload lands,
                a cross-plugin preload — qualified or bare — does not
 INVALIDATES:   the `architecture_log.md` entry of 2026-10-05 stating the full `tdd` procedure is in the
                implementer's context at start; the `skills:` form for any cross-plugin preload in this
                marketplace
-SOURCE:        `orchestration_log/recon/2026-10-06/preload-probe/`; this change
+EVIDENCE:      `orchestration_log/recon/2026-10-06/preload-probe/`; this change
 
 ## 2026-10-14 — instruction-eval enters the marketplace
-BEFORE:        no plugin measured whether an instruction changes model behavior; eleven plugins
-AFTER:         `instruction-eval` 0.1.0 holds eleven skills and the `instruction-eval` CLI. Records are YAML
-               only and written once; judges rate blind; checks gate on measured noise; a neutral reader
-               session reads the records; one refusal type reports every rejected action
+KIND:          runnable
+FROM → TO:     no plugin measured whether an instruction changes model behavior; eleven plugins → `instruction-eval` 0.1.0 holds eleven skills and the `instruction-eval` CLI. Records are YAML only and written once; judges rate blind; checks gate on measured noise; a neutral reader session reads the records; one refusal type reports every rejected action. Open important findings, eleven listed in the review: records-series: Vocabularies and primitive checks stated twice; records-series: Public surface far wider than the commands; tasks-coverage-revision: Public surface beyond the outermost interface in revision.py; judge: Verdict file with unended transcript counts as failed; judge: Repeated reads and parses; reader-cli: Facts held in two places; reader-cli: File system reached without being handed; reader-cli: Order-of-work text repeats record names; gate-scores: Helpers beneath the barrier are public; tests: Same-named helpers redefined per file; tests: Copy-pasted helpers beyond series_fixtures
 WHY:           an instruction's effect was asserted, not measured; the series makes each claim a record a
                later reader re-derives
 INVALIDATES:   the count of eleven plugins
-SOURCE:        spec and journal `orchestration_log/history/2026-10-12/`; review `orchestration_log/recon/2026-10-14/reports/final-review.md`
-KNOWN ISSUES:  open Important findings, eleven listed in the review:
-               - records-series: Vocabularies and primitive checks stated twice
-               - records-series: Public surface far wider than the commands
-               - tasks-coverage-revision: Public surface beyond the outermost interface in revision.py
-               - judge: Verdict file with unended transcript counts as failed
-               - judge: Repeated reads and parses
-               - reader-cli: Facts held in two places
-               - reader-cli: File system reached without being handed
-               - reader-cli: Order-of-work text repeats record names
-               - gate-scores: Helpers beneath the barrier are public
-               - tests: Same-named helpers redefined per file
-               - tests: Copy-pasted helpers beyond series_fixtures
+EVIDENCE:      spec and journal `orchestration_log/history/2026-10-12/`; review `orchestration_log/recon/2026-10-14/reports/final-review.md`
 
 ## 2026-10-16 — agent-conduct 1.8.1 and 1.9.0: idle fix, silent-turn ending, git-etiquette
-BEFORE:        the `check-back` Stop hook treated every task as pending; `work-silently` set no turn ending; no skill carried the owner's version-control orders; agent-conduct 1.8.0
-AFTER:         the `check-back` Stop hook skips tasks whose status is finished or idle and records observed (type, status) pairs in the plugin data directory, because the idle value is undocumented. `work-silently` ends every silent turn with an empty zero-length final message. `git-etiquette` carries the owner's version-control orders. agent-conduct 1.9.0
+KIND:          runnable
+FROM → TO:     the `check-back` Stop hook treated every task as pending; `work-silently` set no turn ending; no skill carried the owner's version-control orders; agent-conduct 1.8.0 → the `check-back` Stop hook skips tasks whose status is finished or idle and records observed (type, status) pairs in the plugin data directory, because the idle value is undocumented. `work-silently` ends every silent turn with an empty zero-length final message. `git-etiquette` carries the owner's version-control orders. agent-conduct 1.9.0
 WHY:           the hook blocked turns over tasks that had already finished; the owner ruled the empty final message the core of silence; the owner's version-control orders lived in no skill
 INVALIDATES:   the `agent-conduct` description of 1.8.0 (two skills); any reading of an idle task as pending
-SOURCE:        `orchestration_log/history/2026-10-12/packet-silence-digest.md`, `packet-vcs-digest.md`, and the events journal `events.md` there; this change
+EVIDENCE:      `orchestration_log/history/2026-10-12/packet-silence-digest.md`, `packet-vcs-digest.md`, and the events journal `events.md` there; this change
 
 ## 2026-10-21 — instruction-eval 0.2.0; manifesto leaves the marketplace
-BEFORE:        `instruction-eval` 0.1.0 declared a dependency on `manifesto`; the marketplace held twelve plugins including `manifesto` 3.2.0
-AFTER:         `instruction-eval` 0.2.0 takes its binding as a plan setting, defaulting to `manifesto@llm-manifestos`, with no `dependencies` entry. `manifesto` is deleted from this repository and from `marketplace.json`; eleven plugins
+KIND:          runnable
+FROM → TO:     `instruction-eval` 0.1.0 declared a dependency on `manifesto`; the marketplace held twelve plugins including `manifesto` 3.2.0 → `instruction-eval` 0.2.0 takes its binding as a plan setting, defaulting to `manifesto@llm-manifestos`, with no `dependencies` entry. `manifesto` is deleted from this repository and from `marketplace.json`; eleven plugins
 WHY:           the owner moved the manifesto plugin to the `llm-manifestos` marketplace and ruled "Release 0.2.0 and retire together"
 INVALIDATES:   the count of twelve plugins; the `manifesto` dependency of `instruction-eval` 0.1.0; the `manifesto` entry of `capabilities.md`
-SOURCE:        `orchestration_log/history/2026-10-12/`; this change
+EVIDENCE:      `orchestration_log/history/2026-10-12/`; this change
 
-## 2026-11-13 — adopt-feedback: review-chain hook retires, check-back counts producing agents, orchestration-economics replaces tier tables
-BEFORE:        dev-cycle's `review-chain.py` ran behind five hook entries and continued the orchestrator's turn with the pending stage's mandate; the `check-back` Stop hook treated every unfinished, non-idle task as pending, so every working-looking agent in a session of hundreds blocked the turn, and teammates had no producing signal; orchestration and research-tree carried model tier tables and dev-cycle-lite fixed agent models; no skill counted the cost of a launch, continuation, or stop; `just hooks-test` ran the dev-cycle tests alone; orchestration 5.0.1, dev-cycle 1.0.0, agent-conduct 1.10.0
-AFTER:         dev-cycle ships no hook; the orchestrator alone tracks owed reviews in the status file, takes the static gate from the project's own pre-commit config, reads each quality finding's kind label (`[product]`, `[evidence]`, `[structural]`, `[cosmetic]`) without reading bodies, and reads `Ready to merge:` as `Yes`, `With fixes` (cosmetic only, deferred), or `No`; capability boundaries trigger the cosmetic sweep; a caller's implementer rebases onto the integration branch after its callee merges and the branch fast-forwards. `check-back` counts an agent only while its transcript grew since the previous Stop or was written within 120 seconds, joins each teammate to its transcript through `subagents/*.meta.json` by description, and counts shell and Monitor tasks as before. `orchestration-economics` counts each act in usage limit and wall time and chooses model and effort by that count; agentic-delegation and research-tree carry no tier table; agentic-delegation carries the delete-nothing rule, the destructive-operations rules, slug naming, and `TaskStop` then `SendMessage` for a scoped correction to a running agent; dev-cycle names every unit by its slug alone. `just hooks-test` lists every marketplace hook and names each one with no test: `agent-conduct/hooks/session-start.sh`. Versions: orchestration 6.0.0, dev-cycle 2.0.0, agent-conduct 1.11.0, qa-automation 3.3.0, product-craft 1.2.0, prompt-engineering 2.1.0; dev-cycle-lite and instruction-eval unchanged
+## 2026-11-13 — adopt-feedback: review-chain hook retires, check-back counts producing agents
+KIND:          runnable
+FROM → TO:     dev-cycle's `review-chain.py` ran behind five hook entries and continued the orchestrator's turn with the pending stage's mandate; the `check-back` Stop hook treated every unfinished, non-idle task as pending, so every working-looking agent in a session of hundreds blocked the turn, and teammates had no producing signal; `just hooks-test` ran the dev-cycle tests alone; dev-cycle 1.0.0, agent-conduct 1.10.0 → dev-cycle ships no hook; the orchestrator alone tracks owed reviews in the status file, takes the static gate from the project's own pre-commit config, reads each quality finding's kind label (`[product]`, `[evidence]`, `[structural]`, `[cosmetic]`) without reading bodies, and reads `Ready to merge:` as `Yes`, `With fixes` (cosmetic only, deferred), or `No`; capability boundaries trigger the cosmetic sweep; a caller's implementer rebases onto the integration branch after its callee merges and the branch fast-forwards. `check-back` counts an agent only while its transcript grew since the previous Stop or was written within 120 seconds, joins each teammate to its transcript through `subagents/*.meta.json` by description, and counts shell and Monitor tasks as before. `just hooks-test` lists every marketplace hook and names each one with no test: `agent-conduct/hooks/session-start.sh`. dev-cycle 2.0.0, agent-conduct 1.11.0
 WHY:           the owner ruled on the estafette feedback bundles in the 2026-11-13 office-hours round; the feedback overrides the prior text, and tier tables go on purpose. Rulings P0, P1, P2a, P2b, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P15, P16, P17, P18, P19, P20, P22, P23; P14 and P21 leave dev-cycle-lite and instruction-eval unedited
-INVALIDATES:   the `dev-cycle` hooks and the `${CLAUDE_PLUGIN_DATA}/review-chain/` state; any reading of the 2026-10-05 and 2026-10-06 entries that places review enforcement in a hook; the 2026-10-16 status list that skipped `idle` tasks; every model tier table and default model in orchestration and research-tree; the dev-cycle-only scope of `hooks-test`
-SOURCE:        `orchestration_log/recon/2026-11-13/reports/owner-rulings-round.md`; `orchestration/MAINTAINERS.md` (figure provenance, P17); `orchestration_log/reference/economics-provenance/`; this change
+INVALIDATES:   the `dev-cycle` hooks and the `${CLAUDE_PLUGIN_DATA}/review-chain/` state; any reading of the 2026-10-05 and 2026-10-06 entries that places review enforcement in a hook; the 2026-10-16 status list that skipped `idle` tasks; the dev-cycle-only scope of `hooks-test`
+EVIDENCE:      `orchestration_log/recon/2026-11-13/reports/owner-rulings-round.md`; `orchestration/MAINTAINERS.md` (figure provenance, P17); `orchestration_log/reference/economics-provenance/`; this change
+
+## 2026-11-13 — adopt-feedback: orchestration-economics replaces tier tables
+KIND:          runnable
+FROM → TO:     orchestration and research-tree carried model tier tables and dev-cycle-lite fixed agent models; no skill counted the cost of a launch, continuation, or stop; orchestration 5.0.1 → `orchestration-economics` counts each act in usage limit and wall time and chooses model and effort by that count; agentic-delegation and research-tree carry no tier table; agentic-delegation carries the delete-nothing rule, the destructive-operations rules, slug naming, and `TaskStop` then `SendMessage` for a scoped correction to a running agent; dev-cycle names every unit by its slug alone. Versions: orchestration 6.0.0, qa-automation 3.3.0, product-craft 1.2.0, prompt-engineering 2.1.0; dev-cycle-lite and instruction-eval unchanged
+WHY:           the owner ruled on the estafette feedback bundles in the 2026-11-13 office-hours round; the feedback overrides the prior text, and tier tables go on purpose. Rulings P0, P1, P2a, P2b, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P15, P16, P17, P18, P19, P20, P22, P23; P14 and P21 leave dev-cycle-lite and instruction-eval unedited
+INVALIDATES:   every model tier table and default model in orchestration and research-tree
+EVIDENCE:      `orchestration_log/recon/2026-11-13/reports/owner-rulings-round.md`; `orchestration/MAINTAINERS.md` (figure provenance, P17); `orchestration_log/reference/economics-provenance/`; this change
