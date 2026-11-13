@@ -7,10 +7,5 @@
   },
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": [
-    "prompts",
-    "prompt-engineering",
-    "evaluation",
-    "optimization"
-  ]
+  "keywords": ["prompts", "prompt-engineering", "evaluation", "optimization"]
 }

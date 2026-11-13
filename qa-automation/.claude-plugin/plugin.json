@@ -18,7 +18,5 @@
     "cross-browser",
     "ci-cd"
   ],
-  "dependencies": [
-    "orchestration"
-  ]
+  "dependencies": ["orchestration"]
 }

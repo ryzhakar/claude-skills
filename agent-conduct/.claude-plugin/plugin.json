@@ -7,10 +7,5 @@
   },
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": [
-    "conduct",
-    "behavior",
-    "output-discipline",
-    "silence"
-  ]
+  "keywords": ["conduct", "behavior", "output-discipline", "silence"]
 }

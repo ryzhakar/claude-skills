@@ -1,21 +1,10 @@
 {
   "name": "orchestration",
   "version": "6.0.0",
-  "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",
-  "author": {
-    "name": "ryzhakar"
-  },
+  "description": "Agent delegation, orchestration economics (counting each launch's cost to choose model and effort), and multi-agent research.",
+  "author": {"name": "ryzhakar"},
   "repository": "https://github.com/ryzhakar/claude-skills",
   "license": "MIT",
-  "keywords": [
-    "orchestration",
-    "delegation",
-    "agents",
-    "research",
-    "parallel",
-    "swarm"
-  ],
-  "dependencies": [
-    "agent-conduct"
-  ]
+  "keywords": ["orchestration", "delegation", "agents", "research", "parallel", "swarm"],
+  "dependencies": ["agent-conduct"]
 }
