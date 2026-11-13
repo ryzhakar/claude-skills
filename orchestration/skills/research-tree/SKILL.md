@@ -34,7 +34,7 @@ Research is deciding where to look, how deep to go, and when to change course. T
 
 1. **Organize by need, not by source.** A curated list has categories. A market has segments. These are the SOURCE's structure. Organize research by what the STAKEHOLDER needs to decide. "Which component library?" is a need. "Components" is a source category. They produce different research trees.
 
-2. **Verification depth must match claim consequence.** An option that saves 10 lines of code needs a surface skim. An option that becomes a load-bearing dependency needs source-level verification. Match agent capability and effort to the stakes.
+2. **Verification depth must match claim consequence.** An option that saves 10 lines of code needs a surface skim. An option that becomes a load-bearing dependency needs source-level verification. Match verification depth to the stakes; take each agent's model and effort from the `orchestration-economics` count, never from the stakes.
 
 3. **Fresh eyes beat inherited conclusions.** When re-researching at higher fidelity, give new agents raw context (project facts, source URLs) and let them form independent opinions. Prior conclusions are hypotheses to test, not evidence to build on.
 
@@ -44,7 +44,7 @@ Research is deciding where to look, how deep to go, and when to change course. T
 
 ### Variant Choice
 
-Read `orchestration:agentic-delegation` and `orchestration:orchestration-economics` whole before the first launch and before every model or effort choice; never launch an agent or choose its model or effort before both are read.
+Read `orchestration:agentic-delegation` and `orchestration:orchestration-economics` whole before the session's first launch, continuation, or stop of an agent, and again after each compaction; never launch, continue, or stop an agent before reading both.
 
 Choose each agent's variant — a model at one effort — by the orchestration-economics count; never from a table, a role, or a default.
 
@@ -77,7 +77,7 @@ verify: deep-dive promising candidates against primary sources
    ↓
 resolve: detect and resolve contradictions across reports
    ↓
-synthesize: one capable agent reads ALL reports, writes final verdict
+synthesize: one agent reads ALL reports, writes final verdict
 ```
 
 Not every research needs all phases. Quick scans skip `verify` and `resolve`. Deep assessments use all six.
@@ -153,7 +153,7 @@ Scan for: same entity with different verdicts, same entity described as "dead" b
 
 ### `synthesize`
 
-**Purpose:** One capable agent reads ALL reports and produces the final research deliverable.
+**Purpose:** One agent reads ALL reports and produces the final research deliverable.
 
 **Load:** This agent reasons across 10-25 reports, weighs conflicting evidence, and produces strategic recommendations.
 
@@ -212,9 +212,13 @@ Re-research setup: separate directory, need-driven organization, inherit only fa
 
 Name each research branch, scout, report, verdict, and synthesis by one slug — lowercase hyphen-joined words saying what it covers; never by a number, letter, code, round, wave, tier, or cluster label, alone or beside the slug.
 
-Write each agent's description as `<act> <slug>`; never write it in another form.
+Write each agent's description as `<verb> <slug>`; never write it in another form.
 
-Carry the slug in every report file name; never name a report file without it.
+Name each scope's report file by its slug; never name a scope's report without it.
+
+Name the files a research holds once — `index.md`, `production-usage.md`, `synthesis/recommendations.md`, and the re-research `context/` files and `synthesis/final-verdict.md` — by the role the Directory Structure below gives them, inside a directory named by the topic slug; never number them.
+
+Write research reports into the Directory Structure below in place of agentic-delegation's `reports/<agent>-<slug>.md`; never split one research's reports between the two.
 
 ### Per-Phase Execution
 
@@ -357,7 +361,7 @@ Assess ONLY candidates relevant to "{NEED_DESCRIPTION}". Do not drift into other
 
 ### Project Auditor (Read, Grep, Glob, Bash, Write)
 
-Three variants — launch all in parallel. Adapt to the project type.
+Three audits — launch all in parallel. Adapt to the project type.
 
 **Capability/UI Auditor:** Find all components/modules/endpoints. For each: file path, name, key features, patterns used. Find interaction patterns. Identify repeated code patterns. Catalog styling/config tokens. Identify pain points where external tools could reduce boilerplate. Write to `{REPORT_PATH}/deep-dives/project-capability-audit.md`.
 
