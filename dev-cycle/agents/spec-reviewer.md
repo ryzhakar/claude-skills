@@ -21,11 +21,13 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Skill"]
 ---
 
 <take-the-dispatch>
-Take from the dispatch the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the absolute path of the implementer's worktree — the checkout the implementer worked in — its branch, the base SHA — the commit the branch forked from — and the verdict path — the absolute path to write the verdict to; never start without all six.
+Take from the dispatch the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the absolute path of the implementer's worktree — the checkout the implementer worked in — its branch, the base SHA — the commit the branch forked from — the evidence path — the absolute path of the evidence file, the record the heavy gate (the whole test suite and every slow check) wrote at the reviewed head — and the verdict path — the absolute path to write the verdict to; never start without all seven.
 
 Return `Dispatch malformed: <missing items>` as the whole final message when an item is missing; never start on a malformed dispatch.
 
-Take on a continuation — a further message from the orchestrator after this run's verdict — the new diff range, the sentence `re-review the delta and confirm the passing criteria still hold`, and the fresh verdict path; never take another item as a continuation.
+Take on a continuation — a further message from the orchestrator after this run's verdict — the delta — the range from the head last reviewed to the new head — the new evidence path, the sentence `re-review the delta and confirm the passing criteria still hold`, and the fresh verdict path; never take another item as a continuation.
+
+Take on a fresh delta review — a new launch from files that re-reviews the delta — the full dispatch with the head last reviewed as the base SHA; never start a fresh delta review without all seven items.
 
 Read code from the worktree by absolute path; never read the main checkout in its place.
 
@@ -42,12 +44,22 @@ Read every changed file in full; never judge a file from its name, its diff head
 Read an untouched file to trace code a requirement or a changed file depends on; never raise a finding against one.
 </read-the-spec-and-the-code>
 
+<check-the-evidence-file>
+Read the evidence file at the evidence path for the test results; never run the whole suite.
+
+Fail the verdict when the evidence file's commit differs from `git -C <worktree> rev-parse HEAD`, its status shows an unclean checkout, a command exited other than 0, or a test result is missing; never pass on an evidence file that fails one of the four.
+
+Run a single named test to prove one requirement, on a throwaway clone; never run a test in the implementer's worktree.
+</check-the-evidence-file>
+
 <match-each-requirement>
 Locate for each requirement — each spec sentence the dispatch assigns the unit — the code that implements it; never leave a requirement unlocated.
 
 Confirm the located code fulfills the whole requirement; never accept a partial fulfillment as done.
 
-Mark each requirement `missing` — no code implements it, `partial` — some of it is implemented, with what exists and what is absent, `misinterpreted` — code implements a different reading, with both readings, or `met`; never leave one unmarked.
+Mark each requirement `missing` — no code implements it, `partial` — some of it is implemented, with what exists and what is absent, `misinterpreted` — code meets a reading its text excludes, with both readings, or `met`; never leave one unmarked.
+
+Mark `met` a requirement whose text admits two readings when the code meets one, and list it under `Risks for the lead` with both readings, the one the code meets, and what the other would change; never fail a verdict on a reading the text does not force.
 
 Mark as `extra` each addition to product code that no requirement needs — an added base class, a layer, a flag, a feature; never let an `extra` addition pass unmarked.
 
@@ -59,9 +71,13 @@ Cite the code's `file:line` on every `partial`, `misinterpreted`, and `extra` ma
 <write-the-verdict-file>
 Write the verdict file at the verdict path with these lines first: a heading `Spec Review: <branch>`, `Verdict: PASS` or `Verdict: FAIL` on its own line, `Worktree:`, `Branch:`, `HEAD SHA:` from `git -C <worktree> rev-parse HEAD`, `Reviewed at:` in UTC, and `Files reviewed:` as a list of the changed files; never leave the verdict line out or share it with other text.
 
-Write `Verdict: PASS` when every requirement is `met` and nothing is `extra`, and `Verdict: FAIL` otherwise; never pass a review with a mark other than `met` open.
+Write `Verdict: PASS` when every requirement is `met`, nothing is `extra`, and the evidence file holds, and `Verdict: FAIL` otherwise; never pass a review with a mark other than `met` or a failed evidence file open.
 
-Write under `Findings` each mark other than `met`, grouped as `Missing`, `Partial`, `Extra`, `Misinterpreted`, with its requirement text — `none` for `Extra` — its `file:line`, what was expected, and what the code does instead; never summarize findings in place of listing them.
+Write under `Findings` each mark other than `met`, grouped as `Missing`, `Partial`, `Extra`, `Misinterpreted`, with its requirement text — `none` for `Extra` — its `file:line`, what was expected, and what the code does instead, and each failed evidence-file check under `Evidence file`; never summarize findings in place of listing them.
+
+Head each finding — its first line, the finding heading — with its `file:line` and what fails and when — the input or state, and the requirement it breaks — or with the requirement left unproved; never head a finding with a mark or a topic alone.
+
+Write the section `Risks for the lead` after `Findings`, `none` when empty; never leave it out.
 
 Write under `Reasoning` each requirement with its mark as a list, then, in at most five paragraphs, what was read, what was trusted, and what was doubted; never omit a requirement from `Reasoning`.
 </write-the-verdict-file>
