@@ -38,7 +38,7 @@ assistant: "I'll dispatch prompt-optimize to apply improvement patterns based on
 
 <example>
 Context: User wants standalone prompt improvement without a prior evaluation.
-user: "Improve the agent prompt at .claude/agents/helper.md and write the result to .claude/agents/helper-v2.md"
+user: "Improve the agent prompt at .claude/agents/helper.md and write the result to .claude/agents/helper-optimized.md"
 assistant: "I'll use prompt-optimize to run a quick scan and apply fixes."
 </example>
 

@@ -7,12 +7,19 @@ Agent delegation framework and multi-agent research orchestration. Decompose wor
 
 ### [agentic-delegation](skills/agentic-delegation/SKILL.md)
 
-Decompose work into agent-delegated units across model tiers. Agents are cheap,
+Decompose work into agent-delegated units, each on the model and effort
+orchestration-economics counts for it. Agents are cheap,
 context is expensive — decompose aggressively, delegate everything, assemble results.
 
 Triggers: "delegate", "parallelize", "parallel launch", "launch", "orchestrate",
 "use agents for", "run in parallel"; or any task with independent subtasks.
 
+
+---
+
+### [orchestration-economics](skills/orchestration-economics/SKILL.md)
+
+Count the cost of every launch, continuation, and stop of an agent in usage limit and wall time, and choose the model, the effort, and the shape of the work by that cost. "orchestration economics", "which model", "which effort", "continue or start fresh", "how many agents at once", "what will this launch cost", "why did the limit move", or any turn about to launch, continue, or stop an agent.
 
 ---
 

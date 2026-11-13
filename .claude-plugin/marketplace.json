@@ -8,7 +8,7 @@
       "name": "agent-conduct",
       "source": "./agent-conduct/",
       "description": "Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.",
-      "version": "1.10.0",
+      "version": "1.11.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -18,8 +18,8 @@
     {
       "name": "dev-cycle",
       "source": "./dev-cycle/",
-      "description": "Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, spec and code-quality reviewers, and a review chain enforced by hooks.",
-      "version": "1.0.0",
+      "description": "Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, and spec and code-quality reviewers.",
+      "version": "2.0.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -63,7 +63,7 @@
       "name": "orchestration",
       "source": "./orchestration/",
       "description": "Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.",
-      "version": "5.0.1",
+      "version": "6.0.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -74,7 +74,7 @@
       "name": "product-craft",
       "source": "./product-craft/",
       "description": "Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -85,7 +85,7 @@
       "name": "prompt-engineering",
       "source": "./prompt-engineering/",
       "description": "Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "author": {
         "name": "ryzhakar"
       },
@@ -107,7 +107,7 @@
       "name": "qa-automation",
       "source": "./qa-automation/",
       "description": "Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "author": {
         "name": "ryzhakar"
       },

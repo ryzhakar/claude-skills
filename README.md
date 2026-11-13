@@ -1,26 +1,26 @@
 # my-claude-skills
 
-33 skills · 13 agents across 11 plugins
+34 skills · 13 agents across 11 plugins
 
 ## Plugins
 
 | Plugin | Description | Version | Components |
 |--------|-------------|---------|------------|
-| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.10.0` | 6S |
-| [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `1.0.0` | 1S 4A |
+| [agent-conduct](agent-conduct/) | Domain-free skills governing how an agent conducts itself while working,... | `1.11.0` | 6S |
+| [dev-cycle](dev-cycle/) | Development cycle orchestration: specify, plan, implement, review,... | `2.0.0` | 1S 4A |
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
 | [instruction-eval](instruction-eval/) | Measure whether an LLM instruction changes model behavior. | `0.2.0` | 11S |
-| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `5.0.1` | 2S |
-| [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.1.0` | 2S |
-| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.0.0` | 0S 2A |
+| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `6.0.0` | 3S |
+| [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.2.0` | 2S |
+| [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.1.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
-| [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `3.2.0` | 1S 4A |
+| [qa-automation](qa-automation/) | Playwright test lifecycle orchestrator. One skill drives the full loop: plan... | `3.3.0` | 1S 4A |
 | [userland-utilities](userland-utilities/) | Practical utilities for common desktop and system tasks. Includes macOS app... | `1.0.0` | 1S |
 
 ---
 
-## [agent-conduct](agent-conduct/) `1.10.0`
+## [agent-conduct](agent-conduct/) `1.11.0`
 
 Domain-free skills governing how an agent conducts itself while working, independent of orchestration, memory, or any specific engineering domain.
 
@@ -32,9 +32,9 @@ Domain-free skills governing how an agent conducts itself while working, indepen
 - **[office-hours](agent-conduct/skills/office-hours/SKILL.md)** — Hold an office-hours round: one event in which the owner answers the questions the agent queued. "office hours", "questioning round", or...
 - **[work-silently](agent-conduct/skills/work-silently/SKILL.md)** — Keep working while writing nothing to the conversation, ending every turn with an empty message, until the user says to stop. Use when...
 - **[write-well](agent-conduct/skills/write-well/SKILL.md)** — Write all prose by Strunk's rules of grammar, composition, and usage, and reread each draft against them, most serious fault first. Use...
-## [dev-cycle](dev-cycle/) `1.0.0`
+## [dev-cycle](dev-cycle/) `2.0.0`
 
-Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, spec and code-quality reviewers, and a review chain enforced by hooks.
+Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, and spec and code-quality reviewers.
 
 ### Skills
 
@@ -89,16 +89,17 @@ Measure whether an LLM instruction changes model behavior.
 - **[revise](instruction-eval/skills/revise/SKILL.md)** — Make the hypothesis' one change to the live instruction through the writer and record it as the next revision, refusing any second...
 - **[start-series](instruction-eval/skills/start-series/SKILL.md)** — Create a series folder for one instruction and its sources, and set up the neutral login whose session drives the series. Use when the...
 - **[write-tasks](instruction-eval/skills/write-tasks/SKILL.md)** — Write the tasks tempting each demand and `overreach`, their answer keys, conversations, and open and sealed split, with the conditions,...
-## [orchestration](orchestration/) `5.0.1`
+## [orchestration](orchestration/) `6.0.0`
 
 Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
 
 ### Skills
 
-- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units across model tiers. Agents are cheap, context is expensive — decompose aggressively, delegate...
+- **[agentic-delegation](orchestration/skills/agentic-delegation/SKILL.md)** — Decompose work into agent-delegated units, each on the model and effort orchestration-economics counts for it. Agents are cheap, context...
+- **[orchestration-economics](orchestration/skills/orchestration-economics/SKILL.md)** — Count the cost of every launch, continuation, and stop of an agent in usage limit and wall time, and choose the model, the effort, and...
 - **[research-tree](orchestration/skills/research-tree/SKILL.md)** — Govern multi-agent research across any knowledge surface: technology ecosystems, market landscapes, academic fields, regulatory...
   Examples: [`awesome-leptos-session.md`](orchestration/skills/research-tree/examples/awesome-leptos-session.md)
-## [product-craft](product-craft/) `1.1.0`
+## [product-craft](product-craft/) `1.2.0`
 
 Product definition skills: extract specs from stakeholders, write user stories, and establish ubiquitous language.
 
@@ -106,7 +107,7 @@ Product definition skills: extract specs from stakeholders, write user stories, 
 
 - **[spec-chef](product-craft/skills/spec-chef/SKILL.md)** — Extracts implicit product decisions from stakeholders into durable artifacts through systematic gap detection and constrained...
 - **[user-story-chef](product-craft/skills/user-story-chef/SKILL.md)** — Writes user stories as value negotiation units, not template-filling exercises. Triggers: writing user stories, acceptance criteria,...
-## [prompt-engineering](prompt-engineering/) `2.0.0`
+## [prompt-engineering](prompt-engineering/) `2.1.0`
 
 Evaluate and optimize Claude system prompts using Anthropic-grounded patterns.
 
@@ -125,7 +126,7 @@ Python development tooling: debug type errors in uv-managed projects with pyrigh
   Scripts: [`template_transformer.py`](python-tools/skills/python-ast-mass-edit/scripts/template_transformer.py)
 - **[uv-pyright-debug](python-tools/skills/uv-pyright-debug/SKILL.md)** — Debug type errors in uv-managed Python projects by accessing true pyright diagnostics. Use when IDE shows type errors but standalone...
   Scripts: [`analyze_errors.py`](python-tools/skills/uv-pyright-debug/scripts/analyze_errors.py), [`line_index_errors.py`](python-tools/skills/uv-pyright-debug/scripts/line_index_errors.py)
-## [qa-automation](qa-automation/) `3.2.0`
+## [qa-automation](qa-automation/) `3.3.0`
 
 Playwright test lifecycle orchestrator. One skill drives the full loop: plan from live browser exploration, generate accessible .spec.ts files, execute with failure classification, and self-heal broken locators via deterministic ten-tier recovery with confidence-based PR routing.
 

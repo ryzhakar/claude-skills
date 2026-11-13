@@ -1,8 +1,8 @@
 # dev-cycle
 
-Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, spec and code-quality reviewers, and a review chain enforced by hooks.
+Development cycle orchestration: specify, plan, implement, review, integrate. A spec-capturer that interviews the owner, worktree-isolated implementers, and spec and code-quality reviewers.
 
-`orchestration` `lifecycle` `specification` `planning` `code-review` `worktree` `hooks` 
+`orchestration` `lifecycle` `specification` `planning` `code-review` `worktree` 
 ## Skills
 
 ### [dev-cycle](skills/dev-cycle/SKILL.md)
@@ -16,7 +16,7 @@ Drive the specify, plan, implement, review, and integrate loop over software wor
 
 ### [code-quality-reviewer](agents/code-quality-reviewer.md)
 
-Review the quality of a unit's changed code against the tdd skill's rules and the design checks below, and write a report file whose Ready to merge line gates the merge. Use it after the spec-reviewer has passed a unit, to audit a completed feature, or before merging code that must meet production standards. Examples:
+Review the quality of a unit's changed code against the tdd skill's rules and the design checks below, and write a report file whose kind-labelled findings and Ready to merge line gate the merge. Use it after the spec-reviewer has passed a unit, to audit a completed feature, or before merging code that must meet production standards. Examples:
 
 <example>
 Context: The spec-reviewer has passed the implementation and the code quality needs checking.
@@ -40,15 +40,15 @@ assistant: "I'll launch the code-quality-reviewer agent to review the changes."
 Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a TDD cycle on a defined unit of work, inside its own git worktree. Examples:
 
 <example>
-Context: An implementation plan has five units. Unit 1 assigns the requirements of an authentication middleware.
-user: "Execute unit 1 from the implementation plan"
-assistant: "I'll launch the implementer agent for unit 1."
+Context: An implementation plan has five units. The unit auth-middleware assigns the requirements of an authentication middleware.
+user: "Execute auth-middleware from the implementation plan"
+assistant: "I'll launch the implementer agent as Implement auth-middleware."
 </example>
 
 <example>
-Context: Sequential units. Unit 3 specifies a database migration with its table structure and rollback test.
-user: "Continue to unit 3"
-assistant: "I'll launch the implementer agent for unit 3."
+Context: Sequential units. The unit orders-table-migration specifies a database migration with its table structure and rollback test.
+user: "Move on to orders-table-migration"
+assistant: "I'll launch the implementer agent as Implement orders-table-migration."
 </example>
 
 <example>

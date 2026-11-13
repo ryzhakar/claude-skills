@@ -30,9 +30,9 @@ Test execution and failure classification is the executor-agent's sole function.
 </example>
 
 <example>
-Context: QA orchestrator running Phase 3
+Context: QA orchestrator running EXECUTE
 user: "Run QA on my app"
-assistant: "Phase 2 complete. Dispatching executor-agent for Phase 3: test execution."
+assistant: "GENERATE complete. Dispatching executor-agent for EXECUTE: test execution."
 <commentary>
 Orchestrator dispatches executor-agent after generator-agent completes.
 </commentary>
@@ -87,9 +87,9 @@ Locator failures detected -- healer-agent applies deterministic repair, not asse
 </example>
 
 <example>
-Context: QA orchestrator running Phase 4 with a single failure
+Context: QA orchestrator running HEAL with a single failure
 user: "Run QA on my app"
-assistant: "Phase 3 found 2 locator failures. Dispatching healer-agent to repair them."
+assistant: "EXECUTE found 2 locator failures. Dispatching healer-agent to repair them."
 <commentary>
 Orchestrator dispatches healer-agent for locator repair. Below N=5 threshold, single agent handles all.
 </commentary>
@@ -115,9 +115,9 @@ User wants test planning from live exploration -- this is the planner-agent's co
 </example>
 
 <example>
-Context: QA orchestrator is running Phase 1
+Context: QA orchestrator is running PLAN
 user: "Run QA on my app"
-assistant: "Starting Phase 1: dispatching planner-agent to explore the application."
+assistant: "Starting PLAN: dispatching planner-agent to explore the application."
 <commentary>
 The orchestrator dispatches planner-agent as the first phase of the QA pipeline.
 </commentary>
