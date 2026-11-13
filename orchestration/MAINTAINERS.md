@@ -8,19 +8,21 @@ Implicit decisions and structural invariants for anyone modifying skills in this
 agentic-delegation          <-- root (the universal framework)
   |
   +-- research-tree         <-- domain extension: research workflows
+
+orchestration-economics     <-- sibling root: the cost of every act; model and effort
 ```
 
-agentic-delegation is the parent. Everything else is a domain extension. This is not a flat collection of independent skills.
+agentic-delegation is the parent; research-tree is a domain extension. orchestration-economics stands beside agentic-delegation, not under it: agentic-delegation and every domain extension read it before any launch, continuation, or stop that sets a model or effort. This is not a flat collection of independent skills.
 
-**dev-orchestration moved to the dev-discipline plugin in v3.0.0 and became `dev-cycle` in the dev-cycle plugin on 2026-10-06.** It lives with its agents (spec-capturer, implementer, spec-reviewer, code-quality-reviewer) and hooks. The cross-plugin prerequisite on agentic-delegation remains — dev-cycle gates on reading this plugin's parent skill first.
+**dev-orchestration moved to the dev-discipline plugin in v3.0.0 and became `dev-cycle` in the dev-cycle plugin on 2026-10-06.** It lives with its agents (spec-capturer, implementer, spec-reviewer, code-quality-reviewer). The cross-plugin prerequisite remains — dev-cycle gates on reading agentic-delegation and orchestration-economics first.
 
 ## The Hard Prerequisite Rule
 
 Domain extensions MUST gate on the parent.
 
-When research-tree is loaded, the model MUST read agentic-delegation's SKILL.md first. Not optional. Not "if available." A hard gate. The parent establishes the economics, the model ladder, the decomposition patterns, the prompt anatomy, the execution patterns, and the quality governance. Domain skills assume all of this is already internalized.
+When research-tree is loaded, the model MUST read agentic-delegation's and orchestration-economics's SKILL.md first. Not optional. Not "if available." A hard gate. The parent establishes the decomposition patterns, the prompt anatomy, the execution patterns, and the quality governance; orchestration-economics establishes the cost of every act and the choice of model and effort. Domain skills assume all of this is already internalized.
 
-Cross-plugin domain extensions (dev-cycle in the dev-cycle plugin) follow the same rule — they gate on reading agentic-delegation before proceeding. The gate is a content dependency, not a packaging dependency.
+Cross-plugin domain extensions (dev-cycle in the dev-cycle plugin) follow the same rule — they gate on reading agentic-delegation and orchestration-economics before proceeding. The gate is a content dependency, not a packaging dependency.
 
 ## Composition Principles
 
@@ -28,7 +30,7 @@ Cross-plugin domain extensions (dev-cycle in the dev-cycle plugin) follow the sa
 
 When the parent's reasoning already reaches a conclusion for a specific domain, the domain skill caches that conclusion as shorthand. It does not override the parent.
 
-Example: agentic-delegation's Implementation archetype prescribes sonnet for implementation ("requires reasoning about system constraints"). Domain extensions (like dev-orchestration in dev-discipline) cache this as "default sonnet for implementers" — the same conclusion, pre-derived so the model doesn't re-derive it in context every time.
+Model and effort are never cached derivations. No skill in this plugin, or in a domain extension, carries a tier table, a default model, or a model assigned to a role; each chooses model and effort per act by orchestration-economics.
 
 If a domain skill appears to contradict the parent, one of two things is true:
 1. The domain skill is wrong (most likely).
@@ -109,7 +111,7 @@ agentic-delegation defines general quality patterns: re-launch (don't debug), co
 ### Domain Subsumption
 
 Domain skills may define more structured quality gates that subsume the parent's general patterns for that domain:
-- dev-cycle's two-stage review (in the dev-cycle plugin, with hook-enforced review chain) subsumes the parent's general patterns for dev work.
+- dev-cycle's two-stage review (in the dev-cycle plugin; the orchestrator tracks owed reviews) subsumes the parent's general patterns for dev work.
 - research-tree's tiered re-research with fresh-eyes isolation subsumes the parent's contradiction resolution for research work.
 
 The parent's patterns remain authoritative for any orchestration context not covered by a domain skill's specific gates.
@@ -136,7 +138,7 @@ Each domain has natural decomposition units. Do not force cross-domain mappings.
 
 When creating a new domain extension:
 
-1. It MUST gate on reading agentic-delegation first.
+1. It MUST gate on reading agentic-delegation and orchestration-economics first.
 2. Content is delta-only. Reference the parent for shared patterns.
 3. Define domain-specific decomposition units if the parent's don't fit.
 4. Define domain-specific quality gates if the parent's general governance is insufficient. Domain gates subsume, not layer.
