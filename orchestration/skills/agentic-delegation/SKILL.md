@@ -270,7 +270,7 @@ Default: parallel background launch. All independent agents launch in a single m
 
 <invoke name="Agent">
 <parameter name="description">Audit auth-vulnerabilities</parameter>
-<parameter name="prompt">[9-section prompt]</parameter>
+<parameter name="prompt">Read /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-auth-vulnerabilities.md for instructions.</parameter>
 <!-- no run_in_background -->
 </invoke>
 
@@ -280,7 +280,7 @@ Default: parallel background launch. All independent agents launch in a single m
 
 <invoke name="Agent">
 <parameter name="description">Audit auth-vulnerabilities</parameter>
-<parameter name="prompt">[9-section prompt]</parameter>
+<parameter name="prompt">Read /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-auth-vulnerabilities.md for instructions.</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
@@ -365,11 +365,14 @@ Orchestrator realizes `/src/payments/handler.ts` should be `/src/billing/payment
 <parameter name="task_id">agent-task-pci-audit</parameter>
 </invoke>
 
-...
+<invoke name="Write">
+<parameter name="file_path">/Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-payment-pci-compliance.md</parameter>
+<parameter name="content">[9-section prompt with corrected path: /src/billing/payment-handler.ts]</parameter>
+</invoke>
 
 <invoke name="Agent">
 <parameter name="description">Audit payment-pci-compliance</parameter>
-<parameter name="prompt">[9-section prompt with corrected path: /src/billing/payment-handler.ts]</parameter>
+<parameter name="prompt">Read /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-payment-pci-compliance.md for instructions.</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
