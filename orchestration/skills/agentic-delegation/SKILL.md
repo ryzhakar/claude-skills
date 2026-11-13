@@ -15,7 +15,7 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | Forbidden | Permitted |
 |-----------|-----------|
 | `Read`, `Write`, `Edit` tools | `Agent` launch |
-| Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | `SendMessage` to continue an existing agent |
+| Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | `SendMessage` to continue an agent whose notification has arrived, or to correct a running agent right after `TaskStop` |
 | | `TaskStop` to halt a running agent |
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 | | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
@@ -291,7 +291,28 @@ Keep every agent's state in files: its brief, its report, its verdict, and, at a
 <correct_mid_flight>
 Two correction paths. Choose by whether prior work is salvageable.
 
-Scoped correction (wrong path, missing constraint, narrowed scope): the agent's approach is sound but it needs updated instructions. Send a clarification via `SendMessage(to: agent-id)` with only what changed. The agent retains all prior context and continues from where it was. If the agent already completed, `SendMessage` auto-resumes it in the background.
+Scoped correction (wrong path, missing constraint, narrowed scope): the agent's approach is sound but it needs updated instructions. Correct a running agent with `TaskStop`, then `SendMessage(to: agent-id)` carrying only what changed; never send a bare `SendMessage` to a running agent. The `SendMessage` resumes the stopped agent with all prior context and the correction. Correct a completed agent, one whose notification has arrived, with `SendMessage` alone; it resumes in the background.
+
+<never_do_this reason="bare message to a running agent">
+
+<invoke name="SendMessage">
+<parameter name="to">agent-task-pci-audit</parameter>
+<parameter name="message">Skip /src/billing/legacy/; it is out of scope.</parameter>
+</invoke>
+
+</never_do_this>
+<do_exactly_this>
+
+<invoke name="TaskStop">
+<parameter name="task_id">agent-task-pci-audit</parameter>
+</invoke>
+
+<invoke name="SendMessage">
+<parameter name="to">agent-task-pci-audit</parameter>
+<parameter name="message">Skip /src/billing/legacy/; it is out of scope.</parameter>
+</invoke>
+
+</do_exactly_this>
 
 Fundamental failure (wrong approach, wrong variant, wrong decomposition): call `TaskStop` immediately, then launch a fresh agent with a corrected prompt. Do not wait for an agent to finish work you know is unsalvageable.
 
@@ -323,7 +344,7 @@ Agent completed a thorough code review two minutes ago, inside its TTL. Orchestr
 </never_do_this>
 <do_exactly_this>
 
-Continue the warm agent via `SendMessage(to: agent-id)`: "Also review /Users/dev/project/tests/auth.test.ts for coverage gaps. Do not re-review files you already checked." The agent resumes with full context and no cold start.
+Continue the completed, warm agent via `SendMessage(to: agent-id)`: "Also review /Users/dev/project/tests/auth.test.ts for coverage gaps. Do not re-review files you already checked." The agent resumes with full context and no cold start.
 
 </do_exactly_this>
 </correct_mid_flight>
