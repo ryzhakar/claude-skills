@@ -272,6 +272,14 @@ Operations exceeding 60 seconds (test suites, builds, deployments) use backgroun
 
 <launch_and_monitor>
 
+<set_each_launch>
+Pass the chosen variant's model and effort on every launch; never leave either to the agent's definition or a default.
+
+Pass an agent name on a launch only when the same call passes `isolation`; never name a launch whose isolation sits only in the agent's definition, a launch Claude Code runs as a teammate — an agent inside the session's own process.
+
+Address an unnamed agent by the id its launch returns; never by a name it was not given.
+</set_each_launch>
+
 <check_back_on_pending_work>
 Every background launch and every `SendMessage` continuation leaves work running past the turn. Before ending any turn that leaves an agent or command running, invoke `agent-conduct:check-back` and follow it.
 
