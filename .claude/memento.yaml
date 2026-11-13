@@ -1,0 +1,286 @@
+load_levels:
+  self: loads through charter's autoload lines
+  start: read by pat-down at session start
+  need: reached by pointer when task touches it
+  latent: found by search only
+
+kinds:
+
+  charter:
+    home: CLAUDE.md
+    tier: charter
+    load: self
+    budget_tokens: 1500
+    verification: owner-stated
+    sections: [Condition, Session start, Goals, Prime directives, Pointers]
+    goal_fields: [object, evidence, ground, constraints]
+    format: >
+      Autoload lines, then one `## ` section per name in sections, in order,
+      each heading starting with its name; Session start holds hard opening
+      sequence. Each goal: `### Goal <n> · <name> · <finite | standing> ·
+      <status>`, then one `- <field>:` bullet per goal field, evidence for
+      finite goals only. Each prime directive: one bullet ending in `Ground:` and
+      dated owner statement or commit.
+    admission: >
+      Owner-authored or owner-directed only; no facts, no history. Corrected in
+      place on owner ruling.
+
+  frame:
+    home: orchestration_log/reference/ground-truth.md
+    tier: charter
+    load: self
+    budget_tokens: 3300
+    verification: owner-stated
+    admission: >
+      The problem as given: terms, data, constraints, evaluation protocol.
+      Refuses goals, measurements of what was built, and history. Owner rulings
+      only.
+
+  directive:
+    home: orchestration_log/reference/conventions.md
+    tier: dossier
+    load: self
+    budget_tokens: 18000
+    verification: grounded
+    headings: [commit & merge, code, measuring & quoting, reviewing & tests, writing craft, delegating agents, owner]
+    labels: [when, do, never, why, ground, except]
+    required_labels: [when, do, ground]
+    label_width: 8
+    format: >
+      One block per rule under the headings, in their order: `### <id>` heading
+      of hyphen-joined lowercase words, unique in file, then one line per label
+      in labels' order, each padded to label_width; every block carries required
+      labels. except names known misapplication; ground names committed path,
+      commit SHA, record heading or dated owner ruling.
+    admission: >
+      Project-local rules, and project-local clarifications or extensions of
+      third-party instructions. Refuses what the system is (fact), incident
+      stories (failure, report), measurements (measurement), and knowledge
+      homed elsewhere: upstream skills, manifestos, this schema.
+
+  change:
+    home: orchestration_log/reference/architecture_log.md
+    tier: journal
+    load: need
+    budget_tokens: 55000
+    verification: held-before-verified
+    fields: [KIND, FROM → TO, WHY, INVALIDATES, EVIDENCE, SUPERSEDED-BY]
+    required_fields: [KIND, FROM → TO, WHY, INVALIDATES]
+    kind_values: [computed, runnable]
+    one_line_fields: [EVIDENCE]
+    label_width: 15
+    word_cap: 300
+    aging: >
+      Over budget, oldest entries move whole and unedited into
+      orchestration_log/archive/architecture_log-<first date>--<last
+      date>.md, which joins the retired list.
+    format: >
+      `## YYYY-MM-DD — Title`, or `## YYYY-MM-DD → YYYY-MM-DD — Title` for
+      multi-day change, then fields in order: required always, others when
+      present. KIND takes one of kind_values; one_line_fields take one line.
+      Labels padded to label_width, continuations indented to it. At most
+      word_cap words per entry outside INVALIDATES, which is never compressed.
+      Oldest first. INVALIDATES is read before quoting any number.
+    admission: >
+      A change to the system's core (what a record kind is; which homes and
+      shapes the checks accept; what each verb writes or refuses; how the schema
+      is read) that moved what is computed or runnable, from a shape the system
+      actually held. Written only after merge into main. Tooling, CLI surface,
+      documentation, process, review outcomes and filing never qualify.
+
+  schema:
+    home: .claude/memento.yaml
+    tier: dossier
+    load: self
+    budget_tokens: 5000
+    verification: owner-stated
+    admission: >
+      This file. Amended on the owner's word alone; each amendment an events
+      line naming what it replaced.
+
+  map:
+    home: .claude/memento-map.md
+    tier: dossier
+    load: start
+    budget_tokens: 1000
+    verification: reconciled
+    format: >
+      One table, columns path, kind, load, purpose. One row per non-latent
+      record; one pattern row per latent home.
+    admission: >
+      Edited in the same change that adds, removes or renames a non-latent
+      record; latent files never touch it. Full audit on demand.
+
+  fact:
+    home: orchestration_log/reference/capabilities.md
+    tier: dossier
+    load: need
+    verification: measured
+    format: >
+      Present tense. Cites a measurement by id only where a sentence cannot
+      stand without it. A change-log pointer reads "decided YYYY-MM-DD, see
+      orchestration_log/reference/architecture_log.md", only where that entry exists.
+    admission: >
+      What the system is and does. Refuses edit narration, decision history,
+      process, status snapshots, and measurements (measurement).
+
+  deferral:
+    home: orchestration_log/reference/user_deferred_items.md
+    tier: dossier
+    load: need
+    verification: owner-stated
+    admission: >
+      Owner-authored only, in the owner's framing. Resolved entry is deleted,
+      resolution written as one events line.
+
+  reference:
+    home: orchestration_log/reference/
+    tier: dossier
+    load: latent
+    verification: owner-stated
+    admission: >
+      Upstream specifications the project consumes, as owner supplied them.
+      Refuses the project's reading of them (fact or frame). Superseded on
+      owner's word.
+
+  events:
+    home: orchestration_log/history/{date}/events*.md
+    tier: journal
+    load: start
+    verification: witnessed
+    actors: [owner, self, "agent:<name>", "tool:<name>"]
+    format: >
+      One line per event: `YYYY-MM-DDTHH:MM | actor | kind | what`, actor one
+      of actors, kind an event kind below, times never decreasing. Span start
+      date names file and dates its first line; parallel session writes
+      events-<suffix>.md beside its session-<suffix>.md. Pat-down reads newest
+      file back to last span-event.
+    admission: >
+      Written when it happens. Never a rule, never a settled conclusion.
+
+  digest:
+    home: orchestration_log/history/{date}/session*.md
+    tier: journal
+    load: start
+    verification: witnessed
+    close_labels: [HEAD, state, open, next]
+    close_label_width: 8
+    state_max_lines: 3
+    format: >
+      Ends in close block: `## Close — YYYY-MM-DDTHH:MM`, then one line per
+      close label, padded to close_label_width: HEAD (sha, clean | dirty:
+      paths), state (at most state_max_lines lines), open (waits, tripwires,
+      delegations, or none), next (first step). Pat-down reads newest close
+      block.
+    admission: The span's own narrative only; events go to events.
+
+  failure:
+    home: orchestration_log/history/{date}/failures*.md
+    tier: journal
+    load: latent
+    verification: witnessed
+    entry_labels: [What happened, Mechanism, Correction]
+    format: >
+      `## <title>`, then one paragraph per entry label, in order, each opening
+      with label and colon; day's events carry a failure line pointing at each
+      entry.
+    admission: One entry per failure, written the day it is diagnosed.
+
+  scratch:
+    home: orchestration_log/recon/{date}/
+    tier: bench
+    load: latent
+    disposable: true
+    verification: none
+    admission: Claims under verification, drafts, worker returns at claim grade. Binds nothing.
+
+  archived:
+    home: orchestration_log/archive/
+    tier: archive
+    load: latent
+    verification: none
+    admission: Records out of force and kept. Moved in, never out.
+
+events:
+  decision: events
+  discovery: events
+  commitment: events
+  delegation: events
+  receipt: events
+  attenuation: events
+  span-event: events
+  failure: failure
+  change: change
+
+token_estimate:
+  tokens_per_word: 2.5
+  measured: >
+    Not measured on this project's files: the figure is the estimate memento's
+    own setup found (2.49 tokens per word over its self-loading files). Replace
+    it when this project counts its own. budget_tokens is words × tokens_per_word.
+
+baseline: >
+  No baseline record. Expected state: newest session record's close block plus
+  events tail; pat-down measures found state against them.
+
+ratification: >
+  No record stood on 2026-11-12, the day before setup, so no date exempts any
+  file from the checks. A journal file dated on or before that day would be
+  exempt from the journal shape checks and
+  from history admission; none exists.
+
+filing:
+  - Living records (charter, frame, directive, fact, map, schema) hold only what is true now. Correct in place; never append corrections; never describe themselves; what a file is lives in map.
+  - A fact goes to fact, a behaviour it triggers to directive. One piece of knowledge may yield one entry in each; neither restates the other.
+  - history/ holds dated journal records only. Transient orchestration artifacts go to recon/; session records point at recon paths, never copy them.
+  - Authored prose has no hard line wrapping; tables, fenced blocks and field-aligned entries keep their breaks.
+
+verification_depths:
+  none: Stands by being written.
+  witnessed: Written from the event, in its span, never reconstructed later.
+  owner-stated: Stands on the owner's word, with the owner's date and framing.
+  measured: Checked against source or measurement; carries that date. An undated count fails.
+  grounded: States the fact, goal, frame or ruling it rests on, in the entry.
+  reconciled: Every row names an existing home; every non-latent record has a row.
+  held-before-verified: >
+    Both halves read from saved artifacts or source: prior shape actually held,
+    and change moved what is computed or runnable. Tooling, interface,
+    documentation, process and review outcomes never pass.
+
+kind_form:
+  by: The record's home. One home per kind, one kind per home; no record carries a kind field.
+  home_grammar: >
+    Paths from project root, matched whole. Trailing `/` covers every path
+    beneath; `{date}` is one ISO-date segment; `*` any run of characters
+    within one segment.
+  resolution: Exact path before wildcard, both before bare directory.
+  outside_any_home: No kind, not admitted, except products below.
+
+provenance_form:
+  written_as: Inline attribution in the record's text; events lines carry it in their fields.
+  author_class: '"owner ruling" (owner), "measured" or "witnessed" (self), a tool name (substrate), "reported by <name>" (peer). No attributing word means unknown.'
+  owner: Arthur Ryzhak.
+  example: '"— owner ruling, 2026-11-13, grounded on CLAUDE.md@<sha>"; "— measured, 2026-11-13".'
+  pointer_durability: Every path a mark names is committed, or commit SHA. recon/ carries no provenance.
+
+products:
+  - path: README.md
+    reason: The marketplace readme, generated by generate.py; users read it.
+  - path: PITCH.md
+    reason: The marketplace pitch for human readers.
+  - path: ETHOS.md
+    reason: The owner's ethos, autoloaded by CLAUDE.md; owner-authored, outside the record kinds.
+  - path: memento-draft.md
+    reason: An owner draft kept at the root; the owner settles whether it stays, retires or moves.
+
+retired: []
+
+project:
+  ratified_on: '2026-11-12'
+  main_branch: main
+  record_space: orchestration_log/
+  code_roots: []
+  history_start_file: .claude/memento.yaml
+  measured_cli: ''
+  commit_type: docs
+  commit_subject_words: 9
