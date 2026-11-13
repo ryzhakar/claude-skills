@@ -68,23 +68,23 @@ Order questions into tiers. Later tiers depend on earlier answers.
 Complete each tier before starting the next.
 
 ```
-Tier 0: Foundation (identity, scale, privacy)
+foundation (identity, scale, privacy)
    |
-Tier 1: User Model (accounts, sessions, discovery)
+user-model (accounts, sessions, discovery)
    |
-Tier 2: Incentives (motivation, feedback, rewards)
+incentives (motivation, feedback, rewards)
    |
-Tier 3: Lifecycle (create, modify, complete, delete)
+lifecycle (create, modify, complete, delete)
    |
-Tier 4: Edge Cases (errors, abuse, recovery)
+edge-cases (errors, abuse, recovery)
    |
-Tier 5: Success (MVP scope, metrics)
+success (MVP scope, metrics)
 ```
 
 **Domain-specific tier content**:
 
-| Domain | Tier 0 | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 |
-|--------|--------|--------|--------|--------|--------|--------|
+| Domain | foundation | user-model | incentives | lifecycle | edge-cases | success |
+|--------|------------|------------|------------|-----------|------------|---------|
 | Consumer | audience, positioning | onboarding, accounts | engagement, notifications | content lifecycle | moderation, safety | growth, retention |
 | B2B | company size, use case | teams, roles, permissions | integrations, workflow | data lifecycle, compliance | support, SLA | revenue, churn |
 | Internal | who, what problem | access, auth | training, docs | maintenance, updates | fallback | adoption, time saved |
