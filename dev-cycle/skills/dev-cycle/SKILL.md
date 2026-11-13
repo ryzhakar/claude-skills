@@ -8,7 +8,9 @@ description: >
 ---
 
 <read-the-parent-first>
-Read the `agentic-delegation` and `orchestration-economics` skills whole before any step below; never run this skill without both.
+Read the `agentic-delegation` skill whole before any step below; never run this skill without it.
+
+Invoke `orchestration:orchestration-economics` and read it whole before the session's first launch, continuation, or stop of an agent, and again after each compaction; never launch, continue, or stop an agent before reading it.
 
 Follow the `agentic-delegation` skill except where a sentence below replaces one of its rules — the orchestrator's writes of the plan, the prompt files, the status file, and the deferred list — its own file of cosmetic findings; its reads of the spec file, of verdict lines, of the kind labels in finding headings, and of `Risks for the lead` sections; the fixed final messages of this plugin's agents in place of a summary; the reviewers' reading of the spec verdict; never carve another exception.
 
@@ -18,7 +20,7 @@ Treat every action verb in the request as an order to launch agents, planning ex
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task's slug — one descriptive name in lowercase words joined by hyphens; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the slug of the unit, sweep, or other scope the launch covers, or `all` for a whole-task launch, and `-${timestamp}`, UTC `HHMMSS`, inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${unit}-${timestamp}.md` and each quality report at `reviews/quality-${unit}-${timestamp}.md`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the deferred list at `deferred.md`; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task's slug — one descriptive name in lowercase words joined by hyphens; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the slug of the unit, sweep, or other scope the launch covers, or the task's `${slug}` for a whole-task launch, and `-${timestamp}`, UTC `HHMMSS`, inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${unit}-${timestamp}.md` and each quality report at `reviews/quality-${unit}-${timestamp}.md`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the deferred list at `deferred.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on the variant — a model at one effort — chosen for that launch, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
@@ -30,7 +32,7 @@ Take each verdict from its file — the `Verdict:` line of a spec verdict, the `
 </fix-the-artifact-paths>
 
 <write-the-status-file>
-Write the status file after each state change with one row per unit and these columns: unit; state, one of `planned`, `implementing` (set again by every continuation), `in review`, `passed`, `integrated`, `returned` (sent back to the user through `plan-the-units`); implementer id; spec-reviewer id; code-quality-reviewer id; owed reviews — the reviews the unit's latest head still needs, `spec`, `quality`, `both`, or `none`; review-fix cycle count; note — then the integration branch — the branch every unit's work merges into — the excluded test markers — the markers that keep tests out of the default test run — each integration check — the heavy-gate run, the compatibility check, the cross-cutting review — as `pending`, `passed`, or `failed`, and the blockers; never hold the state in the conversation alone.
+Write the status file after each state change with one row per unit and these columns: unit; state, one of `planned`, `implementing` (set again by every continuation), `in review`, `passed`, `integrated`, `returned` (sent back to the user through `plan-the-units`); implementer id; branch, from the implementer's `Branch:` line; spec-reviewer id; code-quality-reviewer id; owed reviews — the reviews the unit's latest head still needs, `spec`, `quality`, `both`, or `none`; review-fix cycle count; note — then the integration branch — the branch every unit's work merges into — the excluded test markers — the markers that keep tests out of the default test run — each integration check — the heavy-gate run, the compatibility check, the cross-cutting review — as `pending`, `passed`, or `failed`, and the blockers; never hold the state in the conversation alone.
 
 Write a unit's owed reviews in its row in the turn a report, verdict, or continuation changes them; never leave an owed review untracked.
 </write-the-status-file>
@@ -80,7 +82,9 @@ Group the units in the plan into capabilities — each a group of units that tog
 
 Name each capability in the plan by its slug alone; never set a number, a letter, a code, or a round label beside it.
 
-Choose the variant for each launch from the work's complexity, judged against the project's own counted history of attempts, and write the variant with the count it rests on in the plan or the status file; never take a variant from a role, a default, or a table of tiers.
+Choose the variant for each launch from the work's complexity, judged against the project's own counted history of attempts, and record the variant with the count it rests on in the plan or the status file; never take a variant from a role, a default, or a table of tiers.
+
+Write each launch's variant, with the count it rests on, as the first lines of its prompt file, a defined agent's included; never launch from a prompt file that lacks them.
 
 Judge by published figures — vendor or benchmark readings — until the project's own count replaces each; never keep a published figure past that count.
 
@@ -96,13 +100,15 @@ Name the excluded set in the status file; never leave it unnamed there.
 <launch-the-implementer>
 Launch an implementer after the plan is on disk; never before.
 
-Write each implementer's prompt to its prompt file with eight parts — the unit's requirements and gates, the static gate and the heavy gate among them, copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the evidence path relative to the project root, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines — and, for a caller — a unit calling code another unit, its callee, provides — a ninth, the callee's reviewed head — the head `derive-the-shas-from-git` gave the callee's passing spec review; never launch from a prompt that exists in the conversation alone.
+Write each implementer's prompt to its prompt file with nine parts — the variant and its count as the first lines, the unit's requirements and gates, the static gate and the heavy gate among them, copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the absolute evidence path under the project root, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines — and, for a caller — a unit calling code another unit, its callee, provides — the callee's reviewed head — the head `derive-the-shas-from-git` gave the callee's passing spec review — and, for a launch replacing a lapsed implementer, the unit's existing branch from the status file; never launch from a prompt that exists in the conversation alone.
 
 Launch `implementer` in the background with its prompt file's text as the launch text; never launch it in the foreground.
 
-Launch `implementer` with the model and effort of the variant the plan or the status file names for that launch; never launch it on a variant written for another launch.
+Launch `implementer` with the model and effort of the variant its prompt file's first lines name; never launch it on a variant written for another launch.
 
 Take the next act by its distance to a merge — integrate a passed unit, route an arrived verdict or report, continue a fix, launch the reviews of a reported unit, and start a new unit last; never start a new unit while an open unit — one from its first implementer launch to its merge — waits on the orchestrator.
+
+Launch an agent to read the share of the usage limit left in each window before starting a new unit; never start one on an unread share.
 
 Start a new unit when the usage limit left in the current window carries its first attempt and its reviews to their reports; never start one the window will cut.
 
@@ -126,13 +132,15 @@ Treat a report whose `Branch:` line names no branch `git branch --list` shows as
 </derive-the-shas-from-git>
 
 <route-on-status>
-Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its requirements, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line.
+Read the `Status:` line of the implementer's report and route on it alone: `DONE` launches the spec review; `DONE_WITH_CONCERNS` launches an agent to classify each concern as correctness — the code may be wrong, scope — the unit touched more or less than its requirements, or observation — a fact needing no change, then continues the implementer for a correctness or scope concern and launches the spec review for observations alone; `NEEDS_CONTEXT` continues the implementer with the missing files and facts, fetched by a launched agent, and the missing decision, taken by the orchestrator, or from the user when the spec leaves it open; `BLOCKED` launches a diagnosis agent that ends with one of the six causes below; a missing or other value continues the implementer with the instruction to end with its report; never route on another line but the `Rebase:` line `integrate-on-pass` routes.
 
 Continue the same implementer through `SendMessage` with the changes alone — the path of the file holding the findings, the fix scope, the sentence `do not alter code that passed review`, and the changed gates — when its approach is sound and it is warm, its last step within its TTL; never resend the requirements it already holds.
 
 Launch a fresh implementer from files — its prompt file and the path of the file holding the findings — once its TTL has lapsed and `orchestration-economics` counts the fresh launch cheaper than the continuation's cold start, the whole context taken in again; never continue a lapsed implementer without counting that cold start.
 
-Recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — before any review or continuation of its unit, and continue the implementer with the recreated path; never launch fresh for a missing worktree.
+Dispatch a fresh implementer that replaces a lapsed one onto the unit's existing branch, once an agent has removed the lapsed implementer's worktree with `git worktree remove <path>` as one plain command; never rebuild the unit from the base for it.
+
+Launch an agent to recreate a worktree whose reported path is gone — `git worktree add <path> <branch>` from the project root, the branch surviving in the shared `.git` — before any review or continuation of its unit, and continue the implementer with the recreated path; never launch fresh for a missing worktree.
 
 Launch a fresh implementer when the diagnosis agent names the approach wrong, the variant changes, or the scope changes so far that prior work is void; never continue an agent through a change `SendMessage` cannot carry.
 
@@ -200,6 +208,14 @@ Launch a caller once its callee's spec verdict reads `Verdict: PASS`, with the c
 
 Continue the caller's implementer, once its callee is integrated, with the caller rebase — replaying its branch onto the integration branch, compiling each replayed commit, and gating the rebased head; never leave a caller built on a callee head the integration branch has moved past.
 
+Dispatch a fresh implementer onto the unit's existing branch for the caller rebase once the caller's implementer has lapsed, as `route-on-status` prescribes; never rebuild the caller from the base for it.
+
+Hold a caller's integration until its callee is integrated and the caller rebase is gated; never integrate a caller before its callee.
+
+Route a caller rebase's report, once its `Status:` reads `DONE`, on its `Rebase:` line: a clean rebase, `Rebase: clean`, needs the gates at the new head alone; never review it again before the fast-forward.
+
+Send a rebase with conflict resolution, `Rebase: conflicts resolved: <files>`, to a delta review of the resolved lines — the spec and quality re-reviews in one turn over the range from the integration branch's head to the rebased head, limited to those files; never fast-forward it before both pass.
+
 Launch the integration agent to fast-forward the integration branch to a rebased caller; never join a rebased caller with a merge commit.
 </integrate-on-pass>
 
@@ -250,7 +266,9 @@ Sweep the deferred list at each capability boundary, once the capability's last 
 
 Copy the listed findings into the sweep's prompt file as its requirements; never name the list there.
 
-Launch `code-quality-reviewer` on the sweep as on a structure-only fix, with the standing spec PASS of the capability's last integrated unit; never launch a spec review for a sweep.
+Launch `code-quality-reviewer` alone on the sweep, once the sweep's implementer reports `Status: DONE` with its evidence path, with `sweep` in place of the spec verdict path; never launch a spec review for a sweep.
+
+Take the suite passing at the sweep's head as its spec precondition; never borrow a standing spec PASS for a sweep.
 
 Integrate the sweep as `integrate-the-units` prescribes; never integrate it unreviewed.
 
@@ -258,11 +276,11 @@ Remove the swept findings from the deferred list once the sweep is integrated; n
 </sweep-the-deferred-list>
 
 <review-the-integrated-branch>
-Launch `spec-reviewer` over the whole integrated diff — the project root checkout as the worktree path, the integration branch, the branch point as the base SHA — with every requirement of the spec, after the heavy gate passes at the integrated head; never call the task done without this review.
+Launch `spec-reviewer` over the whole integrated diff, after the heavy gate passes at the integrated head, with seven items — every requirement of the spec with every gate of the plan, the report of the agent whose heavy run passed at that head as the implementer's report, the project root checkout as the worktree path, the integration branch, the branch point as the base SHA, that run's evidence path, and the verdict path `reviews/spec-${slug}-${timestamp}.md`; never call the task done without this review.
 
-Launch `code-quality-reviewer` on its `Verdict: PASS` over the same range; never skip it.
+Launch `code-quality-reviewer` on its `Verdict: PASS` with seven items — the same requirements and gates, worktree path, and branch, the range from the branch point to the integrated head, that verdict's path, the same evidence path, and the report path `reviews/quality-${slug}-${timestamp}.md`; never skip it.
 
-Launch an implementer on `all`, which merges the integration branch first, with this review's verdict path and report path; never leave a finding of this review standing.
+Launch an implementer on the task's `${slug}`, which merges the integration branch first, with this review's verdict path and report path; never leave a finding of this review standing.
 
 Re-run both reviews on its result and integrate it as `integrate-the-units` prescribes; never integrate it unreviewed.
 </review-the-integrated-branch>
@@ -272,11 +290,13 @@ Launch an agent, after the heavy gate passes at the integrated head, to classify
 
 Continue the owning unit's implementer to delete each `tautological` test and write each `missing` one; never leave either class standing.
 
-Remove each unit's worktree with `git worktree remove <path>` after the test classification and every integration check have passed; never remove one while a continuation of its implementer may follow.
+Launch an agent to remove each unit's worktree with `git worktree remove <path>` as one plain command after the test classification and every integration check have passed; never remove one while a continuation of its implementer may follow.
 
 Read the free space of the volume holding the worktrees at every wake — each turn a notification or a scheduled wake-up starts — while units build there; never let a reviewer's or an integration agent's build be the first to find the volume full.
 
 Launch an agent to clear the build output of worktrees no agent uses before the volume fills; never clear it in the orchestrator's own context.
+
+Have that agent clear build output with the build tool's own clean verb, such as `cargo clean`, as one plain command; never with `rm`.
 
 Report the integration branch and the status file path to the user once every worktree is removed; never merge the integration branch.
 </classify-the-tests>
