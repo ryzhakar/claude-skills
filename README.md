@@ -11,7 +11,7 @@
 | [dev-cycle-lite](dev-cycle-lite/) | Cost-tiered development cycle over dev-cycle: an opus prescriber writes... | `1.0.0` | 2S 3A |
 | [dev-discipline](dev-discipline/) | Software engineering discipline skills, agent-agnostic: outermost-test-first... | `3.0.0` | 5S |
 | [instruction-eval](instruction-eval/) | Measure whether an LLM instruction changes model behavior. | `0.2.0` | 11S |
-| [orchestration](orchestration/) | Agent delegation framework and multi-agent research orchestration. Decompose... | `6.0.0` | 3S |
+| [orchestration](orchestration/) | Agent delegation, orchestration economics (counting each launch's cost to... | `6.0.0` | 3S |
 | [product-craft](product-craft/) | Product definition skills: extract specs from stakeholders, write user... | `1.2.0` | 2S |
 | [prompt-engineering](prompt-engineering/) | Evaluate and optimize Claude system prompts using Anthropic-grounded patterns. | `2.1.0` | 0S 2A |
 | [python-tools](python-tools/) | Python development tooling: debug type errors in uv-managed projects with... | `1.1.0` | 2S |
@@ -91,7 +91,7 @@ Measure whether an LLM instruction changes model behavior.
 - **[write-tasks](instruction-eval/skills/write-tasks/SKILL.md)** — Write the tasks tempting each demand and `overreach`, their answer keys, conversations, and open and sealed split, with the conditions,...
 ## [orchestration](orchestration/) `6.0.0`
 
-Agent delegation framework and multi-agent research orchestration. Decompose work across model tiers, manage parallel swarms, and govern quality.
+Agent delegation, orchestration economics (counting each launch's cost to choose model and effort), and multi-agent research.
 
 ### Skills
 
