@@ -18,7 +18,7 @@ Treat every action verb in the request as an order to launch agents, planning ex
 <fix-the-artifact-paths>
 Write every artifact but the spec under `orchestration_log/recon/${DATE}/` in the project root — the directory holding `.git` where the session started — where `${DATE}` is the UTC date as `YYYY-MM-DD`; never write one elsewhere.
 
-Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; the status file at `dev-status.md`; never let an agent choose a path.
+Fix the paths beneath that directory: the plan at `plans/${slug}.md`, with `${slug}` the task name in lowercase hyphenated words; each prompt file at `prompts/${agent}-${unit}.md`, with `${agent}` the launched agent's name for a defined agent — `spec-capturer`, `implementer`, `spec-reviewer`, `code-quality-reviewer` — or one noun the orchestrator gives the task for any other launch, `${unit}` the name the plan gives the unit or `all` for a whole-task launch, and `-2`, `-3` inserted before `.md` on a repeated path; each spec verdict at `reviews/spec-${branch}-${timestamp}.md` and each quality report at `reviews/quality-${branch}-${timestamp}.md`, with `${branch}` the branch of the unit's worktree — the checkout the platform creates for an `implementer` run — with `/` replaced by `-` and `${timestamp}` UTC `HHMMSS`; each report of an agent other than the spec-capturer and the implementer, who report in their final messages, and the two reviewers, who report in their verdict and report files, at `reports/${agent}-${unit}.md`, ending with `Result: PASS` or `Result: FAIL` and the units it names; each evidence file — the record of one run of the heavy gate, the whole test suite and every slow check — at `evidence/${unit}-${timestamp}.md`; the status file at `dev-status.md`; never let an agent choose a path.
 
 Launch every agent other than the four defined ones through the `Agent` tool with no agent definition, on the variant — a model at one effort — chosen for that launch, from a prompt file stating its task, its inputs, and its report path; never launch one from the conversation alone.
 
@@ -28,7 +28,7 @@ Take each verdict from its file — the `Verdict:` line of a spec verdict, the `
 </fix-the-artifact-paths>
 
 <write-the-status-file>
-Write the status file after each state change with one row per unit and these columns: unit; state, one of `planned`, `implementing` (set again by every continuation), `in review`, `passed`, `integrated`, `returned` (sent back to the user through `plan-the-units`); implementer id; spec-reviewer id; code-quality-reviewer id; review-fix cycle count; note — then the integration branch — the branch every unit's work merges into — the excluded test markers — the markers that keep tests out of the default test run — each integration check — the whole-suite run, the compatibility check, the cross-cutting review — as `pending`, `passed`, or `failed`, and the blockers; never hold the state in the conversation alone.
+Write the status file after each state change with one row per unit and these columns: unit; state, one of `planned`, `implementing` (set again by every continuation), `in review`, `passed`, `integrated`, `returned` (sent back to the user through `plan-the-units`); implementer id; spec-reviewer id; code-quality-reviewer id; review-fix cycle count; note — then the integration branch — the branch every unit's work merges into — the excluded test markers — the markers that keep tests out of the default test run — each integration check — the heavy-gate run, the compatibility check, the cross-cutting review — as `pending`, `passed`, or `failed`, and the blockers; never hold the state in the conversation alone.
 </write-the-status-file>
 
 <capture-the-spec>
@@ -56,7 +56,13 @@ Cut dependencies between units while decomposing — give shared code its own un
 
 Name each unit in the plan in lowercase hyphenated words; never leave one unnamed.
 
-Assign each unit, in the plan, its requirements — the spec's sentences it implements — and its gates — the commands, each with the exact output it requires, that prove the unit done, the whole-suite run with the excluded test markers included among them; never fix an interface name or a signature in the plan.
+Assign each unit, in the plan, its requirements — the spec's sentences it implements — and its gates — the commands, each with the exact output it requires, that prove the unit done; never fix an interface name or a signature in the plan.
+
+Split the gates in the plan in two: the static gate — every check that runs no test — and the heavy gate — the whole test suite with every excluded test marker included, and every slow check; never put a slow check in the static gate.
+
+Take the static gate from the project's own pre-commit config; never install a hook for it.
+
+Write the heavy gate as a command holding a lock the operating system releases with its process, so one heavy run goes at a time on one machine and a run that waits writes its wait into its evidence file; never let two heavy runs go side by side on one machine.
 
 List in the plan, for each unit, the files it reads and the files it may touch — its scope boundary; never leave either list out.
 
@@ -80,7 +86,7 @@ Name the excluded set in the status file; never leave it unnamed there.
 <launch-the-implementer>
 Launch an implementer after the plan is on disk; never before.
 
-Write each implementer's prompt to its prompt file with seven parts — the unit's requirements and gates copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
+Write each implementer's prompt to its prompt file with eight parts — the unit's requirements and gates, the static gate and the heavy gate among them, copied from the plan, the integration branch, every input path — a file the plan lists as read by the unit — relative to the project root, which the implementer resolves inside its worktree, the scope boundary from the plan, the evidence path relative to the project root, the excluded test markers, two or three sentences of scene-setting on where the unit sits in the system, and the instruction to end with the report `implementer` defines; never launch from a prompt that exists in the conversation alone.
 
 Launch `implementer` in the background with its prompt file's text as the launch text; never launch it in the foreground.
 
@@ -120,7 +126,7 @@ Return a unit to `launch-the-spec-review` after every implementer continuation t
 <launch-the-spec-review>
 Launch the spec review on the notification that ends an implementer's run with `Status: DONE`, or with `DONE_WITH_CONCERNS` classified as observations alone; never wait for a hook — a command the platform runs at a lifecycle event — to demand it.
 
-Launch `spec-reviewer` with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the worktree path, the branch, the base SHA, and the verdict path to write; never launch it without one of the six.
+Launch `spec-reviewer` with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the implementer's report, the worktree path, the branch, the base SHA, the evidence path from the report's `Evidence:` line, and the verdict path to write; never launch it without one of the seven.
 
 Relaunch a reviewer with the items it names when its final message begins `Dispatch malformed:`; never relaunch one without the items it names.
 
@@ -130,7 +136,7 @@ Continue the same spec-reviewer after the fix with the new diff range `BASE..new
 </launch-the-spec-review>
 
 <launch-the-quality-review>
-Launch `code-quality-reviewer` after a spec review ending `Verdict: PASS`, with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, and the report path to write; never launch it without one of the six.
+Launch `code-quality-reviewer` after a spec review ending `Verdict: PASS`, with the unit's requirements — the spec's sentences the plan assigns it — and its gates, the worktree path, the branch, the range `BASE..HEAD`, the spec verdict path, the evidence path from the implementer's `Evidence:` line, and the report path to write; never launch it without one of the seven.
 
 Read the `Ready to merge:` line and the finding headings from the report file; never read the findings' bodies.
 
@@ -174,19 +180,23 @@ Surface to the user, with the evidence gathered, when three hypotheses fail; nev
 </launch-the-debugging-round>
 
 <integrate-the-units>
-Launch an integration agent for each unit that passed both reviews, one unit at a time, in the project root checkout with the integration branch checked out, to merge the unit's worktree branch into the integration branch, run the whole test suite with every excluded marker included, and report the result; never merge in the orchestrator's own context.
+Launch an integration agent for each unit that passed both reviews, one unit at a time, in the project root checkout with the integration branch checked out, to merge the unit's worktree branch into the integration branch, run the static gate and the heavy gate on the integrated head, writing its evidence file, and report the result; never merge in the orchestrator's own context.
 
-Launch, after every unit is integrated, one agent to run the whole suite and one to check interface compatibility between units — types, signatures, data contracts — and end-to-end behavior against the original request; never call the task done on unit tests alone.
+Run the heavy gate once per head — once by the implementer at its final head, once by the integration agent at the integrated head; never run it again at a head holding a passing run, whether to confirm, as a baseline at a unit's start, or after a fast-forward.
+
+Launch, after every unit is integrated, one agent to check interface compatibility between units — types, signatures, data contracts — and end-to-end behavior against the original request; never call the task done on unit tests alone.
+
+Launch the heavy-gate agent — an agent running the heavy gate at the integrated head — beside it when the last integration's heavy run left that head untested; never repeat the heavy gate at a tested head.
 
 Launch, in the same turn, a cross-cutting review of the whole change with one agent per concern — spec fidelity, data flow integrity, simplicity, duplicated knowledge, unused features; never review unit by unit.
 
 Continue the implementer of each unit an agent ending `Result: FAIL` names with the path of that agent's report, as `route-on-status` prescribes for a continuation; never fix an integration failure in the orchestrator's context.
 
-Launch the whole-suite agent again after every continuation this tag or `classify-the-tests` starts; never count an earlier pass for a changed branch.
+Integrate a unit again after every continuation this tag or `classify-the-tests` starts; never count an earlier pass for a changed head.
 </integrate-the-units>
 
 <review-the-integrated-branch>
-Launch `spec-reviewer` over the whole integrated diff — the project root checkout as the worktree path, the integration branch, the branch point as the base SHA — with every requirement of the spec, after the whole-suite agent reports a pass; never call the task done without this review.
+Launch `spec-reviewer` over the whole integrated diff — the project root checkout as the worktree path, the integration branch, the branch point as the base SHA — with every requirement of the spec, after the heavy gate passes at the integrated head; never call the task done without this review.
 
 Launch `code-quality-reviewer` on its `Verdict: PASS` over the same range; never skip it.
 
@@ -196,7 +206,7 @@ Re-run both reviews on its result and integrate it as `integrate-the-units` pres
 </review-the-integrated-branch>
 
 <classify-the-tests>
-Launch an agent, after the whole-suite agent reports a pass, to classify each test the units added or changed as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, or `tautological` — asserts a default equals its own copy or a library's guarantee, and each requirement with no test as `missing`; never skip a test or a behavior.
+Launch an agent, after the heavy gate passes at the integrated head, to classify each test the units added or changed as `valuable` — asserts a behavior that could regress, `smoke` — proves the code runs, or `tautological` — asserts a default equals its own copy or a library's guarantee, and each requirement with no test as `missing`; never skip a test or a behavior.
 
 Continue the owning unit's implementer to delete each `tautological` test and write each `missing` one; never leave either class standing.
 
