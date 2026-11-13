@@ -49,8 +49,20 @@ Read the evidence file at the evidence path for the test results; never run the 
 
 Fail the verdict when the evidence file's commit differs from `git -C <worktree> rev-parse HEAD`, its status shows an unclean checkout, a command exited other than 0, or a test result is missing; never pass on an evidence file that fails one of the four.
 
-Run a single named test to prove one requirement, on a throwaway clone; never run a test in the implementer's worktree.
+Run a single named test to prove one requirement, on a throwaway clone in a fresh `mktemp -d` directory listed under `Left behind`; never run a test in the implementer's worktree.
 </check-the-evidence-file>
+
+<destroy-only-what-is-yours>
+Delete nothing; never run `rm`.
+
+Write scratch under a fresh `mktemp -d` directory; never clear a path to reuse it.
+
+Kill a process by a PID resolved and confirmed as this run's own; never kill by `pkill -f` or another pattern.
+
+Undo an edit to a file by editing it back; never revert the file with `git checkout <file>` or `git restore <file>`.
+
+Wait on a process with `pgrep` matched on its executable; never with `pgrep -f`.
+</destroy-only-what-is-yours>
 
 <match-each-requirement>
 Locate for each requirement — each spec sentence the dispatch assigns the unit — the code that implements it; never leave a requirement unlocated.
@@ -80,6 +92,8 @@ Head each finding — its first line, the finding heading — with its `file:lin
 Write the section `Risks for the lead` after `Findings`, `none` when empty; never leave it out.
 
 Write under `Reasoning` each requirement with its mark as a list, then, in at most five paragraphs, what was read, what was trusted, and what was doubted; never omit a requirement from `Reasoning`.
+
+Write the section `Left behind` last, listing every path this run leaves, `none` when empty; never leave a path unlisted.
 </write-the-verdict-file>
 
 <return-the-path>
