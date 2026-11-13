@@ -42,15 +42,11 @@ Research is deciding where to look, how deep to go, and when to change course. T
 
 5. **Reports are the product.** Every agent writes to disk. Later agents read from disk. The orchestrator points agents to files — never relays content through its own context. If you are summarizing one agent's findings to another, you have broken the model.
 
-### Model Selection
+### Variant Choice
 
-| Task Nature | Model Tier | Examples |
-|-------------|------------|---------|
-| Fetch, parse, count, categorize | Cheapest available | Index parsing, dep listing, file auditing, URL scraping |
-| Assess, compare, reason about compatibility | Mid-tier | Surveys with context, source-code verification, gap analysis |
-| Cross-domain synthesis, strategic judgment | Strongest available | Final synthesis, multi-constraint trade-off analysis |
+Read `orchestration:agentic-delegation` and `orchestration:orchestration-economics` whole before the first launch and before every model or effort choice; never launch an agent or choose its model or effort before both are read.
 
-The cheapest model that can reliably do the task is the right model. Upgrade when you observe unreliable outputs — not preemptively. Ten cheap agents in parallel beat two expensive agents in sequence: quality emerges in synthesis.
+Choose each agent's variant — a model at one effort — by the orchestration-economics count; never from a table, a role, or a default.
 
 ### When to Re-Research
 
@@ -61,7 +57,6 @@ A second round at higher fidelity is warranted when:
 
 Second-round rules:
 - **Separate directory** — agents do not see first-round reports
-- **Higher-capability models** for verification
 - **Need-driven organization** (not source-driven)
 - **Inherit ONLY facts** — project context, source URLs, raw metadata. Never ratings, opinions, or recommendations from the first round.
 
@@ -93,7 +88,7 @@ Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments 
 
 **Always run.** Even if the project seems well-understood, audit agents discover things the orchestrator does not know: actual versions, hidden pain points, capability inventories, undocumented patterns.
 
-**Agent count:** 2-4 agents (capability auditor, dependency auditor, architecture auditor). Cheapest model. All parallel at Tier 2 start.
+**Agent count:** 2-4 agents (capability auditor, dependency auditor, architecture auditor). All parallel at Tier 2 start.
 
 **Completion gate:**
 - All reports exist
@@ -125,8 +120,6 @@ Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments 
 - One report per need-category with per-entry analysis (activity, compatibility, relevance rating, assessment)
 - Breadth expansion reports listing finds NOT in the original index
 
-**Model selection:** Cheapest for mechanical surveying. Upgrade specific agents that require nuanced judgment (e.g., assessing architectural compatibility).
-
 ### Tier 3 — Verify
 
 **Purpose:** Deep verification of promising candidates against primary sources. Documentation claims become confirmed or refuted.
@@ -140,8 +133,6 @@ Not every research needs all tiers. Quick scans skip Tier 3-4. Deep assessments 
 **Verification means:** fetching the actual manifest/config, reading source code, checking registry metadata, testing against project-specific constraints. Verification agents check primary sources — not documentation.
 
 **Agent count:** 1 per candidate. All parallel.
-
-**Model selection:** Cheapest for version/metadata checking; mid-tier for source-code reasoning and cross-referencing.
 
 **Completion gate:** Each report contains:
 - Metadata from authoritative source (registry API, not README)
@@ -164,7 +155,7 @@ Scan for: same entity with different verdicts, same entity described as "dead" b
 
 **Purpose:** One capable agent reads ALL reports and produces the final research deliverable.
 
-**Model:** Strongest available. This agent must reason across 10-25 reports, weigh conflicting evidence, and produce strategic recommendations. It earns the cost.
+**Load:** This agent reasons across 10-25 reports, weighs conflicting evidence, and produces strategic recommendations.
 
 **Agent count:** 1. This is the capstone.
 
@@ -187,7 +178,7 @@ Scan for: same entity with different verdicts, same entity described as "dead" b
 | Quick landscape scan | 1 → 2 → 5 | No candidates worth deep-diving |
 | Standard evaluation | 0 + 1 → 2 → 3 → 5 | Index, survey, verify, synthesize |
 | Deep assessment | 0 + 1 → 2 → 3 → 4 → 5 | Full pipeline with contradiction resolution |
-| Multi-round deep assessment | Full first round → extract facts → full second round with better models | When first round is unreliable |
+| Multi-round deep assessment | Full first round → extract facts → full second round | When first round is unreliable |
 
 ### When to Add Agents Within a Tier
 
@@ -207,7 +198,7 @@ Scan for: same entity with different verdicts, same entity described as "dead" b
 - 2-4 candidates survived and each needs source-level scrutiny the first-round model cannot provide
 - A specific technical question requires reading actual source code
 
-Second-round setup: separate directory, higher-fidelity models, need-driven organization, inherit only facts from round one.
+Second-round setup: separate directory, need-driven organization, inherit only facts from round one.
 
 ## Orchestration Protocol
 
@@ -290,7 +281,7 @@ DO NOT:
 - Make strategic adoption/rejection recommendations — report findings with evidence
 ```
 
-### Index Parser (cheapest; WebFetch, Write)
+### Index Parser (WebFetch, Write)
 
 ```
 You are indexing {SOURCE_DESCRIPTION} for a research project.
@@ -326,7 +317,7 @@ Source: {PRIMARY_URL}
 Be EXHAUSTIVE. Every single entry must appear. Do not skip or summarize.
 ```
 
-### Need-Category Surveyor (cheapest, upgrade for nuanced assessment; Read, WebFetch, WebSearch, Write)
+### Need-Category Surveyor (Read, WebFetch, WebSearch, Write)
 
 ```
 You are investigating {NEED_DESCRIPTION} in the {DOMAIN} landscape.
@@ -356,7 +347,7 @@ Paste the relevant format from the Report Format Templates section below.
 Assess ONLY candidates relevant to "{NEED_DESCRIPTION}". Do not drift into other needs.
 ```
 
-### Project Auditor (cheapest; Read, Grep, Glob, Bash, Write)
+### Project Auditor (Read, Grep, Glob, Bash, Write)
 
 Three variants — launch all in parallel. Adapt to the project type.
 
@@ -366,7 +357,7 @@ Three variants — launch all in parallel. Adapt to the project type.
 
 **Architecture Auditor:** Find all handlers/endpoints/controllers. Map routing with guards/middleware. Catalog error handling patterns. Map state management. Find code quality signals (TODOs, FIXMEs, lint suppressions). Catalog test infrastructure. Rank DX gaps by impact. Write to `{REPORT_PATH}/deep-dives/project-arch-audit.md`.
 
-### Candidate Verifier (cheapest for metadata, mid-tier for source-code reasoning; Read, Grep, WebFetch, WebSearch, Write)
+### Candidate Verifier (Read, Grep, WebFetch, WebSearch, Write)
 
 ```
 You are doing a DEEP technical verification of {CANDIDATE_NAME} for a {PROJECT_DESCRIPTION}.
@@ -392,7 +383,7 @@ REPORT FORMAT:
 Paste the relevant format from the Report Format Templates section below.
 ```
 
-### Breadth Expander (cheapest; Read, WebFetch, WebSearch, Write)
+### Breadth Expander (Read, WebFetch, WebSearch, Write)
 
 ```
 You are searching for {DOMAIN} options NOT on the primary index.
@@ -413,7 +404,7 @@ Include: search methodology, high-signal finds (detailed), medium-signal finds (
 landscape size stats, notable patterns.
 ```
 
-### Contradiction Resolver (cheapest; WebFetch, WebSearch, Read, Write)
+### Contradiction Resolver (WebFetch, WebSearch, Read, Write)
 
 ```
 VERIFICATION TASK: Two research reports make contradictory claims.
@@ -451,7 +442,7 @@ Format:
 DO NOT HALLUCINATE. If a URL 404s, say so. If something doesn't exist, say so.
 ```
 
-### Production/Real-World Inspector (cheapest; WebFetch, Read, Write)
+### Production/Real-World Inspector (WebFetch, Read, Write)
 
 ```
 You are investigating what real-world {DOMAIN} practitioners actually use.
@@ -468,7 +459,7 @@ Write to {REPORT_PATH}/deep-dives/production-usage.md
 Include: per-source breakdowns, cross-reference table, patterns, implications.
 ```
 
-### Synthesizer (strongest available; Read, Write)
+### Synthesizer (Read, Write)
 
 ```
 You are writing the FINAL synthesis for the {TOPIC} research project.
@@ -773,7 +764,7 @@ Ten failure modes observed in real multi-agent research sessions. The orchestrat
 
 **AP-3: README Trust.** Treating a library's README as evidence. Fix: Tier 3 agents fetch actual manifests, registry APIs, source code.
 
-**AP-4: Model Waste.** Using sonnet for mechanical fetch-parse-write tasks. Fix: haiku for all mechanical work; sonnet only for synthesis and source-code reasoning.
+**AP-4: Uncounted Variant.** Choosing an agent's variant from a table, a role, or a default. Fix: choose it by the orchestration-economics count.
 
 **AP-5: Sequential Addiction.** Launching agents one at a time when they could run in parallel. Fix: all independent agents launch in a single message.
 
@@ -794,7 +785,7 @@ Before launching each tier:
 - [ ] No agent prompt relays content from another agent's report (AP-1)
 - [ ] All prior tiers complete, including project audits (AP-2)
 - [ ] Verification agents instructed to check primary sources, not READMEs (AP-3)
-- [ ] Agent model matches task: cheapest for mechanical, mid-tier for reasoning (AP-4)
+- [ ] Each agent's variant chosen by the orchestration-economics count (AP-4)
 - [ ] All independent agents launch in parallel within a single message (AP-5)
 - [ ] Extraordinary claims from prior tiers have verification agents assigned (AP-6)
 - [ ] Each agent's scope matches exactly one category/candidate (AP-7)
