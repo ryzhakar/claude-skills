@@ -1,0 +1,58 @@
+{
+  "fetched": "2026-11-12",
+  "unit": "USD per million tokens",
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing.md, Model pricing table (lines 17-37 of the fetched markdown; Haiku long-context rule line 253)",
+  "models": {
+    "claude-fable-5-2": {
+      "table_row": "Claude Fable 5.2",
+      "input": 8,
+      "output": 40,
+      "cache_write_5m": 10,
+      "cache_write_1h": 16,
+      "cache_read": 0.2
+    },
+    "claude-fable-5-1": {
+      "table_row": "Claude Fable 5.1",
+      "input": 10,
+      "output": 50,
+      "cache_write_5m": 12.5,
+      "cache_write_1h": 20,
+      "cache_read": 0.25
+    },
+    "claude-opus-5-5": {
+      "table_row": "Claude Opus 5.5",
+      "input": 4,
+      "output": 20,
+      "cache_write_5m": 5,
+      "cache_write_1h": 8,
+      "cache_read": 0.2
+    },
+    "claude-sonnet-5-5": {
+      "table_row": "Claude Sonnet 5.5",
+      "input": 2,
+      "output": 10,
+      "cache_write_5m": 2.5,
+      "cache_write_1h": 4,
+      "cache_read": 0.1
+    },
+    "claude-haiku-5-5": {
+      "table_row": "Claude Haiku 5.5 (prompts up to 100,000 tokens)",
+      "input": 0.1,
+      "output": 0.5,
+      "cache_write_5m": 0.125,
+      "cache_write_1h": 0.2,
+      "cache_read": 0.01,
+      "over_100k_prompt": {
+        "table_row": "Claude Haiku 5.5 (prompts over 100,000 tokens)",
+        "input": 0.5,
+        "output": 2.5,
+        "cache_write_5m": 0.625,
+        "cache_write_1h": 1,
+        "cache_read": 0.05
+      }
+    }
+  },
+  "alias": {
+    "claude-fable-5-2[1m]": "claude-fable-5-2"
+  }
+}

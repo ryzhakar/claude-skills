@@ -1,0 +1,494 @@
+{
+  "generation_speed_tokens_per_second": {
+    "claude-sonnet-5-5": {
+      "value": 109.4,
+      "kind": "measured",
+      "source": "docs/orchestration_log/recon/2026-10-24/reports/research-generation-speed.md, table of tokens per second by model, unchecked",
+      "date": "2026-11-12"
+    },
+    "claude-opus-5-5": {
+      "value": 89.9,
+      "kind": "measured",
+      "source": "docs/orchestration_log/recon/2026-10-24/reports/research-generation-speed.md, table of tokens per second by model, unchecked",
+      "date": "2026-11-12"
+    },
+    "claude-fable-5-2": {
+      "value": 76.0,
+      "kind": "measured",
+      "source": "docs/orchestration_log/recon/2026-10-24/reports/research-generation-speed.md, table of tokens per second by model, unchecked",
+      "date": "2026-11-12"
+    },
+    "claude-fable-5-1": {
+      "value": 73.3,
+      "kind": "measured",
+      "source": "docs/orchestration_log/recon/2026-10-24/reports/research-generation-speed.md, table of tokens per second by model, unchecked",
+      "date": "2026-11-12"
+    },
+    "claude-haiku-5-5": {
+      "value": 172.1,
+      "kind": "measured",
+      "source": "docs/orchestration_log/recon/2026-10-24/reports/research-generation-speed.md, table of tokens per second by model, p50 of haiku-5-5 at medium, 7 messages, not a distribution, unchecked",
+      "date": "2026-11-12"
+    }
+  },
+  "ttl_seconds": {
+    "agent": {
+      "value": 300,
+      "kind": "measured",
+      "source": "this session's transcripts, every agent's cache writes are at the 5-minute TTL",
+      "date": "2026-11-12"
+    },
+    "lead": {
+      "value": 3600,
+      "kind": "measured",
+      "source": "this session's transcripts",
+      "date": "2026-11-12"
+    }
+  },
+  "limit_weight_percent_per_million_tokens": {
+    "claude-sonnet-5-5": {
+      "value": null,
+      "kind": "published",
+      "source": "SemiAnalysis, page 10, Claude Max 20x, gives Opus 5.5 only",
+      "date": "2026-10-05"
+    },
+    "claude-opus-5-5": {
+      "value": {
+        "uncached_intake": 0.045,
+        "intake_5m": 0.056,
+        "carry": 0.0011,
+        "output": 0.223
+      },
+      "kind": "published",
+      "source": "SemiAnalysis, page 10, Claude Max 20x, percent of one plan monthly limit",
+      "date": "2026-10-05"
+    },
+    "claude-fable-5-2": {
+      "value": null,
+      "kind": "published",
+      "source": "SemiAnalysis, page 10, Claude Max 20x, gives Opus 5.5 only",
+      "date": "2026-10-05"
+    },
+    "claude-fable-5-1": {
+      "value": null,
+      "kind": "published",
+      "source": "SemiAnalysis, page 10, Claude Max 20x, gives Opus 5.5 only",
+      "date": "2026-10-05"
+    },
+    "claude-haiku-5-5": {
+      "value": null,
+      "kind": "published",
+      "source": "SemiAnalysis, page 10, Claude Max 20x, gives Opus 5.5 only",
+      "date": "2026-10-05"
+    }
+  },
+  "per_attempt": {
+    "claude-sonnet-5-5": {
+      "low": {
+        "capability": {
+          "value": 0.207070707070707,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.low.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 40.277257575757574,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.low.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 1.284788105923259,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.low.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 137.17402277481173,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.speed effort=low; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-low, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "high": {
+        "capability": {
+          "value": 0.439393939393939,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.high.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 76.65504545454546,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.high.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 2.1862227174909825,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.high.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 139.444342920757,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.speed effort=high; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5-high, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "max": {
+        "capability": {
+          "value": 0.636363636363636,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.max.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 382.42925757575756,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.max.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 12.64644160831714,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.pairs.max.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 145.87279685508406,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.sonnet.speed effort=max; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-sonnet-5-5, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      }
+    },
+    "claude-opus-5-5": {
+      "low": {
+        "capability": {
+          "value": 0.313131313131313,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.low.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 37.7824696969697,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.low.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 2.077650464264361,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.low.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 106.96083037740387,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.speed effort=low; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-low, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "high": {
+        "capability": {
+          "value": 0.565656565656566,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.high.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 100.17816666666667,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.high.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 5.118905183990514,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.high.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 105.39858396859795,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.speed effort=high; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5-high, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "max": {
+        "capability": {
+          "value": 0.595959595959596,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.max.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 252.94842424242427,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.max.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 13.109276120148786,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.pairs.max.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 115.42847847900613,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.opus.speed effort=max; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-opus-5-5, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      }
+    },
+    "claude-fable-5-2": {
+      "low": {
+        "capability": {
+          "value": 0.545454545454545,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.low.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-low, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 52.87166666666666,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.low.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-low, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 4.339918517524423,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.low.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-low, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 96.90633461057745,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.speed effort=low; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-low, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "high": {
+        "capability": {
+          "value": 0.595959595959596,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.high.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-high, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 157.87169696969696,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.high.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-high, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 13.468788577499403,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.high.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-high, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 97.78123975303306,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.speed effort=high; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2-high, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "max": {
+        "capability": {
+          "value": 0.595959595959596,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.max.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 376.8044393939394,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.max.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 31.589769302212897,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.pairs.max.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 96.03277512719643,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.fable.speed effort=max; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-fable-5-2, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      }
+    },
+    "claude-fable-5-1": {
+      "low": {
+        "capability": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "appetite_k": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "attempt_dollars": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "generation_speed_tokens_per_second": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        }
+      },
+      "high": {
+        "capability": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "appetite_k": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "attempt_dollars": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "generation_speed_tokens_per_second": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        }
+      },
+      "max": {
+        "capability": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "appetite_k": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "attempt_dollars": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        },
+        "generation_speed_tokens_per_second": {
+          "value": null,
+          "kind": "published",
+          "source": "no source in extract-pairs-reach-appetite: its Artificial Analysis records are of Fable 5.2, and its chart rows are marked stand-in and carry no appetite",
+          "date": null
+        }
+      }
+    },
+    "claude-haiku-5-5": {
+      "low": {
+        "capability": {
+          "value": 0.126262626262626,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.low.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 70.28501515151515,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.low.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 0.1185604005507249,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.low.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-low, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 217.50686583714378,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.speed effort=low; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-low, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "high": {
+        "capability": {
+          "value": 0.217171717171717,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.high.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 166.0800909090909,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.high.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 0.3314793370029226,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.high.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-high, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 228.162805086158,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.speed effort=high; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5-high, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      },
+      "max": {
+        "capability": {
+          "value": 0.328282828282828,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.max.reach['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5, intelligenceIndexEvaluations[terminalbench-4-0].score (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        },
+        "appetite_k": {
+          "value": 346.82592424242426,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.max.tokens_generated['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5, intelligenceIndexEvaluations[terminalbench-4-0].outputTokensPerTask (file has 0 newlines; pairing from parsed JSON record); tokens divided by 1000",
+          "date": "2026-11-12"
+        },
+        "attempt_dollars": {
+          "value": 0.6518847460144606,
+          "kind": "published",
+          "source": "Artificial Analysis, Terminal-Bench 4.0 (pass@1 fraction, 66 tasks x 3 repeats), Intelligence Index v5.0.1; docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.pairs.max.dollars['Terminal-Bench 4.0 [AA]']; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5, intelligenceIndexEvaluations[terminalbench-4-0].costPerTask (file has 0 newlines; pairing from parsed JSON record); USD per task",
+          "date": "2026-11-12"
+        },
+        "generation_speed_tokens_per_second": {
+          "value": 255.58672723992694,
+          "kind": "published",
+          "source": "docs/orchestration_log/recon/2026-10-24/scratch/extract-pairs-reach-appetite/pairs.json models.haiku.speed effort=max; Artificial Analysis, Anthropic first-party API endpoint, output tokens / total request time incl. time to first token, mean of runs over past 5 days; aa-claude-fable-5-1 page data, record slug=claude-haiku-5-5, headline.outputSpeed (file has 0 newlines; pairing from parsed JSON record)",
+          "date": "2026-11-12"
+        }
+      }
+    }
+  },
+  "harness_recorded_effort_note": {
+    "description": "The effort the harness records for an agent launched at another effort.",
+    "value": "An agent launched on sonnet at high is recorded by the harness at medium.",
+    "kind": "measured",
+    "source": "reading of 2026-11-12, this project",
+    "date": "2026-11-12"
+  }
+}

@@ -1,0 +1,49 @@
+== variants: capability, appetite, dollars an attempt, speed, generation minutes, output share of dollars
+haiku low 0.126 70,285 0.12 217.5 5.4 29%
+haiku high 0.217 166,080 0.33 228.2 12.1 25%
+haiku max 0.328 346,826 0.65 255.6 22.6 27%
+sonnet low 0.207 40,277 1.28 137.2 4.9 31%
+sonnet high 0.439 76,655 2.19 139.4 9.2 35%
+sonnet max 0.636 382,429 12.65 145.9 43.7 30%
+opus low 0.313 37,782 2.08 107.0 5.9 36%
+opus high 0.566 100,178 5.12 105.4 15.8 39%
+opus max 0.596 252,948 13.11 115.4 36.5 39%
+fable low 0.545 52,872 4.34 96.9 9.1 49%
+fable high 0.596 157,872 13.47 97.8 26.9 47%
+fable max 0.596 376,804 31.59 96.0 65.4 48%
+== effort: appetite, dollars and generation time, high over low, max over low, max over high; capability gained
+haiku [2.36, 4.93, 2.09, 2.75, 5.42, 1.97] generation max over high 1.86 capability gained 0.091 0.111
+sonnet [1.9, 9.49, 4.99, 1.71, 9.88, 5.78] generation max over high 4.77 capability gained 0.232 0.197
+opus [2.65, 6.69, 2.52, 2.46, 6.3, 2.56] generation max over high 2.31 capability gained 0.253 0.03
+fable [2.99, 7.13, 2.39, 3.1, 7.28, 2.35] generation max over high 2.43 capability gained 0.051 0.0
+== one capability two ways
+('haiku', 'max') {'capability': 0.328, 'appetite': 346826, 'dollars': 0.65, 'speed': 255.6} 22.6 | ('opus', 'low') {'capability': 0.313, 'appetite': 37782, 'dollars': 2.08, 'speed': 107.0} 5.9
+  dollars ratio 3.2 generation ratio 3.84 capability gap 0.015
+('sonnet', 'max') {'capability': 0.636, 'appetite': 382429, 'dollars': 12.65, 'speed': 145.9} 43.7 | ('fable', 'low') {'capability': 0.545, 'appetite': 52872, 'dollars': 4.34, 'speed': 96.9} 9.1
+  dollars ratio 2.91 generation ratio 4.8 capability gap 0.091
+== check and rework: dollars a work unit, sonnet at high against opus at high
+check 0 rework 0 4.99 9.05
+check 6 rework 5 25.05 23.48
+== carry: a context starting at 40k tokens that gains 2k a step
+100 steps 13900000 200 steps 47800000 second hundred over first 2.44
+haiku generated token in carried tokens 50 | a 300k step in generated tokens 6000
+sonnet generated token in carried tokens 100 | a 300k step in generated tokens 3000
+opus generated token in carried tokens 100 | a 300k step in generated tokens 3000
+fable generated token in carried tokens 200 | a 300k step in generated tokens 1500
+== wait past the TTL
+opus 380k cold start, 5-minute 1.9 | two steps inside the TTL 0.152
+haiku cold start in steps of carry: 5-minute 12.5 1-hour 20.0
+sonnet cold start in steps of carry: 5-minute 25.0 1-hour 40.0
+opus cold start in steps of carry: 5-minute 25.0 1-hour 40.0
+fable cold start in steps of carry: 5-minute 50.0 1-hour 80.0
+1-hour intake over 5-minute intake 1.6 | pays past this share of cold starts in intake 0.375
+== continue or start fresh: opus, 440k held, cache lapsed, 1-hour TTL, 20 steps left
+continued 3.52 + 1.76 = 5.28 | fresh 0.8 | gap 4.48 = generated tokens 224000
+one warm step that writes a file 0.088
+== where the bulk is read: 300k tokens of logs
+fable intake 4.8 carry a step 0.06 | sonnet intake 1.2 report of 3k into fable 0.048
+== own steps: 400k of context on fable
+one step 0.08 = generated tokens 2000.0 | 100 steps 8.0 | cold start, 1-hour 6.4
+== limit weights against prices, opus
+weights output : intake : carry 202.7 50.9 1
+prices  output : 5-minute intake : carry 100.0 25.0 1
