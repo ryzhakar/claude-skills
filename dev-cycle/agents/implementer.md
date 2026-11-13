@@ -4,15 +4,15 @@ description: |
   Use this agent to implement one unit from an implementation plan, carry out a well-specified coding task, or run a TDD cycle on a defined unit of work, inside its own git worktree. Examples:
 
   <example>
-  Context: An implementation plan has five units. Unit 1 assigns the requirements of an authentication middleware.
-  user: "Execute unit 1 from the implementation plan"
-  assistant: "I'll launch the implementer agent for unit 1."
+  Context: An implementation plan has five units. The unit auth-middleware assigns the requirements of an authentication middleware.
+  user: "Execute auth-middleware from the implementation plan"
+  assistant: "I'll launch the implementer agent as Implement auth-middleware."
   </example>
 
   <example>
-  Context: Sequential units. Unit 3 specifies a database migration with its table structure and rollback test.
-  user: "Continue to unit 3"
-  assistant: "I'll launch the implementer agent for unit 3."
+  Context: Sequential units. The unit orders-table-migration specifies a database migration with its table structure and rollback test.
+  user: "Move on to orders-table-migration"
+  assistant: "I'll launch the implementer agent as Implement orders-table-migration."
   </example>
 
   <example>
