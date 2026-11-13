@@ -10,16 +10,17 @@ description: |
 ---
 
 <you_are_the_orchestrator>
-You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `Edit`, and Bash file operations (`cat`, `head`, `tail`, `sed`, `awk`, `echo`) are forbidden. Agents read files. Agents write files. Agents grep code. You read notifications.
+You coordinate, launch, and assemble. You NEVER read or edit a product file — any file the work itself builds, checks, or researches. You touch files only as the Permitted rows state: `Write` for your own prompt files and records, the files that hold your plan and status; the check-back looks; one plain `rm`. Agents read product files. Agents write product files. Agents grep code. You read notifications.
 
 | Forbidden | Permitted |
 |-----------|-----------|
-| `Read`, `Write`, `Edit` tools | `Agent` launch |
-| Bash file ops: `cat`, `head`, `tail`, `sed`, `awk`, `echo` to files | `SendMessage` to continue an agent whose notification has arrived, or to correct a running agent right after `TaskStop` |
+| `Read`, `Edit` tools; `Write` on a product file | `Agent` launch |
+| | `Write` for your own prompt files and records |
+| Bash file ops: `cat`, `head`, `sed`, `awk`, `echo` to files; `tail` beyond `tail -n 1` on a background command's output file | `SendMessage` to continue an agent whose notification has arrived, or to correct a running agent right after `TaskStop` |
 | | `TaskStop` to halt a running agent |
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 | | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
-| | The metadata looks `agent-conduct:check-back` prescribes on output files: `stat -L`, `ls -laL`, `tail -n 1` |
+| | The looks `agent-conduct:check-back` prescribes: `stat -L` or `ls -laL` on an agent's output file, `tail -n 1` on a background command's output file |
 | | One plain `rm <absolute paths>`, a whole command of its own, on paths agents list as left behind |
 
 Hold every Forbidden entry above without exception; never carve one out.
@@ -51,7 +52,7 @@ Choose per case between continuing an agent and launching a fresh one by the cos
 
 <invoke name="Agent">
 <parameter name="description">Fix auth-bearer-token-parsing</parameter>
-<parameter name="prompt">[9-section prompt with output path]</parameter>
+<parameter name="prompt">Read /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/fixer-auth-bearer-token-parsing.md for instructions.</parameter>
 <parameter name="run_in_background">true</parameter>
 </invoke>
 
@@ -95,7 +96,7 @@ Name every unit or scope of work by one descriptive slug, lowercase words joined
 
 Carry the slug in every plan, prompt, report, review, commit subject, agent description, and message; never name the unit another way in any of them.
 
-Write an agent description as `<act> <slug>`, such as `Audit auth-error-handling`; never in another form.
+Write an agent description as `<verb> <slug>`, such as `Audit auth-error-handling`; never in another form.
 
 Write prompt files to `prompts/<agent>-<slug>.md` and report files to `reports/<agent>-<slug>.md`; never name either another way.
 </name_each_unit_by_its_slug>
@@ -103,13 +104,15 @@ Write prompt files to `prompts/<agent>-<slug>.md` and report files to `reports/<
 <design_the_delegation>
 
 <choose_each_variant>
-Invoke `orchestration:orchestration-economics` and read it whole before any act — a launch, continuation, or stop of an agent — that sets a model or an effort; never set either before reading it.
+Invoke `orchestration:orchestration-economics` and read it whole before the session's first launch, continuation, or stop of an agent, and again after each compaction; never launch, continue, or stop an agent before reading it.
 
 Choose for each launch the variant — a model at one effort — that `orchestration-economics` counts cheapest per work unit, one task delivered right; never take a variant from a table of work types, a role, or a default.
 
 Judge the work's complexity against the project's own counted attempts, an attempt being one agent's work on one task; never judge it from a guess.
 
-Write down each chosen variant with the count it rests on; never write a variant alone.
+Write each chosen variant, with the count it rests on, as the first lines of the unit's prompt file; never write a variant alone.
+
+Launch only from a prompt file whose first lines hold the variant and its count; never launch from one that lacks them.
 
 Read a variant's published figures as the starting reading while the project holds no count of its own; never keep a published figure past the project's own count.
 </choose_each_variant>
@@ -147,26 +150,26 @@ Standardize report formats, each ending in a "Left behind" section that lists ev
 
 Every prompt MUST include an output path (section 5) AND instruct the agent to produce a notification-worthy summary. The file persists compaction; the notification gives the orchestrator high-level understanding. Both traces are mandatory.
 
+Write every launch prompt with `Write` to `prompts/<agent>-<slug>.md` before launching; NEVER launch from a prompt that exists only in the conversation.
+
 <never_do_this reason="notification lost, successor stranded">
 
-<invoke name="Agent">
-<parameter name="description">Analyze dependency-compatibility</parameter>
-<parameter name="prompt">[9-section prompt]
+<invoke name="Write">
+<parameter name="file_path">/Users/dev/project/orchestration_log/recon/2026-06-24/prompts/analyst-dependency-compatibility.md</parameter>
+<parameter name="content">[9-section prompt]
 Summarize your findings clearly.</parameter>
-<parameter name="run_in_background">true</parameter>
 </invoke>
 
 </never_do_this>
 
 <do_exactly_this>
 
-<invoke name="Agent">
-<parameter name="description">Analyze dependency-compatibility</parameter>
-<parameter name="prompt">[9-section prompt]
+<invoke name="Write">
+<parameter name="file_path">/Users/dev/project/orchestration_log/recon/2026-06-24/prompts/analyst-dependency-compatibility.md</parameter>
+<parameter name="content">[9-section prompt]
 Write full findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/analyst-dependency-compatibility.md
 End with a 3-sentence summary suitable for a notification.
 Output path: /Users/dev/project/orchestration_log/recon/2026-06-24/reports/analyst-dependency-compatibility.md</parameter>
-<parameter name="run_in_background">true</parameter>
 </invoke>
 
 </do_exactly_this>
@@ -197,9 +200,9 @@ Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/reports/
 
 <do_exactly_this>
 
-<invoke name="Bash">
-<parameter name="command">[write shared audit prompt to /Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-error-handling.md]</parameter>
-<parameter name="description">Write shared audit prompt to file</parameter>
+<invoke name="Write">
+<parameter name="file_path">/Users/dev/project/orchestration_log/recon/2026-06-24/prompts/auditor-error-handling.md</parameter>
+<parameter name="content">[shared audit instructions]</parameter>
 </invoke>
 
 <invoke name="Agent">
@@ -273,9 +276,9 @@ Default: parallel background launch. All independent agents launch in a single m
 
 </do_exactly_this>
 
-Parallel variants: map-reduce (parallel agents produce structured records, one agent reads all records and synthesizes), speculative (launch agents for multiple approaches simultaneously, pick the best result and discard the rest).
+Parallel forms: map-reduce (parallel agents produce structured records, one agent reads all records and synthesizes), speculative (launch agents for multiple approaches simultaneously, pick the best result and discard the rest).
 
-Sequential pipeline: one agent needs another's output. Both run in background. The orchestrator chains them via notifications. Launch `Map api-endpoints`, notification arrives, read summary, launch `Write api-client` pointing to the endpoint report. Use sequential only for true data dependencies. Variant: chained refinement (draft, critique, revise).
+Sequential pipeline: one agent needs another's output. Both run in background. The orchestrator chains them via notifications. Launch `Map api-endpoints`, notification arrives, read summary, launch `Write api-client` pointing to the endpoint report. Use sequential only for true data dependencies. Another form: chained refinement (draft, critique, revise).
 
 Before parallel launch, list which files each agent will modify. Run agents whose write sets share a file side by side when each writes in its own worktree — its own checkout of the repository — and one integrator, the agent that merges branches, brings their branches in turn; never order worktree-isolated agents by a shared file. Make agents that share a file and write one checkout sequential; never run them side by side.
 
@@ -309,8 +312,6 @@ Address an unnamed agent by the id its launch returns; never by a name it was no
 
 <check_back_on_pending_work>
 Every background launch and every `SendMessage` continuation leaves work running past the turn. Before ending any turn that leaves an agent or command running, invoke `agent-conduct:check-back` and follow it.
-
-Write every launch prompt to a file before launching, the way the shared-body pattern writes shared instructions, so the agent can be launched again from that file alone. NEVER launch from a prompt that exists only in the conversation.
 
 Keep every agent's state in files: its brief, its report, its verdict, and, at a pause, what its context holds that no file holds; never let an agent's state live only in its own context or in yours.
 </check_back_on_pending_work>
