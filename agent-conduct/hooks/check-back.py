@@ -2,7 +2,7 @@
 """check-back hooks.
 
 stop:   Stop hook. Records in-flight background tasks for this session and
-        keeps the turn going while tasks run with no wake set.
+        keeps the turn going while a command or an agent producing output runs with no wake set.
 resume: SessionStart hook (resume). Names what the old session left running.
 """
 import json
@@ -16,9 +16,11 @@ HERE = Path(__file__).resolve().parent
 STATE_TTL_SECONDS = 7 * 24 * 3600
 OBSERVED_STATES_FILE = "observed-task-states"
 OBSERVED_STATES_LINE_CAP = 200
-FINISHED_OR_IDLE_STATUSES = frozenset(
-    {"idle", "completed", "finished", "done", "stopped", "failed", "killed", "cancelled"}
-)
+FINISHED_STATUSES = frozenset({"completed", "finished", "done", "stopped", "failed", "killed", "cancelled"})
+AGENT_TYPES = frozenset({"subagent", "teammate"})
+PRODUCING_WINDOW_SECONDS = 120
+OUTPUT_SIZES_SUFFIX = ".output-sizes"
+DEFAULT_TASKS_ROOT_PARENT = "/tmp"
 LABELS = {"shell": "the background command", "subagent": "the background agent", "monitor": "the Monitor watch"}
 
 
@@ -47,9 +49,67 @@ def task_status(task):
     return str(task.get("status") or "").strip().lower()
 
 
-def is_awaited(task):
-    """Tell whether the task's status marks it as neither finished nor idle."""
-    return task_status(task) not in FINISHED_OR_IDLE_STATUSES
+def output_path(tasks_root, data, task):
+    """Return where the harness links the task's output transcript, None when the payload lacks the parts."""
+    slug = Path(data.get("transcript_path") or "").parent.name
+    session_id, task_id = data.get("session_id"), task.get("id")
+    if not (slug and session_id and task_id):
+        return None
+    return tasks_root / slug / session_id / "tasks" / f"{task_id}.output"
+
+
+def transcript_stat(path):
+    """Return the stat of the file the path resolves to, None when absent or unreadable."""
+    if path is None:
+        return None
+    try:
+        return path.stat()
+    except OSError:
+        return None
+
+
+def agent_transcripts(tasks_root, data, tasks):
+    """Return each agent task's transcript stat by task id."""
+    return {
+        t.get("id"): transcript_stat(output_path(tasks_root, data, t))
+        for t in tasks
+        if t.get("type") in AGENT_TYPES
+    }
+
+
+def is_producing_output(transcript, previous_size, now):
+    """Tell whether the transcript grew since the previous stop or was written within the producing window."""
+    if transcript is None:
+        return False
+    grew = previous_size is not None and transcript.st_size > previous_size
+    return grew or now - transcript.st_mtime <= PRODUCING_WINDOW_SECONDS
+
+
+def is_awaited(task, transcripts, previous_sizes, now):
+    """Tell whether the task is unfinished and, for an agent, producing output."""
+    if task_status(task) in FINISHED_STATUSES:
+        return False
+    if task.get("type") not in AGENT_TYPES:
+        return True
+    return is_producing_output(transcripts.get(task.get("id")), previous_sizes.get(task.get("id")), now)
+
+
+def load_output_sizes(path):
+    """Return the transcript sizes recorded at the previous stop, empty when unreadable."""
+    try:
+        sizes = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    return sizes if isinstance(sizes, dict) else {}
+
+
+def save_output_sizes(path, transcripts):
+    """Record the present transcript sizes by task id, never raising."""
+    sizes = {task_id: t.st_size for task_id, t in transcripts.items() if t is not None}
+    try:
+        path.write_text(json.dumps(sizes))
+    except OSError:
+        pass
 
 
 def observed_state_line(task):
@@ -91,19 +151,23 @@ def prune(directory):
             pass
 
 
-def stop(data):
+def stop(data, tasks_root, now):
     tasks = data.get("background_tasks")
     crons = data.get("session_crons")
     # Registry unreachable: nothing is known, so nothing is claimed.
     if not isinstance(tasks, list) or not isinstance(crons, list):
         return
 
-    awaited = [t for t in tasks if is_awaited(t)]
     path = state_file(data.get("session_id"))
+    sizes_path = path.with_name(path.name + OUTPUT_SIZES_SUFFIX) if path is not None else None
+    previous_sizes = load_output_sizes(sizes_path) if sizes_path is not None else {}
+    transcripts = agent_transcripts(tasks_root, data, tasks)
+    awaited = [t for t in tasks if is_awaited(t, transcripts, previous_sizes, now)]
     if path is not None:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             prune(path.parent)
+            save_output_sizes(sizes_path, transcripts)
             if awaited:
                 path.write_text("\n".join(describe(t) for t in awaited) + "\n")
             elif path.exists():
@@ -163,7 +227,8 @@ def main():
     if not isinstance(data, dict):
         return
     if mode == "stop":
-        stop(data)
+        tasks_root = Path(os.environ.get("CHECK_BACK_TASKS_ROOT") or f"{DEFAULT_TASKS_ROOT_PARENT}/claude-{os.getuid()}")
+        stop(data, tasks_root, time.time())
     elif mode == "resume":
         resume(data)
 

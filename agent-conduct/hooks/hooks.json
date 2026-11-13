@@ -1,5 +1,5 @@
 {
-  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while background work runs with no wake set, and after a resume names the work the old session left running; office-hours denies AskUserQuestion while the silence marker exists",
+  "description": "work-silently re-entry at session start, resume, fork, and after compaction while the project's silence marker exists; check-back keeps a turn going while a background command or an agent still producing output runs with no wake set, and after a resume names the work the old session left running; office-hours denies AskUserQuestion while the silence marker exists",
   "hooks": {
     "PreToolUse": [
       {

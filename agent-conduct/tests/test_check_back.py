@@ -2,23 +2,46 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
 HOOK = Path(__file__).resolve().parents[1] / "hooks" / "check-back.py"
-SESSION_ID = "session-1"
+FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "stop-payload.json").read_text())
+SESSION_ID = FIXTURE["session_id"]
+PROJECT_SLUG = Path(FIXTURE["transcript_path"]).parent.name
 OBSERVED_LINE_CAP = 200
+PRODUCING_WINDOW_SECONDS = 120
+STALE_AGE_SECONDS = 3600
 
 
-def run_stop(tmp_path, tasks, crons=None, stop_hook_active=False, data_dir_set=True):
+def tasks_dir(tmp_path):
+    return tmp_path / "tmp" / PROJECT_SLUG / SESSION_ID / "tasks"
+
+
+def write_transcript(tmp_path, task_id, size, age_seconds=STALE_AGE_SECONDS):
+    transcript = tmp_path / "transcripts" / f"{task_id}.jsonl"
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    transcript.write_bytes(b"x" * size)
+    moment = time.time() - age_seconds
+    os.utime(transcript, (moment, moment))
+    link = tasks_dir(tmp_path) / f"{task_id}.output"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    if not link.is_symlink():
+        link.symlink_to(transcript)
+
+
+def run_stop(tmp_path, tasks, crons=None, stop_hook_active=False, data_dir_set=True, transcript_path=FIXTURE["transcript_path"]):
     payload = {
-        "session_id": SESSION_ID,
+        **FIXTURE,
         "background_tasks": tasks,
         "session_crons": crons or [],
         "stop_hook_active": stop_hook_active,
+        "transcript_path": transcript_path,
     }
     env = {key: value for key, value in os.environ.items() if key != "CLAUDE_PLUGIN_DATA"}
+    env["CHECK_BACK_TASKS_ROOT"] = str(tmp_path / "tmp")
     if data_dir_set:
         env["CLAUDE_PLUGIN_DATA"] = str(tmp_path)
     result = subprocess.run(
@@ -51,47 +74,63 @@ def task(task_id, task_type, status=None):
     return entry
 
 
-def test_idle_teammate_is_not_nagged_about(tmp_path):
-    reason = run_stop(tmp_path, [task("t1", "teammate", "idle")])
-    assert reason == ""
-    assert state_text(tmp_path) == ""
-
-
 def test_running_shell_is_pending(tmp_path):
     reason = run_stop(tmp_path, [task("s1", "shell", "running")])
     assert 'Still running with no wake set: the background command "work s1" (task s1).' in reason
     assert "task s1" in state_text(tmp_path)
 
 
-def test_running_subagent_is_pending(tmp_path):
+def test_idle_agent_with_flat_transcript_is_not_pending(tmp_path):
+    write_transcript(tmp_path, "a1", size=500)
+    reason = run_stop(tmp_path, [task("a1", "subagent", "running")])
+    assert reason == ""
+    assert state_text(tmp_path) == ""
+
+
+def test_agent_written_within_the_window_is_pending(tmp_path):
+    write_transcript(tmp_path, "a1", size=500, age_seconds=PRODUCING_WINDOW_SECONDS // 2)
     reason = run_stop(tmp_path, [task("a1", "subagent", "running")])
     assert 'the background agent "work a1" (task a1)' in reason
     assert "task a1" in state_text(tmp_path)
 
 
-@pytest.mark.parametrize(
-    "status",
-    ["completed", "Idle ", "DONE", "failed", "killed", "cancelled", "stopped", "finished"],
-)
-def test_finished_or_idle_teammate_is_skipped(tmp_path, status):
-    reason = run_stop(tmp_path, [task("t1", "teammate", status)])
-    assert reason == ""
+def test_agent_whose_transcript_grew_since_the_previous_stop_is_pending(tmp_path):
+    write_transcript(tmp_path, "a1", size=500)
+    assert run_stop(tmp_path, [task("a1", "subagent", "running")]) == ""
+    write_transcript(tmp_path, "a1", size=900)
+    reason = run_stop(tmp_path, [task("a1", "subagent", "running")])
+    assert "task a1" in reason
+
+
+def test_agent_whose_transcript_stayed_flat_between_stops_is_not_pending(tmp_path):
+    write_transcript(tmp_path, "a1", size=500)
+    run_stop(tmp_path, [task("a1", "subagent", "running")])
+    assert run_stop(tmp_path, [task("a1", "subagent", "running")]) == ""
+
+
+def test_agent_without_a_transcript_is_not_pending(tmp_path):
+    assert run_stop(tmp_path, [task("t1", "teammate", "running")]) == ""
     assert state_text(tmp_path) == ""
 
 
-@pytest.mark.parametrize("status", [None, "mystery", ""])
-def test_missing_or_unknown_status_stays_pending(tmp_path, status):
-    reason = run_stop(tmp_path, [task("t1", "teammate", status)])
-    assert "task t1" in reason
-    assert "task t1" in state_text(tmp_path)
+@pytest.mark.parametrize("status", ["completed", "DONE ", "failed", "killed", "cancelled", "stopped", "finished"])
+def test_finished_agent_is_not_pending_even_while_its_transcript_is_fresh(tmp_path, status):
+    write_transcript(tmp_path, "a1", size=500, age_seconds=0)
+    assert run_stop(tmp_path, [task("a1", "subagent", status)]) == ""
+
+
+def test_payload_without_a_transcript_path_leaves_agents_not_pending(tmp_path):
+    write_transcript(tmp_path, "a1", size=500, age_seconds=0)
+    assert run_stop(tmp_path, [task("a1", "subagent", "running")], transcript_path="") == ""
 
 
 def test_skipped_tasks_leave_reason_and_state_of_pending_ones_alone(tmp_path):
     tasks = [
         task("s1", "shell", "running"),
-        task("t1", "teammate", "idle"),
+        task("t1", "teammate", "running"),
         task("t2", "teammate", "completed"),
     ]
+    write_transcript(tmp_path, "t1", size=500)
     reason = run_stop(tmp_path, tasks)
     assert "task s1" in reason
     assert "t1" not in reason and "t2" not in reason

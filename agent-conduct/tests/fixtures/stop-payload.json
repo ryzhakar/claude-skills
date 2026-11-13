@@ -1,0 +1,13 @@
+{
+  "session_id": "0c9a0cd8-ae4d-4971-be6d-4e5d816f8742",
+  "transcript_path": "/home/user/.claude/projects/-work-project/0c9a0cd8-ae4d-4971-be6d-4e5d816f8742.jsonl",
+  "cwd": "/work/project",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "background_tasks": [
+    {"id": "bhnpe0x9k", "type": "shell", "status": "running", "command": "until [ -n \"$(find tasks/a945d9eb6e537a4da.output -mmin +0.5)\" ]; do sleep 10; done; echo idle"},
+    {"id": "a3ef5e4f11ce231c6", "type": "subagent", "status": "running", "description": "Find Stop hook background_tasks fields", "agent_type": "general-purpose"},
+    {"id": "tsb7hf1b8", "type": "teammate", "status": "running", "description": "Retire just-memento wrapper in lead worktree"}
+  ],
+  "session_crons": []
+}
