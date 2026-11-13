@@ -23,9 +23,9 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 
 Hold every Forbidden entry above without exception; never carve one out.
 
-Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. A fresh agent launch costs initialization tokens (3-5k for a well-structured 9-section prompt). A continued agent via `SendMessage` costs only the delta message. Either way, the agent's work is unlimited; your context cost is the dispatch plus a 3-sentence notification. This asymmetry drives every decision in this skill.
+Your context window is finite and irreplaceable. Every line you read stays forever. Once full, you are done. Hold each agent's cost to your context at its dispatch and a 3-sentence notification; never let its work into your context. Count each notification as a step — one pass of your loop, your whole context sent to the model once; never count one as free.
 
-When an agent completes and the orchestrator needs follow-up work in the same domain, continuing the existing agent is the correct path. The agent already holds file contents, task context, and reasoning from its prior run. Launching a fresh agent for a follow-up discards that context and pays full initialization cost again. Reserve fresh launches for new tasks, different domains, or fundamental approach changes.
+Choose per case between continuing an agent and launching a fresh one by the cost `orchestration-economics` counts; never choose by habit. Continue — `SendMessage` to an agent whose notification has arrived — while the agent is warm, its last step within its TTL, the cache's life; never discard a warm agent's context for follow-up work in its domain. Launch fresh — a new agent started from files: brief, verdicts, reports — once the agent's cache has lapsed, unless what its context holds and no file holds costs more to derive again than its cold start, the whole context taken in again; never continue a lapsed agent without counting that cold start. Launch fresh for a new task, a different domain, or a changed approach; never continue an agent across them.
 
 <never_do_this reason="context consumed, hundreds of lines">
 
@@ -304,14 +304,14 @@ Orchestrator realizes `/src/payments/handler.ts` should be `/src/billing/payment
 
 </do_exactly_this>
 
-<never_do_this reason="3-5k tokens wasted re-initializing">
+<never_do_this reason="warm context discarded">
 
-Agent completed a thorough code review. Orchestrator wants it to also check the test file it missed. Launches a fresh agent with the full 9-section prompt, re-reading all the same source files the prior agent already holds.
+Agent completed a thorough code review two minutes ago, inside its TTL. Orchestrator wants it to also check the test file it missed. Launches a fresh agent with the full 9-section prompt, re-reading all the same source files the prior agent already holds.
 
 </never_do_this>
 <do_exactly_this>
 
-Continue the existing agent via `SendMessage(to: agent-id)`: "Also review /Users/dev/project/tests/auth.test.ts for coverage gaps. Do not re-review files you already checked." The agent resumes with full context. No re-initialization.
+Continue the warm agent via `SendMessage(to: agent-id)`: "Also review /Users/dev/project/tests/auth.test.ts for coverage gaps. Do not re-review files you already checked." The agent resumes with full context and no cold start.
 
 </do_exactly_this>
 </correct_mid_flight>
