@@ -126,6 +126,8 @@ Every agent prompt has nine sections. Skip none. A well-structured prompt on a c
 
 Give each agent the minimum context needed. Extra files distract, extra background invites drift. If content exists as a file, cite the path; never paste file content into a prompt. The orchestrator routes by path, not by inlined text.
 
+Write every prompt and message as for the one attempt that must land: the work, the findings to answer, the checks its result must pass; never tell an agent its round, cycle, or attempt number, how many came before or remain, or that a later round will catch the rest. Tell a debugging agent its earlier attempts only where that history is its task; never tell any other agent.
+
 Agents forming opinions NEVER read other agents' opinions. Give them raw facts, not prior conclusions. This prevents confirmation bias, anchoring, and error propagation.
 
 Assign tools explicitly. An agent without `WebSearch` cannot search. An agent without `Grep` cannot find code.
