@@ -24,6 +24,7 @@ TRANSCRIPT_SUFFIX = ".jsonl"
 PRODUCING_WINDOW_SECONDS = 120
 OUTPUT_SIZES_SUFFIX = ".output-sizes"
 DEFAULT_TASKS_ROOT_PARENT = "/tmp"
+WAKE_TASK_TYPE = "monitor"
 LABELS = {"shell": "the background command", "subagent": "the background agent", "monitor": "the Monitor watch"}
 
 
@@ -181,6 +182,21 @@ def record_observed_states(directory, tasks):
         pass
 
 
+def registry_reachable(tasks, crons):
+    """Tell whether the payload carries the task and cron registries."""
+    return isinstance(tasks, list) and isinstance(crons, list)
+
+
+def is_continued_turn(data):
+    """Tell whether a Stop hook already continued this turn."""
+    return bool(data.get("stop_hook_active"))
+
+
+def is_wake(task):
+    """Tell whether the task is itself a wake."""
+    return task.get("type") == WAKE_TASK_TYPE
+
+
 def prune(directory):
     cutoff = time.time() - STATE_TTL_SECONDS
     for path in directory.glob("*"):
@@ -196,8 +212,7 @@ def prune(directory):
 def stop(data, tasks_root, now):
     tasks = data.get("background_tasks")
     crons = data.get("session_crons")
-    # Registry unreachable: nothing is known, so nothing is claimed.
-    if not isinstance(tasks, list) or not isinstance(crons, list):
+    if not registry_reachable(tasks, crons):
         return
 
     path = state_file(data.get("session_id"))
@@ -218,12 +233,10 @@ def stop(data, tasks_root, now):
             pass
         record_observed_states(path.parent, tasks)
 
-    # Loop guard: a turn already continued by a Stop hook ends.
-    if data.get("stop_hook_active"):
+    if is_continued_turn(data):
         return
-    # A running Monitor watch is itself a wake.
-    watches = [t for t in awaited if t.get("type") == "monitor"]
-    pending = [t for t in awaited if t.get("type") != "monitor"]
+    watches = [t for t in awaited if is_wake(t)]
+    pending = [t for t in awaited if not is_wake(t)]
     if not pending or crons or watches:
         return
 
