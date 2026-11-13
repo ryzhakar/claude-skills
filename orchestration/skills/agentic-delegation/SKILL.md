@@ -20,6 +20,7 @@ You coordinate, launch, and assemble. You NEVER touch files. `Read`, `Write`, `E
 | | Bash non-file ops when result directly determines orchestrator's next decision: `git status`, `git log`, test exit codes, build exit codes |
 | | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
 | | The metadata looks `agent-conduct:check-back` prescribes on output files: `stat -L`, `ls -laL`, `tail -n 1` |
+| | One plain `rm <absolute paths>`, a whole command of its own, on paths agents list as left behind |
 
 Hold every Forbidden entry above without exception; never carve one out.
 
@@ -116,9 +117,9 @@ Every agent prompt has nine sections. Skip none. A well-structured prompt on a c
 
 5. Output path (exact file): where to write the report. Absolute path, descriptive filename.
 
-6. Report format: the exact output template. Cite the file path and line range where the template lives. Specify what goes in each section.
+6. Report format: the exact output template. Cite the file path and line range where the template lives. Specify what goes in each section, the "Left behind" section included.
 
-7. Scope boundaries: what to do AND what not to do. For mechanical transforms, forbid judgment, evaluation, and recommendations.
+7. Scope boundaries: what to do AND what not to do. For mechanical transforms, forbid judgment, evaluation, and recommendations. State that the agent deletes nothing.
 
 8. Tool expectations: which tools and each tool's purpose. Syntax examples for non-obvious tools.
 
@@ -132,7 +133,7 @@ Agents forming opinions NEVER read other agents' opinions. Give them raw facts, 
 
 Assign tools explicitly. An agent without `WebSearch` cannot search. An agent without `Grep` cannot find code.
 
-Standardize report formats. Standardized formats enable multi-agent synthesis. Ad-hoc formats make synthesis impossible.
+Standardize report formats, each ending in a "Left behind" section that lists every path the agent leaves for the orchestrator to clear. Standardized formats enable multi-agent synthesis. Ad-hoc formats make synthesis impossible.
 
 Every prompt MUST include an output path (section 5) AND instruct the agent to produce a notification-worthy summary. The file persists compaction; the notification gives the orchestrator high-level understanding. Both traces are mandatory.
 
@@ -220,6 +221,22 @@ Write findings to /Users/dev/project/orchestration_log/recon/2026-06-24/audit-db
 | Drifts off-topic | Weak role or scope | Strengthen role, add DO NOT list |
 | Cannot find files | Relative paths | Use absolute paths for all inputs |
 </construct_the_prompt>
+
+<keep_deletion_with_the_orchestrator>
+Claude Code stops on a permission screen for `rm` inside a complex command, and no permission mode skips it.
+
+Tell every agent in its prompt that it deletes nothing; never send a prompt without that line.
+
+Have the agent write scratch under a fresh name, a `mktemp -d` directory or a numbered suffix; never have it clear a path to reuse it.
+
+Have the agent list every path it leaves in its report's "Left behind" section; never let it leave a path unlisted.
+
+Where deletion is the task itself, have the agent run the tool's own verb, `git worktree remove` or a `just` recipe, as one plain command; never have it run `rm`.
+
+Clear left-behind paths yourself with one plain `rm <absolute paths>` as a whole command of its own; never put `rm` inside a compound, piped, looped, `bash -c`, or heredoc command.
+
+End an agent's probe or gate script at its last check, its outputs listed under "Left behind"; never write a cleanup step into it.
+</keep_deletion_with_the_orchestrator>
 
 <plan_execution_topology>
 Before launching, decide the execution shape.
