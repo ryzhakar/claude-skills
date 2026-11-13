@@ -888,7 +888,6 @@ orchestrator continues → PostToolUse on SendMessage retires the stage the know
 orchestrator's turn ends → Stop hook continues it with the pending stage's mandate
 ```
 
-Reference implementation: `dev-cycle/hooks/review-chain.py` (moved from dev-discipline 2026-10-06), tested by `just hooks-test`. Corrected 2026-10-05 against hooks.md, extended 2026-10-06 to continuations; see `architecture_log.md`.
 
 ### Re-Entry Guard
 
