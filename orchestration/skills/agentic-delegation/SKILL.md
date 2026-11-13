@@ -22,6 +22,7 @@ You coordinate, launch, and assemble. You NEVER read or edit a product file — 
 | | `CronCreate`, `CronList`, `CronDelete`, `Monitor` to set and clear wakes |
 | | The looks `agent-conduct:check-back` prescribes: `stat -L` or `ls -laL` on an agent's output file or a teammate's transcript, `tail -n 1` on a background command's output file |
 | | One plain `rm <absolute paths>`, a whole command of its own, on paths agents list as left behind |
+| | `git branch -d <branch>` on a branch agents list under Left behind, once no worktree holds it |
 
 Hold every Forbidden entry above without exception; never carve one out.
 
